@@ -1,0 +1,3 @@
+# Output: CONFIG_IPV6=y || CONFIG_IPV6=n
+
+obj-$(subst m,y,$(CONFIG_IPV6)) += inet6_hashtables.o

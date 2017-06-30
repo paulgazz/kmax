@@ -1,0 +1,1 @@
+usbcore-y := usb.o hub.o hcd.o urb.o message.o

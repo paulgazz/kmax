@@ -1,0 +1,65 @@
+choice
+	prompt "High Memory Support"
+	default HIGHMEM4G
+	depends on X86_32
+
+config NOHIGHMEM
+	bool "off"
+	---help---
+	  Linux can use up to 64 Gigabytes of physical memory on x86 systems.
+	  However, the address space of 32-bit x86 processors is only 4
+	  Gigabytes large. That means that, if you have a large amount of
+	  physical memory, not all of it can be "permanently mapped" by the
+	  kernel. The physical memory that's not permanently mapped is called
+	  "high memory".
+
+	  If you are compiling a kernel which will never run on a machine with
+	  more than 1 Gigabyte total physical RAM, answer "off" here (default
+	  choice and suitable for most users). This will result in a "3GB/1GB"
+	  split: 3GB are mapped so that each process sees a 3GB virtual memory
+	  space and the remaining part of the 4GB virtual memory space is used
+	  by the kernel to permanently map as much physical memory as
+	  possible.
+
+	  If the machine has between 1 and 4 Gigabytes physical RAM, then
+	  answer "4GB" here.
+
+	  If more than 4 Gigabytes is used then answer "64GB" here. This
+	  selection turns Intel PAE (Physical Address Extension) mode on.
+	  PAE implements 3-level paging on IA32 processors. PAE is fully
+	  supported by Linux, PAE mode is implemented on all recent Intel
+	  processors (Pentium Pro and better). NOTE: If you say "64GB" here,
+	  then the kernel will not boot on CPUs that don't support PAE!
+
+	  The actual amount of total physical memory will either be
+	  auto detected or can be forced by using a kernel command line option
+	  such as "mem=256M". (Try "man bootparam" or see the documentation of
+	  your boot loader (lilo or loadlin) about how to pass options to the
+	  kernel at boot time.)
+
+	  If unsure, say "off".
+
+config HIGHMEM4G
+	bool "4GB"
+	---help---
+	  Select this if you have a 32-bit processor and between 1 and 4
+	  gigabytes of physical RAM.
+
+config HIGHMEM64G
+	bool "64GB"
+	depends on !M486
+	select X86_PAE
+	---help---
+	  Select this if you have a 32-bit processor and more than 4
+	  gigabytes of physical RAM.
+
+endchoice
+
+config X86_PAE
+  bool
+
+config X86_32
+  bool
+
+config M486
+  bool

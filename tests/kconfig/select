@@ -1,0 +1,9 @@
+config A
+  boolean
+  select B if C
+
+config B
+  boolean
+
+config C
+  boolean

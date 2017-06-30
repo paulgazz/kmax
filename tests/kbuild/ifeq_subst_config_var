@@ -1,0 +1,5 @@
+# Output: (CONFIG_IPV6=y || CONFIG_IPV6=n) && CONFIG_X86=y
+
+ifeq ($(subst m,y,$(CONFIG_IPV6)), y)
+obj-$(CONFIG_X86) += kcmp.o
+endif

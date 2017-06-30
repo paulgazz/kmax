@@ -1,0 +1,13 @@
+VAR = y
+
+ifeq ($(VAR), y)
+obj-y += true.o
+else
+obj-y += impossible.o
+endif
+
+ifneq ($(VAR), y)
+obj-y += impossible.o
+else
+obj-y += false.o
+endif

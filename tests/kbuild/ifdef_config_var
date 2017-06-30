@@ -1,0 +1,7 @@
+# Output defined(CONFIG_NO_BOOTMEM), ! defined(CONFIG_NO_BOOTMEM)
+
+ifdef CONFIG_NO_BOOTMEM
+  obj-y += nobootmem.o
+else
+  obj-y += bootmem.o
+endif
