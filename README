@@ -9,15 +9,11 @@ setup python.py install --user
 pycudd (http://bears.ece.ucsb.edu/ftp/pub/pycudd2.0/pycudd2.0.2.tar.gz)
 make sure to edit the cudd-2.4.2/Makefile to build a 64-bit version
 
+swig (for python to c interface)
+
 cudd-2.4.2:
-make CPPFLAGS=-fPIC
-make CPPFLAGS=-fPIC libso
-make -C cudd CPPFLAGS=-fPIC libso cudd
-make -C dddmp CPPFLAGS=-fPIC libso dddmp
-make -C epd CPPFLAGS=-fPIC libso epd
-make -C mtr CPPFLAGS=-fPIC libso mtr
-make -C st CPPFLAGS=-fPIC libso st
-make -C util CPPFLAGS=-fPIC libso util
+make
+make libso
 
 pycudd:
 make FLAGS="-I /opt/python/include/python2.7/ -fPIC"
@@ -46,6 +42,11 @@ export PYTHONPATH
 # put cudd libraries in the load path
 LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/src/pycudd2.0.2/cudd-2.4.2/lib
 export LD_LIBRARY_PATH
+
+# make directories for scratch space and kmax output and set the variables
+export KMAX_DATA=/home/user/kmax_data
+export KMAX_SCRATCH=/home/user/kmax_scratch
+
 
 [Example]
 
