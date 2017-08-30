@@ -222,7 +222,7 @@ struct yy_buffer_state
 
     int yy_bs_lineno; /**< The line count. */
     int yy_bs_column; /**< The column count. */
-    
+
 	/* Whether to try to fill the input buffer when we reach the
 	 * end of it.
 	 */
@@ -349,323 +349,338 @@ extern char *yytext;
 #endif
 #define yytext_ptr yytext
 
-static yyconst flex_int16_t yy_nxt[][17] =
+static yyconst flex_int16_t yy_nxt[][18] =
     {
     {
         0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-        0,    0,    0,    0,    0,    0,    0
+        0,    0,    0,    0,    0,    0,    0,    0
     },
 
     {
        11,   12,   13,   14,   12,   12,   15,   12,   12,   12,
-       12,   12,   12,   12,   12,   12,   12
+       12,   12,   12,   12,   12,   12,   12,   12
     },
 
     {
        11,   12,   13,   14,   12,   12,   15,   12,   12,   12,
-       12,   12,   12,   12,   12,   12,   12
+       12,   12,   12,   12,   12,   12,   12,   12
     },
 
     {
        11,   16,   16,   17,   16,   16,   16,   16,   16,   16,
-       16,   16,   16,   18,   16,   16,   16
+       16,   18,   16,   16,   16,   16,   16,   16
     },
 
     {
        11,   16,   16,   17,   16,   16,   16,   16,   16,   16,
-       16,   16,   16,   18,   16,   16,   16
+       16,   18,   16,   16,   16,   16,   16,   16
 
     },
 
     {
        11,   19,   20,   21,   19,   19,   19,   19,   19,   19,
-       19,   19,   19,   19,   19,   19,   19
+       19,   19,   19,   19,   19,   19,   19,   19
     },
 
     {
        11,   19,   20,   21,   19,   19,   19,   19,   19,   19,
-       19,   19,   19,   19,   19,   19,   19
+       19,   19,   19,   19,   19,   19,   19,   19
     },
 
     {
        11,   22,   22,   23,   22,   24,   22,   22,   24,   22,
-       22,   22,   22,   22,   22,   25,   22
+       22,   22,   22,   22,   22,   22,   25,   22
     },
 
     {
        11,   22,   22,   23,   22,   24,   22,   22,   24,   22,
-       22,   22,   22,   22,   22,   25,   22
+       22,   22,   22,   22,   22,   22,   25,   22
     },
 
     {
-       11,   26,   26,   27,   28,   29,   30,   31,   29,   32,
-       33,   34,   35,   35,   36,   37,   38
+       11,   26,   27,   28,   29,   30,   31,   32,   30,   33,
+       34,   35,   35,   36,   37,   38,   39,   40
 
     },
 
     {
-       11,   26,   26,   27,   28,   29,   30,   31,   29,   32,
-       33,   34,   35,   35,   36,   37,   38
+       11,   26,   27,   28,   29,   30,   31,   32,   30,   33,
+       34,   35,   35,   36,   37,   38,   39,   40
     },
 
     {
       -11,  -11,  -11,  -11,  -11,  -11,  -11,  -11,  -11,  -11,
-      -11,  -11,  -11,  -11,  -11,  -11,  -11
+      -11,  -11,  -11,  -11,  -11,  -11,  -11,  -11
     },
 
     {
        11,  -12,  -12,  -12,  -12,  -12,  -12,  -12,  -12,  -12,
-      -12,  -12,  -12,  -12,  -12,  -12,  -12
+      -12,  -12,  -12,  -12,  -12,  -12,  -12,  -12
     },
 
     {
-       11,  -13,   39,   40,  -13,  -13,   41,  -13,  -13,  -13,
-      -13,  -13,  -13,  -13,  -13,  -13,  -13
+       11,  -13,   41,   42,  -13,  -13,   43,  -13,  -13,  -13,
+      -13,  -13,  -13,  -13,  -13,  -13,  -13,  -13
     },
 
     {
        11,  -14,  -14,  -14,  -14,  -14,  -14,  -14,  -14,  -14,
-      -14,  -14,  -14,  -14,  -14,  -14,  -14
+      -14,  -14,  -14,  -14,  -14,  -14,  -14,  -14
 
     },
 
     {
-       11,   42,   42,   43,   42,   42,   42,   42,   42,   42,
-       42,   42,   42,   42,   42,   42,   42
+       11,   44,   44,   45,   44,   44,   44,   44,   44,   44,
+       44,   44,   44,   44,   44,   44,   44,   44
     },
 
     {
        11,  -16,  -16,  -16,  -16,  -16,  -16,  -16,  -16,  -16,
-      -16,  -16,  -16,  -16,  -16,  -16,  -16
+      -16,  -16,  -16,  -16,  -16,  -16,  -16,  -16
     },
 
     {
        11,  -17,  -17,  -17,  -17,  -17,  -17,  -17,  -17,  -17,
-      -17,  -17,  -17,  -17,  -17,  -17,  -17
+      -17,  -17,  -17,  -17,  -17,  -17,  -17,  -17
     },
 
     {
        11,  -18,  -18,  -18,  -18,  -18,  -18,  -18,  -18,  -18,
-      -18,  -18,  -18,   44,  -18,  -18,  -18
+      -18,   46,  -18,  -18,  -18,  -18,  -18,  -18
     },
 
     {
-       11,   45,   45,  -19,   45,   45,   45,   45,   45,   45,
-       45,   45,   45,   45,   45,   45,   45
+       11,   47,   47,  -19,   47,   47,   47,   47,   47,   47,
+       47,   47,   47,   47,   47,   47,   47,   47
 
     },
 
     {
-       11,  -20,   46,   47,  -20,  -20,  -20,  -20,  -20,  -20,
-      -20,  -20,  -20,  -20,  -20,  -20,  -20
+       11,  -20,   48,   49,  -20,  -20,  -20,  -20,  -20,  -20,
+      -20,  -20,  -20,  -20,  -20,  -20,  -20,  -20
     },
 
     {
-       11,   48,  -21,  -21,   48,   48,   48,   48,   48,   48,
-       48,   48,   48,   48,   48,   48,   48
+       11,   50,  -21,  -21,   50,   50,   50,   50,   50,   50,
+       50,   50,   50,   50,   50,   50,   50,   50
     },
 
     {
-       11,   49,   49,   50,   49,  -22,   49,   49,  -22,   49,
-       49,   49,   49,   49,   49,  -22,   49
+       11,   51,   51,   52,   51,  -22,   51,   51,  -22,   51,
+       51,   51,   51,   51,   51,   51,  -22,   51
     },
 
     {
        11,  -23,  -23,  -23,  -23,  -23,  -23,  -23,  -23,  -23,
-      -23,  -23,  -23,  -23,  -23,  -23,  -23
+      -23,  -23,  -23,  -23,  -23,  -23,  -23,  -23
     },
 
     {
        11,  -24,  -24,  -24,  -24,  -24,  -24,  -24,  -24,  -24,
-      -24,  -24,  -24,  -24,  -24,  -24,  -24
+      -24,  -24,  -24,  -24,  -24,  -24,  -24,  -24
 
     },
 
     {
-       11,   51,   51,   52,   51,   51,   51,   51,   51,   51,
-       51,   51,   51,   51,   51,   51,   51
+       11,   53,   53,   54,   53,   53,   53,   53,   53,   53,
+       53,   53,   53,   53,   53,   53,   53,   53
     },
 
     {
        11,  -26,  -26,  -26,  -26,  -26,  -26,  -26,  -26,  -26,
-      -26,  -26,  -26,  -26,  -26,  -26,  -26
+      -26,  -26,  -26,  -26,  -26,  -26,  -26,  -26
     },
 
     {
-       11,  -27,  -27,  -27,  -27,  -27,  -27,  -27,  -27,  -27,
-      -27,  -27,  -27,  -27,  -27,  -27,  -27
+       11,  -27,   55,  -27,  -27,  -27,  -27,  -27,  -27,  -27,
+      -27,  -27,  -27,  -27,  -27,  -27,  -27,  -27
     },
 
     {
        11,  -28,  -28,  -28,  -28,  -28,  -28,  -28,  -28,  -28,
-      -28,  -28,  -28,  -28,   53,  -28,  -28
+      -28,  -28,  -28,  -28,  -28,  -28,  -28,  -28
     },
 
     {
        11,  -29,  -29,  -29,  -29,  -29,  -29,  -29,  -29,  -29,
-      -29,  -29,  -29,  -29,  -29,  -29,  -29
+      -29,  -29,  -29,  -29,   56,  -29,  -29,  -29
 
     },
 
     {
-       11,   54,   54,  -30,   54,   54,   54,   54,   54,   54,
-       54,   54,   54,   54,   54,   54,   54
+       11,  -30,  -30,  -30,  -30,  -30,  -30,  -30,  -30,  -30,
+      -30,  -30,  -30,  -30,  -30,  -30,  -30,  -30
     },
 
     {
-       11,  -31,  -31,  -31,  -31,  -31,  -31,   55,  -31,  -31,
-      -31,  -31,  -31,  -31,  -31,  -31,  -31
+       11,   57,   57,  -31,   57,   57,   57,   57,   57,   57,
+       57,   57,   57,   57,   57,   57,   57,   57
     },
 
     {
-       11,  -32,  -32,  -32,  -32,  -32,  -32,  -32,  -32,  -32,
-      -32,  -32,  -32,  -32,  -32,  -32,  -32
+       11,  -32,  -32,  -32,  -32,  -32,  -32,   58,  -32,  -32,
+      -32,  -32,  -32,  -32,  -32,  -32,  -32,  -32
     },
 
     {
        11,  -33,  -33,  -33,  -33,  -33,  -33,  -33,  -33,  -33,
-      -33,  -33,  -33,  -33,  -33,  -33,  -33
+      -33,  -33,  -33,  -33,  -33,  -33,  -33,  -33
     },
 
     {
        11,  -34,  -34,  -34,  -34,  -34,  -34,  -34,  -34,  -34,
-      -34,   56,   57,   57,  -34,  -34,  -34
+      -34,  -34,  -34,  -34,  -34,  -34,  -34,  -34
 
     },
 
     {
        11,  -35,  -35,  -35,  -35,  -35,  -35,  -35,  -35,  -35,
-      -35,   57,   57,   57,  -35,  -35,  -35
+      -35,   59,   59,  -35,  -35,  -35,  -35,  -35
     },
 
     {
        11,  -36,  -36,  -36,  -36,  -36,  -36,  -36,  -36,  -36,
-      -36,  -36,  -36,  -36,  -36,  -36,  -36
+      -36,  -36,  -36,  -36,   60,  -36,  -36,  -36
     },
 
     {
-       11,  -37,  -37,   58,  -37,  -37,  -37,  -37,  -37,  -37,
-      -37,  -37,  -37,  -37,  -37,  -37,  -37
+       11,  -37,  -37,  -37,  -37,  -37,  -37,  -37,  -37,  -37,
+      -37,  -37,  -37,  -37,  -37,  -37,  -37,  -37
     },
 
     {
        11,  -38,  -38,  -38,  -38,  -38,  -38,  -38,  -38,  -38,
-      -38,  -38,  -38,  -38,  -38,  -38,   59
+      -38,  -38,  -38,  -38,   61,  -38,  -38,  -38
     },
 
     {
-       11,  -39,   39,   40,  -39,  -39,   41,  -39,  -39,  -39,
-      -39,  -39,  -39,  -39,  -39,  -39,  -39
+       11,  -39,  -39,   62,  -39,  -39,  -39,  -39,  -39,  -39,
+      -39,  -39,  -39,  -39,  -39,  -39,  -39,  -39
 
     },
 
     {
        11,  -40,  -40,  -40,  -40,  -40,  -40,  -40,  -40,  -40,
-      -40,  -40,  -40,  -40,  -40,  -40,  -40
+      -40,  -40,  -40,  -40,  -40,  -40,  -40,   63
     },
 
     {
-       11,   42,   42,   43,   42,   42,   42,   42,   42,   42,
-       42,   42,   42,   42,   42,   42,   42
+       11,  -41,   41,   42,  -41,  -41,   43,  -41,  -41,  -41,
+      -41,  -41,  -41,  -41,  -41,  -41,  -41,  -41
     },
 
     {
-       11,   42,   42,   43,   42,   42,   42,   42,   42,   42,
-       42,   42,   42,   42,   42,   42,   42
+       11,  -42,  -42,  -42,  -42,  -42,  -42,  -42,  -42,  -42,
+      -42,  -42,  -42,  -42,  -42,  -42,  -42,  -42
     },
 
     {
-       11,  -43,  -43,  -43,  -43,  -43,  -43,  -43,  -43,  -43,
-      -43,  -43,  -43,  -43,  -43,  -43,  -43
+       11,   44,   44,   45,   44,   44,   44,   44,   44,   44,
+       44,   44,   44,   44,   44,   44,   44,   44
     },
 
     {
-       11,  -44,  -44,  -44,  -44,  -44,  -44,  -44,  -44,  -44,
-      -44,  -44,  -44,   44,  -44,  -44,  -44
+       11,   44,   44,   45,   44,   44,   44,   44,   44,   44,
+       44,   44,   44,   44,   44,   44,   44,   44
 
     },
 
     {
-       11,   45,   45,  -45,   45,   45,   45,   45,   45,   45,
-       45,   45,   45,   45,   45,   45,   45
+       11,  -45,  -45,  -45,  -45,  -45,  -45,  -45,  -45,  -45,
+      -45,  -45,  -45,  -45,  -45,  -45,  -45,  -45
     },
 
     {
-       11,  -46,   46,   47,  -46,  -46,  -46,  -46,  -46,  -46,
-      -46,  -46,  -46,  -46,  -46,  -46,  -46
+       11,  -46,  -46,  -46,  -46,  -46,  -46,  -46,  -46,  -46,
+      -46,   46,  -46,  -46,  -46,  -46,  -46,  -46
     },
 
     {
-       11,   48,  -47,  -47,   48,   48,   48,   48,   48,   48,
-       48,   48,   48,   48,   48,   48,   48
+       11,   47,   47,  -47,   47,   47,   47,   47,   47,   47,
+       47,   47,   47,   47,   47,   47,   47,   47
     },
 
     {
-       11,  -48,  -48,  -48,  -48,  -48,  -48,  -48,  -48,  -48,
-      -48,  -48,  -48,  -48,  -48,  -48,  -48
+       11,  -48,   48,   49,  -48,  -48,  -48,  -48,  -48,  -48,
+      -48,  -48,  -48,  -48,  -48,  -48,  -48,  -48
     },
 
     {
-       11,   49,   49,   50,   49,  -49,   49,   49,  -49,   49,
-       49,   49,   49,   49,   49,  -49,   49
+       11,   50,  -49,  -49,   50,   50,   50,   50,   50,   50,
+       50,   50,   50,   50,   50,   50,   50,   50
 
     },
 
     {
        11,  -50,  -50,  -50,  -50,  -50,  -50,  -50,  -50,  -50,
-      -50,  -50,  -50,  -50,  -50,  -50,  -50
+      -50,  -50,  -50,  -50,  -50,  -50,  -50,  -50
     },
 
     {
-       11,  -51,  -51,   52,  -51,  -51,  -51,  -51,  -51,  -51,
-      -51,  -51,  -51,  -51,  -51,  -51,  -51
+       11,   51,   51,   52,   51,  -51,   51,   51,  -51,   51,
+       51,   51,   51,   51,   51,   51,  -51,   51
     },
 
     {
        11,  -52,  -52,  -52,  -52,  -52,  -52,  -52,  -52,  -52,
-      -52,  -52,  -52,  -52,  -52,  -52,  -52
+      -52,  -52,  -52,  -52,  -52,  -52,  -52,  -52
     },
 
     {
-       11,  -53,  -53,  -53,  -53,  -53,  -53,  -53,  -53,  -53,
-      -53,  -53,  -53,  -53,  -53,  -53,  -53
+       11,  -53,  -53,   54,  -53,  -53,  -53,  -53,  -53,  -53,
+      -53,  -53,  -53,  -53,  -53,  -53,  -53,  -53
     },
 
     {
-       11,   54,   54,  -54,   54,   54,   54,   54,   54,   54,
-       54,   54,   54,   54,   54,   54,   54
+       11,  -54,  -54,  -54,  -54,  -54,  -54,  -54,  -54,  -54,
+      -54,  -54,  -54,  -54,  -54,  -54,  -54,  -54
 
     },
 
     {
-       11,  -55,  -55,  -55,  -55,  -55,  -55,  -55,  -55,  -55,
-      -55,  -55,  -55,  -55,  -55,  -55,  -55
+       11,  -55,   55,  -55,  -55,  -55,  -55,  -55,  -55,  -55,
+      -55,  -55,  -55,  -55,  -55,  -55,  -55,  -55
     },
 
     {
        11,  -56,  -56,  -56,  -56,  -56,  -56,  -56,  -56,  -56,
-      -56,   60,   57,   57,  -56,  -56,  -56
+      -56,  -56,  -56,  -56,  -56,  -56,  -56,  -56
     },
 
     {
-       11,  -57,  -57,  -57,  -57,  -57,  -57,  -57,  -57,  -57,
-      -57,   57,   57,   57,  -57,  -57,  -57
+       11,   57,   57,  -57,   57,   57,   57,   57,   57,   57,
+       57,   57,   57,   57,   57,   57,   57,   57
     },
 
     {
        11,  -58,  -58,  -58,  -58,  -58,  -58,  -58,  -58,  -58,
-      -58,  -58,  -58,  -58,  -58,  -58,  -58
+      -58,  -58,  -58,  -58,  -58,  -58,  -58,  -58
     },
 
     {
        11,  -59,  -59,  -59,  -59,  -59,  -59,  -59,  -59,  -59,
-      -59,  -59,  -59,  -59,  -59,  -59,  -59
+      -59,   59,   59,  -59,  -59,  -59,  -59,  -59
 
     },
 
     {
        11,  -60,  -60,  -60,  -60,  -60,  -60,  -60,  -60,  -60,
-      -60,   57,   57,   57,  -60,  -60,  -60
+      -60,  -60,  -60,  -60,  -60,  -60,  -60,  -60
+    },
+
+    {
+       11,  -61,  -61,  -61,  -61,  -61,  -61,  -61,  -61,  -61,
+      -61,  -61,  -61,  -61,  -61,  -61,  -61,  -61
+    },
+
+    {
+       11,  -62,  -62,  -62,  -62,  -62,  -62,  -62,  -62,  -62,
+      -62,  -62,  -62,  -62,  -62,  -62,  -62,  -62
+    },
+
+    {
+       11,  -63,  -63,  -63,  -63,  -63,  -63,  -63,  -63,  -63,
+      -63,  -63,  -63,  -63,  -63,  -63,  -63,  -63
     },
 
     } ;
@@ -685,8 +700,8 @@ static void yynoreturn yy_fatal_error (yyconst char* msg  );
 	*yy_cp = '\0'; \
 	(yy_c_buf_p) = yy_cp;
 
-#define YY_NUM_RULES 33
-#define YY_END_OF_BUFFER 34
+#define YY_NUM_RULES 37
+#define YY_END_OF_BUFFER 38
 /* This struct is not used in this scanner,
    but its presence is necessary. */
 struct yy_trans_info
@@ -694,14 +709,15 @@ struct yy_trans_info
 	flex_int32_t yy_verify;
 	flex_int32_t yy_nxt;
 	};
-static yyconst flex_int16_t yy_accept[61] =
+static yyconst flex_int16_t yy_accept[64] =
     {   0,
         0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-       34,    5,    4,    2,    3,    7,    8,    6,   32,   29,
-       31,   24,   28,   27,   26,   22,   17,   13,   16,   20,
-       22,   11,   12,   19,   19,   14,   22,   22,    4,    2,
-        3,    3,    1,    6,   32,   29,   31,   30,   24,   23,
-       26,   25,   15,   20,    9,   19,   19,   21,   10,   18
+       38,    5,    4,    2,    3,    7,    8,    6,   36,   33,
+       35,   28,   32,   31,   30,   26,   25,   21,   13,   20,
+       23,   26,   11,   12,   22,   18,   14,   19,   26,   26,
+        4,    2,    3,    3,    1,    6,   36,   33,   35,   34,
+       28,   27,   30,   29,   25,   15,   23,    9,   22,   16,
+       17,   24,   10
     } ;
 
 static yyconst YY_CHAR yy_ec[256] =
@@ -710,16 +726,16 @@ static yyconst YY_CHAR yy_ec[256] =
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    2,    4,    5,    6,    1,    1,    7,    8,    9,
-       10,    1,    1,    1,   11,   12,   12,   13,   13,   13,
-       13,   13,   13,   13,   13,   13,   13,    1,    1,    1,
-       14,    1,    1,    1,   13,   13,   13,   13,   13,   13,
-       13,   13,   13,   13,   13,   13,   13,   13,   13,   13,
-       13,   13,   13,   13,   13,   13,   13,   13,   13,   13,
-        1,   15,    1,    1,   13,    1,   13,   13,   13,   13,
+       10,    1,    1,    1,   11,   12,   12,   11,   11,   11,
+       11,   11,   11,   11,   11,   11,   11,    1,    1,   13,
+       14,   15,    1,    1,   11,   11,   11,   11,   11,   11,
+       11,   11,   11,   11,   11,   11,   11,   11,   11,   11,
+       11,   11,   11,   11,   11,   11,   11,   11,   11,   11,
+        1,   16,    1,    1,   11,    1,   11,   11,   11,   11,
 
-       13,   13,   13,   13,   13,   13,   13,   13,   13,   13,
-       13,   13,   13,   13,   13,   13,   13,   13,   13,   13,
-       13,   13,    1,   16,    1,    1,    1,    1,    1,    1,
+       11,   11,   11,   11,   11,   11,   11,   11,   11,   11,
+       11,   11,   11,   11,   11,   11,   11,   11,   11,   11,
+       11,   11,    1,   17,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
@@ -756,7 +772,6 @@ char *yytext;
  * Released under the terms of the GNU GPL v2.0.
  */
 
-#include <glob.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -789,7 +804,7 @@ static void zconf_endfile(void);
 
 static void new_string(void)
 {
-	text = malloc(START_STRSIZE);
+	text = xmalloc(START_STRSIZE);
 	text_asize = START_STRSIZE;
 	text_size = 0;
 	*text = 0;
@@ -811,11 +826,18 @@ static void append_string(const char *str, int size)
 
 static void alloc_string(const char *str, int size)
 {
-	text = malloc(size + 1);
+	text = xmalloc(size + 1);
 	memcpy(text, str, size);
 	text[size] = 0;
 }
-#line 819 "zconf.lex.c"
+
+static void warn_ignored_character(char chr)
+{
+	fprintf(stderr,
+	        "%s:%d:warning: ignoring unsupported character '%c'\n",
+	        zconf_curname(), zconf_lineno(), chr);
+}
+#line 841 "zconf.lex.c"
 
 #define INITIAL 0
 #define COMMAND 1
@@ -1021,12 +1043,12 @@ YY_DECL
 		}
 
 	{
-#line 74 "zconf.l"
+#line 80 "zconf.l"
 
 	int str = 0;
 	int ts, i;
 
-#line 1030 "zconf.lex.c"
+#line 1052 "zconf.lex.c"
 
 	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
 		{
@@ -1058,11 +1080,11 @@ do_action:	/* This label is used only to access EOF actions. */
 	{ /* beginning of action switch */
 case 1:
 /* rule 1 can match eol */
-#line 79 "zconf.l"
+#line 85 "zconf.l"
 case 2:
 /* rule 2 can match eol */
 YY_RULE_SETUP
-#line 79 "zconf.l"
+#line 85 "zconf.l"
 {
 	current_file->lineno++;
 	return T_EOL;
@@ -1070,19 +1092,19 @@ YY_RULE_SETUP
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 83 "zconf.l"
+#line 89 "zconf.l"
 
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 86 "zconf.l"
+#line 92 "zconf.l"
 {
 	BEGIN(COMMAND);
 }
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 90 "zconf.l"
+#line 96 "zconf.l"
 {
 	unput(yytext[0]);
 	BEGIN(COMMAND);
@@ -1091,7 +1113,7 @@ YY_RULE_SETUP
 
 case 6:
 YY_RULE_SETUP
-#line 97 "zconf.l"
+#line 103 "zconf.l"
 {
 		const struct kconf_id *id = kconf_id_lookup(yytext, yyleng);
 		BEGIN(PARAM);
@@ -1108,13 +1130,13 @@ YY_RULE_SETUP
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 110 "zconf.l"
-
+#line 116 "zconf.l"
+warn_ignored_character(*yytext);
 	YY_BREAK
 case 8:
 /* rule 8 can match eol */
 YY_RULE_SETUP
-#line 111 "zconf.l"
+#line 117 "zconf.l"
 {
 		BEGIN(INITIAL);
 		current_file->lineno++;
@@ -1125,62 +1147,77 @@ YY_RULE_SETUP
 
 case 9:
 YY_RULE_SETUP
-#line 119 "zconf.l"
+#line 125 "zconf.l"
 return T_AND;
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 120 "zconf.l"
+#line 126 "zconf.l"
 return T_OR;
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 121 "zconf.l"
+#line 127 "zconf.l"
 return T_OPEN_PAREN;
 	YY_BREAK
 case 12:
 YY_RULE_SETUP
-#line 122 "zconf.l"
+#line 128 "zconf.l"
 return T_CLOSE_PAREN;
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 123 "zconf.l"
+#line 129 "zconf.l"
 return T_NOT;
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 124 "zconf.l"
+#line 130 "zconf.l"
 return T_EQUAL;
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 125 "zconf.l"
+#line 131 "zconf.l"
 return T_UNEQUAL;
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 126 "zconf.l"
+#line 132 "zconf.l"
+return T_LESS_EQUAL;
+	YY_BREAK
+case 17:
+YY_RULE_SETUP
+#line 133 "zconf.l"
+return T_GREATER_EQUAL;
+	YY_BREAK
+case 18:
+YY_RULE_SETUP
+#line 134 "zconf.l"
+return T_LESS;
+	YY_BREAK
+case 19:
+YY_RULE_SETUP
+#line 135 "zconf.l"
+return T_GREATER;
+	YY_BREAK
+case 20:
+YY_RULE_SETUP
+#line 136 "zconf.l"
 {
 		str = yytext[0];
 		new_string();
 		BEGIN(STRING);
 	}
 	YY_BREAK
-case 17:
-/* rule 17 can match eol */
+case 21:
+/* rule 21 can match eol */
 YY_RULE_SETUP
-#line 131 "zconf.l"
+#line 141 "zconf.l"
 BEGIN(INITIAL); current_file->lineno++; return T_EOL;
 	YY_BREAK
-case 18:
+case 22:
 YY_RULE_SETUP
-#line 132 "zconf.l"
-/* ignore */
-	YY_BREAK
-case 19:
-YY_RULE_SETUP
-#line 133 "zconf.l"
+#line 142 "zconf.l"
 {
 		const struct kconf_id *id = kconf_id_lookup(yytext, yyleng);
 		if (id && id->flags & TF_PARAM) {
@@ -1192,75 +1229,80 @@ YY_RULE_SETUP
 		return T_WORD;
 	}
 	YY_BREAK
-case 20:
+case 23:
 YY_RULE_SETUP
-#line 143 "zconf.l"
+#line 152 "zconf.l"
 /* comment */
 	YY_BREAK
-case 21:
-/* rule 21 can match eol */
+case 24:
+/* rule 24 can match eol */
 YY_RULE_SETUP
-#line 144 "zconf.l"
+#line 153 "zconf.l"
 current_file->lineno++;
 	YY_BREAK
-case 22:
+case 25:
 YY_RULE_SETUP
-#line 145 "zconf.l"
+#line 154 "zconf.l"
 
 	YY_BREAK
+case 26:
+YY_RULE_SETUP
+#line 155 "zconf.l"
+warn_ignored_character(*yytext);
+	YY_BREAK
 case YY_STATE_EOF(PARAM):
-#line 146 "zconf.l"
+#line 156 "zconf.l"
 {
 		BEGIN(INITIAL);
 	}
 	YY_BREAK
 
 
-case 23:
-/* rule 23 can match eol */
-*yy_cp = (yy_hold_char); /* undo effects of setting up yytext */
-YY_LINENO_REWIND_TO(yy_cp - 1);
-(yy_c_buf_p) = yy_cp -= 1;
-YY_DO_BEFORE_ACTION; /* set up yytext again */
-YY_RULE_SETUP
-#line 152 "zconf.l"
-{
-		append_string(yytext, yyleng);
-		zconflval.string = text;
-		return T_WORD_QUOTE;
-	}
-	YY_BREAK
-case 24:
-YY_RULE_SETUP
-#line 157 "zconf.l"
-{
-		append_string(yytext, yyleng);
-	}
-	YY_BREAK
-case 25:
-/* rule 25 can match eol */
-*yy_cp = (yy_hold_char); /* undo effects of setting up yytext */
-YY_LINENO_REWIND_TO(yy_cp - 1);
-(yy_c_buf_p) = yy_cp -= 1;
-YY_DO_BEFORE_ACTION; /* set up yytext again */
-YY_RULE_SETUP
-#line 160 "zconf.l"
-{
-		append_string(yytext + 1, yyleng - 1);
-		zconflval.string = text;
-		return T_WORD_QUOTE;
-	}
-	YY_BREAK
-case 26:
-YY_RULE_SETUP
-#line 165 "zconf.l"
-{
-		append_string(yytext + 1, yyleng - 1);
-	}
-	YY_BREAK
 case 27:
+/* rule 27 can match eol */
+*yy_cp = (yy_hold_char); /* undo effects of setting up yytext */
+YY_LINENO_REWIND_TO(yy_cp - 1);
+(yy_c_buf_p) = yy_cp -= 1;
+YY_DO_BEFORE_ACTION; /* set up yytext again */
 YY_RULE_SETUP
-#line 168 "zconf.l"
+#line 162 "zconf.l"
+{
+		append_string(yytext, yyleng);
+		zconflval.string = text;
+		return T_WORD_QUOTE;
+	}
+	YY_BREAK
+case 28:
+YY_RULE_SETUP
+#line 167 "zconf.l"
+{
+		append_string(yytext, yyleng);
+	}
+	YY_BREAK
+case 29:
+/* rule 29 can match eol */
+*yy_cp = (yy_hold_char); /* undo effects of setting up yytext */
+YY_LINENO_REWIND_TO(yy_cp - 1);
+(yy_c_buf_p) = yy_cp -= 1;
+YY_DO_BEFORE_ACTION; /* set up yytext again */
+YY_RULE_SETUP
+#line 170 "zconf.l"
+{
+		append_string(yytext + 1, yyleng - 1);
+		zconflval.string = text;
+		return T_WORD_QUOTE;
+	}
+	YY_BREAK
+case 30:
+YY_RULE_SETUP
+#line 175 "zconf.l"
+{
+		append_string(yytext + 1, yyleng - 1);
+	}
+	YY_BREAK
+case 31:
+YY_RULE_SETUP
+#line 178 "zconf.l"
 {
 		if (str == yytext[0]) {
 			BEGIN(PARAM);
@@ -1270,10 +1312,10 @@ YY_RULE_SETUP
 			append_string(yytext, 1);
 	}
 	YY_BREAK
-case 28:
-/* rule 28 can match eol */
+case 32:
+/* rule 32 can match eol */
 YY_RULE_SETUP
-#line 176 "zconf.l"
+#line 186 "zconf.l"
 {
 		printf("%s:%d:warning: multi-line strings not supported\n", zconf_curname(), zconf_lineno());
 		current_file->lineno++;
@@ -1282,16 +1324,16 @@ YY_RULE_SETUP
 	}
 	YY_BREAK
 case YY_STATE_EOF(STRING):
-#line 182 "zconf.l"
+#line 192 "zconf.l"
 {
 		BEGIN(INITIAL);
 	}
 	YY_BREAK
 
 
-case 29:
+case 33:
 YY_RULE_SETUP
-#line 188 "zconf.l"
+#line 198 "zconf.l"
 {
 		ts = 0;
 		for (i = 0; i < yyleng; i++) {
@@ -1315,32 +1357,32 @@ YY_RULE_SETUP
 		}
 	}
 	YY_BREAK
-case 30:
-/* rule 30 can match eol */
+case 34:
+/* rule 34 can match eol */
 *yy_cp = (yy_hold_char); /* undo effects of setting up yytext */
 YY_LINENO_REWIND_TO(yy_cp - 1);
 (yy_c_buf_p) = yy_cp -= 1;
 YY_DO_BEFORE_ACTION; /* set up yytext again */
 YY_RULE_SETUP
-#line 210 "zconf.l"
+#line 220 "zconf.l"
 {
 		current_file->lineno++;
 		zconf_endhelp();
 		return T_HELPTEXT;
 	}
 	YY_BREAK
-case 31:
-/* rule 31 can match eol */
+case 35:
+/* rule 35 can match eol */
 YY_RULE_SETUP
-#line 215 "zconf.l"
+#line 225 "zconf.l"
 {
 		current_file->lineno++;
 		append_string("\n", 1);
 	}
 	YY_BREAK
-case 32:
+case 36:
 YY_RULE_SETUP
-#line 219 "zconf.l"
+#line 229 "zconf.l"
 {
 		while (yyleng) {
 			if ((yytext[yyleng-1] != ' ') && (yytext[yyleng-1] != '\t'))
@@ -1353,7 +1395,7 @@ YY_RULE_SETUP
 	}
 	YY_BREAK
 case YY_STATE_EOF(HELP):
-#line 229 "zconf.l"
+#line 239 "zconf.l"
 {
 		zconf_endhelp();
 		return T_HELPTEXT;
@@ -1362,7 +1404,7 @@ case YY_STATE_EOF(HELP):
 
 case YY_STATE_EOF(INITIAL):
 case YY_STATE_EOF(COMMAND):
-#line 235 "zconf.l"
+#line 245 "zconf.l"
 {
 	if (current_file) {
 		zconf_endfile();
@@ -1372,12 +1414,12 @@ case YY_STATE_EOF(COMMAND):
 	yyterminate();
 }
 	YY_BREAK
-case 33:
+case 37:
 YY_RULE_SETUP
-#line 244 "zconf.l"
+#line 254 "zconf.l"
 YY_FATAL_ERROR( "flex scanner jammed" );
 	YY_BREAK
-#line 1381 "zconf.lex.c"
+#line 1423 "zconf.lex.c"
 
 	case YY_END_OF_BUFFER:
 		{
@@ -1520,7 +1562,7 @@ static int yy_get_next_buffer (void)
 {
     	char *dest = YY_CURRENT_BUFFER_LVALUE->yy_ch_buf;
 	char *source = (yytext_ptr);
-	yy_size_t number_to_move, i;
+	int number_to_move, i;
 	int ret_val;
 
 	if ( (yy_c_buf_p) > &YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[(yy_n_chars) + 1] )
@@ -1549,7 +1591,7 @@ static int yy_get_next_buffer (void)
 	/* Try to read more data. */
 
 	/* First move last chars to start of buffer. */
-	number_to_move = (yy_size_t) ((yy_c_buf_p) - (yytext_ptr)) - 1;
+	number_to_move = (int) ((yy_c_buf_p) - (yytext_ptr) - 1);
 
 	for ( i = 0; i < number_to_move; ++i )
 		*(dest++) = *(source++);
@@ -1631,7 +1673,7 @@ static int yy_get_next_buffer (void)
 	else
 		ret_val = EOB_ACT_CONTINUE_SCAN;
 
-	if ((int) ((yy_n_chars) + number_to_move) > YY_CURRENT_BUFFER_LVALUE->yy_buf_size) {
+	if (((yy_n_chars) + number_to_move) > YY_CURRENT_BUFFER_LVALUE->yy_buf_size) {
 		/* Extend the array by 50%, plus the number we really need. */
 		int new_size = (yy_n_chars) + number_to_move + ((yy_n_chars) >> 1);
 		YY_CURRENT_BUFFER_LVALUE->yy_ch_buf = (char *) yyrealloc((void *) YY_CURRENT_BUFFER_LVALUE->yy_ch_buf,new_size  );
@@ -2031,9 +2073,9 @@ static void yyensure_buffer_stack (void)
 								);
 		if ( ! (yy_buffer_stack) )
 			YY_FATAL_ERROR( "out of dynamic memory in yyensure_buffer_stack()" );
-								  
+
 		memset((yy_buffer_stack), 0, num_to_alloc * sizeof(struct yy_buffer_state*));
-				
+
 		(yy_buffer_stack_max) = num_to_alloc;
 		(yy_buffer_stack_top) = 0;
 		return;
@@ -2062,7 +2104,7 @@ static void yyensure_buffer_stack (void)
  * @param base the character buffer
  * @param size the size in bytes of the character buffer
  * 
- * @return the newly allocated buffer state object. 
+ * @return the newly allocated buffer state object.
  */
 YY_BUFFER_STATE yy_scan_buffer  (char * base, yy_size_t  size )
 {
@@ -2119,10 +2161,10 @@ YY_BUFFER_STATE yy_scan_bytes  (yyconst char * yybytes, int  _yybytes_len )
 	YY_BUFFER_STATE b;
 	char *buf;
 	yy_size_t n;
-	yy_size_t i;
+	int i;
     
 	/* Get memory for full buffer, including space for trailing EOB's. */
-	n = (yy_size_t) _yybytes_len + 2;
+	n = (yy_size_t) (_yybytes_len + 2);
 	buf = (char *) yyalloc(n  );
 	if ( ! buf )
 		YY_FATAL_ERROR( "out of dynamic memory in yy_scan_bytes()" );
@@ -2178,7 +2220,7 @@ static void yynoreturn yy_fatal_error (yyconst char* msg )
  */
 int yyget_lineno  (void)
 {
-        
+    
     return yylineno;
 }
 
@@ -2351,7 +2393,7 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 244 "zconf.l"
+#line 254 "zconf.l"
 
 
 void zconf_starthelp(void)
@@ -2400,7 +2442,7 @@ void zconf_initscan(const char *name)
 		exit(1);
 	}
 
-	current_buf = malloc(sizeof(*current_buf));
+	current_buf = xmalloc(sizeof(*current_buf));
 	memset(current_buf, 0, sizeof(*current_buf));
 
 	current_file = file_lookup(name);
@@ -2411,7 +2453,7 @@ void zconf_nextfile(const char *name)
 {
 	struct file *iter;
 	struct file *file = file_lookup(name);
-	struct buffer *buf = malloc(sizeof(*buf));
+	struct buffer *buf = xmalloc(sizeof(*buf));
 	memset(buf, 0, sizeof(*buf));
 
 	current_buf->state = YY_CURRENT_BUFFER;
@@ -2447,32 +2489,6 @@ void zconf_nextfile(const char *name)
 	file->lineno = 1;
 	file->parent = current_file;
 	current_file = file;
-}
-
-void zconf_nextfiles(const char *wildcard)
-{
-	glob_t g = {0};
-	char **w;
-	int i;
-
-	if (glob(wildcard, 0, NULL, &g) != 0) {
-		return;
-	}
-	if (g.gl_pathv == NULL) {
-		globfree(&g);
-		return;
-	}
-
-	/* working through files backwards, since
-	 * we're first pushing them on a stack
-	 * before actually handling them.
-	 */
-	for (i = g.gl_pathc; i > 0; i--) {
-		w = &g.gl_pathv[i - 1];
-		zconf_nextfile(*w);
-	}
-
-	globfree(&g);
 }
 
 static void zconf_endfile(void)

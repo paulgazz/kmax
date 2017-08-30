@@ -15,7 +15,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 CPROGS := check_dep
-GENERATED := zconf.hash.c zconf.tab.c zconf.lex.c
+# GENERATED := zconf.hash.c zconf.tab.c zconf.lex.c
+GENERATED := zconf.tab.c zconf.lex.c
 
 .PHONY: all clean configure clobber check-dep
 

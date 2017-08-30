@@ -997,7 +997,7 @@ void print_usage(void)
   printf("\n");
   printf("ACTIONS\n");
   printf("--depsym\tprint all config vars that depend on arch\n");
-  printf("--idepsym\tprint all config vars that depend on arch\n");
+  printf("--idepsym\tsame as depsym, but boolean operations inverted\n");
   printf("--tristate\tprint all tristate config vars that depend on arch\n");
   printf("--bools\tprint all boolean config vars that depend on arch\n");
   printf("--nonbools\tprint all non-boolean config vars that depend on arch\n");
