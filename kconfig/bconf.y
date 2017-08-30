@@ -414,8 +414,8 @@ bconf_parse(char *file)
 	modules_sym->flags |= SYMBOL_AUTO;
 	rootmenu.prompt = menu_add_prompt(P_MENU, "Linux Kernel Configuration", NULL);
 
-	if (getenv("ZCONF_DEBUG"))
-		zconfdebug = 1;
+	/* if (getenv("ZCONF_DEBUG")) */
+	/* 	zconfdebug = 1; */
   bconfparse();
 	if (!modules_sym->prop) {
 		struct property *prop;
