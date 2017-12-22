@@ -33,6 +33,7 @@ outformats = [ 'tex', 'csv', 'x86' ]
 
 outformat = 'tex'
 version = "3.19"
+version = "4.13"
 datafiles = kmaxdata.buildsystem_datafiles(version)
 
 if outformat not in outformats:
