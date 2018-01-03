@@ -324,7 +324,7 @@ void print_python_symbol_detail(FILE *out, struct symbol *sym, bool force_naked)
       fprintf(out, "0");
     } else if (S_UNKNOWN == sym->type) {
       /* fprintf(out, "0"); */
-      fprintf(out, "%s%s", config_prefix, sym->name);
+      fprintf(out, "%s", sym->name);
     } else {
       if (! force_naked) {
         fprintf(out, "%s%s", config_prefix, sym->name);
@@ -1800,24 +1800,46 @@ int main(int argc, char **argv)
         continue;
 
       struct property *prop;
+      struct property *prompts;
+      int has_prompt = 0;
 
       switch (sym->type) {
       case S_BOOLEAN:
         // fall through
       case S_TRISTATE:
-        printf("bool %s%s", config_prefix, sym->name);
-        // get default
-        prop = NULL;
-        for_all_defaults(sym, prop) {
-          prop->visible.tri = expr_calc_value(prop->visible.expr);
-          /* if (prop->visible.tri != no) */
-            break;
+        printf("bool %s%s\n", config_prefix, sym->name);
+        // get visibility
+        prompts = NULL;
+        for_all_prompts(sym, prompts) {
+          has_prompt = 1;
+          break;
         }
-        if ((NULL != prop) && (NULL != (prop->expr))) {
-          printf(" ");
-          print_python_expr(prop->expr, stdout, E_NONE);
+        // get default(s)
+        if (!has_prompt) {
+          // if there is no prompt, this config var is not
+          // user-selectable.  therefore it's defaults will always
+          // hold, given the conditions of the default, i.e.,
+          // default_if implies default_value
+          prop = NULL;
+          for_all_defaults(sym, prop) {
+            /* prop->visible.tri = expr_calc_value(prop->visible.expr); */
+            /* /\* if (prop->visible.tri == no) { *\/ */
+            /* /\* } *\/ */
+            if ((NULL != prop) && (NULL != (prop->expr))) {
+              printf("def_bool %s%s ", config_prefix, sym->name);
+              print_python_expr(prop->expr, stdout, E_NONE);
+              printf(" (");
+              if (NULL != prop->visible.expr) {
+                print_python_expr(prop->visible.expr, stdout, E_NONE);
+              } else {
+                printf("1");
+              }
+              printf(")");
+              printf("\n");
+            }
+          }
+          break;
         }
-        printf("\n");
         break;
       case S_INT:
         // fall through

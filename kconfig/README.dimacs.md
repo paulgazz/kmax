@@ -14,14 +14,16 @@ can be converted to dimacs using the accompanying `dimacs.py` script.
     line := bool_line | nonbool_line | clause_line | boolchoice_line | dep_line
 
     // lines
-    bool_line := 'bool' config_var value?
-    nonbool_line := 'bool' config_var value?
+    bool_line := 'bool' config_var
+    def_bool := 'def_bool' config_var bool_value '(' expr ')'
+    nonbool_line := 'bool' config_var nonbool_value?
     clause_line := 'clause' clause_elem+
     bool_choice_line := 'bool_choice' config_var+ '|' '(' expr ')'
     dep_line := 'dep' config_var '(' expr ')'
 
     // expressions
-    value := string
+    bool_value := '1' | '0'
+    nonbool_value := string
     clause_elem := '-'? config_var
     expr := expr 'and' expr | expr 'or' expr | 'not' expr | config_var | nonbool_expr | '1' | '0'
 
@@ -43,6 +45,8 @@ can be converted to dimacs using the accompanying `dimacs.py` script.
 - the `expr` may contain non-boolean relations, which can themselves
   be treated as a boolean variable.  1 and 0 mean true and false
   respectively.
+- `def_bool` defines (possibly multiple) defaults for a boolean
+  variable.
 
 # DIMACS comment format
 

@@ -13,7 +13,7 @@ varnums[root_var] = 1
 
 nonbools = set()
 nonbools_with_dep = set()
-defaultvals = {}
+nonbool_defaults = {}
 
 def lookup_varnum(varname):
   if varname not in varnums:
@@ -169,15 +169,43 @@ for line in sys.stdin:
     tokens = data.split(" ", 1)
     varname = tokens[0]
     lookup_varnum(varname)
-    if len(tokens) > 1:
-      defaultvals[varname] = tokens[1]
+  elif (instr == "def_bool"):
+    var, val, expr = data.split(" ", 2)
+    if val == "1":
+      defsetting = True
+    elif val == "0":
+      defsetting = False
+    else:
+      defsetting = None
+      sys.stderr.write("invalid default value for bool: %s\n" % (line))
+      exit(1)
+    if expr == "(1)":
+      # default value is always set
+      varnum = lookup_varnum(var)
+      if defsetting:
+        clauses.append([varnum])
+      else:
+        clauses.append([-varnum])
+    else:
+      # default is set if dependency holds
+      # expr -> defexpr, i.e., not expr or defexpr
+      if defsetting:
+        defexpr = var
+      else:
+        defexpr = "not " + var
+      full_expr = "(not (" + expr + ")) or (" + defexpr + ")"
+      # print line
+      # print full_expr
+      new_clauses = convert_to_cnf(full_expr)
+      # print new_clauses
+      clauses.extend(new_clauses)
   elif (instr == "nonbool"):
     tokens = data.split(" ", 1)
     varname = tokens[0]
     lookup_varnum(varname)
     nonbools.add(varname)
     if len(tokens) > 1:
-      defaultvals[varname] = tokens[1]
+      nonbool_defaults[varname] = tokens[1]
   elif (instr == "clause"):
     vars = data.split(" ")
     clause = []
@@ -247,9 +275,11 @@ for nonbool in (nonbools - nonbools_with_dep):
   clauses.append([varnum, -rootnum])
   
 for varname in sorted(varnums, key=varnums.get):
-  vartype = "nonbool" if varname in nonbools else "bool"
-  defaultval = " " + defaultvals[varname] if varname in defaultvals else ""
-  print "c %d %s %s%s" % (varnums[varname], varname, vartype, defaultval)
+  if varname in nonbools:
+    defaultval = " " + nonbool_defaults[varname] if varname in nonbool_defaults else ""
+    print "c %d %s nonbool%s" % (varnums[varname], varname, defaultval)
+  else:
+    print "c %d %s bool" % (varnums[varname], varname)
 print "p cnf %d %d" % (len(varnums), len(clauses))
 for clause in clauses:
   print "%s 0" % (" ".join([str(num) for num in clause]))
