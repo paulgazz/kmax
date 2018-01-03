@@ -66,6 +66,9 @@ everycfiledatafile = "./everycfile"
 config_name = "Config.in"
 config_path = config_name
 
+# These are taken from the top-level Makefile's core-y and libs-y
+# variables.  This is correct at least for Kmax ESEC/FSE '17 paper
+# version 1.25.0 and branch 1_22_stable (for iGen journal).
 alldirs = set([
   "applets/",
   "archival/",
@@ -193,12 +196,12 @@ def otoS(filename):
 def ctoo(filename):
   return chgext(filename, ".c", ".o")
 
-# get every c files
-with open(everycfiledatafile, "wb") as f:
-  command = 'find -type f | grep "\.c$" | sort | uniq | cut -c3-'
-  popen = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
-  stdout_, stderr_ = popen.communicate()
-  everycfile = set([os.path.normpath(x.strip('\n')) for x in stdout_.split()])
+# get every c file
+# with open(everycfiledatafile, "wb") as f:  # TODO: use this to write to file
+command = 'find -type f | grep "\.c$" | sort | uniq | cut -c3-'
+popen = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
+stdout_, stderr_ = popen.communicate()
+everycfile = set([os.path.normpath(x.strip('\n')) for x in stdout_.split()])
 
 compilation_units = defaultdict(set)
 
@@ -281,6 +284,8 @@ explanations = {
     "shell/ash_test/zecho.c",
     
     "applets/individual.c", # example wrapper program
+
+    "networking/ntpd_simple.c", # for busybox 1_22_stable
   ],
   
   "unused": [
@@ -310,11 +315,20 @@ explanations = {
   ],
 }
 
+# busy 1_22_stable has an unused directory of source files
+old_e2fsprogs = [x for x in everycfile if x.startswith("e2fsprogs/old_e2fsprogs")]
+print "old e2fsprogs dir", len(old_e2fsprogs)
+everycfile.difference_update(old_e2fsprogs)
+print len(everycfile)
+
 for explanation in explanations.keys():
   print explanation,len(explanations[explanation])
   everycfile.difference_update(explanations[explanation])
   print len(everycfile)
 
+# This will be empty if kmax got all C files correctly.  The
+# explanations needs to contain all C files guaranteed to not be part
+# of the build.
 print everycfile
 
 # if get_running_time == True:
