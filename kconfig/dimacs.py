@@ -10,15 +10,23 @@ root_var = "SPECIAL_ROOT_VARIABLE"
 
 varnums = {}
 varnums[root_var] = 1
+userselectable = set()
 
 nonbools = set()
 nonbools_with_dep = set()
 nonbool_defaults = {}
 
+# assumes "bool" comes first.  also makes all undefined variables
+# varnum 0 for later removal
+no_undefined_variables = True
+
 def lookup_varnum(varname):
-  if varname not in varnums:
-    varnums[varname] = len(varnums) + 1
-  return varnums[varname]
+  if no_undefined_variables and varname not in userselectable:
+    return 0
+  else:
+    if varname not in varnums:
+      varnums[varname] = len(varnums) + 1
+    return varnums[varname]
 
 class Transformer(compiler.visitor.ASTVisitor):
   def __init__(self):
@@ -168,6 +176,7 @@ for line in sys.stdin:
   if (instr == "bool"):
     tokens = data.split(" ", 1)
     varname = tokens[0]
+    userselectable.add(varname)
     lookup_varnum(varname)
   elif (instr == "def_bool"):
     var, val, expr = data.split(" ", 2)
@@ -202,6 +211,7 @@ for line in sys.stdin:
   elif (instr == "nonbool"):
     tokens = data.split(" ", 1)
     varname = tokens[0]
+    userselectable.add(varname)
     lookup_varnum(varname)
     nonbools.add(varname)
     if len(tokens) > 1:
@@ -229,7 +239,9 @@ for line in sys.stdin:
           clause = [-var_i, -var_j]
           # print clause
           clauses.append(clause)
-    # add dependency, (!dep | a | b | ... ), i.e., dep -> one of a,b,... this also ensures at least one is selected
+    # add dependency, dep <-> (a | b | ... ), i.e., .  this ensures at least
+    # one is selected and that if one is selected the dependency must
+    # hold
     or_vars = ""
     for var in config_vars:
       or_vars = or_vars + " or " + var
@@ -237,7 +249,7 @@ for line in sys.stdin:
       dep_expr = root_var
     else:
       dep_expr = dep_expr
-    choice_dep = "((not %s)%s)" % (dep_expr, or_vars)
+    choice_dep = "((not %s)%s) and ((not (0%s)) or (%s))" % (dep_expr, or_vars, or_vars, dep_expr)
     # print choice_dep
     new_clauses = convert_to_cnf(choice_dep)
     # print new_clauses
@@ -268,18 +280,35 @@ for line in sys.stdin:
     sys.stderr.write("unsupported instruction: %s\n" % (line))
     exit(1)
 
-for nonbool in (nonbools - nonbools_with_dep):
-  varnum = lookup_varnum(nonbool)
-  rootnum = lookup_varnum(root_var)
-  clauses.append([-varnum, rootnum])
-  clauses.append([varnum, -rootnum])
-  
+# for nonbool in (nonbools - nonbools_with_dep):
+#   varnum = lookup_varnum(nonbool)
+#   rootnum = lookup_varnum(root_var)
+#   clauses.append([-varnum, rootnum])
+#   clauses.append([varnum, -rootnum])
+
 for varname in sorted(varnums, key=varnums.get):
   if varname in nonbools:
     defaultval = " " + nonbool_defaults[varname] if varname in nonbool_defaults else ""
     print "c %d %s nonbool%s" % (varnums[varname], varname, defaultval)
   else:
     print "c %d %s bool" % (varnums[varname], varname)
-print "p cnf %d %d" % (len(varnums), len(clauses))
+
+filtered_clauses = []
 for clause in clauses:
+  if no_undefined_variables:
+    # trim undefined vars from clauses
+    modified_clause = filter(lambda x: x != 0, clause)
+    if len(modified_clause) == 1 and len(clause) > 1:
+      # if all vars but one was removed, then there is no constraint
+      pass
+    elif len(modified_clause) == 0:
+      # nothing to print now
+      pass
+    else:
+      filtered_clauses.append(modified_clause)
+  else:
+    filtered_clauses.append(clause)
+
+print "p cnf %d %d" % (len(varnums), len(filtered_clauses))
+for clause in filtered_clauses:
   print "%s 0" % (" ".join([str(num) for num in clause]))
