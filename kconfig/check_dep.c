@@ -85,6 +85,10 @@ static struct linked_list *forceoffall = NULL;
 
 static char *config_prefix = "CONFIG_";
 
+static bool print_nonselectable_dimacs = false;
+
+static bool enable_reverse_dependencies = false;
+
 bool check_symbol(struct symbol *, char *);
 bool find_dep(struct expr *, char *);
 void print_deps(struct symbol *);
@@ -1225,6 +1229,9 @@ int main(int argc, char **argv)
       {"deps", required_argument, &action ,A_DEPS},
       {"dump", no_argument, &action ,A_DUMP},
       {"Configure", no_argument, 0, 'C'},
+      {"no-prefix", no_argument, 0, 'p'},
+      {"print-defaults-dimacs", no_argument, 0, 'N'},
+      {"disable-reverse-dependencies", no_argument, 0, 'R'},
       {"default-env", no_argument, 0, 'd'},
       {"verbose", no_argument, 0, 'v'},
       {"help", no_argument, 0, 'h'},
@@ -1233,7 +1240,7 @@ int main(int argc, char **argv)
 
     int option_index = 0;
 
-    opt = getopt_long(argc, argv, "Cdhf:a:v", long_options, &option_index);
+    opt = getopt_long(argc, argv, "CpNRdhf:a:v", long_options, &option_index);
 
     if (-1 == opt)
       break;
@@ -1284,6 +1291,15 @@ int main(int argc, char **argv)
         line = NULL;  //force getline to allocate a new buffer
       }
       fclose(tmp);
+      break;
+    case 'p':
+      config_prefix = "";
+      break;
+    case 'N':
+      print_nonselectable_dimacs = true;
+      break;
+    case 'R':
+      enable_reverse_dependencies = true;
       break;
     case 'C':
       bconf_parser = true;
@@ -1807,38 +1823,45 @@ int main(int argc, char **argv)
       case S_BOOLEAN:
         // fall through
       case S_TRISTATE:
-        printf("bool %s%s\n", config_prefix, sym->name);
         // get visibility
         prompts = NULL;
         for_all_prompts(sym, prompts) {
           has_prompt = 1;
           break;
         }
-        // get default(s)
-        if (!has_prompt) {
-          // if there is no prompt, this config var is not
-          // user-selectable.  therefore it's defaults will always
-          // hold, given the conditions of the default, i.e.,
-          // default_if implies default_value
-          prop = NULL;
-          for_all_defaults(sym, prop) {
-            /* prop->visible.tri = expr_calc_value(prop->visible.expr); */
-            /* /\* if (prop->visible.tri == no) { *\/ */
-            /* /\* } *\/ */
-            if ((NULL != prop) && (NULL != (prop->expr))) {
-              printf("def_bool %s%s ", config_prefix, sym->name);
-              print_python_expr(prop->expr, stdout, E_NONE);
-              printf(" (");
-              if (NULL != prop->visible.expr) {
-                print_python_expr(prop->visible.expr, stdout, E_NONE);
-              } else {
-                printf("1");
+        if (print_nonselectable_dimacs) {
+          printf("bool %s%s\n", config_prefix, sym->name);
+          // get default(s)
+          if (!has_prompt) {
+            // if there is no prompt, this config var is not
+            // user-selectable.  therefore it's defaults will always
+            // hold, given the conditions of the default, i.e.,
+            // default_if implies default_value
+            prop = NULL;
+            for_all_defaults(sym, prop) {
+              /* prop->visible.tri = expr_calc_value(prop->visible.expr); */
+              /* /\* if (prop->visible.tri == no) { *\/ */
+              /* /\* } *\/ */
+              if ((NULL != prop) && (NULL != (prop->expr))) {
+                printf("def_bool %s%s ", config_prefix, sym->name);
+                print_python_expr(prop->expr, stdout, E_NONE);
+                printf(" (");
+                if (NULL != prop->visible.expr) {
+                  print_python_expr(prop->visible.expr, stdout, E_NONE);
+                } else {
+                  printf("1");
+                }
+                printf(")");
+                printf("\n");
               }
-              printf(")");
-              printf("\n");
             }
           }
-          break;
+        } else {
+          // prompt-less variables are set automatically by kconfig,
+          // so there is no reason to add these to the dimacs file
+          if (has_prompt) {
+            printf("bool %s%s\n", config_prefix, sym->name);
+          }
         }
         break;
       case S_INT:
@@ -1949,14 +1972,16 @@ int main(int argc, char **argv)
           printf(")\n");
         }
 
-        if (sym->rev_dep.expr) {
-          /* // convert to cnf clauses */
-          /* if (sym_is_choice_value(sym)) { */
-          /*   print_choice_clauses(sym->rev_dep.expr, sym, stdout); */
-          /* } */
-          printf("dep %s%s (", config_prefix, sym->name);
-          print_python_expr(sym->rev_dep.expr, stdout, E_NONE);
-          printf(")\n");
+        if (enable_reverse_dependencies) {
+          if (sym->rev_dep.expr) {
+            /* // convert to cnf clauses */
+            /* if (sym_is_choice_value(sym)) { */
+            /*   print_choice_clauses(sym->rev_dep.expr, sym, stdout); */
+            /* } */
+            printf("dep %s%s (", config_prefix, sym->name);
+            print_python_expr(sym->rev_dep.expr, stdout, E_NONE);
+            printf(")\n");
+          }
         }
 
         // TODO: deal with reverse dependencies
