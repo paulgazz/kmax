@@ -7,9 +7,9 @@ import ast
 # a dimacs-compatible format
 
 root_var = "SPECIAL_ROOT_VARIABLE"
+use_root_var = False
 
 varnums = {}
-varnums[root_var] = 1
 userselectable = set()
 
 nonbools = set()
@@ -18,7 +18,7 @@ nonbool_defaults = {}
 
 # assumes "bool" comes first.  also makes all undefined variables
 # varnum 0 for later removal
-no_undefined_variables = True
+no_undefined_variables = False
 
 def lookup_varnum(varname):
   if no_undefined_variables and varname not in userselectable:
@@ -170,13 +170,16 @@ def convert_to_cnf(expr):
 # exit(1)
 
 clauses = []
-clauses.append([lookup_varnum(root_var)])
+if use_root_var:
+  userselectable.add(root_var)
+  clauses.append([lookup_varnum(root_var)])
 for line in sys.stdin:
   instr, data = line.strip().split(" ", 1)
   if (instr == "bool"):
-    tokens = data.split(" ", 1)
-    varname = tokens[0]
-    userselectable.add(varname)
+    varname, selectability = data.split(" ", 3)
+    selectable = True if selectability == "selectable" else False
+    if selectable:
+      userselectable.add(varname)
     lookup_varnum(varname)
   elif (instr == "def_bool"):
     var, val, expr = data.split(" ", 2)
@@ -245,10 +248,8 @@ for line in sys.stdin:
     or_vars = ""
     for var in config_vars:
       or_vars = or_vars + " or " + var
-    if dep_expr == "(1)":
+    if use_root_var and dep_expr == "(1)":
       dep_expr = root_var
-    else:
-      dep_expr = dep_expr
     choice_dep = "((not %s)%s) and ((not (0%s)) or (%s))" % (dep_expr, or_vars, or_vars, dep_expr)
     # print choice_dep
     new_clauses = convert_to_cnf(choice_dep)
@@ -257,8 +258,9 @@ for line in sys.stdin:
   elif (instr == "dep"):
     # print instr,data
     var, expr = data.split(" ", 1)
-    # # if no dependencies, then depend on special root variable
-    # if expr == "(1)": expr = root_var
+    # if no dependencies, then depend on special root variable
+    if use_root_var and expr == "(1)":
+      expr = root_var
     # if no dependencies, don't add any clause
     if expr != "(1)":
       # var -> expr, i.e., not var or expr
@@ -291,7 +293,10 @@ for varname in sorted(varnums, key=varnums.get):
     defaultval = " " + nonbool_defaults[varname] if varname in nonbool_defaults else ""
     print "c %d %s nonbool%s" % (varnums[varname], varname, defaultval)
   else:
-    print "c %d %s bool" % (varnums[varname], varname)
+    if varname in userselectable:
+      print "c %d %s bool" % (varnums[varname], varname)
+    else:
+      print "c %d %s hidden_bool" % (varnums[varname], varname)
 
 filtered_clauses = []
 for clause in clauses:
