@@ -85,8 +85,6 @@ static struct linked_list *forceoffall = NULL;
 
 static char *config_prefix = "CONFIG_";
 
-static bool print_nonselectable_dimacs = false;
-
 static bool enable_reverse_dependencies = false;
 
 bool check_symbol(struct symbol *, char *);
@@ -1230,7 +1228,6 @@ int main(int argc, char **argv)
       {"dump", no_argument, &action ,A_DUMP},
       {"Configure", no_argument, 0, 'C'},
       {"no-prefix", no_argument, 0, 'p'},
-      {"print-defaults-dimacs", no_argument, 0, 'N'},
       {"disable-reverse-dependencies", no_argument, 0, 'R'},
       {"default-env", no_argument, 0, 'd'},
       {"verbose", no_argument, 0, 'v'},
@@ -1240,7 +1237,7 @@ int main(int argc, char **argv)
 
     int option_index = 0;
 
-    opt = getopt_long(argc, argv, "CpNRdhf:a:v", long_options, &option_index);
+    opt = getopt_long(argc, argv, "CpRdhf:a:v", long_options, &option_index);
 
     if (-1 == opt)
       break;
@@ -1294,9 +1291,6 @@ int main(int argc, char **argv)
       break;
     case 'p':
       config_prefix = "";
-      break;
-    case 'N':
-      print_nonselectable_dimacs = true;
       break;
     case 'R':
       enable_reverse_dependencies = true;
@@ -1806,11 +1800,12 @@ int main(int argc, char **argv)
     /*   idepsym(sym); */
 
 
-    // emit the boolean/tristate symbols.  add one for the root of the
-    // feature model, necessary to create clauses for unconstrained
-    // configuration variables
-    #define SPECIAL_ROOT_NAME "SPECIAL_ROOT_VARIABLE"
-    printf("bool %s\n", SPECIAL_ROOT_NAME);
+    // let dimacs.py do this
+    /* // emit the boolean/tristate symbols.  add one for the root of the */
+    /* // feature model, necessary to create clauses for unconstrained */
+    /* // configuration variables */
+    /* #define SPECIAL_ROOT_NAME "SPECIAL_ROOT_VARIABLE" */
+    /* printf("bool %s\n", SPECIAL_ROOT_NAME); */
     for_all_symbols(i, sym) {
       if (!sym->name || strlen(sym->name) == 0)
         continue;
@@ -1829,38 +1824,27 @@ int main(int argc, char **argv)
           has_prompt = 1;
           break;
         }
-        if (print_nonselectable_dimacs) {
-          printf("bool %s%s\n", config_prefix, sym->name);
-          // get default(s)
-          if (!has_prompt) {
-            // if there is no prompt, this config var is not
-            // user-selectable.  therefore it's defaults will always
-            // hold, given the conditions of the default, i.e.,
-            // default_if implies default_value
-            prop = NULL;
-            for_all_defaults(sym, prop) {
-              /* prop->visible.tri = expr_calc_value(prop->visible.expr); */
-              /* /\* if (prop->visible.tri == no) { *\/ */
-              /* /\* } *\/ */
-              if ((NULL != prop) && (NULL != (prop->expr))) {
-                printf("def_bool %s%s ", config_prefix, sym->name);
-                print_python_expr(prop->expr, stdout, E_NONE);
-                printf(" (");
-                if (NULL != prop->visible.expr) {
-                  print_python_expr(prop->visible.expr, stdout, E_NONE);
-                } else {
-                  printf("1");
-                }
-                printf(")");
-                printf("\n");
+        printf("bool %s%s %s\n", config_prefix, sym->name, has_prompt ? "selectable" : "nonselectable");
+        if (! has_prompt) {
+          // if there is no prompt, this config var is not
+          // user-selectable.  therefore it's defaults will always
+          // hold, given the conditions of the default, i.e.,
+          // default_if implies default_value.  note that this is not
+          // necessarily true in the presence of 'select' operations.
+          prop = NULL;
+          for_all_defaults(sym, prop) {
+            if ((NULL != prop) && (NULL != (prop->expr))) {
+              printf("def_bool %s%s ", config_prefix, sym->name);
+              print_python_expr(prop->expr, stdout, E_NONE);
+              printf(" (");
+              if (NULL != prop->visible.expr) {
+                print_python_expr(prop->visible.expr, stdout, E_NONE);
+              } else {
+                printf("1");
               }
+              printf(")");
+              printf("\n");
             }
-          }
-        } else {
-          // prompt-less variables are set automatically by kconfig,
-          // so there is no reason to add these to the dimacs file
-          if (has_prompt) {
-            printf("bool %s%s\n", config_prefix, sym->name);
           }
         }
         break;
@@ -1872,7 +1856,10 @@ int main(int argc, char **argv)
         prop = NULL;
         for_all_defaults(sym, prop) {
           prop->visible.tri = expr_calc_value(prop->visible.expr);
-          /* if (prop->visible.tri != no) */
+          // TODO: we should probably print all possible defaults and
+          // their contraints.  to support this in dimacs, make a new
+          // boolean variable for each possible nonboolean value, and
+          // use the constraints to tell which one.
             break;
         }
         if ((NULL != prop) && (NULL != (prop->expr))) {
@@ -1882,6 +1869,7 @@ int main(int argc, char **argv)
         printf("\n");
         break;
       case S_STRING:
+        // TODO: combine this with number cases above
         printf("nonbool %s%s", config_prefix, sym->name);
         printf(" \"");  // always have double-quotes even if no default
         // get default
@@ -1910,17 +1898,18 @@ int main(int argc, char **argv)
     // TODO: check whether tristate's actually test for =m or =y alone
     // and add these dimacs variables
 
-    // print clauses for all unconstrained config vars
-    for_all_symbols(i, sym) {
-      if (!sym->name || strlen(sym->name) == 0)
-        continue;
+    // let dimacs.py handle special root var
+    /* // print clauses for all unconstrained config vars */
+    /* for_all_symbols(i, sym) { */
+    /*   if (!sym->name || strlen(sym->name) == 0) */
+    /*     continue; */
 
-      if (sym->type == S_TRISTATE || sym->type == S_BOOLEAN) {
-        if (! sym->dir_dep.expr) {
-          printf("clause -%s%s %s\n", config_prefix, sym->name, SPECIAL_ROOT_NAME);
-        }
-      }
-    }
+    /*   if (sym->type == S_TRISTATE || sym->type == S_BOOLEAN) { */
+    /*     if (! sym->dir_dep.expr) { */
+    /*       printf("clause -%s%s %s\n", config_prefix, sym->name, SPECIAL_ROOT_NAME); */
+    /*     } */
+    /*   } */
+    /* } */
 
     // print all dependent config vars
     for_all_symbols(i, sym) {
