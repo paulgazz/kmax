@@ -14,8 +14,8 @@ can be converted to dimacs using the accompanying `dimacs.py` script.
     line := bool_line | nonbool_line | clause_line | boolchoice_line | dep_line
 
     // lines
-    bool_line := 'bool' config_var
-    def_bool := 'def_bool' config_var bool_value '(' expr ')'
+    bool_line := 'bool' config_var selectability
+    def_bool_line := 'def_bool' config_var bool_value '(' expr ')'
     nonbool_line := 'bool' config_var nonbool_value?
     clause_line := 'clause' clause_elem+
     bool_choice_line := 'bool_choice' config_var+ '|' '(' expr ')'
@@ -23,6 +23,7 @@ can be converted to dimacs using the accompanying `dimacs.py` script.
 
     // expressions
     bool_value := '1' | '0'
+    selectability := 'selectable' | 'nonselectable'
     nonbool_value := string
     clause_elem := '-'? config_var
     expr := expr 'and' expr | expr 'or' expr | 'not' expr | config_var | nonbool_expr | '1' | '0'
@@ -31,6 +32,8 @@ can be converted to dimacs using the accompanying `dimacs.py` script.
 
 ## Semantics
 
+- All `bool_line`s, `def_bool_line`s, and `nonbool_lines`s should come first in the file,
+  which `check_dep` ensures.
 - `SPECIAL_ROOT_VARIABLE` is used for top-level configuration
   variables with no dependencies.  To make these into SAT clauses for
   a feature model, they all depend on a single root variable.
@@ -46,16 +49,15 @@ can be converted to dimacs using the accompanying `dimacs.py` script.
   be treated as a boolean variable.  1 and 0 mean true and false
   respectively.
 - `def_bool` defines (possibly multiple) defaults for a boolean
-  variable.
+  variable.  This is only meant for nonselectable booleans, since it
+  will constrain a variable to that value.
 
 # DIMACS comment format
 
-- `c variable_number CONFIG_VAR bool|nonbool DEFAULT_VALUE?`
+- `c variable_number CONFIG_VAR bool|hidden_bool|nonbool DEFAULT_VALUE?`
 
 # TODO
 
-- default values for bools
-- what to do with conditions on defaults? 
 - when converting to dimacs, add extra booleans when any expression
   depends on tristate `y` or `m` individually.  this will enable
   on-demand support representation of tristate variables
