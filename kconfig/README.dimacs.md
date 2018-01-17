@@ -16,7 +16,8 @@ can be converted to dimacs using the accompanying `dimacs.py` script.
     // lines
     bool_line := 'bool' config_var selectability
     def_bool_line := 'def_bool' config_var bool_value '(' expr ')'
-    nonbool_line := 'bool' config_var nonbool_value?
+    nonbool_line := 'bool' config_var selectability type_name
+    def_nonbool_line := 'def_nonbool' config_var nonbool_value '|' '(' expr ')'
     clause_line := 'clause' clause_elem+
     bool_choice_line := 'bool_choice' config_var+ '|' '(' expr ')'
     dep_line := 'dep' config_var '(' expr ')'
@@ -25,6 +26,7 @@ can be converted to dimacs using the accompanying `dimacs.py` script.
     bool_value := '1' | '0'
     selectability := 'selectable' | 'nonselectable'
     nonbool_value := string
+    type_name := 'string' 'nonstring'
     clause_elem := '-'? config_var
     expr := expr 'and' expr | expr 'or' expr | 'not' expr | config_var | nonbool_expr | '1' | '0'
 
@@ -51,10 +53,14 @@ can be converted to dimacs using the accompanying `dimacs.py` script.
 - `def_bool` defines (possibly multiple) defaults for a boolean
   variable.  This is only meant for nonselectable booleans, since it
   will constrain a variable to that value.
+- `def_nonbool` defines (possibly multilpe) defaults for variable
+  nonboolean.  This is for both selectable and nonselectable to ensure
+  that the build system will get some value.
 
 # DIMACS comment format
 
 - `c variable_number CONFIG_VAR bool|hidden_bool|nonbool DEFAULT_VALUE?`
+- `c variable_number GHOST_BOOL_NUM_NAME nonbool_var_name DEFAULT_VALUE`
 
 # TODO
 
