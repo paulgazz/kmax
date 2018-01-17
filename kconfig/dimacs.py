@@ -16,17 +16,25 @@ nonbools = set()
 nonbools_with_dep = set()
 nonbool_defaults = {}
 
-# assumes "bool" comes first.  also makes all undefined variables
-# varnum 0 for later removal
-no_undefined_variables = False
+ghost_bools = {}
+
+remove_nonselectable_variables = True
+
+support_nonbool_defaults = False
 
 def lookup_varnum(varname):
-  if no_undefined_variables and varname not in userselectable:
+  if remove_nonselectable_variables and varname not in userselectable:
     return 0
   else:
     if varname not in varnums:
       varnums[varname] = len(varnums) + 1
     return varnums[varname]
+
+ghost_bool_count = 0
+def get_ghost_bool_name(var):
+  global ghost_bool_count
+  ghost_bool_count += 1
+  return "GHOST_BOOL_%d_%s" % (ghost_bool_count, var)
 
 class Transformer(compiler.visitor.ASTVisitor):
   def __init__(self):
@@ -176,7 +184,7 @@ if use_root_var:
 for line in sys.stdin:
   instr, data = line.strip().split(" ", 1)
   if (instr == "bool"):
-    varname, selectability = data.split(" ", 3)
+    varname, selectability = data.split(" ", 1)
     selectable = True if selectability == "selectable" else False
     if selectable:
       userselectable.add(varname)
@@ -212,13 +220,31 @@ for line in sys.stdin:
       # print new_clauses
       clauses.extend(new_clauses)
   elif (instr == "nonbool"):
-    tokens = data.split(" ", 1)
-    varname = tokens[0]
-    userselectable.add(varname)
+    varname, selectability, type_name = data.split(" ", 2)
+    selectable = True if selectability == "selectable" else False
+    if selectable:
+      userselectable.add(varname)
     lookup_varnum(varname)
     nonbools.add(varname)
-    if len(tokens) > 1:
-      nonbool_defaults[varname] = tokens[1]
+    nonbool_defaults[varname] = '""' if type_name == "string" else "0"
+  elif (instr == "def_nonbool"):
+    if support_nonbool_defaults:
+      var, val_and_expr = data.split(" ", 1)
+      val, expr = val_and_expr.split("|", 1)
+      # model nonbool values with ghost boolean values
+      ghost_bool_name = get_ghost_bool_name(var)
+      ghost_bools[ghost_bool_name] = (var, val)
+      varnum = lookup_varnum(ghost_bool_name)
+      # print ghost_bool_name, varnum, val
+      if expr == "(1)":
+        clauses.append([varnum])
+      else:
+        full_expr = "(not (" + expr + ")) or (" + ghost_bool_name + ")"
+        # print line
+        # print full_expr
+        new_clauses = convert_to_cnf(full_expr)
+        # print new_clauses
+        clauses.extend(new_clauses)
   elif (instr == "clause"):
     vars = data.split(" ")
     clause = []
@@ -255,7 +281,7 @@ for line in sys.stdin:
     new_clauses = convert_to_cnf(choice_dep)
     # print new_clauses
     clauses.extend(new_clauses)
-  elif (instr == "dep"):
+  elif (instr == "dep"):  # assumes only one dep line per unique variable
     # print instr,data
     var, expr = data.split(" ", 1)
     # if no dependencies, then depend on special root variable
@@ -269,15 +295,15 @@ for line in sys.stdin:
       new_clauses = convert_to_cnf(full_expr)
       # print new_clauses
       clauses.extend(new_clauses)
-      if var in nonbools:
-        # nonbools are mandatory unless disabled by dependency, so we
-        # also ensure that nonbool var is selected whenever its
-        # dependencies holds
-        full_expr = "(not (" + expr + ")) or (" + var + ")"
-        new_clauses = convert_to_cnf(full_expr)
-        # print new_clauses
-        clauses.extend(new_clauses)
-        nonbools_with_dep.add(var)
+    if var in nonbools:
+      # nonbools are mandatory unless disabled by dependency, so we
+      # also ensure that nonbool var is selected whenever its
+      # dependencies holds.
+      full_expr = "(not (" + expr + ")) or (" + var + ")"
+      new_clauses = convert_to_cnf(full_expr)
+      # print new_clauses
+      clauses.extend(new_clauses)
+      nonbools_with_dep.add(var)
   else:
     sys.stderr.write("unsupported instruction: %s\n" % (line))
     exit(1)
@@ -295,12 +321,15 @@ for varname in sorted(varnums, key=varnums.get):
   else:
     if varname in userselectable:
       print "c %d %s bool" % (varnums[varname], varname)
+    elif varname in ghost_bools.keys():
+      nonbool_var, defval = ghost_bools[varname]
+      print "c %d %s ghost_bool %s %s" % (varnums[varname], varname, nonbool_var, defval)
     else:
       print "c %d %s hidden_bool" % (varnums[varname], varname)
 
 filtered_clauses = []
 for clause in clauses:
-  if no_undefined_variables:
+  if remove_nonselectable_variables:
     # trim undefined vars from clauses
     modified_clause = filter(lambda x: x != 0, clause)
     if len(modified_clause) == 1 and len(clause) > 1:
