@@ -85,7 +85,7 @@ static struct linked_list *forceoffall = NULL;
 
 static char *config_prefix = "CONFIG_";
 
-static bool enable_reverse_dependencies = false;
+static bool enable_reverse_dependencies = true;
 
 bool check_symbol(struct symbol *, char *);
 bool find_dep(struct expr *, char *);
@@ -1143,6 +1143,8 @@ void print_usage(void)
   printf("                 \tSRCARCH=x86 ARCH=x86_64 KERNELVERSION=kcu\n");
   printf("-f, --forceoff var\tturn off var (only for --every* actions)\n");
   printf("-a, --forceoffall file\tturn off all vars in file\n");
+  printf("-p, --no-prefix\t\tdon't add the CONFIG_ prefix to vars\n");
+  printf("-D, --direct-dependencies-only\tno reverse dependencies in dimacs output\n");
   printf("-v, --verbose\t\tverbose output\n");
   printf("-h, --help\t\tdisplay this help message\n");
   printf("\n");
@@ -1228,7 +1230,7 @@ int main(int argc, char **argv)
       {"dump", no_argument, &action ,A_DUMP},
       {"Configure", no_argument, 0, 'C'},
       {"no-prefix", no_argument, 0, 'p'},
-      {"disable-reverse-dependencies", no_argument, 0, 'R'},
+      {"direct-dependencies-only", no_argument, 0, 'D'},
       {"default-env", no_argument, 0, 'd'},
       {"verbose", no_argument, 0, 'v'},
       {"help", no_argument, 0, 'h'},
@@ -1237,7 +1239,7 @@ int main(int argc, char **argv)
 
     int option_index = 0;
 
-    opt = getopt_long(argc, argv, "CpRdhf:a:v", long_options, &option_index);
+    opt = getopt_long(argc, argv, "CpDdhf:a:v", long_options, &option_index);
 
     if (-1 == opt)
       break;
@@ -1292,8 +1294,8 @@ int main(int argc, char **argv)
     case 'p':
       config_prefix = "";
       break;
-    case 'R':
-      enable_reverse_dependencies = true;
+    case 'D':
+      enable_reverse_dependencies = false;
       break;
     case 'C':
       bconf_parser = true;
@@ -1811,17 +1813,18 @@ int main(int argc, char **argv)
         continue;
 
       struct property *prop;
-      struct property *prompts;
-      int has_prompt = 0;
+      int has_prompt;
+      int is_string;
 
       switch (sym->type) {
       case S_BOOLEAN:
         // fall through
       case S_TRISTATE:
-        // get visibility
-        prompts = NULL;
-        for_all_prompts(sym, prompts) {
-          has_prompt = 1;
+        // get selectability
+        prop = NULL;
+        has_prompt = false;
+        for_all_prompts(sym, prop) {
+          has_prompt = true;
           break;
         }
         printf("bool %s%s %s\n", config_prefix, sym->name, has_prompt ? "selectable" : "nonselectable");
@@ -1851,39 +1854,54 @@ int main(int argc, char **argv)
       case S_INT:
         // fall through
       case S_HEX:
-        printf("nonbool %s%s", config_prefix, sym->name);
-        // get default
-        prop = NULL;
-        for_all_defaults(sym, prop) {
-          prop->visible.tri = expr_calc_value(prop->visible.expr);
-          // TODO: we should probably print all possible defaults and
-          // their contraints.  to support this in dimacs, make a new
-          // boolean variable for each possible nonboolean value, and
-          // use the constraints to tell which one.
-            break;
-        }
-        if ((NULL != prop) && (NULL != (prop->expr))) {
-          printf(" ");
-          print_python_expr(prop->expr, stdout, E_NONE);
-        }
-        printf("\n");
-        break;
+        // fall through
       case S_STRING:
-        // TODO: combine this with number cases above
-        printf("nonbool %s%s", config_prefix, sym->name);
-        printf(" \"");  // always have double-quotes even if no default
-        // get default
+        // if not fallen through, is_string will be true.  TODO: emit
+        // bool/nonbool after the switch statement for better
+        // control-flow
+
+        switch (sym->type) {
+        case S_INT:
+          is_string = false;
+          break;
+        case S_HEX:
+          is_string = false;
+          break;
+        case S_STRING:
+          is_string = true;
+          break;
+        default:
+          // should not reach here
+          break;
+        }
+        
+        // get selectability
         prop = NULL;
+        has_prompt = false;
+        for_all_prompts(sym, prop) {
+          has_prompt = true;
+          break;
+        }
+        printf("nonbool %s%s %s %s\n", config_prefix, sym->name, has_prompt ? "selectable" : "nonselectable", is_string ? "string" : "nonstring");
+        prop = NULL;
+        bool has_default = false;
         for_all_defaults(sym, prop) {
-          prop->visible.tri = expr_calc_value(prop->visible.expr);
-          /* if (prop->visible.tri != no) */
-            break;
+          has_default = true;
+          if ((NULL != prop) && (NULL != (prop->expr))) {
+            printf("def_nonbool %s%s ", config_prefix, sym->name);
+            if (is_string) printf("\"");
+            print_python_expr(prop->expr, stdout, E_NONE);
+            if (is_string) printf("\"");
+            printf("|(");
+            if (NULL != prop->visible.expr) {
+              print_python_expr(prop->visible.expr, stdout, E_NONE);
+            } else {
+              printf("1");
+            }
+            printf(")");
+            printf("\n");
+          }
         }
-        if ((NULL != prop) && (NULL != (prop->expr))) {
-          print_python_expr(prop->expr, stdout, E_NONE);
-        }
-        printf("\"");
-        printf("\n");
         break;
       case S_UNKNOWN:
         // fall through
@@ -1899,7 +1917,7 @@ int main(int argc, char **argv)
     // and add these dimacs variables
 
     // let dimacs.py handle special root var
-    /* // print clauses for all unconstrained config vars */
+    /* // print clauses for all unconstrained config vars
     /* for_all_symbols(i, sym) { */
     /*   if (!sym->name || strlen(sym->name) == 0) */
     /*     continue; */
@@ -1951,11 +1969,9 @@ int main(int argc, char **argv)
           sym->type == S_INT ||
           sym->type == S_HEX ||
           sym->type == S_STRING) {
+        bool no_dependencies = true;
         if (sym->dir_dep.expr) {
-          /* // convert to cnf clauses */
-          /* if (sym_is_choice_value(sym)) { */
-          /*   print_choice_clauses(sym->dir_dep.expr, sym, stdout); */
-          /* } */
+          no_dependencies = false;
           printf("dep %s%s (", config_prefix, sym->name);
           print_python_expr(sym->dir_dep.expr, stdout, E_NONE);
           printf(")\n");
@@ -1963,61 +1979,21 @@ int main(int argc, char **argv)
 
         if (enable_reverse_dependencies) {
           if (sym->rev_dep.expr) {
-            /* // convert to cnf clauses */
-            /* if (sym_is_choice_value(sym)) { */
-            /*   print_choice_clauses(sym->rev_dep.expr, sym, stdout); */
-            /* } */
+            no_dependencies = false;
             printf("dep %s%s (", config_prefix, sym->name);
             print_python_expr(sym->rev_dep.expr, stdout, E_NONE);
             printf(")\n");
           }
         }
 
-        // TODO: deal with reverse dependencies
-        
-        /* /\* if (sym->rev_dep.expr) { *\/ */
-        /* /\*   // convert to cnf clauses *\/ */
-        /* /\*   printf("!CONFIG_%s || (", sym->name); *\/ */
-        /* /\*   print_clause(sym->rev_dep.expr, stdout, E_NONE); *\/ */
-        /* /\*   printf(")\n"); *\/ */
-        /* /\* } *\/ */
-        /* //if (1) continue; */
-
-        /* struct property *st; */
-        /* for_all_properties(sym, st, P_SELECT) { */
-        /*   // sym selects another config */
-        /*   if (! st->visible.expr) { */
-        /*     if (1) printf("!CONFIG_%s || CONFIG_%s\n", */
-        /*                   sym->name, */
-        /*                   st->expr->left.sym->name); */
-        /*   } else { */
-        /*     if (0) printf("!CONFIG_%s || CONFIG_%s\n", */
-        /*                   sym->name, */
-        /*                   st->expr->left.sym->name); */
-        /*     // convert to cnf clauses */
-        /*     if (1) { */
-        /*       /\* printf("!(CONFIG_%s && (", sym->name); *\/ */
-        /*       /\* print_clause(st->visible.expr, stdout, E_NONE); *\/ */
-        /*       /\* printf(")) || CONFIG_%s\n", st->expr->left.sym->name); *\/ */
-        /*       printf("!CONFIG_%s || CONFIG_%s || !(", */
-        /*              sym->name, */
-        /*              st->expr->left.sym->name); */
-        /*       print_clause(st->visible.expr, stdout, E_NONE); */
-        /*       printf(")\n"); */
-        /*     } */
-        /*   } */
-        /*   /\* printf("%s", st-> *\/ */
-        /* } */
-        /* char delim = ' '; */
-        /* printf("CONFIG_%s selects", sym->name); */
-        /* struct property *st; */
-        /* for_all_properties(sym, st, P_SELECT) { */
-        /*   printf("%c", delim); */
-        /*   printf("CONFIG_%s", st->expr->left.sym->name); */
-        /*   printf("%s", st-> */
-        /*   delim = ','; */
-        /* } */
-        /* printf("\n"); */
+        // nonbools without dependencies should depend on true
+        if (sym->type == S_INT ||
+            sym->type == S_HEX ||
+            sym->type == S_STRING) {
+          if (no_dependencies) {
+            printf("dep %s%s (1)\n", config_prefix, sym->name);
+          }
+        }
       } else {
         /* fprintf(stderr, "skipping %s\n", sym->name); */
       }
