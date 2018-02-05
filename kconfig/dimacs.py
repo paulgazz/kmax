@@ -15,6 +15,7 @@ userselectable = set()
 nonbools = set()
 nonbools_with_dep = set()
 nonbool_defaults = {}
+nonbool_types = {}
 
 ghost_bools = {}
 
@@ -226,11 +227,11 @@ for line in sys.stdin:
       userselectable.add(varname)
     lookup_varnum(varname)
     nonbools.add(varname)
-    nonbool_defaults[varname] = '""' if type_name == "string" else "0"
+    nonbool_types[varname] = type_name
   elif (instr == "def_nonbool"):
+    var, val_and_expr = data.split(" ", 1)
+    val, expr = val_and_expr.split("|", 1)
     if support_nonbool_defaults:
-      var, val_and_expr = data.split(" ", 1)
-      val, expr = val_and_expr.split("|", 1)
       # model nonbool values with ghost boolean values
       ghost_bool_name = get_ghost_bool_name(var)
       ghost_bools[ghost_bool_name] = (var, val)
@@ -245,6 +246,10 @@ for line in sys.stdin:
         new_clauses = convert_to_cnf(full_expr)
         # print new_clauses
         clauses.extend(new_clauses)
+    else:
+      # just add the first nonbool default
+      if var not in nonbool_defaults:
+        nonbool_defaults[var] = val
   elif (instr == "clause"):
     vars = data.split(" ")
     clause = []
@@ -316,7 +321,11 @@ for line in sys.stdin:
 
 for varname in sorted(varnums, key=varnums.get):
   if varname in nonbools:
-    defaultval = " " + nonbool_defaults[varname] if varname in nonbool_defaults else ""
+    if varname in nonbool_defaults:
+      defaultval = nonbool_defaults[varname]
+    else:
+      defaultval = '""' if nonbool_types[varname] == "string" else "0"
+    defaultval = " " + defaultval
     print "c %d %s nonbool%s" % (varnums[varname], varname, defaultval)
   else:
     if varname in userselectable:
