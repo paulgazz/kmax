@@ -64,7 +64,7 @@ Kmax expects several environment variables to be set:
 - set `KMAX_ROOT` to the path to the Kmax source directory
 - set `PYCUDD_ROOT` to the path to the pycudd directory that
   contains both pycudd itself and cudd-2.4.2
-- set `KMAX_SCRATCH` to a new directory for storing linux instances
+- set `KMAX_SCRATCH` to a new directory for storing downloaded source code
 - set `KMAX_DATA` to a new directory to store kmax's output
 
 With those variables configured, modify the `PATH`, `PYTHONPATH`, and
@@ -74,7 +74,18 @@ With those variables configured, modify the `PATH`, `PYTHONPATH`, and
     export PYTHONPATH=$PYTHONPATH:${PYCUDD_ROOT}/pycudd:${KMAX_ROOT}/lib
     export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${PYCUDD_ROOT}/cudd-2.4.2/lib
 
-## Example run
+## Simple example
+
+This will run Kmax on the example from the
+[paper](https://paulgazzillo.com/papers/esecfse17.pdf) on Kmax.
+
+    covering_set.py -t tests/kbuild/paper_example
+
+This will output the resulting symbol table `-t` and a list of the
+contents from each of the Kbuild variables of interest, e.g., `obj-y`,
+`lib-y`, etc.
+
+## Example run on Linux
 
 This will download and collect all compilation units and presence
 conditions from v4.0 of the Linux kernel source.

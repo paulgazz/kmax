@@ -1,0 +1,7 @@
+obj-y := fork.o
+ifeq ($(CONFIG_A),y)
+  BITS := 32
+else
+  BITS := 64
+endif
+obj-$(CONFIG_B) += probe_$(BITS).o
