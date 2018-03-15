@@ -90,8 +90,16 @@ argparser.add_argument('-b',
                        action="store_true",
                        help="""\
 Get the top-level directories from the arch-specifier Makefile""")
+argparser.add_argument('-V',
+                       '--verbose',
+                       action="store_true",
+                       help="""\
+Increase the debugging output""")
 args = argparser.parse_args()
 
+debug_level = 1 # default to 1, can set to 0 for no debugging output
+if (args.verbose):
+    debug_level = 2
 kconfigdata = None
 all_config_var_names = None
 boolean_config_var_names = None
@@ -138,8 +146,10 @@ def warn(msg, var=None):
     """Report warning"""
     sys.stderr.write("WARN: " + str(msg) + ' ' + str(var) + '\n')
 
-def debug(*args):
-    sys.stderr.write(' '.join(map(lambda arg: str(arg), args)) + '\n')
+def debug(level, *args):
+    global debug_level
+    if (level <= debug_level):
+        sys.stderr.write(' '.join(map(lambda arg: str(arg), args)) + '\n')
 
 # Placeholders for symbolic boolean operations
 def conjunction(a, b):
@@ -897,8 +907,8 @@ class Kbuild:
         value = setvar.value
 
         if isinstance(name, str):
-            # debug("setvariable under presence condition "
-            #       + name + " " + self.bdd_to_str(condition))
+            debug(2, "setvariable under presence condition "
+                  + name + " " + self.bdd_to_str(condition))
             if (args.get_presence_conditions):
                 if (name.endswith("-y") or name.endswith("-m")):
                     splitvalue = value.split()
@@ -918,9 +928,9 @@ class Kbuild:
             self.add_variable_entry(name, condition, token, value)
         else:
             for local_condition, expanded_name in name:
-                # debug("setvariable under presence condition "
-                #           + expanded_name + " "
-                #       + self.bdd_to_str(local_condition))
+                debug(2, "setvariable under presence condition "
+                          + expanded_name + " "
+                      + self.bdd_to_str(local_condition))
                 nested_condition = conjunction(local_condition, condition)
                 if (args.get_presence_conditions):
                     if (expanded_name.endswith("-y") or expanded_name.endswith("-m")):
@@ -1070,7 +1080,7 @@ def extract(makefile_path,
             c_file_targets,
             unit_pcs,
             subdir_pcs):
-    debug("processing makefile", makefile_path)
+    debug(1, "processing makefile", makefile_path)
     if os.path.isdir(makefile_path):
         subdir = makefile_path
         makefile_path = os.path.join(subdir, "Kbuild")
@@ -1298,8 +1308,8 @@ def main():
             print v, b
         for v, b in subdir_pcs:
             print v, b
-    debug(len(compilation_units), "compilation unit(s)")
-    debug(len(library_units), "library unit(s)")
+    debug(1, len(compilation_units), "compilation unit(s)")
+    debug(1, len(library_units), "library unit(s)")
 
 if __name__ == '__main__':
     main()
