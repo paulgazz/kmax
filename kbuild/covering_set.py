@@ -725,7 +725,7 @@ class Kbuild:
                 term += factor_delim + factor
                 factor_delim = " && "
             if len(term) > 0:
-                expression = term_delim + term
+                expression += term_delim + term
                 term_delim = " || "
         if len(expression) == 0:
             expression="1"
