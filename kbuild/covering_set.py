@@ -90,8 +90,16 @@ argparser.add_argument('-b',
                        action="store_true",
                        help="""\
 Get the top-level directories from the arch-specifier Makefile""")
+argparser.add_argument('-V',
+                       '--verbose',
+                       action="store_true",
+                       help="""\
+Increase the debugging output""")
 args = argparser.parse_args()
 
+debug_level = 1 # default to 1, can set to 0 for no debugging output
+if (args.verbose):
+    debug_level = 2
 kconfigdata = None
 all_config_var_names = None
 boolean_config_var_names = None
@@ -138,8 +146,10 @@ def warn(msg, var=None):
     """Report warning"""
     sys.stderr.write("WARN: " + str(msg) + ' ' + str(var) + '\n')
 
-def debug(*args):
-    sys.stderr.write(' '.join(map(lambda arg: str(arg), args)) + '\n')
+def debug(level, *args):
+    global debug_level
+    if (level <= debug_level):
+        sys.stderr.write(' '.join(map(lambda arg: str(arg), args)) + '\n')
 
 # Placeholders for symbolic boolean operations
 def conjunction(a, b):
@@ -267,12 +277,20 @@ class Kbuild:
         # if (isBooleanConfig(name) or name.startswith("CONFIG_")) \
         #    and not isNonbooleanConfig(name):
             # TODO don't use 'm' for truly boolean config vars
-            is_defined = conjunction(self.get_defined(name, True),
-                                     self.boolean_variables[name + "=y"].bdd)
-            not_defined = self.get_defined(name, False)
+            equals_y = self.boolean_variables[name + "=y"].bdd
+            equals_m = self.boolean_variables[name + "=m"].bdd
+            is_defined_y = conjunction(self.get_defined(name, True),
+                                       conjunction(equals_y,
+                                                   negation(equals_m)))
+            is_defined_m = conjunction(self.get_defined(name, True),
+                                       conjunction(equals_m,
+                                                   negation(equals_y)))
+            not_defined = disjunction(self.get_defined(name, False),
+                                      conjunction(negation(is_defined_y),
+                                                  negation(is_defined_m)))
 
-            return Multiverse([ (is_defined, 'y'),
-                                (is_defined, 'm'),
+            return Multiverse([ (is_defined_y, 'y'),
+                                (is_defined_m, 'm'),
                                 (not_defined, None) ])
         # elif (name.startswith("CONFIG_")) and not isNonbooleanConfig(name):
         #     return Multiverse([ (self.T, '') ])
@@ -596,7 +614,7 @@ class Kbuild:
             hoisted_else = self.F
             for c1, v1 in exp1:
                 for c2, v2 in exp2:
-                    if v1 == None:
+                    if v1 == None:  # None means undefined, so use empty string for comparison
                         v1 = ""
                     if v2 == None:
                         v2 = ""
@@ -608,13 +626,14 @@ class Kbuild:
                         hoisted_else = disjunction(hoisted_else,
                                                    term_condition)
                     if contains_unexpanded(v1) or contains_unexpanded(v2):
+                        # this preserves configurations where we
+                        # didn't have values for a config option
                         new_var_name = str(v1) + "=" + str(v2)
                         new_bdd_var = self.boolean_variables[new_var_name].bdd
                         hoisted_condition = disjunction(hoisted_condition,
                                                         new_bdd_var)
                         hoisted_else = disjunction(hoisted_else,
                                                    negation(new_bdd_var))
-                        
 
                 first_branch_condition = conjunction(presence_condition,
                                                      hoisted_condition)
@@ -715,7 +734,7 @@ class Kbuild:
                 term += factor_delim + factor
                 factor_delim = " && "
             if len(term) > 0:
-                expression = term_delim + term
+                expression += term_delim + term
                 term_delim = " || "
         if len(expression) == 0:
             expression="1"
@@ -897,8 +916,8 @@ class Kbuild:
         value = setvar.value
 
         if isinstance(name, str):
-            # debug("setvariable under presence condition "
-            #       + name + " " + self.bdd_to_str(condition))
+            debug(2, "setvariable under presence condition "
+                  + name + " " + value + " " + self.bdd_to_str(condition))
             if (args.get_presence_conditions):
                 if (name.endswith("-y") or name.endswith("-m")):
                     splitvalue = value.split()
@@ -918,9 +937,9 @@ class Kbuild:
             self.add_variable_entry(name, condition, token, value)
         else:
             for local_condition, expanded_name in name:
-                # debug("setvariable under presence condition "
-                #           + expanded_name + " "
-                #       + self.bdd_to_str(local_condition))
+                debug(2, "setvariable under presence condition "
+                          + expanded_name + " "
+                      + self.bdd_to_str(local_condition))
                 nested_condition = conjunction(local_condition, condition)
                 if (args.get_presence_conditions):
                     if (expanded_name.endswith("-y") or expanded_name.endswith("-m")):
@@ -1070,7 +1089,7 @@ def extract(makefile_path,
             c_file_targets,
             unit_pcs,
             subdir_pcs):
-    debug("processing makefile", makefile_path)
+    debug(1, "processing makefile", makefile_path)
     if os.path.isdir(makefile_path):
         subdir = makefile_path
         makefile_path = os.path.join(subdir, "Kbuild")
@@ -1298,8 +1317,8 @@ def main():
             print v, b
         for v, b in subdir_pcs:
             print v, b
-    debug(len(compilation_units), "compilation unit(s)")
-    debug(len(library_units), "library unit(s)")
+    debug(1, len(compilation_units), "compilation unit(s)")
+    debug(1, len(library_units), "library unit(s)")
 
 if __name__ == '__main__':
     main()
