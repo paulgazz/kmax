@@ -52,12 +52,12 @@ void sym_init(void)
 		return;
 	inited = true;
 
-	uname(&uts);
+	/* uname(&uts); */
 
-	sym = sym_lookup("UNAME_RELEASE", 0);
-	sym->type = S_STRING;
-	sym->flags |= SYMBOL_AUTO;
-	sym_add_default(sym, uts.release);
+	/* sym = sym_lookup("UNAME_RELEASE", 0); */
+	/* sym->type = S_STRING; */
+	/* sym->flags |= SYMBOL_AUTO; */
+	/* sym_add_default(sym, uts.release); */
 }
 
 enum symbol_type sym_get_type(struct symbol *sym)
@@ -118,8 +118,9 @@ static struct property *sym_get_default_prop(struct symbol *sym)
 
 	for_all_defaults(sym, prop) {
 		prop->visible.tri = expr_calc_value(prop->visible.expr);
-		if (prop->visible.tri != no)
+		if (prop->visible.tri != no) {
 			return prop;
+    }
 	}
 	return NULL;
 }
