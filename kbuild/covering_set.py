@@ -277,12 +277,20 @@ class Kbuild:
         # if (isBooleanConfig(name) or name.startswith("CONFIG_")) \
         #    and not isNonbooleanConfig(name):
             # TODO don't use 'm' for truly boolean config vars
-            is_defined = conjunction(self.get_defined(name, True),
-                                     self.boolean_variables[name + "=y"].bdd)
-            not_defined = self.get_defined(name, False)
+            equals_y = self.boolean_variables[name + "=y"].bdd
+            equals_m = self.boolean_variables[name + "=m"].bdd
+            is_defined_y = conjunction(self.get_defined(name, True),
+                                       conjunction(equals_y,
+                                                   negation(equals_m)))
+            is_defined_m = conjunction(self.get_defined(name, True),
+                                       conjunction(equals_m,
+                                                   negation(equals_y)))
+            not_defined = disjunction(self.get_defined(name, False),
+                                      conjunction(negation(is_defined_y),
+                                                  negation(is_defined_m)))
 
-            return Multiverse([ (is_defined, 'y'),
-                                (is_defined, 'm'),
+            return Multiverse([ (is_defined_y, 'y'),
+                                (is_defined_m, 'm'),
                                 (not_defined, None) ])
         # elif (name.startswith("CONFIG_")) and not isNonbooleanConfig(name):
         #     return Multiverse([ (self.T, '') ])
@@ -606,7 +614,7 @@ class Kbuild:
             hoisted_else = self.F
             for c1, v1 in exp1:
                 for c2, v2 in exp2:
-                    if v1 == None:
+                    if v1 == None:  # None means undefined, so use empty string for comparison
                         v1 = ""
                     if v2 == None:
                         v2 = ""
@@ -618,13 +626,14 @@ class Kbuild:
                         hoisted_else = disjunction(hoisted_else,
                                                    term_condition)
                     if contains_unexpanded(v1) or contains_unexpanded(v2):
+                        # this preserves configurations where we
+                        # didn't have values for a config option
                         new_var_name = str(v1) + "=" + str(v2)
                         new_bdd_var = self.boolean_variables[new_var_name].bdd
                         hoisted_condition = disjunction(hoisted_condition,
                                                         new_bdd_var)
                         hoisted_else = disjunction(hoisted_else,
                                                    negation(new_bdd_var))
-                        
 
                 first_branch_condition = conjunction(presence_condition,
                                                      hoisted_condition)
@@ -908,7 +917,7 @@ class Kbuild:
 
         if isinstance(name, str):
             debug(2, "setvariable under presence condition "
-                  + name + " " + self.bdd_to_str(condition))
+                  + name + " " + value + " " + self.bdd_to_str(condition))
             if (args.get_presence_conditions):
                 if (name.endswith("-y") or name.endswith("-m")):
                     splitvalue = value.split()
