@@ -56,6 +56,24 @@ class Transformer(compiler.visitor.ASTVisitor):
     compiler.visitor.ASTVisitor.__init__(self)
     self.tree = ()
 
+  # def dispatch(self, node, *args):
+  #   print "JFKDSJFKDSLJKFSD"
+  #   self.node = node
+  #   klass = node.__class__
+  #   meth = self._cache.get(klass, None)
+  #   if meth is None:
+  #       className = klass.__name__
+  #       meth = getattr(self.visitor, 'visit' + className, self.default)
+  #       self._cache[klass] = meth
+  #   className = klass.__name__
+  #   print "dispatch", className, (meth and meth.__name__ or '')
+  #   print meth
+  #   return meth(node, *args)
+
+  def default(self, node):
+    # TODO: convert ast to string to be a predicate
+    return ("name", "PREDICATE")
+
   def visitDiscard(self, node):
     self.tree = self.visit(node.getChildren()[0])
 
@@ -174,7 +192,7 @@ def convert_to_cnf(expr):
   actual_expr = ast.getChildNodes()[0].getChildNodes()[0]
   # print ast
   transformer = Transformer()
-  compiler.walk(actual_expr, transformer)
+  compiler.walk(actual_expr, transformer, walker=transformer, verbose=True)
   tree = transformer.tree
   # print tree
   clauses = convert(tree)
@@ -197,6 +215,7 @@ if use_root_var:
   userselectable.add(root_var)
   clauses.append([lookup_varnum(root_var)])
 for line in sys.stdin:
+  sys.stderr.write("started %s\n" % (line))
   instr, data = line.strip().split(" ", 1)
   if (instr == "bool"):
     varname, selectability = data.split(" ", 1)
@@ -328,6 +347,7 @@ for line in sys.stdin:
   else:
     sys.stderr.write("unsupported instruction: %s\n" % (line))
     exit(1)
+  sys.stderr.write("done %s\n" % (line))
 
 # if force_independent_nonbools_on:
 #   # this should be covered by "nonbools are mandatory unless disabled
