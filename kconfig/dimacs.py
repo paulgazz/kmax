@@ -338,6 +338,7 @@ for varname in sorted(varnums, key=varnums.get):
 
 filtered_clauses = []
 for clause in clauses:
+  clause = list(set(clause)) # remove duplicate terms in clauses
   if remove_nonselectable_variables:
     # trim undefined vars from clauses
     modified_clause = filter(lambda x: x != 0, clause)
