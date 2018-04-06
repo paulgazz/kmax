@@ -2,9 +2,12 @@ import os
 import sys
 import compiler
 import ast
+import traceback
 
 # this script takes the check_dep --dimacs output and converts it into
 # a dimacs-compatible format
+
+debug = False
 
 root_var = "SPECIAL_ROOT_VARIABLE"
 use_root_var = False
@@ -187,7 +190,13 @@ def convert(node):
     assert(False)
 
 def convert_to_cnf(expr):
-  ast = compiler.parse(expr)
+  try:
+    ast = compiler.parse(expr)
+  except:
+    sys.stderr.write("error: could not parse %s\n" % (line))
+    sys.stderr.write(traceback.format_exc())
+    sys.stderr.write("\n")
+    return []
   # get Discard(ACTUAL_EXPR) from Module(None, Stmt([Discard(ACTUAL_EXPR)))
   actual_expr = ast.getChildNodes()[0].getChildNodes()[0]
   # print ast
@@ -215,7 +224,7 @@ if use_root_var:
   userselectable.add(root_var)
   clauses.append([lookup_varnum(root_var)])
 for line in sys.stdin:
-  sys.stderr.write("started %s\n" % (line))
+  if debug: sys.stderr.write("started %s\n" % (line))
   instr, data = line.strip().split(" ", 1)
   if (instr == "bool"):
     varname, selectability = data.split(" ", 1)
@@ -347,7 +356,7 @@ for line in sys.stdin:
   else:
     sys.stderr.write("unsupported instruction: %s\n" % (line))
     exit(1)
-  sys.stderr.write("done %s\n" % (line))
+  if debug: sys.stderr.write("done %s\n" % (line))
 
 # if force_independent_nonbools_on:
 #   # this should be covered by "nonbools are mandatory unless disabled
