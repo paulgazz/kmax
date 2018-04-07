@@ -19,11 +19,13 @@ nonbool_types = {}
 
 ghost_bools = {}
 
+# whether to leave only those config vars that can be selected by the
+# user.  this is defined as config vars that have a kconfig prompt.
 remove_nonselectable_variables = True
 
 # add constraints that reflect the conditions under which boolean
-# default values are set.  on by default.
-support_bool_defaults = True
+# default values are set.  off by default.
+support_bool_defaults = False
 
 # support non-boolean defaults by creating a new boolean variable for
 # each nonbool default value.  off by default.
