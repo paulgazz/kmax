@@ -31,6 +31,12 @@ support_bool_defaults = False
 # each nonbool default value.  off by default.
 support_nonbool_defaults = False
 
+# whether to always enable nonbools or not regardless of whether they
+# have dependencies.  off by default.  warning: forcing nonbools that
+# have dependencies can restrict the space of configurations because
+# this just adds the nonbools as clauses; this is not recommended.
+force_all_nonbools_on = False
+
 def lookup_varnum(varname):
   if remove_nonselectable_variables and varname not in userselectable:
     return 0
@@ -323,11 +329,17 @@ for line in sys.stdin:
     sys.stderr.write("unsupported instruction: %s\n" % (line))
     exit(1)
 
-# for nonbool in (nonbools - nonbools_with_dep):
-#   varnum = lookup_varnum(nonbool)
-#   rootnum = lookup_varnum(root_var)
-#   clauses.append([-varnum, rootnum])
-#   clauses.append([varnum, -rootnum])
+# if force_independent_nonbools_on:
+#   # this should be covered by "nonbools are mandatory unless disabled
+#   # by dependency" above"
+#   for nonbool in (nonbools - nonbools_with_dep):
+#     varnum = lookup_varnum(nonbool)
+#     clauses.append([varnum])
+
+if force_all_nonbools_on:
+  for nonbool in (nonbools):
+    varnum = lookup_varnum(nonbool)
+    clauses.append([varnum])
 
 for varname in sorted(varnums, key=varnums.get):
   if varname in nonbools:
