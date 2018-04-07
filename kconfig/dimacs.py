@@ -19,9 +19,23 @@ nonbool_types = {}
 
 ghost_bools = {}
 
+# whether to leave only those config vars that can be selected by the
+# user.  this is defined as config vars that have a kconfig prompt.
 remove_nonselectable_variables = True
 
+# add constraints that reflect the conditions under which boolean
+# default values are set.  off by default.
+support_bool_defaults = False
+
+# support non-boolean defaults by creating a new boolean variable for
+# each nonbool default value.  off by default.
 support_nonbool_defaults = False
+
+# whether to always enable nonbools or not regardless of whether they
+# have dependencies.  off by default.  warning: forcing nonbools that
+# have dependencies can restrict the space of configurations because
+# this just adds the nonbools as clauses; this is not recommended.
+force_all_nonbools_on = False
 
 def lookup_varnum(varname):
   if remove_nonselectable_variables and varname not in userselectable:
@@ -192,34 +206,35 @@ for line in sys.stdin:
     lookup_varnum(varname)
   elif (instr == "def_bool"):
     var, val, expr = data.split(" ", 2)
-    if val == "1":
-      defsetting = True
-    elif val == "0":
-      defsetting = False
-    else:
-      defsetting = None
-      sys.stderr.write("invalid default value for bool: %s\n" % (line))
-      exit(1)
-    if expr == "(1)":
-      # default value is always set
-      varnum = lookup_varnum(var)
-      if defsetting:
-        clauses.append([varnum])
+    if support_bool_defaults:
+      if val == "1":
+        defsetting = True
+      elif val == "0":
+        defsetting = False
       else:
-        clauses.append([-varnum])
-    else:
-      # default is set if dependency holds
-      # expr -> defexpr, i.e., not expr or defexpr
-      if defsetting:
-        defexpr = var
+        defsetting = None
+        sys.stderr.write("invalid default value for bool: %s\n" % (line))
+        exit(1)
+      if expr == "(1)":
+        # default value is always set
+        varnum = lookup_varnum(var)
+        if defsetting:
+          clauses.append([varnum])
+        else:
+          clauses.append([-varnum])
       else:
-        defexpr = "not " + var
-      full_expr = "(not (" + expr + ")) or (" + defexpr + ")"
-      # print line
-      # print full_expr
-      new_clauses = convert_to_cnf(full_expr)
-      # print new_clauses
-      clauses.extend(new_clauses)
+        # default is set if dependency holds
+        # expr -> defexpr, i.e., not expr or defexpr
+        if defsetting:
+          defexpr = var
+        else:
+          defexpr = "not " + var
+        full_expr = "(not (" + expr + ")) or (" + defexpr + ")"
+        # print line
+        # print full_expr
+        new_clauses = convert_to_cnf(full_expr)
+        # print new_clauses
+        clauses.extend(new_clauses)
   elif (instr == "nonbool"):
     varname, selectability, type_name = data.split(" ", 2)
     selectable = True if selectability == "selectable" else False
@@ -305,6 +320,7 @@ for line in sys.stdin:
       # also ensure that nonbool var is selected whenever its
       # dependencies holds.
       full_expr = "(not (" + expr + ")) or (" + var + ")"
+      # print full_expr
       new_clauses = convert_to_cnf(full_expr)
       # print new_clauses
       clauses.extend(new_clauses)
@@ -313,11 +329,17 @@ for line in sys.stdin:
     sys.stderr.write("unsupported instruction: %s\n" % (line))
     exit(1)
 
-# for nonbool in (nonbools - nonbools_with_dep):
-#   varnum = lookup_varnum(nonbool)
-#   rootnum = lookup_varnum(root_var)
-#   clauses.append([-varnum, rootnum])
-#   clauses.append([varnum, -rootnum])
+# if force_independent_nonbools_on:
+#   # this should be covered by "nonbools are mandatory unless disabled
+#   # by dependency" above"
+#   for nonbool in (nonbools - nonbools_with_dep):
+#     varnum = lookup_varnum(nonbool)
+#     clauses.append([varnum])
+
+if force_all_nonbools_on:
+  for nonbool in (nonbools):
+    varnum = lookup_varnum(nonbool)
+    clauses.append([varnum])
 
 for varname in sorted(varnums, key=varnums.get):
   if varname in nonbools:
@@ -336,8 +358,15 @@ for varname in sorted(varnums, key=varnums.get):
     else:
       print "c %d %s hidden_bool" % (varnums[varname], varname)
 
+def remove_dups(l):
+  # clause = list(set(clause)) # doesn't preserve order
+  seen = set()
+  seen_add = seen.add
+  return [x for x in l if not (x in seen or seen_add(x))]
+
 filtered_clauses = []
 for clause in clauses:
+  clause = remove_dups(clause)
   if remove_nonselectable_variables:
     # trim undefined vars from clauses
     modified_clause = filter(lambda x: x != 0, clause)
