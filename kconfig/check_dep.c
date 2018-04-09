@@ -326,7 +326,7 @@ void print_python_symbol_detail(FILE *out, struct symbol *sym, bool force_naked)
       fprintf(out, "0");
     } else if (S_UNKNOWN == sym->type) {
       /* fprintf(out, "0"); */
-      fprintf(out, "%s", sym->name);
+      fprintf(out, "\"%s\"", sym->name);
     } else {
       if (! force_naked) {
         fprintf(out, "%s%s", config_prefix, sym->name);
@@ -1141,9 +1141,11 @@ void print_usage(void)
   printf("-C, --Configure\tparse config.in files instead of Kconfig\n");
   printf("-d, --default-env\tuse x86 environment variables\n");
   printf("                 \tSRCARCH=x86 ARCH=x86_64 KERNELVERSION=kcu\n");
+  printf("-e, --put-env VAR=VAL\tadd variable settings to environment");
   printf("-f, --forceoff var\tturn off var (only for --every* actions)\n");
   printf("-a, --forceoffall file\tturn off all vars in file\n");
   printf("-p, --no-prefix\t\tdon't add the CONFIG_ prefix to vars\n");
+  printf("-P, --set-prefix PREFIX\tuse a custom prefix instead of the CONFIG_ prefix for var names\n");
   printf("-D, --direct-dependencies-only\tno reverse dependencies in dimacs output\n");
   printf("-v, --verbose\t\tverbose output\n");
   printf("-h, --help\t\tdisplay this help message\n");
@@ -1171,6 +1173,8 @@ void print_usage(void)
          "print all defaults and config vars that only depend on defaults\n");
   printf("--symdeps\t"
          "for each config var, list the config vars on which it depends\n");
+  printf("--dimacs\t"
+         "output constraints in dimacs format\n");
   printf("--autoconf-free\t"
          "print booleans and tristates as free vars in autoconf.h format\n");
   printf("--autoconf-feature-model\t"
@@ -1230,8 +1234,10 @@ int main(int argc, char **argv)
       {"dump", no_argument, &action ,A_DUMP},
       {"Configure", no_argument, 0, 'C'},
       {"no-prefix", no_argument, 0, 'p'},
+      {"set-prefix", required_argument, 0, 'P'},
       {"direct-dependencies-only", no_argument, 0, 'D'},
       {"default-env", no_argument, 0, 'd'},
+      {"put-env", required_argument, 0, 'e'},
       {"verbose", no_argument, 0, 'v'},
       {"help", no_argument, 0, 'h'},
       {0, 0, 0, 0}
@@ -1239,7 +1245,7 @@ int main(int argc, char **argv)
 
     int option_index = 0;
 
-    opt = getopt_long(argc, argv, "CpDdhf:a:v", long_options, &option_index);
+    opt = getopt_long(argc, argv, "CpP:Dde:hf:a:v", long_options, &option_index);
 
     if (-1 == opt)
       break;
@@ -1294,6 +1300,9 @@ int main(int argc, char **argv)
     case 'p':
       config_prefix = "";
       break;
+    case 'P':
+      config_prefix = optarg;
+      break;
     case 'D':
       enable_reverse_dependencies = false;
       break;
@@ -1302,6 +1311,9 @@ int main(int argc, char **argv)
       break;
     case 'd':
       default_env = true;
+      break;
+    case 'e':
+      putenv(optarg);
       break;
     case 'v':
       verbose = true;
@@ -1871,6 +1883,7 @@ int main(int argc, char **argv)
           is_string = true;
           break;
         default:
+          is_string = true;
           // should not reach here
           break;
         }
@@ -1889,9 +1902,9 @@ int main(int argc, char **argv)
           has_default = true;
           if ((NULL != prop) && (NULL != (prop->expr))) {
             printf("def_nonbool %s%s ", config_prefix, sym->name);
-            if (is_string) printf("\"");
+            /* if (is_string) printf("\""); */
             print_python_expr(prop->expr, stdout, E_NONE);
-            if (is_string) printf("\"");
+            /* if (is_string) printf("\""); */
             printf("|(");
             if (NULL != prop->visible.expr) {
               print_python_expr(prop->visible.expr, stdout, E_NONE);
