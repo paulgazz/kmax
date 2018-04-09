@@ -326,7 +326,7 @@ void print_python_symbol_detail(FILE *out, struct symbol *sym, bool force_naked)
       fprintf(out, "0");
     } else if (S_UNKNOWN == sym->type) {
       /* fprintf(out, "0"); */
-      fprintf(out, "%s", sym->name);
+      fprintf(out, "\"%s\"", sym->name);
     } else {
       if (! force_naked) {
         fprintf(out, "%s%s", config_prefix, sym->name);
@@ -1883,6 +1883,7 @@ int main(int argc, char **argv)
           is_string = true;
           break;
         default:
+          is_string = true;
           // should not reach here
           break;
         }
@@ -1901,9 +1902,9 @@ int main(int argc, char **argv)
           has_default = true;
           if ((NULL != prop) && (NULL != (prop->expr))) {
             printf("def_nonbool %s%s ", config_prefix, sym->name);
-            if (is_string) printf("\"");
+            /* if (is_string) printf("\""); */
             print_python_expr(prop->expr, stdout, E_NONE);
-            if (is_string) printf("\"");
+            /* if (is_string) printf("\""); */
             printf("|(");
             if (NULL != prop->visible.expr) {
               print_python_expr(prop->visible.expr, stdout, E_NONE);

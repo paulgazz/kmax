@@ -374,6 +374,8 @@ for varname in sorted(varnums, key=varnums.get):
   if varname in nonbools:
     if varname in nonbool_defaults:
       defaultval = nonbool_defaults[varname]
+      if nonbool_types[varname] != "string":
+        defaultval = defaultval[1:-1]  # strip off quotes for nonstrings
     else:
       defaultval = '""' if nonbool_types[varname] == "string" else "0"
     defaultval = " " + defaultval
