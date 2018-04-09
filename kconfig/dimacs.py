@@ -2,9 +2,12 @@ import os
 import sys
 import compiler
 import ast
+import traceback
 
 # this script takes the check_dep --dimacs output and converts it into
 # a dimacs-compatible format
+
+debug = False
 
 root_var = "SPECIAL_ROOT_VARIABLE"
 use_root_var = False
@@ -55,6 +58,24 @@ class Transformer(compiler.visitor.ASTVisitor):
   def __init__(self):
     compiler.visitor.ASTVisitor.__init__(self)
     self.tree = ()
+
+  # def dispatch(self, node, *args):
+  #   print "JFKDSJFKDSLJKFSD"
+  #   self.node = node
+  #   klass = node.__class__
+  #   meth = self._cache.get(klass, None)
+  #   if meth is None:
+  #       className = klass.__name__
+  #       meth = getattr(self.visitor, 'visit' + className, self.default)
+  #       self._cache[klass] = meth
+  #   className = klass.__name__
+  #   print "dispatch", className, (meth and meth.__name__ or '')
+  #   print meth
+  #   return meth(node, *args)
+
+  def default(self, node):
+    # TODO: convert ast to string to be a predicate
+    return ("name", "PREDICATE")
 
   def visitDiscard(self, node):
     self.tree = self.visit(node.getChildren()[0])
@@ -169,12 +190,18 @@ def convert(node):
     assert(False)
 
 def convert_to_cnf(expr):
-  ast = compiler.parse(expr)
+  try:
+    ast = compiler.parse(expr)
+  except:
+    sys.stderr.write("error: could not parse %s\n" % (line))
+    sys.stderr.write(traceback.format_exc())
+    sys.stderr.write("\n")
+    return []
   # get Discard(ACTUAL_EXPR) from Module(None, Stmt([Discard(ACTUAL_EXPR)))
   actual_expr = ast.getChildNodes()[0].getChildNodes()[0]
   # print ast
   transformer = Transformer()
-  compiler.walk(actual_expr, transformer)
+  compiler.walk(actual_expr, transformer, walker=transformer, verbose=True)
   tree = transformer.tree
   # print tree
   clauses = convert(tree)
@@ -197,6 +224,7 @@ if use_root_var:
   userselectable.add(root_var)
   clauses.append([lookup_varnum(root_var)])
 for line in sys.stdin:
+  if debug: sys.stderr.write("started %s\n" % (line))
   instr, data = line.strip().split(" ", 1)
   if (instr == "bool"):
     varname, selectability = data.split(" ", 1)
@@ -328,6 +356,7 @@ for line in sys.stdin:
   else:
     sys.stderr.write("unsupported instruction: %s\n" % (line))
     exit(1)
+  if debug: sys.stderr.write("done %s\n" % (line))
 
 # if force_independent_nonbools_on:
 #   # this should be covered by "nonbools are mandatory unless disabled
