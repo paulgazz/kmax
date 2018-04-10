@@ -59,6 +59,11 @@ argparser.add_argument('-n',
                        action="store_true",
                        help="""\
 use naive append behavior, which has more exponential explosion""")
+argparser.add_argument('-A',
+                       '--and-append',
+                       action="store_true",
+                       help="""\
+append by conjoining conditions""")
 argparser.add_argument('-g',
                        '--get-presence-conditions',
                        action="store_true",
@@ -226,6 +231,31 @@ class Kbuild:
 
         # composite presence conditions
         self.composite_pc = {}
+
+        # setup optimized variables for append
+        self.optimized_vars = [ "obj-y", "obj-m", "obj-", "libs-y", "libs-m", "libs-" ]
+        self.var_equiv_sets = {}
+        
+    def get_var_equiv(self, name):
+        # get a new randomized variable name that is equivalent to the
+        # given variable.  this also updates a structure that records
+        # which variables are equivalent
+        found_set = False
+        for var in self.var_equiv_sets.keys():
+            eset = self.var_equiv_sets[var]
+            if name in eset:
+                existing_name = var
+                existing_set = eset
+                found_set = True
+        if not found_set:
+            new_set = set()
+            new_set.add(name)  # set contains the original variable name itself
+            self.var_equiv_sets[name] = new_set
+            return name
+        else:
+            new_name = str(len(existing_set)) + existing_name
+            self.var_equiv_sets[existing_name].add(new_name)
+            return new_name
 
     def print_variable(self, name, variable):
         print "VARIABLE:", name
@@ -804,46 +834,7 @@ class Kbuild:
             # collect any configurations resulting from those self.variables
 
         elif token == "+=":
-            if args.naive_append:
-                # Negate old definitions just like assignment, except create a
-                # new entry for each old entry, appending the value to each.
-
-                old_definitions = \
-                    map(lambda (old_value, old_condition, old_flavor): \
-                            VariableEntry(old_value, \
-                                         conjunction(old_condition, \
-                                                     negation(presence_condition)), \
-                                             old_flavor), \
-                            self.variables[name])
-
-                # TODO: support computed variable names used in the definition
-
-                # Append the value to each of the old definitions.
-                appended_definitions = []
-                for old_value, old_condition, flavor in self.variables[name]:
-                    nested_condition = conjunction(old_condition, presence_condition)
-                    if flavor == Flavor.RECURSIVE:
-                        # If it's recursively-expanded (=), append the definition to
-                        # each existing def, and "and" the presence conditions
-                        c = VariableEntry(self.append_values(old_value, value),
-                                              nested_condition,
-                                              flavor)
-                        appended_definitions.append(c)
-                    elif flavor == Flavor.SIMPLE:
-                        # If it's simply-expanded (:=), need to expand and
-                        # flatten the resulting appended definition
-                        expanded = self.expand_and_flatten(self.append_values(old_value,
-                                                                    value),
-                                                      nested_condition)
-                        expanded = self.combine_expansions(expanded)
-
-                        for new_condition, new_value in expanded:
-                            appended_definitions.append(VariableEntry(new_value,
-                                                                      new_condition,
-                                                                      Flavor.SIMPLE))
-                    else: fatal("Variable flavor is not defined", flavor)
-                self.variables[name] = Multiverse(old_definitions + appended_definitions)
-            else:  # efficient append
+            if args.and_append: # efficient append by conjoining presence conditions
                 new_variables = []
                 for entry in self.variables[name]:
                     old_value, old_condition, old_flavor = entry
@@ -898,6 +889,77 @@ class Kbuild:
                 #                                       presence_condition),
                 #                           old_flavor),
                 #         self.variables[name])
+            else:
+                if name in self.optimized_vars and not args.naive_append:
+                    # optimize append for certain variables this
+                    # optimization creates a new variable entry for
+                    # append instead of computing the cartesian
+                    # product of appended variable definitions
+                    simply = self.F
+                    recursively = self.F
+                    # find conditions for recursively- and simply-expanded variables
+                    for entry in self.variables[name]:
+                        old_value, old_condition, old_flavor = entry
+                        # TODO: optimization, memoize these
+                        if old_flavor == Flavor.SIMPLE:
+                            simply = disjunction(simply, old_condition)
+                        elif old_flavor == Flavor.RECURSIVE:
+                            recursively = disjunction(recursively, old_condition)
+                        else: fatal("Variable flavor is not defined", flavor)
+                    new_var_name = self.get_var_equiv(name)
+                    if recursively != self.F:
+                        self.variables[new_var_name].append(VariableEntry(value,
+                                                                                      presence_condition,
+                                                                                      Flavor.RECURSIVE))
+                    if simply != self.F:
+                        new_definitions = self.expand_and_flatten(value, presence_condition)
+                        new_definitions = self.combine_expansions(new_definitions)
+                        new_variables = []
+                        for new_condition, new_value in new_definitions:
+                            new_variables.append(VariableEntry(new_value,
+                                                                 new_condition,
+                                                                 Flavor.SIMPLE))
+
+                        self.variables[new_var_name] = new_variables
+                else:
+                    # Negate old definitions just like assignment, except create a
+                    # new entry for each old entry, appending the value to each.
+
+                    old_definitions = \
+                        map(lambda (old_value, old_condition, old_flavor): \
+                                VariableEntry(old_value, \
+                                             conjunction(old_condition, \
+                                                         negation(presence_condition)), \
+                                                 old_flavor), \
+                                self.variables[name])
+
+                    # TODO: support computed variable names used in the definition
+
+                    # Append the value to each of the old definitions.
+                    appended_definitions = []
+                    for old_value, old_condition, flavor in self.variables[name]:
+                        nested_condition = conjunction(old_condition, presence_condition)
+                        if flavor == Flavor.RECURSIVE:
+                            # If it's recursively-expanded (=), append the definition to
+                            # each existing def, and "and" the presence conditions
+                            c = VariableEntry(self.append_values(old_value, value),
+                                                  nested_condition,
+                                                  flavor)
+                            appended_definitions.append(c)
+                        elif flavor == Flavor.SIMPLE:
+                            # If it's simply-expanded (:=), need to expand and
+                            # flatten the resulting appended definition
+                            expanded = self.expand_and_flatten(self.append_values(old_value,
+                                                                        value),
+                                                          nested_condition)
+                            expanded = self.combine_expansions(expanded)
+
+                            for new_condition, new_value in expanded:
+                                appended_definitions.append(VariableEntry(new_value,
+                                                                          new_condition,
+                                                                          Flavor.SIMPLE))
+                        else: fatal("Variable flavor is not defined", flavor)
+                    self.variables[name] = Multiverse(old_definitions + appended_definitions)
         elif token == "?=":
             # TODO: if ?= is used on an undefined variable, it's
             # initialized as a recursively-expanded variable (=)
@@ -1028,6 +1090,11 @@ def collect_units(kbuild,            # current kbuild instance
     """fixed-point algorithm that adds composites and stops when no
     more variables to look at are available"""
     processed_variables = set()
+    equiv_vars = set()
+    for var in pending_variables:
+        if var in kbuild.var_equiv_sets.keys():
+            equiv_vars = equiv_vars.union(kbuild.var_equiv_sets[var])
+    pending_variables = pending_variables.union(equiv_vars)
     while len(pending_variables) > 0:
         pending_variable = pending_variables.pop()
         processed_variables.add(pending_variable)
