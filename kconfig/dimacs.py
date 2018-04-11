@@ -329,7 +329,7 @@ for line in sys.stdin:
     new_clauses = convert_to_cnf(choice_dep)
     # print new_clauses
     clauses.extend(new_clauses)
-  elif (instr == "dep"):  # assumes only one dep line per unique variable
+  elif (instr == "dep" or instr == "rev_dep"):  # assumes only one dep line per unique variable
     # print instr,data
     var, expr = data.split(" ", 1)
     # if no dependencies, then depend on special root variable
