@@ -3,14 +3,36 @@ import sys
 import compiler
 import ast
 import traceback
+import argparse
 
 # this script takes the check_dep --dimacs output and converts it into
 # a dimacs-compatible format
 
-debug = False
+argparser = argparse.ArgumentParser(
+    description="""\
+Convert Kmax-produced Kconfig constraints from stdin into a dimacs file.
+    """,
+    epilog="""\
+    """
+    )
+argparser.add_argument('-d',
+                       '--debug',
+                       action="store_true",
+                       help="""turn on debugging output""")
+argparser.add_argument('-r',
+                       '--use-root',
+                       action="store_true",
+                       help="""add an extra variable for the root of the feature model""")
+argparser.add_argument('-n',
+                       '--include-nonselectable',
+                       action="store_true",
+                       help="""add an extra variable for the root of the feature model""")
+args = argparser.parse_args()
+
+debug = args.debug
 
 root_var = "SPECIAL_ROOT_VARIABLE"
-use_root_var = False
+use_root_var = args.use_root
 
 varnums = {}
 userselectable = set()
@@ -24,12 +46,11 @@ ghost_bools = {}
 
 # whether to leave only those config vars that can be selected by the
 # user.  this is defined as config vars that have a kconfig prompt.
-remove_nonselectable_variables = True
+remove_nonselectable_variables = not args.include_nonselectable
 
 # add constraints that reflect the conditions under which boolean
 # default values are set.  off by default.
 support_bool_defaults = False
-
 # support non-boolean defaults by creating a new boolean variable for
 # each nonbool default value.  off by default.
 support_nonbool_defaults = False
@@ -395,12 +416,15 @@ def remove_dups(l):
   seen_add = seen.add
   return [x for x in l if not (x in seen or seen_add(x))]
 
+def is_nonselectable(x):
+  return x != 0
+
 filtered_clauses = []
 for clause in clauses:
   clause = remove_dups(clause)
   if remove_nonselectable_variables:
     # trim undefined vars from clauses
-    modified_clause = filter(lambda x: x != 0, clause)
+    modified_clause = filter(is_nonselectable, clause)
     if len(modified_clause) == 1 and len(clause) > 1:
       # if all vars but one was removed, then there is no constraint
       pass
