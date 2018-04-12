@@ -392,8 +392,10 @@ def remove_dups(l):
   return [x for x in l if not (x in seen or seen_add(x))]
 clauses = map(lambda clause: remove_dups(clause), clauses)
 
-# keep_vars = set(list(userselectable)[50:])
-keep_vars = userselectable
+if remove_nonselectable_variables:
+  keep_vars = userselectable
+else:
+  keep_vars = varnums.keys()
 
 # remove vars from varnum
 keep_varnums = filter(lambda (name, num): name in keep_vars, sorted(varnums.items(), key=lambda tup: tup[1]))
