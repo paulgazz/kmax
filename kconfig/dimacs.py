@@ -411,17 +411,22 @@ for varname in sorted(varnums, key=varnums.get):
       print "c %d %s hidden_bool" % (varnums[varname], varname)
 
 def remove_dups(l):
-  # clause = list(set(clause)) # doesn't preserve order
   seen = set()
   seen_add = seen.add
   return [x for x in l if not (x in seen or seen_add(x))]
 
+clauses = map(lambda clause: remove_dups(clause), clauses)
+
 def is_nonselectable(x):
   return x != 0
 
+def print_dimacs(varnum_map, clause_list):
+  print "p cnf %d %d" % (len(varnum_map), len(clause_list))
+  for clause in clause_list:
+    print "%s 0" % (" ".join([str(num) for num in clause]))
+
 filtered_clauses = []
 for clause in clauses:
-  clause = remove_dups(clause)
   if remove_nonselectable_variables:
     # trim undefined vars from clauses
     modified_clause = filter(is_nonselectable, clause)
@@ -436,6 +441,4 @@ for clause in clauses:
   else:
     filtered_clauses.append(clause)
 
-print "p cnf %d %d" % (len(varnums), len(filtered_clauses))
-for clause in filtered_clauses:
-  print "%s 0" % (" ".join([str(num) for num in clause]))
+print_dimacs(varnums, filtered_clauses)
