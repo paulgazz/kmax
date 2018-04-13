@@ -27,6 +27,10 @@ argparser.add_argument('-n',
                        '--include-nonselectable',
                        action="store_true",
                        help="""add an extra variable for the root of the feature model""")
+argparser.add_argument('-D',
+                       '--direct-dependencies-only',
+                       action="store_true",
+                       help="""only use direct dependencies, ignoring reverse dependencies""")
 args = argparser.parse_args()
 
 debug = args.debug
@@ -351,29 +355,33 @@ for line in sys.stdin:
     # print new_clauses
     clauses.extend(new_clauses)
   elif (instr == "dep" or instr == "rev_dep"):  # assumes only one dep line per unique variable
-    # print instr,data
-    var, expr = data.split(" ", 1)
-    # if no dependencies, then depend on special root variable
-    if use_root_var and expr == "(1)":
-      expr = root_var
-    # if no dependencies, don't add any clause
-    if expr != "(1)":
-      # var -> expr, i.e., not var or expr
-      full_expr = "(not (" + var + ")) or (" + expr + ")"
-      # print full_expr
-      new_clauses = convert_to_cnf(full_expr)
-      # print new_clauses
-      clauses.extend(new_clauses)
-    if var in nonbools:
-      # nonbools are mandatory unless disabled by dependency, so we
-      # also ensure that nonbool var is selected whenever its
-      # dependencies holds.
-      full_expr = "(not (" + expr + ")) or (" + var + ")"
-      # print full_expr
-      new_clauses = convert_to_cnf(full_expr)
-      # print new_clauses
-      clauses.extend(new_clauses)
-      nonbools_with_dep.add(var)
+    if instr == "rev_dep" and args.direct_dependencies_only:
+      # skip reverse dependencies
+      pass
+    else:
+      # print instr,data
+      var, expr = data.split(" ", 1)
+      # if no dependencies, then depend on special root variable
+      if use_root_var and expr == "(1)":
+        expr = root_var
+      # if no dependencies, don't add any clause
+      if expr != "(1)":
+        # var -> expr, i.e., not var or expr
+        full_expr = "(not (" + var + ")) or (" + expr + ")"
+        # print full_expr
+        new_clauses = convert_to_cnf(full_expr)
+        # print new_clauses
+        clauses.extend(new_clauses)
+      if var in nonbools:
+        # nonbools are mandatory unless disabled by dependency, so we
+        # also ensure that nonbool var is selected whenever its
+        # dependencies holds.
+        full_expr = "(not (" + expr + ")) or (" + var + ")"
+        # print full_expr
+        new_clauses = convert_to_cnf(full_expr)
+        # print new_clauses
+        clauses.extend(new_clauses)
+        nonbools_with_dep.add(var)
   else:
     sys.stderr.write("unsupported instruction: %s\n" % (line))
     exit(1)
