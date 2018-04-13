@@ -3,14 +3,40 @@ import sys
 import compiler
 import ast
 import traceback
+import argparse
 
 # this script takes the check_dep --dimacs output and converts it into
 # a dimacs-compatible format
 
-debug = False
+argparser = argparse.ArgumentParser(
+    description="""\
+Convert Kmax-produced Kconfig constraints from stdin into a dimacs file.
+    """,
+    epilog="""\
+    """
+    )
+argparser.add_argument('-d',
+                       '--debug',
+                       action="store_true",
+                       help="""turn on debugging output""")
+argparser.add_argument('-r',
+                       '--use-root',
+                       action="store_true",
+                       help="""add an extra variable for the root of the feature model""")
+argparser.add_argument('-n',
+                       '--include-nonselectable',
+                       action="store_true",
+                       help="""add an extra variable for the root of the feature model""")
+argparser.add_argument('-D',
+                       '--direct-dependencies-only',
+                       action="store_true",
+                       help="""only use direct dependencies, ignoring reverse dependencies""")
+args = argparser.parse_args()
+
+debug = args.debug
 
 root_var = "SPECIAL_ROOT_VARIABLE"
-use_root_var = False
+use_root_var = args.use_root
 
 varnums = {}
 userselectable = set()
@@ -24,12 +50,11 @@ ghost_bools = {}
 
 # whether to leave only those config vars that can be selected by the
 # user.  this is defined as config vars that have a kconfig prompt.
-remove_nonselectable_variables = True
+remove_nonselectable_variables = not args.include_nonselectable
 
 # add constraints that reflect the conditions under which boolean
 # default values are set.  off by default.
 support_bool_defaults = False
-
 # support non-boolean defaults by creating a new boolean variable for
 # each nonbool default value.  off by default.
 support_nonbool_defaults = False
@@ -41,12 +66,9 @@ support_nonbool_defaults = False
 force_all_nonbools_on = False
 
 def lookup_varnum(varname):
-  if remove_nonselectable_variables and varname not in userselectable:
-    return 0
-  else:
-    if varname not in varnums:
-      varnums[varname] = len(varnums) + 1
-    return varnums[varname]
+  if varname not in varnums:
+    varnums[varname] = len(varnums) + 1
+  return varnums[varname]
 
 ghost_bool_count = 0
 def get_ghost_bool_name(var):
@@ -54,6 +76,7 @@ def get_ghost_bool_name(var):
   ghost_bool_count += 1
   return "GHOST_BOOL_%d_%s" % (ghost_bool_count, var)
 
+# parse tree processing
 class Transformer(compiler.visitor.ASTVisitor):
   def __init__(self):
     compiler.visitor.ASTVisitor.__init__(self)
@@ -219,6 +242,8 @@ def convert_to_cnf(expr):
 # print convert_to_cnf("a or b or c or d or f")
 # exit(1)
 
+# collect clauses
+
 clauses = []
 if use_root_var:
   userselectable.add(root_var)
@@ -329,89 +354,107 @@ for line in sys.stdin:
     new_clauses = convert_to_cnf(choice_dep)
     # print new_clauses
     clauses.extend(new_clauses)
-  elif (instr == "dep"):  # assumes only one dep line per unique variable
-    # print instr,data
-    var, expr = data.split(" ", 1)
-    # if no dependencies, then depend on special root variable
-    if use_root_var and expr == "(1)":
-      expr = root_var
-    # if no dependencies, don't add any clause
-    if expr != "(1)":
-      # var -> expr, i.e., not var or expr
-      full_expr = "(not (" + var + ")) or (" + expr + ")"
-      # print full_expr
-      new_clauses = convert_to_cnf(full_expr)
-      # print new_clauses
-      clauses.extend(new_clauses)
-    if var in nonbools:
-      # nonbools are mandatory unless disabled by dependency, so we
-      # also ensure that nonbool var is selected whenever its
-      # dependencies holds.
-      full_expr = "(not (" + expr + ")) or (" + var + ")"
-      # print full_expr
-      new_clauses = convert_to_cnf(full_expr)
-      # print new_clauses
-      clauses.extend(new_clauses)
-      nonbools_with_dep.add(var)
+  elif (instr == "dep" or instr == "rev_dep"):  # assumes only one dep line per unique variable
+    if instr == "rev_dep" and args.direct_dependencies_only:
+      # skip reverse dependencies
+      pass
+    else:
+      # print instr,data
+      var, expr = data.split(" ", 1)
+      # if no dependencies, then depend on special root variable
+      if use_root_var and expr == "(1)":
+        expr = root_var
+      # if no dependencies, don't add any clause
+      if expr != "(1)":
+        # var -> expr, i.e., not var or expr
+        full_expr = "(not (" + var + ")) or (" + expr + ")"
+        # print full_expr
+        new_clauses = convert_to_cnf(full_expr)
+        # print new_clauses
+        clauses.extend(new_clauses)
+      if var in nonbools:
+        # nonbools are mandatory unless disabled by dependency, so we
+        # also ensure that nonbool var is selected whenever its
+        # dependencies holds.
+        full_expr = "(not (" + expr + ")) or (" + var + ")"
+        # print full_expr
+        new_clauses = convert_to_cnf(full_expr)
+        # print new_clauses
+        clauses.extend(new_clauses)
+        nonbools_with_dep.add(var)
   else:
     sys.stderr.write("unsupported instruction: %s\n" % (line))
     exit(1)
   if debug: sys.stderr.write("done %s\n" % (line))
-
-# if force_independent_nonbools_on:
-#   # this should be covered by "nonbools are mandatory unless disabled
-#   # by dependency" above"
-#   for nonbool in (nonbools - nonbools_with_dep):
-#     varnum = lookup_varnum(nonbool)
-#     clauses.append([varnum])
 
 if force_all_nonbools_on:
   for nonbool in (nonbools):
     varnum = lookup_varnum(nonbool)
     clauses.append([varnum])
 
-for varname in sorted(varnums, key=varnums.get):
-  if varname in nonbools:
-    if varname in nonbool_defaults:
-      defaultval = nonbool_defaults[varname]
-      if nonbool_types[varname] != "string":
-        defaultval = defaultval[1:-1]  # strip off quotes for nonstrings
-    else:
-      defaultval = '""' if nonbool_types[varname] == "string" else "0"
-    defaultval = " " + defaultval
-    print "c %d %s nonbool%s" % (varnums[varname], varname, defaultval)
-  else:
-    if varname in userselectable:
-      print "c %d %s bool" % (varnums[varname], varname)
-    elif varname in ghost_bools.keys():
-      nonbool_var, defval = ghost_bools[varname]
-      print "c %d %s ghost_bool %s %s" % (varnums[varname], varname, nonbool_var, defval)
-    else:
-      print "c %d %s hidden_bool" % (varnums[varname], varname)
+# filter clauses and variables
 
 def remove_dups(l):
-  # clause = list(set(clause)) # doesn't preserve order
   seen = set()
   seen_add = seen.add
   return [x for x in l if not (x in seen or seen_add(x))]
+clauses = map(lambda clause: remove_dups(clause), clauses)
+
+if remove_nonselectable_variables:
+  keep_vars = userselectable
+else:
+  keep_vars = varnums.keys()
+
+# remove vars from varnum
+keep_varnums = filter(lambda (name, num): name in keep_vars, sorted(varnums.items(), key=lambda tup: tup[1]))
+
+# renumber variables
+num_mapping = {}
+for (name, old_num) in keep_varnums:
+  num_mapping[old_num] = len(num_mapping) + 1
+
+# update varnums
+varnums = {name: num_mapping[old_num] for (name, old_num) in keep_varnums}
+
+# remove vars from clauses
 
 filtered_clauses = []
 for clause in clauses:
-  clause = remove_dups(clause)
-  if remove_nonselectable_variables:
-    # trim undefined vars from clauses
-    modified_clause = filter(lambda x: x != 0, clause)
-    if len(modified_clause) == 1 and len(clause) > 1:
-      # if all vars but one was removed, then there is no constraint
-      pass
-    elif len(modified_clause) == 0:
-      # nothing to print now
-      pass
-    else:
-      filtered_clauses.append(modified_clause)
+  # trim undefined vars from clauses
+  filtered_clause = filter(lambda x: abs(x) in num_mapping.keys(), clause)
+  remapped_clause = [num_mapping[x] if x >= 0 else -num_mapping[abs(x)] for x in filtered_clause]
+  if len(remapped_clause) == 1 and len(clause) > 1:
+    # if all vars but one was removed, then there is no constraint
+    pass
+  elif len(remapped_clause) == 0:
+    # nothing to print now
+    pass
   else:
-    filtered_clauses.append(clause)
+    filtered_clauses.append(remapped_clause)
 
-print "p cnf %d %d" % (len(varnums), len(filtered_clauses))
-for clause in filtered_clauses:
-  print "%s 0" % (" ".join([str(num) for num in clause]))
+# emit dimacs format
+
+def print_dimacs(varnum_map, clause_list):
+  for varname in sorted(varnum_map, key=varnum_map.get):
+    if varname in nonbools:
+      if varname in nonbool_defaults:
+        defaultval = nonbool_defaults[varname]
+        if nonbool_types[varname] != "string":
+          defaultval = defaultval[1:-1]  # strip off quotes for nonstrings
+      else:
+        defaultval = '""' if nonbool_types[varname] == "string" else "0"
+      defaultval = " " + defaultval
+      print "c %d %s nonbool%s" % (varnum_map[varname], varname, defaultval)
+    else:
+      if varname in userselectable:
+        print "c %d %s bool" % (varnum_map[varname], varname)
+      elif varname in ghost_bools.keys():
+        nonbool_var, defval = ghost_bools[varname]
+        print "c %d %s ghost_bool %s %s" % (varnum_map[varname], varname, nonbool_var, defval)
+      else:
+        print "c %d %s hidden_bool" % (varnum_map[varname], varname)
+  print "p cnf %d %d" % (len(varnum_map), len(clause_list))
+  for clause in clause_list:
+    print "%s 0" % (" ".join([str(num) for num in clause]))
+
+print_dimacs(varnums, filtered_clauses)

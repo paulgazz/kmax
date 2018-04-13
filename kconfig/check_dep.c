@@ -1993,7 +1993,7 @@ int main(int argc, char **argv)
         if (enable_reverse_dependencies) {
           if (sym->rev_dep.expr) {
             no_dependencies = false;
-            printf("dep %s%s (", config_prefix, sym->name);
+            printf("rev_dep %s%s (", config_prefix, sym->name);
             print_python_expr(sym->rev_dep.expr, stdout, E_NONE);
             printf(")\n");
           }

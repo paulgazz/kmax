@@ -20,7 +20,8 @@ can be converted to dimacs using the accompanying `dimacs.py` script.
     def_nonbool_line := 'def_nonbool' config_var nonbool_value '|' '(' expr ')'
     clause_line := 'clause' clause_elem+
     bool_choice_line := 'bool_choice' config_var+ '|' '(' expr ')'
-    dep_line := 'dep' config_var '(' expr ')'
+    dep_line := dep_name config_var '(' expr ')'
+    dep_name := 'dep' | 'rev_dep'
 
     // expressions
     bool_value := '1' | '0'
@@ -46,7 +47,8 @@ can be converted to dimacs using the accompanying `dimacs.py` script.
   on the individual choice variables' dependencies are expressed with
   separate `dep` lines.
 - `dep`s are a kconfig dependency.  selecting `config_var` implies
-  that the `expr` holds true.
+  that the `expr` holds true.  `rev_dep` identifies those that come
+  from a reverse dependency.
 - the `expr` may contain non-boolean relations, which can themselves
   be treated as a boolean variable.  1 and 0 mean true and false
   respectively.
