@@ -97,6 +97,11 @@ argparser.add_argument('-g',
                        action="store_true",
                        help="""\
 get presence conditions for each compilation units""")
+argparser.add_argument('-n',
+                       '--naive-append',
+                       action="store_true",
+                       help="""\
+use naive append behavior, which has more exponential explosion""")
 
 
 args = argparser.parse_args()
@@ -155,6 +160,9 @@ def covering_set(kbuild_dir,        # src directory to process
 
   if args.get_presence_conditions:
     covering_set_args.append("-g")
+
+  if args.naive_append:
+    covering_set_args.append("-n")
 
   covering_set_args.append(kbuild_dir)
 
