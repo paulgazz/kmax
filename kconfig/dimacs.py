@@ -19,18 +19,22 @@ argparser.add_argument('-d',
                        '--debug',
                        action="store_true",
                        help="""turn on debugging output""")
-argparser.add_argument('-r',
-                       '--use-root',
-                       action="store_true",
-                       help="""add an extra variable for the root of the feature model""")
 argparser.add_argument('-n',
                        '--include-nonselectable',
+                       action="store_true",
+                       help="""add an extra variable for the root of the feature model""")
+argparser.add_argument('-i',
+                       '--include-nonselectable-dependencies',
                        action="store_true",
                        help="""add an extra variable for the root of the feature model""")
 argparser.add_argument('-D',
                        '--direct-dependencies-only',
                        action="store_true",
                        help="""only use direct dependencies, ignoring reverse dependencies""")
+argparser.add_argument('-r',
+                       '--use-root',
+                       action="store_true",
+                       help="""add an extra variable for the root of the feature model""")
 args = argparser.parse_args()
 
 debug = args.debug
@@ -38,8 +42,20 @@ debug = args.debug
 root_var = "SPECIAL_ROOT_VARIABLE"
 use_root_var = args.use_root
 
+# mapping from configuration variable name to dimacs variable number
 varnums = {}
+
+# the names of configuration variables that are "visible" to the user,
+# i.e., that are selectable by the user
 userselectable = set()
+
+# the names of configuration variables that have dependencies, either
+# direct or reverse
+has_dependencies = set()
+
+# the names of configuration variables used in another variable's
+# dependency expression
+in_dependencies = set()
 
 nonbools = set()
 nonbools_with_dep = set()
@@ -51,6 +67,9 @@ ghost_bools = {}
 # whether to leave only those config vars that can be selected by the
 # user.  this is defined as config vars that have a kconfig prompt.
 remove_nonselectable_variables = not args.include_nonselectable
+
+# remove non-visible variables that don't have dependencies or aren't used in dependencies
+remove_independent_nonselectables = args.include_nonselectable_dependencies
 
 # add constraints that reflect the conditions under which boolean
 # default values are set.  off by default.
@@ -233,7 +252,40 @@ def convert_to_cnf(expr):
   else:
     # constants don't add any clauses
     return []
+  
+def collect_identifiers(node):
+  """takes a tree and returns a list of clauses or a constant value"""
+  nodetype = node[0]
+  if nodetype == "or" or nodetype == "and":
+    left = node[1]
+    right = node[2]
+    l = collect_identifiers(left)
+    r = collect_identifiers(right)
+    return l+r
+  elif nodetype == "not":
+    negated_node = node[1]
+    return collect_identifiers(negated_node)
+  elif nodetype == "name":
+    return [node[1]]
+  elif nodetype == "const":
+    return []
+  else:
+    assert(False)
 
+def get_identifiers(expr):
+  try:
+    ast = compiler.parse(expr)
+  except:
+    sys.stderr.write("error: could not parse %s\n" % (line))
+    sys.stderr.write(traceback.format_exc())
+    sys.stderr.write("\n")
+    return []
+  actual_expr = ast.getChildNodes()[0].getChildNodes()[0]
+  transformer = Transformer()
+  compiler.walk(actual_expr, transformer, walker=transformer, verbose=True)
+  tree = transformer.tree
+  return collect_identifiers(tree)
+  
 # print convert_to_cnf("not a or (b and (c or d)) and not (e and f)")
 # print convert_to_cnf("not a or (b and (c or d)) and not (e and f)")
 # print convert_to_cnf("not a or (b and (c or d)) and not (e and f)")
@@ -367,6 +419,8 @@ for line in sys.stdin:
       # if no dependencies, don't add any clause
       if expr != "(1)":
         # var -> expr, i.e., not var or expr
+        has_dependencies.add(var)  # track vars that have dependencies
+        in_dependencies.update(get_identifiers(expr))  # track vars that are in other dependencies
         full_expr = "(not (" + var + ")) or (" + expr + ")"
         # print full_expr
         new_clauses = convert_to_cnf(full_expr)
@@ -400,7 +454,9 @@ def remove_dups(l):
   return [x for x in l if not (x in seen or seen_add(x))]
 clauses = map(lambda clause: remove_dups(clause), clauses)
 
-if remove_nonselectable_variables:
+if remove_independent_nonselectables:
+  keep_vars = filter(lambda x: x in userselectable or x in has_dependencies or x in in_dependencies, varnums.keys())
+elif remove_nonselectable_variables:
   keep_vars = userselectable
 else:
   keep_vars = varnums.keys()
