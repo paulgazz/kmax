@@ -29,6 +29,8 @@ argparser.add_argument('-d',
 #                        help="""add an extra variable for the root of the feature model""")
 argparser.add_argument('--invisibles', type=str, default="all",
                        help="""method for handling invisible variables""")
+argparser.add_argument('-s', '--select-checker', action="store_true",
+                       help="""check for hygienic use of select statements, i.e., only for non-visible variables with no dependencies""")
 argparser.add_argument('-D',
                        '--direct-dependencies-only',
                        action="store_true",
@@ -87,6 +89,8 @@ elif invisibles == "dependent":
 else:
   print "unknown value for invisibles"
   exit(1)
+
+select_checker = args.select_checker
 
 # add constraints that reflect the conditions under which boolean
 # default values are set.  off by default.
@@ -312,7 +316,6 @@ def get_identifiers(expr):
 # exit(1)
 
 # collect clauses
-
 clauses = []
 if use_root_var:
   userselectable.add(root_var)
@@ -424,12 +427,24 @@ for line in sys.stdin:
     # print new_clauses
     clauses.extend(new_clauses)
   elif (instr == "dep" or instr == "rev_dep"):  # assumes only one dep line per unique variable
+    # print instr,data
+    var, expr = data.split(" ", 1)
     if instr == "rev_dep" and args.direct_dependencies_only:
       # skip reverse dependencies
       pass
     else:
-      # print instr,data
-      var, expr = data.split(" ", 1)
+      # restrict reverse dependencies to variables that are not
+      # user-visible and have no dependencies.  (this latter condition
+      # may break if there is a dep_line after a rev_dep_line for the
+      # same variable, but this shouldn't happen.)
+      bad_select = instr == "rev_dep" and (var in userselectable or var in has_dependencies)
+
+      if bad_select:
+        sys.stderr.write("warn: found bad select statement(s) for %s\n" % (var))
+        
+      if select_checker and bad_select:
+        sys.stderr.write("warn: removing bad select statements\n")
+
       # if no dependencies, then depend on special root variable
       if use_root_var and expr == "(1)":
         expr = root_var
