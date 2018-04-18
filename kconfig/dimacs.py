@@ -19,14 +19,16 @@ argparser.add_argument('-d',
                        '--debug',
                        action="store_true",
                        help="""turn on debugging output""")
-argparser.add_argument('-n',
-                       '--include-nonselectable',
-                       action="store_true",
-                       help="""add an extra variable for the root of the feature model""")
-argparser.add_argument('-i',
-                       '--include-nonselectable-dependencies',
-                       action="store_true",
-                       help="""add an extra variable for the root of the feature model""")
+# argparser.add_argument('-n',
+#                        '--include-nonselectable',
+#                        action="store_true",
+#                        help="""add an extra variable for the root of the feature model""")
+# argparser.add_argument('-i',
+#                        '--include-nonselectable-dependencies',
+#                        action="store_true",
+#                        help="""add an extra variable for the root of the feature model""")
+argparser.add_argument('--invisibles', type=str, default="all",
+                       help="""method for handling invisible variables""")
 argparser.add_argument('-D',
                        '--direct-dependencies-only',
                        action="store_true",
@@ -64,12 +66,28 @@ nonbool_types = {}
 
 ghost_bools = {}
 
+
+invisibles = args.invisibles
+
 # whether to leave only those config vars that can be selected by the
 # user.  this is defined as config vars that have a kconfig prompt.
-remove_nonselectable_variables = not args.include_nonselectable
+remove_nonselectable_variables = False
 
 # remove non-visible variables that don't have dependencies or aren't used in dependencies
-remove_independent_nonselectables = args.include_nonselectable_dependencies
+remove_independent_nonselectables = False
+
+if invisibles == "all":
+  remove_nonselectable_variables = False
+  remove_independent_nonselectables = False
+elif invisibles == "none":
+  remove_nonselectable_variables = True
+  remove_independent_nonselectables = True
+elif invsibiles == "dependent":
+  remove_nonselectable_variables = True
+  remove_independent_nonselectables = False
+else:
+  print "unknown value for invisibles"
+  exit(1)
 
 # add constraints that reflect the conditions under which boolean
 # default values are set.  off by default.
