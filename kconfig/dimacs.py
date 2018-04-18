@@ -66,7 +66,6 @@ nonbool_types = {}
 
 ghost_bools = {}
 
-
 invisibles = args.invisibles
 
 # whether to leave only those config vars that can be selected by the
@@ -81,10 +80,10 @@ if invisibles == "all":
   remove_independent_nonselectables = False
 elif invisibles == "none":
   remove_nonselectable_variables = True
-  remove_independent_nonselectables = True
-elif invsibiles == "dependent":
-  remove_nonselectable_variables = True
   remove_independent_nonselectables = False
+elif invisibles == "dependent":
+  remove_nonselectable_variables = False
+  remove_independent_nonselectables = True
 else:
   print "unknown value for invisibles"
   exit(1)
