@@ -48,7 +48,9 @@ can be converted to dimacs using the accompanying `dimacs.py` script.
   separate `dep` lines.
 - `dep`s are a kconfig dependency.  selecting `config_var` implies
   that the `expr` holds true.  `rev_dep` identifies those that come
-  from a reverse dependency.
+  from a reverse dependency.  we can assume these lines come after the
+  definition of the variable with `bool_line`, etc, and that `rev_dep`
+  comes after `dep`.
 - the `expr` may contain non-boolean relations, which can themselves
   be treated as a boolean variable.  1 and 0 mean true and false
   respectively.
