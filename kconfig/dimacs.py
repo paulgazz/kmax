@@ -437,13 +437,18 @@ for line in sys.stdin:
       # user-visible and have no dependencies.  (this latter condition
       # may break if there is a dep_line after a rev_dep_line for the
       # same variable, but this shouldn't happen.)
-      bad_select = instr == "rev_dep" and (var in userselectable or var in has_dependencies)
+      if instr == "rev_dep":
+        good_select = var not in userselectable or var not in has_dependencies
+        bad_select = not good_select
+      else:
+        bad_select = False
 
       if bad_select:
-        sys.stderr.write("warn: found bad select statement(s) for %s\n" % (var))
+        if select_checker:
+          sys.stderr.write("warn: removing bad select statements for %s.  this is the expression: %s\n" % (var, expr))
+        else:
+          sys.stderr.write("warn: found bad select statement(s) for %s\n" % (var))
         
-      if select_checker and bad_select:
-        sys.stderr.write("warn: removing bad select statements\n")
 
       # if no dependencies, then depend on special root variable
       if use_root_var and expr == "(1)":
