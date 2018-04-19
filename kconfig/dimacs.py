@@ -31,6 +31,9 @@ argparser.add_argument('--remove-bad-selects',
 argparser.add_argument('--remove-reverse-dependencies',
                        action="store_true",
                        help="""only use direct dependencies, ignoring reverse dependencies""")
+argparser.add_argument('--remove-orphan-nonvisibles',
+                       action="store_true",
+                       help="""remove nonvisibles that either don't have defaults or aren't enabled by a select statement""")
 argparser.add_argument('--include-bool-defaults',
                        action="store_true",
                        help="""add constraints that reflect the conditions under which boolean default values are set""")
@@ -65,6 +68,12 @@ has_dependencies = set()
 # the names of configuration variables used in another variable's
 # dependency expression
 in_dependencies = set()
+
+# keep track of variables that have default values
+has_defaults = set()
+
+# keep track of variables that have reverse dependencies
+has_selects = set()
 
 nonbools = set()
 nonbools_with_dep = set()
@@ -305,6 +314,7 @@ for line in sys.stdin:
     lookup_varnum(varname)
   elif (instr == "def_bool"):
     var, val, expr = data.split(" ", 2)
+    has_defaults.add(var)
     if args.include_bool_defaults or args.include_nonvisible_bool_defaults and var not in userselectable:
       if val == "1":
         defsetting = True
@@ -346,6 +356,7 @@ for line in sys.stdin:
     var, val_and_expr = data.split(" ", 1)
     val, expr = val_and_expr.split("|", 1)
     if args.include_nonbool_defaults:
+      has_defaults.add(var)
       # model nonbool values with ghost boolean values
       ghost_bool_name = get_ghost_bool_name(var)
       ghost_bools[ghost_bool_name] = (var, val)
@@ -412,6 +423,7 @@ for line in sys.stdin:
       # may break if there is a dep_line after a rev_dep_line for the
       # same variable, but this shouldn't happen.)
       if instr == "rev_dep":
+        has_selects.add(var)
         good_select = var not in userselectable or var not in has_dependencies
         bad_select = not good_select
       else:
@@ -468,7 +480,15 @@ clauses = map(lambda clause: remove_dups(clause), clauses)
 def remove_condition(var):
   return \
     args.remove_all_nonvisibles and var not in userselectable or \
-    args.remove_independent_nonvisibles and var not in userselectable and var not in has_dependencies and var not in in_dependencies # or \
+    args.remove_independent_nonvisibles and var not in userselectable and var not in has_dependencies and var not in in_dependencies or \
+    args.remove_orphan_nonvisibles and var not in userselectable and var not in has_defaults and var not in has_selects # or \
+
+for var in varnums.keys():
+  if var not in userselectable and var not in has_defaults and var not in has_selects:
+    if args.remove_orphan_nonvisibles:
+      sys.stderr.write("warning: remove orphaned nonvisible variables: %s\n" % (var))
+    else:
+      sys.stderr.write("warning: %s is an orphaned nonvisible variable\n" % (var))
     
 keep_vars = filter(lambda var: not remove_condition(var), varnums.keys())
 
