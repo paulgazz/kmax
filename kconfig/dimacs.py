@@ -19,22 +19,27 @@ argparser.add_argument('-d',
                        '--debug',
                        action="store_true",
                        help="""turn on debugging output""")
-# argparser.add_argument('-n',
-#                        '--include-nonselectable',
-#                        action="store_true",
-#                        help="""add an extra variable for the root of the feature model""")
-# argparser.add_argument('-i',
-#                        '--include-nonselectable-dependencies',
-#                        action="store_true",
-#                        help="""add an extra variable for the root of the feature model""")
-argparser.add_argument('--invisibles', type=str, default="all",
-                       help="""method for handling invisible variables""")
-argparser.add_argument('-s', '--select-checker', action="store_true",
-                       help="""check for hygienic use of select statements, i.e., only for non-visible variables with no dependencies""")
-argparser.add_argument('-D',
-                       '--direct-dependencies-only',
+argparser.add_argument('--remove-all-nonvisibles',
+                       action="store_true",
+                       help="""whether to leave only those config vars that can be selected by the user.  this is defined as config vars that have a kconfig prompt.""")
+argparser.add_argument('--remove-independent-nonvisibles',
+                       action="store_true",
+                       help="""remove all nonvisibles that don't have dependencies or aren't used in dependencies""")
+argparser.add_argument('--remove-bad-selects',
+                       action="store_true",
+                       help="""remove reverse dependencies when not used on a non-visible or not used on a visible variables without dependencies""")
+argparser.add_argument('--remove-reverse-dependencies',
                        action="store_true",
                        help="""only use direct dependencies, ignoring reverse dependencies""")
+argparser.add_argument('--include-bool-defaults',
+                       action="store_true",
+                       help="""add constraints that reflect the conditions under which boolean default values are set""")
+argparser.add_argument('--include-nonvisible-bool-defaults',
+                       action="store_true",
+                       help="""add constraints that reflect the conditions under which boolean default values for nonvisible variables are set""")
+argparser.add_argument('--include-nonbool-defaults',
+                       action="store_true",
+                       help="""support non-boolean defaults by creating a new boolean variable for  each nonbool default value""")
 argparser.add_argument('-r',
                        '--use-root',
                        action="store_true",
@@ -67,37 +72,6 @@ nonbool_defaults = {}
 nonbool_types = {}
 
 ghost_bools = {}
-
-invisibles = args.invisibles
-
-# whether to leave only those config vars that can be selected by the
-# user.  this is defined as config vars that have a kconfig prompt.
-remove_nonselectable_variables = False
-
-# remove non-visible variables that don't have dependencies or aren't used in dependencies
-remove_independent_nonselectables = False
-
-if invisibles == "all":
-  remove_nonselectable_variables = False
-  remove_independent_nonselectables = False
-elif invisibles == "none":
-  remove_nonselectable_variables = True
-  remove_independent_nonselectables = False
-elif invisibles == "dependent":
-  remove_nonselectable_variables = False
-  remove_independent_nonselectables = True
-else:
-  print "unknown value for invisibles"
-  exit(1)
-
-select_checker = args.select_checker
-
-# add constraints that reflect the conditions under which boolean
-# default values are set.  off by default.
-support_bool_defaults = False
-# support non-boolean defaults by creating a new boolean variable for
-# each nonbool default value.  off by default.
-support_nonbool_defaults = False
 
 # whether to always enable nonbools or not regardless of whether they
 # have dependencies.  off by default.  warning: forcing nonbools that
@@ -331,7 +305,7 @@ for line in sys.stdin:
     lookup_varnum(varname)
   elif (instr == "def_bool"):
     var, val, expr = data.split(" ", 2)
-    if support_bool_defaults:
+    if args.include_bool_defaults or args.include_nonvisible_bool_defaults and var not in userselectable:
       if val == "1":
         defsetting = True
       elif val == "0":
@@ -371,7 +345,7 @@ for line in sys.stdin:
   elif (instr == "def_nonbool"):
     var, val_and_expr = data.split(" ", 1)
     val, expr = val_and_expr.split("|", 1)
-    if support_nonbool_defaults:
+    if args.include_nonbool_defaults:
       # model nonbool values with ghost boolean values
       ghost_bool_name = get_ghost_bool_name(var)
       ghost_bools[ghost_bool_name] = (var, val)
@@ -429,7 +403,7 @@ for line in sys.stdin:
   elif (instr == "dep" or instr == "rev_dep"):  # assumes only one dep line per unique variable
     # print instr,data
     var, expr = data.split(" ", 1)
-    if instr == "rev_dep" and args.direct_dependencies_only:
+    if instr == "rev_dep" and args.remove_reverse_dependencies:
       # skip reverse dependencies
       pass
     else:
@@ -444,7 +418,7 @@ for line in sys.stdin:
         bad_select = False
 
       if bad_select:
-        if select_checker:
+        if args.remove_bad_selects:
           sys.stderr.write("warn: removing bad select statements for %s.  this is the expression: %s\n" % (var, expr))
         else:
           sys.stderr.write("warn: found bad select statement(s) for %s\n" % (var))
@@ -491,12 +465,12 @@ def remove_dups(l):
   return [x for x in l if not (x in seen or seen_add(x))]
 clauses = map(lambda clause: remove_dups(clause), clauses)
 
-if remove_independent_nonselectables:
-  keep_vars = filter(lambda x: x in userselectable or x in has_dependencies or x in in_dependencies, varnums.keys())
-elif remove_nonselectable_variables:
-  keep_vars = userselectable
-else:
-  keep_vars = varnums.keys()
+def remove_condition(var):
+  return \
+    args.remove_all_nonvisibles and var not in userselectable or \
+    args.remove_independent_nonvisibles and var not in userselectable and var not in has_dependencies and var not in in_dependencies # or \
+    
+keep_vars = filter(lambda var: not remove_condition(var), varnums.keys())
 
 # remove vars from varnum
 keep_varnums = filter(lambda (name, num): name in keep_vars, sorted(varnums.items(), key=lambda tup: tup[1]))
