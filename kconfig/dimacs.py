@@ -31,7 +31,7 @@ argparser.add_argument('--remove-bad-selects',
 argparser.add_argument('--remove-reverse-dependencies',
                        action="store_true",
                        help="""only use direct dependencies, ignoring reverse dependencies""")
-argparser.add_argument('--remove-orphan-nonvisibles',
+argparser.add_argument('--remove-orphaned-nonvisibles',
                        action="store_true",
                        help="""remove nonvisibles that either don't have defaults or aren't enabled by a select statement""")
 argparser.add_argument('--include-bool-defaults',
@@ -147,7 +147,21 @@ class Transformer(compiler.visitor.ASTVisitor):
     return ("name", node.name)
 
   def visitConst(self, node):
-    return ("const", int(node.value))
+    # convert to int.  strings get converted to their length. this
+    # will make empty strings false and non-empty strings true.
+    value = node.value
+    if value == None:
+      return 0
+    try:
+      num = int(value)
+      return ("const", num)
+    except:
+      try:
+        s = str(value)
+        return ("const", len(s))
+      except:
+        sys.stderr("error: cannot process value \"%s\"\n" % (value))
+        return ("const", 0)
 
 def convert(node):
   """takes a tree and returns a list of clauses or a constant value"""
@@ -481,11 +495,11 @@ def remove_condition(var):
   return \
     args.remove_all_nonvisibles and var not in userselectable or \
     args.remove_independent_nonvisibles and var not in userselectable and var not in has_dependencies and var not in in_dependencies or \
-    args.remove_orphan_nonvisibles and var not in userselectable and var not in has_defaults and var not in has_selects # or \
+    args.remove_orphaned_nonvisibles and var not in userselectable and var not in has_defaults and var not in has_selects # or \
 
 for var in varnums.keys():
   if var not in userselectable and var not in has_defaults and var not in has_selects:
-    if args.remove_orphan_nonvisibles:
+    if args.remove_orphaned_nonvisibles:
       sys.stderr.write("warning: remove orphaned nonvisible variables: %s\n" % (var))
     else:
       sys.stderr.write("warning: %s is an orphaned nonvisible variable\n" % (var))
