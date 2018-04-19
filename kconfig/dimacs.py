@@ -43,6 +43,9 @@ argparser.add_argument('--include-nonvisible-bool-defaults',
 argparser.add_argument('--include-nonbool-defaults',
                        action="store_true",
                        help="""support non-boolean defaults by creating a new boolean variable for  each nonbool default value""")
+argparser.add_argument('--comment-format-v2',
+                       action="store_true",
+                       help="""add extra formatting information to dimacs comments to distinguish them from normal comments""")
 argparser.add_argument('-r',
                        '--use-root',
                        action="store_true",
@@ -536,6 +539,11 @@ for clause in clauses:
 # emit dimacs format
 
 def print_dimacs(varnum_map, clause_list):
+  if args.comment_format_v2:
+    print "c format kmax_kconfig_v2"
+    comment_prefix = "c kconfig_variable"
+  else:
+    comment_prefix = "c"
   for varname in sorted(varnum_map, key=varnum_map.get):
     if varname in nonbools:
       if varname in nonbool_defaults:
@@ -545,15 +553,19 @@ def print_dimacs(varnum_map, clause_list):
       else:
         defaultval = '""' if nonbool_types[varname] == "string" else "0"
       defaultval = " " + defaultval
-      print "c %d %s nonbool%s" % (varnum_map[varname], varname, defaultval)
+      if args.comment_format_v2:
+        typename = "string" if nonbool_types[varname] == "string" else "int"
+      else:
+        typename = "nonbool"
+      print "%s %d %s %s%s" % (comment_prefix, varnum_map[varname], varname, typename, defaultval)
     else:
       if varname in userselectable:
-        print "c %d %s bool" % (varnum_map[varname], varname)
+        print "%s %d %s bool" % (comment_prefix, varnum_map[varname], varname)
       elif varname in ghost_bools.keys():
         nonbool_var, defval = ghost_bools[varname]
-        print "c %d %s ghost_bool %s %s" % (varnum_map[varname], varname, nonbool_var, defval)
+        print "%s %d %s ghost_bool %s %s" % (comment_prefix, varnum_map[varname], varname, nonbool_var, defval)
       else:
-        print "c %d %s hidden_bool" % (varnum_map[varname], varname)
+        print "%s %d %s hidden_bool" % (comment_prefix, varnum_map[varname], varname)
   print "p cnf %d %d" % (len(varnum_map), len(clause_list))
   for clause in clause_list:
     print "%s 0" % (" ".join([str(num) for num in clause]))
