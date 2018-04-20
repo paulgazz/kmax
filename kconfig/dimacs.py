@@ -4,7 +4,6 @@ import compiler
 import ast
 import traceback
 import argparse
-from collections import defaultdict
 
 # this script takes the check_dep --dimacs output and converts it into
 # a dimacs-compatible format
@@ -61,17 +60,13 @@ use_root_var = args.use_root
 # mapping from configuration variable name to dimacs variable number
 varnums = {}
 
+# collect dep and rev_dep lines
+dep_exprs = {}
+rev_dep_exprs = {}
+
 # the names of configuration variables that are "visible" to the user,
 # i.e., that are selectable by the user
 userselectable = set()
-
-# the names of configuration variables that have dependencies, either
-# direct or reverse
-has_dependencies = set()
-
-# the names of configuration variables used in another variable's
-# dependency expression
-in_dependencies = set()
 
 # names of variables that should be removed later. this is currently
 # used to captures string constants in boolean expressions, where it
@@ -80,9 +75,6 @@ variables_to_remove = set()
 
 # keep track of variables that have default values
 has_defaults = set()
-
-# keep track of variables that have reverse dependencies
-has_selects = set()
 
 nonbools = set()
 nonbools_with_dep = set()
@@ -438,59 +430,103 @@ for line in sys.stdin:
     new_clauses = convert_to_cnf(choice_dep)
     # print new_clauses
     clauses.extend(new_clauses)
-  elif (instr == "dep" or instr == "rev_dep"):  # assumes only one dep line per unique variable
-    # print instr,data
+  elif (instr == "dep"):
     var, expr = data.split(" ", 1)
-    if instr == "rev_dep" and args.remove_reverse_dependencies:
-      # skip reverse dependencies
-      pass
-    else:
-      # restrict reverse dependencies to variables that are not
-      # user-visible and have no dependencies.  (this latter condition
-      # may break if there is a dep_line after a rev_dep_line for the
-      # same variable, but this shouldn't happen.)
-      if instr == "rev_dep":
-        has_selects.add(var)
-        good_select = var not in userselectable or var not in has_dependencies
-        bad_select = not good_select
-      else:
-        bad_select = False
-
-      if bad_select:
-        if args.remove_bad_selects:
-          sys.stderr.write("warn: removing bad select statements for %s.  this is the expression: %s\n" % (var, expr))
-        else:
-          sys.stderr.write("warn: found bad select statement(s) for %s\n" % (var))
-        
-
-      # if no dependencies, then depend on special root variable
-      if use_root_var and expr == "(1)":
-        expr = root_var
-      # if no dependencies, don't add any clause
-      if expr != "(1)":
-        # var -> expr, i.e., not var or expr
-        has_dependencies.add(var)  # track vars that have dependencies
-        in_dependencies.update(get_identifiers(expr))  # track vars that are in other dependencies
-        full_expr = "(not (" + var + ")) or (" + expr + ")"
-        # print full_expr
-        new_clauses = convert_to_cnf(full_expr)
-        # print new_clauses
-        clauses.extend(new_clauses)
-      if var in nonbools:
-        # nonbools are mandatory unless disabled by dependency, so we
-        # also ensure that nonbool var is selected whenever its
-        # dependencies holds.
-        full_expr = "(not (" + expr + ")) or (" + var + ")"
-        # print full_expr
-        new_clauses = convert_to_cnf(full_expr)
-        # print new_clauses
-        clauses.extend(new_clauses)
-        nonbools_with_dep.add(var)
+    if var in dep_exprs:
+      sys.stderr.write("found duplicate dep for %s. currently unsupported\n" % (var))
+      exit(1)
+    dep_exprs[var] = expr
+  elif (instr == "rev_dep"):
+    var, expr = data.split(" ", 1)
+    if var in rev_dep_exprs:
+      sys.stderr.write("found duplicate revdep for %s. currently unsupported\n" % (var))
+      exit(1)
+    rev_dep_exprs[var] = expr
   else:
     sys.stderr.write("unsupported instruction: %s\n" % (line))
     exit(1)
   if debug: sys.stderr.write("done %s\n" % (line))
 
+# generate clauses for dependencies
+
+# the names of configuration variables that have dependencies, either
+# direct or reverse
+has_dependencies = set()
+
+# the names of configuration variables used in another variable's
+# dependency expression
+in_dependencies = set()
+
+# keep track of variables that have reverse dependencies
+has_selects = set()
+
+for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())):
+  if var in dep_exprs.keys():
+    dep_expr = dep_exprs[var]
+    if dep_expr != "(1)":
+      has_dependencies.add(var)  # track vars that have dependencies
+      in_dependencies.update(get_identifiers(dep_expr))  # track vars that are in other dependencies
+  else:
+    dep_expr = None
+  if var in rev_dep_exprs.keys():
+    rev_dep_expr = rev_dep_exprs[var]
+    has_selects.add(var)
+    if rev_dep_expr != "(1)":
+      has_dependencies.add(var)  # track vars that have dependencies
+      in_dependencies.update(get_identifiers(rev_dep_expr))  # track vars that are in other dependencies
+  else:
+    rev_dep_expr = None
+
+  if args.remove_reverse_dependencies:
+    rev_dep_expr = None
+
+  # restrict reverse dependencies to variables that are not
+  # user-visible and have no dependencies.
+  if rev_dep_expr != None:
+    good_select = var not in userselectable or var not in has_dependencies
+    if not good_select:
+      if args.remove_bad_selects:
+        rev_dep_expr = None
+        sys.stderr.write("warn: removing bad select statements for %s.  this is the expression: %s\n" % (var, expr))
+      else:
+        sys.stderr.write("warn: found bad select statement(s) for %s\n" % (var))
+
+  # determine the final dependency expression considering both kinds
+  if dep_expr != None and rev_dep_expr != None:
+    expr = "((%s) or (%s))" % (dep_expr, rev_dep_expr)
+  elif dep_expr != None:
+    expr = dep_expr
+  elif rev_dep_expr != None:
+    expr = rev_dep_expr
+  else:
+    expr = "(1)"
+    
+  if use_root_var and expr == "(1)":
+    # if no dependencies, then depend on special root variable
+    expr = root_var
+    
+  if expr != "(1)":  # has dependencies
+    # var -> expr, i.e., not var or expr
+    full_expr = "(not (" + var + ")) or (" + expr + ")"
+    # print full_expr
+    new_clauses = convert_to_cnf(full_expr)
+    # print new_clauses
+    clauses.extend(new_clauses)
+  else:
+    # if no dependencies, don't add any clauses at all
+    pass
+
+  if var in nonbools:
+    # nonbools are mandatory unless disabled by dependency, so we
+    # also ensure that nonbool var is selected whenever its
+    # dependencies holds.
+    full_expr = "(not (" + expr + ")) or (" + var + ")"
+    # print full_expr
+    new_clauses = convert_to_cnf(full_expr)
+    # print new_clauses
+    clauses.extend(new_clauses)
+    nonbools_with_dep.add(var)
+  
 if force_all_nonbools_on:
   for nonbool in (nonbools):
     varnum = lookup_varnum(nonbool)
@@ -507,6 +543,7 @@ clauses = map(lambda clause: remove_dups(clause), clauses)
 def remove_condition(var):
   return \
     var in variables_to_remove or \
+    args.remove_all_nonvisibles and var not in userselectable or \
     args.remove_independent_nonvisibles and var not in userselectable and var not in has_dependencies and var not in in_dependencies or \
     args.remove_orphaned_nonvisibles and var not in userselectable and var not in has_defaults and var not in has_selects # or \
 
