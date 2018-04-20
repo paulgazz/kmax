@@ -4,6 +4,7 @@ import compiler
 import ast
 import traceback
 import argparse
+from collections import defaultdict
 
 # this script takes the check_dep --dimacs output and converts it into
 # a dimacs-compatible format
@@ -71,6 +72,11 @@ has_dependencies = set()
 # the names of configuration variables used in another variable's
 # dependency expression
 in_dependencies = set()
+
+# names of variables that should be removed later. this is currently
+# used to captures string constants in boolean expressions, where it
+# isn't clear what the boolean value should be.
+variables_to_remove = set()
 
 # keep track of variables that have default values
 has_defaults = set()
@@ -153,18 +159,22 @@ class Transformer(compiler.visitor.ASTVisitor):
     # convert to int.  strings get converted to their length. this
     # will make empty strings false and non-empty strings true.
     value = node.value
-    if value == None:
-      return 0
+    # if value == None:
+    #   return 0
     try:
       num = int(value)
       return ("const", num)
     except:
       try:
+        # make a new variable out of the string constant, but remove
+        # it later.
         s = str(value)
-        return ("const", len(s))
+        variables_to_remove.add("UNSUPPORTED_VALUE_" + s)
+        return ("name", len(s))
       except:
-        sys.stderr("error: cannot process value \"%s\"\n" % (value))
-        return ("const", 0)
+        print(traceback.format_exc())
+        sys.stderr.write("error: cannot process value \"%s\"\n" % (value))
+        exit(1)
 
 def convert(node):
   """takes a tree and returns a list of clauses or a constant value"""
@@ -496,9 +506,12 @@ clauses = map(lambda clause: remove_dups(clause), clauses)
 
 def remove_condition(var):
   return \
-    args.remove_all_nonvisibles and var not in userselectable or \
+    var in variables_to_remove or \
     args.remove_independent_nonvisibles and var not in userselectable and var not in has_dependencies and var not in in_dependencies or \
     args.remove_orphaned_nonvisibles and var not in userselectable and var not in has_defaults and var not in has_selects # or \
+
+keep_vars = filter(lambda var: not remove_condition(var), varnums.keys())
+keep_varnums = filter(lambda (name, num): name in keep_vars, sorted(varnums.items(), key=lambda tup: tup[1]))
 
 for var in varnums.keys():
   if var not in userselectable and var not in has_defaults and var not in has_selects:
@@ -507,11 +520,6 @@ for var in varnums.keys():
     else:
       sys.stderr.write("warning: %s is an orphaned nonvisible variable\n" % (var))
     
-keep_vars = filter(lambda var: not remove_condition(var), varnums.keys())
-
-# remove vars from varnum
-keep_varnums = filter(lambda (name, num): name in keep_vars, sorted(varnums.items(), key=lambda tup: tup[1]))
-
 # renumber variables
 num_mapping = {}
 for (name, old_num) in keep_varnums:
