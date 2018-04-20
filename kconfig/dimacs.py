@@ -24,7 +24,7 @@ argparser.add_argument('--remove-all-nonvisibles',
                        help="""whether to leave only those config vars that can be selected by the user.  this is defined as config vars that have a kconfig prompt.""")
 argparser.add_argument('--remove-independent-nonvisibles',
                        action="store_true",
-                       help="""remove all nonvisibles that don't have dependencies or aren't used in dependencies""")
+                       help="""remove all nonvisibles that aren't used in dependencies""")
 argparser.add_argument('--remove-bad-selects',
                        action="store_true",
                        help="""remove reverse dependencies when not used on a non-visible or not used on a visible variables without dependencies""")
@@ -547,7 +547,7 @@ def remove_condition(var):
   return \
     var in variables_to_remove or \
     args.remove_all_nonvisibles and var not in userselectable or \
-    args.remove_independent_nonvisibles and var not in userselectable and var not in has_dependencies and var not in in_dependencies or \
+    args.remove_independent_nonvisibles and var not in userselectable and var not in in_dependencies or \
     args.remove_orphaned_nonvisibles and var not in userselectable and var in bools and var not in has_defaults and var not in has_selects # or \
 
 keep_vars = filter(lambda var: not remove_condition(var), varnums.keys())
