@@ -1825,7 +1825,8 @@ int main(int argc, char **argv)
         continue;
 
       struct property *prop;
-      int has_prompt;
+      int has_prompt;  // whether the user can select this in menuconf
+      int has_env; // whether the user can set via an environment variable
       int is_string;
 
       switch (sym->type) {
@@ -1839,7 +1840,8 @@ int main(int argc, char **argv)
           has_prompt = true;
           break;
         }
-        printf("bool %s%s %s\n", config_prefix, sym->name, has_prompt ? "selectable" : "nonselectable");
+        has_env = sym_get_env_prop(sym) != NULL;
+        printf("bool %s%s %s\n", config_prefix, sym->name, (has_prompt || has_env) ? "selectable" : "nonselectable");
         if (! has_prompt) {
           // if there is no prompt, this config var is not
           // user-selectable.  therefore it's defaults will always
