@@ -486,8 +486,8 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())):
     good_select = var not in userselectable or var not in has_dependencies
     if not good_select:
       if args.remove_bad_selects:
+        sys.stderr.write("warn: removing bad select statements for %s.  this is the expression: %s\n" % (var, rev_dep_expr))
         rev_dep_expr = None
-        sys.stderr.write("warn: removing bad select statements for %s.  this is the expression: %s\n" % (var, expr))
       else:
         sys.stderr.write("warn: found bad select statement(s) for %s\n" % (var))
 
