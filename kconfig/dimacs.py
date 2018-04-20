@@ -76,6 +76,8 @@ variables_to_remove = set()
 # keep track of variables that have default values
 has_defaults = set()
 
+bools = set()
+
 nonbools = set()
 nonbools_with_dep = set()
 nonbool_defaults = {}
@@ -330,6 +332,7 @@ for line in sys.stdin:
     selectable = True if selectability == "selectable" else False
     if selectable:
       userselectable.add(varname)
+    bools.add(varname)
     lookup_varnum(varname)
   elif (instr == "def_bool"):
     var, val, expr = data.split(" ", 2)
@@ -545,13 +548,13 @@ def remove_condition(var):
     var in variables_to_remove or \
     args.remove_all_nonvisibles and var not in userselectable or \
     args.remove_independent_nonvisibles and var not in userselectable and var not in has_dependencies and var not in in_dependencies or \
-    args.remove_orphaned_nonvisibles and var not in userselectable and var not in has_defaults and var not in has_selects # or \
+    args.remove_orphaned_nonvisibles and var not in userselectable and var in bools and var not in has_defaults and var not in has_selects # or \
 
 keep_vars = filter(lambda var: not remove_condition(var), varnums.keys())
 keep_varnums = filter(lambda (name, num): name in keep_vars, sorted(varnums.items(), key=lambda tup: tup[1]))
 
 for var in varnums.keys():
-  if var not in userselectable and var not in has_defaults and var not in has_selects:
+  if var not in userselectable and var in bools and var not in has_defaults and var not in has_selects:
     if args.remove_orphaned_nonvisibles:
       sys.stderr.write("warning: remove orphaned nonvisible variables: %s\n" % (var))
     else:
