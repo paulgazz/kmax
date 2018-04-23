@@ -316,6 +316,21 @@ def get_identifiers(expr):
   tree = transformer.tree
   return collect_identifiers(tree)
   
+def implication(antecedent, consequent):
+  return "((not (%s)) or (%s))" % (antecedent, consequent)
+
+def biimplication(antecedent, consequent):
+  return "((%s) and (%s))" % (implication(antecedent, consequent), implication(consequent, antecedent))
+
+def conjunction(a, b):
+  return "((%s) and (%s))" % (a, b)
+
+def disjunction(a, b):
+  return "((%s) or (%s))" % (a, b)
+
+def negation(a):
+  return "(not (%s))" % (a)
+
 # print convert_to_cnf("not a or (b and (c or d)) and not (e and f)")
 # print convert_to_cnf("not a or (b and (c or d)) and not (e and f)")
 # print convert_to_cnf("not a or (b and (c or d)) and not (e and f)")
@@ -425,14 +440,12 @@ for line in sys.stdin:
     expr1, expr2 = data.split("|", 1)
     # print expr1, expr2
     final_expr = "(((not %s) or %s) and ((%s) or (not %s)))" % (expr1, expr2, expr1, expr2)
-    print final_expr
+    # print final_expr
     clauses.extend(convert_to_cnf(final_expr))
   else:
     sys.stderr.write("unsupported instruction: %s\n" % (line))
     exit(1)
   if debug: sys.stderr.write("done %s\n" % (line))
-
-# generate clauses for dependencies
 
 # the names of configuration variables that have dependencies, either
 # direct or reverse
@@ -445,21 +458,7 @@ in_dependencies = set()
 # keep track of variables that have reverse dependencies
 has_selects = set()
 
-def implication(antecedent, consequent):
-  return "((not (%s)) or (%s))" % (antecedent, consequent)
-
-def biimplication(antecedent, consequent):
-  return "((%s) and (%s))" % (implication(antecedent, consequent), implication(consequent, antecedent))
-
-def conjunction(a, b):
-  return "((%s) and (%s))" % (a, b)
-
-def disjunction(a, b):
-  return "((%s) or (%s))" % (a, b)
-
-def negation(a):
-  return "(not (%s))" % (a)
-
+# generate clauses for dependencies and defaults
 for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_bool_lines.keys())):
   # get direct dependencies
   if var in dep_exprs.keys():
@@ -503,10 +502,8 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_
       delim = " or "
       for def_bool_line in def_bool_lines[var]:
         val, expr = def_bool_line.split(" ", 1)
-        print "JFKLDSLKDS111111", def_bool_line, def_y_expr
         if val == "1":
           def_y_expr = def_y_expr + delim + "(" + expr + ")"
-      print "JFKLDSLKDS", def_y_expr
     else:
       # don't include default values
       def_y_expr = None
@@ -537,7 +534,7 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_
 
     if consequent != None:
       expr = biimplication(var, consequent)
-      print expr
+      # print expr
       new_clauses = convert_to_cnf(expr)
       # print new_clauses
       clauses.extend(new_clauses)
@@ -545,6 +542,11 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_
     # V -> (E | A), where E is direct dep, and A is reverse dep
 
     # TODO: handle reverse dependencies after we determine proper way
+    if not args.remove_reverse_dependencies:
+      sys.stderr.write("warn: reverse dependencies currently ignored for visibles: %s\n" % (var))
+
+    if args.include_bool_defaults:
+      sys.stderr.write("warn: defaults currently ignored for visibles: %s\n" % (var))
     
     # # determine the final dependency expression considering both kinds
     # if dep_expr != None and rev_dep_expr != None:
@@ -587,7 +589,6 @@ if force_all_nonbools_on:
     clauses.append([varnum])
 
 # filter clauses and variables
-
 def remove_dups(l):
   seen = set()
   seen_add = seen.add
@@ -620,7 +621,6 @@ for (name, old_num) in keep_varnums:
 varnums = {name: num_mapping[old_num] for (name, old_num) in keep_varnums}
 
 # remove vars from clauses
-
 filtered_clauses = []
 for clause in clauses:
   # trim undefined vars from clauses
@@ -636,7 +636,6 @@ for clause in clauses:
     filtered_clauses.append(remapped_clause)
 
 # emit dimacs format
-
 def print_dimacs(varnum_map, clause_list):
   if args.comment_format_v2:
     print "c format kmax_kconfig_v2"
