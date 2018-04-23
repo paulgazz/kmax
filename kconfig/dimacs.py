@@ -574,7 +574,6 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_
         expr = biimplication(var, consequent)
       else:
         expr = implication(var, consequent)
-      sys.stderr.write("%s\n" % (expr))
       new_clauses = convert_to_cnf(expr)
       # print new_clauses
       clauses.extend(new_clauses)
@@ -597,6 +596,9 @@ def remove_condition(var):
     args.remove_all_nonvisibles and var not in userselectable or \
     args.remove_independent_nonvisibles and var not in userselectable and var not in in_dependencies or \
     args.remove_orphaned_nonvisibles and var not in userselectable and var in bools and var not in has_defaults and var not in has_selects # or \
+
+# print "|".join([ var for var in varnums.keys() if var not in userselectable and var not in in_dependencies and isinstance(var, str) ])
+# exit(1)
 
 keep_vars = filter(lambda var: not remove_condition(var), varnums.keys())
 keep_varnums = filter(lambda (name, num): name in keep_vars, sorted(varnums.items(), key=lambda tup: tup[1]))
