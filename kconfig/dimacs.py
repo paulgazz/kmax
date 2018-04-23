@@ -4,6 +4,7 @@ import compiler
 import ast
 import traceback
 import argparse
+from collections import defaultdict
 
 # this script takes the check_dep --dimacs output and converts it into
 # a dimacs-compatible format
@@ -63,6 +64,9 @@ varnums = {}
 # collect dep and rev_dep lines
 dep_exprs = {}
 rev_dep_exprs = {}
+
+# collect defaults
+def_bool_lines = defaultdict(set)
 
 # the names of configuration variables that are "visible" to the user,
 # i.e., that are selectable by the user
@@ -124,6 +128,7 @@ class Transformer(compiler.visitor.ASTVisitor):
 
   def default(self, node):
     # TODO: convert ast to string to be a predicate
+    print node
     return ("name", "PREDICATE")
 
   def visitDiscard(self, node):
@@ -335,37 +340,8 @@ for line in sys.stdin:
     bools.add(varname)
     lookup_varnum(varname)
   elif (instr == "def_bool"):
-    var, val, expr = data.split(" ", 2)
-    has_defaults.add(var)
-    if args.include_bool_defaults or args.include_nonvisible_bool_defaults and var not in userselectable:
-      if val == "1":
-        defsetting = True
-      elif val == "0":
-        defsetting = False
-      else:
-        defsetting = None
-        sys.stderr.write("invalid default value for bool: %s\n" % (line))
-        exit(1)
-      if expr == "(1)":
-        # default value is always set
-        varnum = lookup_varnum(var)
-        if defsetting:
-          clauses.append([varnum])
-        else:
-          clauses.append([-varnum])
-      else:
-        # default is set if dependency holds
-        # expr -> defexpr, i.e., not expr or defexpr
-        if defsetting:
-          defexpr = var
-        else:
-          defexpr = "not " + var
-        full_expr = "(not (" + expr + ")) or (" + defexpr + ")"
-        # print line
-        # print full_expr
-        new_clauses = convert_to_cnf(full_expr)
-        # print new_clauses
-        clauses.extend(new_clauses)
+    var, line = data.split(" ", 1)
+    def_bool_lines[var].add(line)
   elif (instr == "nonbool"):
     varname, selectability, type_name = data.split(" ", 2)
     selectable = True if selectability == "selectable" else False
@@ -445,6 +421,12 @@ for line in sys.stdin:
       sys.stderr.write("found duplicate revdep for %s. currently unsupported\n" % (var))
       exit(1)
     rev_dep_exprs[var] = expr
+  elif (instr == "bi"):
+    expr1, expr2 = data.split("|", 1)
+    # print expr1, expr2
+    final_expr = "(((not %s) or %s) and ((%s) or (not %s)))" % (expr1, expr2, expr1, expr2)
+    print final_expr
+    clauses.extend(convert_to_cnf(final_expr))
   else:
     sys.stderr.write("unsupported instruction: %s\n" % (line))
     exit(1)
@@ -494,6 +476,28 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())):
       else:
         sys.stderr.write("warn: found bad select statement(s) for %s\n" % (var))
 
+  if var in def_bool_lines.keys():
+    has_defaults.add(var)
+    if args.include_bool_defaults or args.include_nonvisible_bool_defaults and var not in userselectable:
+      def_y_expr = "(0)"
+      delim = " or "
+      for def_bool_line in def_bool_lines[var]:
+        val, expr = def_bool_line.split(" ", 1)
+        print "JFKLDSLKDS111111", def_bool_line, def_y_expr
+        if val == "1":
+          def_y_expr = def_y_expr + delim + "(" + expr + ")"
+      print "JFKLDSLKDS", def_y_expr
+  else:
+    def_expr = None
+
+  
+  # for invisible bools with defaults
+  # I <-> (A | (E & (C | D)))
+  # A are the selects, E is the direct dep, C and D are the default y conditions
+
+  # for visible bools
+  # V -> (E | A), where E is direct dep, and A is reverse dep
+        
   # determine the final dependency expression considering both kinds
   if dep_expr != None and rev_dep_expr != None:
     expr = "((%s) or (%s))" % (dep_expr, rev_dep_expr)
