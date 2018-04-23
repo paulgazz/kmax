@@ -567,7 +567,7 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_
 
     if consequent != None:
       expr = implication(var, consequent)
-      print expr
+      # print expr
       new_clauses = convert_to_cnf(expr)
       # print new_clauses
       clauses.extend(new_clauses)
