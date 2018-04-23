@@ -451,7 +451,17 @@ def implication(antecedent, consequent):
 def biimplication(antecedent, consequent):
   return "((%s) and (%s))" % (implication(antecedent, consequent), implication(consequent, antecedent))
 
-for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())):
+def conjunction(a, b):
+  return "((%s) and (%s))" % (a, b)
+
+def disjunction(a, b):
+  return "((%s) or (%s))" % (a, b)
+
+def negation(a):
+  return "(not (%s))" % (a)
+
+for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_bool_lines.keys())):
+  # get direct dependencies
   if var in dep_exprs.keys():
     dep_expr = dep_exprs[var]
     if dep_expr != "(1)":
@@ -459,6 +469,8 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())):
       in_dependencies.update(get_identifiers(dep_expr))  # track vars that are in other dependencies
   else:
     dep_expr = None
+
+  # get reverse dependencies
   if var in rev_dep_exprs.keys():
     rev_dep_expr = rev_dep_exprs[var]
     has_selects.add(var)
@@ -471,17 +483,19 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())):
   if args.remove_reverse_dependencies:
     rev_dep_expr = None
 
-  # restrict reverse dependencies to variables that are not
-  # user-visible and have no dependencies.
+  # check for bad selects
   if rev_dep_expr != None:
     good_select = var not in userselectable or var not in has_dependencies
     if not good_select:
       if args.remove_bad_selects:
+        # restrict reverse dependencies to variables that are not
+        # user-visible and have no dependencies.
         sys.stderr.write("warn: removing bad select statements for %s.  this is the expression: %s\n" % (var, rev_dep_expr))
         rev_dep_expr = None
       else:
         sys.stderr.write("warn: found bad select statement(s) for %s\n" % (var))
 
+  # handle boolean defaults
   if var in def_bool_lines.keys():
     has_defaults.add(var)
     if args.include_bool_defaults or args.include_nonvisible_bool_defaults and var not in userselectable:
@@ -493,41 +507,68 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())):
         if val == "1":
           def_y_expr = def_y_expr + delim + "(" + expr + ")"
       print "JFKLDSLKDS", def_y_expr
+    else:
+      # don't include default values
+      pass
   else:
     def_expr = None
 
-  
-  # for invisible bools with defaults
-  # I <-> (A | (E & (C | D)))
-  # A are the selects, E is the direct dep, C and D are the default y conditions
+  # create clauses for dependencies and defaults
+  if var not in userselectable:
+    # I <-> ((E & D) | A)
+    # I is the variable, A is the selects (reverse deps), E is the direct dep, D is the default y condition
 
-  # for visible bools
-  # V -> (E | A), where E is direct dep, and A is reverse dep
-        
-  # determine the final dependency expression considering both kinds
-  if dep_expr != None and rev_dep_expr != None:
-    expr = "((%s) or (%s))" % (dep_expr, rev_dep_expr)
-  elif dep_expr != None:
-    expr = dep_expr
-  elif rev_dep_expr != None:
-    expr = rev_dep_expr
-  else:
-    expr = "(1)"
+    # because nonvisible variables cannot be modified by the user
+    # interactively, we use a bi-implication between it's dependencies
+    # and default values and selects.  this says that the default
+    # value will be taken as long as the conditions are met.
+    # nonvisibles default to off if these conditions are not met.
+
+    consequent = dep_expr
+    if consequent == None:
+      consequent = def_expr
+    elif def_expr != None:
+      consequent = conjunction(consequent, def_expr)
+
+    if consequent == None:
+      consequent = rev_dep_expr
+    elif rev_dep_expr != None:
+      disjunction(consequent, rev_dep_expr)
+
+    if consequent != None:
+      expr = biimplication(var, consequent)
+      print expr
+      new_clauses = convert_to_cnf(expr)
+      # print new_clauses
+      clauses.extend(new_clauses)
+  elif:
+    # V -> (E | A), where E is direct dep, and A is reverse dep
+
+    # TODO: handle reverse dependencies after we determine proper way
     
-  if use_root_var and expr == "(1)":
-    # if no dependencies, then depend on special root variable
-    expr = root_var
-    
-  if expr != "(1)":  # has dependencies
-    # var -> expr, i.e., not var or expr
-    full_expr = "(not (" + var + ")) or (" + expr + ")"
-    # print full_expr
-    new_clauses = convert_to_cnf(full_expr)
-    # print new_clauses
-    clauses.extend(new_clauses)
-  else:
-    # if no dependencies, don't add any clauses at all
-    pass
+    # # determine the final dependency expression considering both kinds
+    # if dep_expr != None and rev_dep_expr != None:
+    #   expr = "((%s) or (%s))" % (dep_expr, rev_dep_expr)
+    # elif dep_expr != None:
+    #   expr = dep_expr
+    # elif rev_dep_expr != None:
+    #   expr = rev_dep_expr
+    # else:
+    #   expr = "(1)"
+
+    consequent = None
+    if use_root_var and dep_expr == None:
+      # if no dependencies, then depend on special root variable
+      consequent = root_var
+    elif dep_expr != None:
+      consequent = dep_expr
+
+    if consequent != None:
+      expr = implication(var, consequent)
+      print expr
+      new_clauses = convert_to_cnf(expr)
+      # print new_clauses
+      clauses.extend(new_clauses)
 
   if var in nonbools:
     # nonbools are mandatory unless disabled by dependency, so we
