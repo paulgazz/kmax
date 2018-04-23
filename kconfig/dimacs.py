@@ -418,7 +418,7 @@ for line in sys.stdin:
   elif (instr == "rev_dep"):
     var, expr = data.split(" ", 1)
     if var in rev_dep_exprs:
-      sys.stderr.write("found duplicate revdep for %s. currently unsupported\n" % (var))
+      sys.stderr.write("found duplicate rev_dep for %s. currently unsupported\n" % (var))
       exit(1)
     rev_dep_exprs[var] = expr
   elif (instr == "bi"):
@@ -509,9 +509,9 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_
       print "JFKLDSLKDS", def_y_expr
     else:
       # don't include default values
-      pass
+      def_y_expr = None
   else:
-    def_expr = None
+    def_y_expr = None
 
   # create clauses for dependencies and defaults
   if var not in userselectable:
@@ -526,14 +526,14 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_
 
     consequent = dep_expr
     if consequent == None:
-      consequent = def_expr
-    elif def_expr != None:
-      consequent = conjunction(consequent, def_expr)
+      consequent = def_y_expr
+    elif def_y_expr != None:
+      consequent = conjunction(consequent, def_y_expr)
 
     if consequent == None:
       consequent = rev_dep_expr
     elif rev_dep_expr != None:
-      disjunction(consequent, rev_dep_expr)
+      consequent = disjunction(consequent, rev_dep_expr)
 
     if consequent != None:
       expr = biimplication(var, consequent)
@@ -541,7 +541,7 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_
       new_clauses = convert_to_cnf(expr)
       # print new_clauses
       clauses.extend(new_clauses)
-  elif:
+  else:  # visible variables
     # V -> (E | A), where E is direct dep, and A is reverse dep
 
     # TODO: handle reverse dependencies after we determine proper way
