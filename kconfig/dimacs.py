@@ -445,6 +445,12 @@ in_dependencies = set()
 # keep track of variables that have reverse dependencies
 has_selects = set()
 
+def implication(antecedent, consequent):
+  return "((not (%s)) or (%s))" % (antecedent, consequent)
+
+def biimplication(antecedent, consequent):
+  return "((%s) and (%s))" % (implication(antecedent, consequent), implication(consequent, antecedent))
+
 for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())):
   if var in dep_exprs.keys():
     dep_expr = dep_exprs[var]
