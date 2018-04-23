@@ -566,22 +566,18 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_
       consequent = dep_expr
 
     if consequent != None:
-      expr = implication(var, consequent)
-      # print expr
+      if var in nonbools:
+        # nonbools are mandatory unless disabled by dependency, so we
+        # also ensure that nonbool var is selected whenever its
+        # dependencies holds.
+        nonbools_with_dep.add(var)
+        expr = biimplication(var, consequent)
+      else:
+        expr = implication(var, consequent)
+      sys.stderr.write("%s\n" % (expr))
       new_clauses = convert_to_cnf(expr)
       # print new_clauses
       clauses.extend(new_clauses)
-
-  if var in nonbools:
-    # nonbools are mandatory unless disabled by dependency, so we
-    # also ensure that nonbool var is selected whenever its
-    # dependencies holds.
-    full_expr = "(not (" + expr + ")) or (" + var + ")"
-    # print full_expr
-    new_clauses = convert_to_cnf(full_expr)
-    # print new_clauses
-    clauses.extend(new_clauses)
-    nonbools_with_dep.add(var)
   
 if force_all_nonbools_on:
   for nonbool in (nonbools):
