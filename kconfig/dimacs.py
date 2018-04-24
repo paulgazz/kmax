@@ -128,8 +128,8 @@ class Transformer(compiler.visitor.ASTVisitor):
 
   def default(self, node):
     # TODO: convert ast to string to be a predicate
-    print node
-    return ("name", "PREDICATE")
+    predicate = str(node)
+    return ("name", predicate)
 
   def visitDiscard(self, node):
     self.tree = self.visit(node.getChildren()[0])
