@@ -442,6 +442,9 @@ for line in sys.stdin:
     final_expr = "(((not %s) or %s) and ((%s) or (not %s)))" % (expr1, expr2, expr1, expr2)
     # print final_expr
     clauses.extend(convert_to_cnf(final_expr))
+  elif (instr == "constraint"):
+    expr = data
+    clauses.extend(convert_to_cnf(expr))
   else:
     sys.stderr.write("unsupported instruction: %s\n" % (line))
     exit(1)
@@ -539,44 +542,62 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_
       # print new_clauses
       clauses.extend(new_clauses)
   else:  # visible variables
-    # V -> (E | A), where E is direct dep, and A is reverse dep
+    # V -> (E | A) and A -> V, where E is direct dep, and A is reverse dep
 
-    # TODO: handle reverse dependencies after we determine proper way
-    if not args.remove_reverse_dependencies:
-      sys.stderr.write("warn: reverse dependencies currently ignored for visibles: %s\n" % (var))
-
-    if args.include_bool_defaults:
+    # intuitively, this makes sense.  if V is on, then either its
+    # direct dependency E or reverse dependency A must have been
+    # satisfied.  if the direct dependency is off, then the variable
+    # must have only been set when its reverse dependency is set
+    # (biimplication).
+    
+    if args.include_bool_defaults and var in def_bool_lines.keys():
       sys.stderr.write("warn: defaults currently ignored for visibles: %s\n" % (var))
     
-    # # determine the final dependency expression considering both kinds
-    # if dep_expr != None and rev_dep_expr != None:
-    #   expr = "((%s) or (%s))" % (dep_expr, rev_dep_expr)
-    # elif dep_expr != None:
-    #   expr = dep_expr
-    # elif rev_dep_expr != None:
-    #   expr = rev_dep_expr
-    # else:
-    #   expr = "(1)"
+    # clause1 = var -> (dep_expr or rev_dep_expr)
+    # clause2 = rev_dep_expr -> var
 
-    consequent = None
-    if use_root_var and dep_expr == None:
+    if rev_dep_expr != None:
+      if dep_expr != None:
+        clause1 = implication(var, disjunction(dep_expr, rev_dep_expr))
+        clause2 = implication(rev_dep_expr, var)
+        final_expr = conjunction(clause1, clause2)
+      else: # no direct dependency means biimplication between rev_dep and var
+        final_expr = biimplication(var, rev_dep_expr)
+    else:
+      if dep_expr != None:  # no reverse dependency means that only the direct dependency applies
+        clause1 = implication(var, dep_expr)
+        clause2 = None
+        final_expr = clause1
+      else: # no direct or reverse dependencies
+        clause1 = None
+        clause2 = None
+        final_expr = None
+
+    if use_root_var and final_expr == None:
       # if no dependencies, then depend on special root variable
-      consequent = root_var
-    elif dep_expr != None:
-      consequent = dep_expr
+      final_expr = root_var
 
-    if consequent != None:
-      if var in nonbools:
-        # nonbools are mandatory unless disabled by dependency, so we
-        # also ensure that nonbool var is selected whenever its
-        # dependencies holds.
-        nonbools_with_dep.add(var)
-        expr = biimplication(var, consequent)
-      else:
-        expr = implication(var, consequent)
-      new_clauses = convert_to_cnf(expr)
-      # print new_clauses
+    if var in nonbools:
+      nonbools_with_dep.add(var)
+
+    if final_expr != None:
+      # print final_expr
+      new_clauses = convert_to_cnf(final_expr)
       clauses.extend(new_clauses)
+
+    # # TODO: return support for biimplication for nonbool vars direct dependencies
+    # if consequent != None:
+    #   if var in nonbools:
+    #     # nonbools are mandatory unless disabled by dependency, so we
+    #     # also ensure that nonbool var is selected whenever its
+    #     # dependencies holds.
+    #     nonbools_with_dep.add(var)
+    #     expr = biimplication(var, consequent)
+    #   else:
+    #     expr = implication(var, consequent)
+    #   new_clauses = convert_to_cnf(expr)
+    #   # print new_clauses
+    #   clauses.extend(new_clauses)
   
 if force_all_nonbools_on:
   for nonbool in (nonbools):
