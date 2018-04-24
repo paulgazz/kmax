@@ -802,20 +802,22 @@ class Kbuild:
         if token == "=":
             # Recursively-expanded variable defs are expanded at use-time
 
-            # Update all existing definitions' presence conditions
-            self.variables[name] = \
-                map(lambda (old_value, old_condition, old_flavor): \
-                        VariableEntry(old_value, \
-                                      conjunction(old_condition, \
-                                                  negation(presence_condition)), \
-                                          old_flavor), \
-                        self.variables[name])
+            equivs = self.get_var_equiv_set(name)
+            for equiv_name in equivs:
+                # Update all existing definitions' presence conditions
+                self.variables[equiv_name] = \
+                    map(lambda (old_value, old_condition, old_flavor): \
+                            VariableEntry(old_value, \
+                                          conjunction(old_condition, \
+                                                      negation(presence_condition)), \
+                                              old_flavor), \
+                            self.variables[equiv_name])
 
-            # Add complete definition to variable (needed to find variable
-            # expansions at use-time)
-            self.variables[name].append(VariableEntry(value,
-                                                 presence_condition,
-                                                 Flavor.RECURSIVE))
+                # Add complete definition to variable (needed to find variable
+                # expansions at use-time)
+                self.variables[equiv_name].append(VariableEntry(value,
+                                                     presence_condition,
+                                                     Flavor.RECURSIVE))
 
             # TODO: handle reassignment, but does it really matter?  Use
             # reassignment example from kbuild_examples.tex as a test
@@ -825,31 +827,33 @@ class Kbuild:
         elif token == ":=":
             # Simply-expanded self.variables are expanded at define-time
 
-            # Update all existing definitions' presence conditions
-            # AFTER getting the new definition, since the new
-            # definition might refer to itself as in
-            # linux-3.0.0/crypto/Makefile
-            old_variables = \
-                map(lambda (old_value, old_condition, old_flavor): \
-                        VariableEntry(old_value, \
-                                     conjunction(old_condition, \
-                                                 negation(presence_condition)), \
-                                         old_flavor), \
-                        self.variables[name])
+            equivs = self.get_var_equiv_set(name)
+            for equiv_name in equivs:
+                # Update all existing definitions' presence conditions
+                # AFTER getting the new definition, since the new
+                # definition might refer to itself as in
+                # linux-3.0.0/crypto/Makefile
+                old_variables = \
+                    map(lambda (old_value, old_condition, old_flavor): \
+                            VariableEntry(old_value, \
+                                         conjunction(old_condition, \
+                                                     negation(presence_condition)), \
+                                             old_flavor), \
+                            self.variables[equiv_name])
 
-            # Expand and flatten self.variables in the definition and add the
-            # resulting definitions.
-            new_definitions = self.expand_and_flatten(value, presence_condition)
-            new_definitions = self.combine_expansions(new_definitions)
-            new_variables = []
-            for new_condition, new_value in new_definitions:
-                new_variables.append(VariableEntry(new_value,
-                                                     new_condition,
-                                                     Flavor.SIMPLE))
+                # Expand and flatten self.variables in the definition and add the
+                # resulting definitions.
+                new_definitions = self.expand_and_flatten(value, presence_condition)
+                new_definitions = self.combine_expansions(new_definitions)
+                new_variables = []
+                for new_condition, new_value in new_definitions:
+                    new_variables.append(VariableEntry(new_value,
+                                                         new_condition,
+                                                         Flavor.SIMPLE))
 
-            self.variables[name] = old_variables + new_variables
-            # TODO: check for computed variable names, compute them, and
-            # collect any configurations resulting from those self.variables
+                self.variables[equiv_name] = old_variables + new_variables
+                # TODO: check for computed variable names, compute them, and
+                # collect any configurations resulting from those self.variables
 
         elif token == "+=":
             if args.and_append: # efficient append by conjoining presence conditions
@@ -985,9 +989,11 @@ class Kbuild:
             pass
         else: fatal("Unknown setvariable token", token)
 
-        # Trim definitions with a presence condition of FALSE
-        self.variables[name] = \
-            [ entry for entry in self.variables[name] if entry.condition != self.F ]
+        equivs = self.get_var_equiv_set(name)
+        for equiv_name in equivs:
+            # Trim definitions with a presence condition of FALSE
+            self.variables[equiv_name] = \
+                [ entry for entry in self.variables[equiv_name] if entry.condition != self.F ]
 
     def process_setvariable(self, setvar, condition):
         """Find a satisfying set of configurations for variable."""
@@ -1110,8 +1116,7 @@ def collect_units(kbuild,            # current kbuild instance
     processed_variables = set()
     equiv_vars = set()
     for var in pending_variables:
-        if var in kbuild.var_equiv_sets.keys():
-            equiv_vars = equiv_vars.union(kbuild.var_equiv_sets[var])
+        equiv_vars = equiv_vars.union(kbuild.get_var_equiv_set(var))
     pending_variables = pending_variables.union(equiv_vars)
     while len(pending_variables) > 0:
         pending_variable = pending_variables.pop()
@@ -1137,8 +1142,8 @@ def collect_units(kbuild,            # current kbuild instance
                     if composite_variable1 not in processed_variables and \
                             composite_variable2 not in processed_variables:
                         composites.add(unit_name)
-                        pending_variables.add(composite_variable1)
-                        pending_variables.add(composite_variable2)
+                        pending_variables.update(kbuild.get_var_equiv_set(composite_variable1))
+                        pending_variables.update(kbuild.get_var_equiv_set(composite_variable2))
                         if store_pcs:
                             if (elem not in kbuild.token_pc): kbuild.token_pc[elem] = kbuild.T
                             kbuild.composite_pc[elem] = kbuild.token_pc[elem]
