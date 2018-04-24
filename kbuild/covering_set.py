@@ -638,6 +638,7 @@ class Kbuild:
             warn("unsupported conditional block", block)
             return
 
+        debug(2, "conditionalblock")
         # Process first branch
         condition, statements = block[0]  # condition is a Condition object
         first_branch_condition = None
@@ -762,6 +763,7 @@ class Kbuild:
                         pass
                     else: fatal("Unknown setting for variable in minterm", minterm)
                 expression.append(term)
+            os.remove(temp_filename)
             return expression
         fatal("Could not open temp file containing minterms", temp_file)
 
