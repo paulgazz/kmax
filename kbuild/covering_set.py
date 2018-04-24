@@ -232,8 +232,7 @@ class Kbuild:
         # composite presence conditions
         self.composite_pc = {}
 
-        # setup optimized variables for append
-        self.optimized_vars = [ "obj-y", "obj-m", "obj-", "libs-y", "libs-m", "libs-" ]
+        # variable equivalence classes for optimized append
         self.var_equiv_sets = {}
         
     def get_var_equiv(self, name):
@@ -253,9 +252,26 @@ class Kbuild:
             self.var_equiv_sets[name] = new_set
             return name
         else:
-            new_name = str(len(existing_set)) + existing_name
+            new_name = "EQUIV_SET" + str(len(existing_set)) + existing_name
             self.var_equiv_sets[existing_name].add(new_name)
             return new_name
+
+    def get_var_equiv_set(self, name):
+        found_set = False
+        for var in self.var_equiv_sets.keys():
+            eset = self.var_equiv_sets[var]
+            if name in eset:
+                existing_name = var
+                existing_set = eset
+                found_set = True
+        if not found_set:
+            new_set = set()
+            new_set.add(name)  # set contains the original variable name itself
+            self.var_equiv_sets[name] = new_set
+            return self.var_equiv_sets[name]
+        else:
+            new_name = "EQUIV_SET" + str(len(existing_set)) + existing_name
+            return self.var_equiv_sets[existing_name]
 
     def print_variable(self, name, variable):
         print "VARIABLE:", name
@@ -340,11 +356,13 @@ class Kbuild:
                                     for value, condition, _ in self.variables[name]])
             else:
                 expansions = []
-                for value, condition, _ in self.variables[name]:
-                    if value == None:
-                        expansions.append((condition, value))
-                    else:
-                        expansions = expansions + self.expand_and_flatten(value, condition)
+                equivs = self.get_var_equiv_set(name)
+                for equiv_name in equivs:
+                    for value, condition, _ in self.variables[equiv_name]:
+                        if value == None:
+                            expansions.append((condition, value))
+                        else:
+                            expansions = expansions + self.expand_and_flatten(value, condition)
 
                 # print expansions
                 # return Multiverse( [(condition, value)
@@ -890,7 +908,7 @@ class Kbuild:
                 #                           old_flavor),
                 #         self.variables[name])
             else:
-                if name in self.optimized_vars and not args.naive_append:
+                if not args.naive_append:
                     # optimize append for certain variables this
                     # optimization creates a new variable entry for
                     # append instead of computing the cartesian
@@ -921,7 +939,7 @@ class Kbuild:
                                                                  Flavor.SIMPLE))
 
                         self.variables[new_var_name] = new_variables
-                else:
+                else:  # naive append
                     # Negate old definitions just like assignment, except create a
                     # new entry for each old entry, appending the value to each.
 
@@ -979,7 +997,7 @@ class Kbuild:
 
         if isinstance(name, str):
             debug(2, "setvariable under presence condition "
-                  + name + " " + value + " " + self.bdd_to_str(condition))
+                  + name + " " + token +  " " + value + " " + self.bdd_to_str(condition))
             if (args.get_presence_conditions):
                 if (name.endswith("-y") or name.endswith("-m")):
                     splitvalue = value.split()
@@ -1000,7 +1018,7 @@ class Kbuild:
         else:
             for local_condition, expanded_name in name:
                 debug(2, "setvariable under presence condition "
-                          + expanded_name + " "
+                          + expanded_name + " " + token + " "
                       + self.bdd_to_str(local_condition))
                 nested_condition = conjunction(local_condition, condition)
                 if (args.get_presence_conditions):
