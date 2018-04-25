@@ -169,8 +169,10 @@ class Transformer(compiler.visitor.ASTVisitor):
         # make a new variable out of the string constant, but remove
         # it later.
         s = str(value)
-        variables_to_remove.add("UNSUPPORTED_VALUE_" + s)
-        return ("name", len(s))
+        dummy_var = "UNSUPPORTED_VALUE_" + s
+        sys.stderr.write("warning: use of undefined variable in dependency: %s\n" % (dummy_var))
+        variables_to_remove.add(dummy_var)
+        return ("name", dummy_var)
       except:
         print(traceback.format_exc())
         sys.stderr.write("error: cannot process value \"%s\"\n" % (value))
