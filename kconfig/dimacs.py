@@ -84,6 +84,7 @@ bools = set()
 
 nonbools = set()
 nonbools_with_dep = set()
+nonbools_nonvisibles = set()
 nonbool_defaults = {}
 nonbool_types = {}
 
@@ -514,91 +515,96 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_
     def_y_expr = None
 
   # create clauses for dependencies and defaults
-  if var not in userselectable:
-    # I <-> ((E & D) | A)
-    # I is the variable, A is the selects (reverse deps), E is the direct dep, D is the default y condition
-
-    # because nonvisible variables cannot be modified by the user
-    # interactively, we use a bi-implication between it's dependencies
-    # and default values and selects.  this says that the default
-    # value will be taken as long as the conditions are met.
-    # nonvisibles default to off if these conditions are not met.
-
-    consequent = dep_expr
-    if consequent == None:
-      consequent = def_y_expr
-    elif def_y_expr != None:
-      consequent = conjunction(consequent, def_y_expr)
-
-    if consequent == None:
-      consequent = rev_dep_expr
-    elif rev_dep_expr != None:
-      consequent = disjunction(consequent, rev_dep_expr)
-
-    if consequent != None:
-      expr = biimplication(var, consequent)
-      # print expr
-      new_clauses = convert_to_cnf(expr)
-      # print new_clauses
-      clauses.extend(new_clauses)
-  else:  # visible variables
-    # V -> (E | A) and A -> V, where E is direct dep, and A is reverse dep
-
-    # intuitively, this makes sense.  if V is on, then either its
-    # direct dependency E or reverse dependency A must have been
-    # satisfied.  if the direct dependency is off, then the variable
-    # must have only been set when its reverse dependency is set
-    # (biimplication).
-    
-    if args.include_bool_defaults and var in def_bool_lines.keys():
-      sys.stderr.write("warn: defaults currently ignored for visibles: %s\n" % (var))
-    
-    # clause1 = var -> (dep_expr or rev_dep_expr)
-    # clause2 = rev_dep_expr -> var
-
-    if rev_dep_expr != None:
-      if dep_expr != None:
-        clause1 = implication(var, disjunction(dep_expr, rev_dep_expr))
-        clause2 = implication(rev_dep_expr, var)
-        final_expr = conjunction(clause1, clause2)
-      else: # no direct dependency means biimplication between rev_dep and var
-        final_expr = biimplication(var, rev_dep_expr)
-    else:
-      if dep_expr != None:  # no reverse dependency means that only the direct dependency applies
-        clause1 = implication(var, dep_expr)
-        clause2 = None
-        final_expr = clause1
-      else: # no direct or reverse dependencies
-        clause1 = None
-        clause2 = None
-        final_expr = None
-
-    if use_root_var and final_expr == None:
-      # if no dependencies, then depend on special root variable
-      final_expr = root_var
-
-    if var in nonbools:
-      nonbools_with_dep.add(var)
-
-    if final_expr != None:
+  if var in nonbools:
+    nonbools_with_dep.add(var)
+    if var not in userselectable:
+      # no support for nonbool nonvisibles, because we don't support
+      # nonboolean constraints and there is no way for the user to
+      # directly modify these.
+      nonbools_nonvisibles.add(var)
+      sys.stderr.write("warning: no support for nonvisible nonbools: %s\n" % (var))
+    else:  # var is visible
+      if rev_dep_expr != None:
+        sys.stderr.write("warning: no support for reverse dependencies on nonbooleans: %s\n" % (var))
+      # bi-implication var <-> dep_expr, because a nonboolean always
+      # has a value as long as its dependencies are met.
+      if dep_expr == None:
+        # the nonbool is always on when no dependencies
+        final_expr = var
+      else:
+        final_expr = biimplication(var, dep_expr)
       # print final_expr
       new_clauses = convert_to_cnf(final_expr)
       clauses.extend(new_clauses)
+  else:  # var is a boolean
+    if var not in userselectable:
+      # I <-> ((E & D) | A)
+      # I is the variable, A is the selects (reverse deps), E is the direct dep, D is the default y condition
 
-    # # TODO: return support for biimplication for nonbool vars direct dependencies
-    # if consequent != None:
-    #   if var in nonbools:
-    #     # nonbools are mandatory unless disabled by dependency, so we
-    #     # also ensure that nonbool var is selected whenever its
-    #     # dependencies holds.
-    #     nonbools_with_dep.add(var)
-    #     expr = biimplication(var, consequent)
-    #   else:
-    #     expr = implication(var, consequent)
-    #   new_clauses = convert_to_cnf(expr)
-    #   # print new_clauses
-    #   clauses.extend(new_clauses)
-  
+      # because nonvisible variables cannot be modified by the user
+      # interactively, we use a bi-implication between it's dependencies
+      # and default values and selects.  this says that the default
+      # value will be taken as long as the conditions are met.
+      # nonvisibles default to off if these conditions are not met.
+
+      consequent = dep_expr
+      if consequent == None:
+        consequent = def_y_expr
+      elif def_y_expr != None:
+        consequent = conjunction(consequent, def_y_expr)
+
+      if consequent == None:
+        consequent = rev_dep_expr
+      elif rev_dep_expr != None:
+        consequent = disjunction(consequent, rev_dep_expr)
+
+      if consequent != None:
+        expr = biimplication(var, consequent)
+        # print expr
+        new_clauses = convert_to_cnf(expr)
+        # print new_clauses
+        clauses.extend(new_clauses)
+    else:  # visible variables
+      # V -> (E | A) and A -> V, where E is direct dep, and A is reverse dep
+
+      # intuitively, this makes sense.  if V is on, then either its
+      # direct dependency E or reverse dependency A must have been
+      # satisfied.  if the direct dependency is off, then the variable
+      # must have only been set when its reverse dependency is set
+      # (biimplication).
+
+      if args.include_bool_defaults and var in def_bool_lines.keys():
+        sys.stderr.write("warn: defaults currently ignored for visibles: %s\n" % (var))
+
+      # clause1 = var -> (dep_expr or rev_dep_expr)
+      # clause2 = rev_dep_expr -> var
+
+      if rev_dep_expr != None:
+        if dep_expr != None:
+          clause1 = implication(var, disjunction(dep_expr, rev_dep_expr))
+          clause2 = implication(rev_dep_expr, var)
+          final_expr = conjunction(clause1, clause2)
+        else: # no direct dependency means biimplication between rev_dep and var
+          final_expr = biimplication(var, rev_dep_expr)
+      else:
+        if dep_expr != None:  # no reverse dependency means that only the direct dependency applies
+          clause1 = implication(var, dep_expr)
+          clause2 = None
+          final_expr = clause1
+        else: # no direct or reverse dependencies
+          clause1 = None
+          clause2 = None
+          final_expr = None
+
+      if use_root_var and final_expr == None:
+        # if no dependencies, then depend on special root variable
+        final_expr = root_var
+
+      if final_expr != None:
+        # print final_expr
+        new_clauses = convert_to_cnf(final_expr)
+        clauses.extend(new_clauses)
+
 if force_all_nonbools_on:
   for nonbool in (nonbools):
     varnum = lookup_varnum(nonbool)
@@ -614,6 +620,7 @@ clauses = map(lambda clause: remove_dups(clause), clauses)
 def remove_condition(var):
   return \
     var in variables_to_remove or \
+    var in nonbools_nonvisibles or \
     args.remove_all_nonvisibles and var not in userselectable or \
     args.remove_independent_nonvisibles and var not in userselectable and var not in in_dependencies or \
     args.remove_orphaned_nonvisibles and var not in userselectable and var in bools and var not in has_defaults and var not in has_selects # or \
