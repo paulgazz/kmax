@@ -65,10 +65,3 @@ can be converted to dimacs using the accompanying `dimacs.py` script.
 
 - `c variable_number CONFIG_VAR bool|choice_bool|hidden_bool|nonbool|string|int DEFAULT_VALUE?`
 - `c variable_number GHOST_BOOL_NUM_NAME nonbool_var_name DEFAULT_VALUE`
-
-# TODO
-
-- when converting to dimacs, add extra booleans when any expression
-  depends on tristate `y` or `m` individually.  this will enable
-  on-demand support representation of tristate variables
-- finish description (and check_dep implementation) of `nonbool_expr`
