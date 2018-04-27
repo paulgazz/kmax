@@ -63,7 +63,7 @@ can be converted to dimacs using the accompanying `dimacs.py` script.
 
 # DIMACS comment format
 
-- `c variable_number CONFIG_VAR bool|hidden_bool|nonbool DEFAULT_VALUE?`
+- `c variable_number CONFIG_VAR bool|choice_bool|hidden_bool|nonbool|string|int DEFAULT_VALUE?`
 - `c variable_number GHOST_BOOL_NUM_NAME nonbool_var_name DEFAULT_VALUE`
 
 # TODO

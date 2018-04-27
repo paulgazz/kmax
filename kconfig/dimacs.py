@@ -81,6 +81,7 @@ variables_to_remove = set()
 has_defaults = set()
 
 bools = set()
+choice_vars = set()
 
 nonbools = set()
 nonbools_with_dep = set()
@@ -406,6 +407,7 @@ for line in sys.stdin:
     config_vars = var_string.split(" ")
     # print config_vars
     # mutex choice: a -> !b, a -> !c, ..., b -> !a, b -> !c, ...
+    choice_vars.update(set(config_vars))
     for i in range(0, len(config_vars)):
       for j in range(0, len(config_vars)):
         if i != j:
@@ -672,6 +674,8 @@ def print_dimacs(varnum_map, clause_list):
     comment_prefix = "c"
   for varname in sorted(varnum_map, key=varnum_map.get):
     if varname in nonbools:
+      if varname in choice_vars:
+        sys.stderr.write("choice variable is not boolean: %s\n" % (varname))
       if varname in nonbool_defaults:
         defaultval = nonbool_defaults[varname]
         if nonbool_types[varname] != "string":
@@ -685,7 +689,9 @@ def print_dimacs(varnum_map, clause_list):
         typename = "nonbool"
       print "%s %d %s %s%s" % (comment_prefix, varnum_map[varname], varname, typename, defaultval)
     else:
-      if varname in userselectable:
+      if varname in choice_vars:
+        print "%s %d %s choice_bool" % (comment_prefix, varnum_map[varname], varname)
+      elif varname in userselectable:
         print "%s %d %s bool" % (comment_prefix, varnum_map[varname], varname)
       elif varname in ghost_bools.keys():
         nonbool_var, defval = ghost_bools[varname]
