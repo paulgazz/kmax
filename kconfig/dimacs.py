@@ -495,26 +495,30 @@ def remove_direct_dep_from_rev_dep_term(term):
   # the first factor of the term is the SEL var the selects the
   # variable.  this is how kconfig stores the term.
   # print "FJDKSL", term, "JFDKSL"
-  first_factor, remaining_factors = term.split(" and ", 1)
-  if first_factor in dep_exprs.keys():
-    # get the dep expression for the reverse dep
-    dep_expr = dep_exprs[first_factor]
-    # remove the parens
-    if dep_expr.startswith("(") and dep_expr.endswith(")"): dep_expr = dep_expr[1:-1]
-    # now we an expression that we can cut out from the reverse dependency's term
-    remaining_factors = str.replace(remaining_factors, dep_expr, "1")
-    # print "JFKLDSJKFLDS", remaining_factors, len(remaining_factors)
-    # reconstruct the term
-    if len(remaining_factors) > 0:
-      term = "%s and %s" % (first_factor, remaining_factors)
-    else:
-      # the entire dependency was replaced, so the term is just the
-      # reverse dependency variable
-      term = first_factor
-    # print "new_term", term
+  split_term = term.split(" and ", 1)
+  if len(split_term) < 2:
     return term
-  else:  # it has no dependencies, so there is nothing to do
-    return term
+  else:
+    first_factor, remaining_factors = term.split(" and ", 1)
+    if first_factor in dep_exprs.keys():
+      # get the dep expression for the reverse dep
+      dep_expr = dep_exprs[first_factor]
+      # remove the parens
+      if dep_expr.startswith("(") and dep_expr.endswith(")"): dep_expr = dep_expr[1:-1]
+      # now we an expression that we can cut out from the reverse dependency's term
+      remaining_factors = str.replace(remaining_factors, dep_expr, "1")
+      # print "JFKLDSJKFLDS", remaining_factors, len(remaining_factors)
+      # reconstruct the term
+      if len(remaining_factors) > 0:
+        term = "%s and %s" % (first_factor, remaining_factors)
+      else:
+        # the entire dependency was replaced, so the term is just the
+        # reverse dependency variable
+        term = first_factor
+      # print "new_term", term
+      return term
+    else:  # it has no dependencies, so there is nothing to do
+      return term
 
 
 # generate clauses for dependencies and defaults
