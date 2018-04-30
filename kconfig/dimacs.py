@@ -466,6 +466,57 @@ in_dependencies = set()
 # keep track of variables that have reverse dependencies
 has_selects = set()
 
+def split_top_level_clauses(expr, separator):
+  terms = []
+  cur_term = ""
+  depth = 0
+  for c in expr:
+    if c == "(":
+      depth += 1
+    elif c == ")":
+      depth -= 1
+      
+    if depth == 0:
+      cur_term += c
+      if cur_term.endswith(separator):
+        # save the term we just saw
+        terms.append(cur_term[:-len(separator)])
+        cur_term = ""
+    elif depth > 0:
+      cur_term += c
+    else:
+      sys.stderr.write("fatal: misnested parentheses in reverse dependencies: %s\n" % expr)
+      exit(1)
+  # save the last term
+  terms.append(cur_term)
+  return terms
+
+def remove_direct_dep_from_rev_dep_term(term):
+  # the first factor of the term is the SEL var the selects the
+  # variable.  this is how kconfig stores the term.
+  # print "FJDKSL", term, "JFDKSL"
+  first_factor, remaining_factors = term.split(" and ", 1)
+  if first_factor in dep_exprs.keys():
+    # get the dep expression for the reverse dep
+    dep_expr = dep_exprs[first_factor]
+    # remove the parens
+    if dep_expr.startswith("(") and dep_expr.endswith(")"): dep_expr = dep_expr[1:-1]
+    # now we an expression that we can cut out from the reverse dependency's term
+    remaining_factors = str.replace(remaining_factors, dep_expr, "1")
+    # print "JFKLDSJKFLDS", remaining_factors, len(remaining_factors)
+    # reconstruct the term
+    if len(remaining_factors) > 0:
+      term = "%s and %s" % (first_factor, remaining_factors)
+    else:
+      # the entire dependency was replaced, so the term is just the
+      # reverse dependency variable
+      term = first_factor
+    # print "new_term", term
+    return term
+  else:  # it has no dependencies, so there is nothing to do
+    return term
+
+
 # generate clauses for dependencies and defaults
 for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_bool_lines.keys())):
   # get direct dependencies
@@ -502,6 +553,24 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_
       else:
         sys.stderr.write("warn: found bad select statement(s) for %s\n" % (var))
 
+  # filter out dependency expressions from configurations that are
+  # reverse dependencies.  if a var SEL is a reverse dependency for
+  # VAR, VAR's rev_dep_expr will contain "SEL and DIR_DEP", which is not
+  if rev_dep_expr != None and rev_dep_expr != "(1)":
+    # get all the top-level terms of this clause.  the reverse
+    # dependency will be a union of "SEL and DIR_DEP" terms,
+    # representing each of the reverse dependencies.
+    expr = rev_dep_expr
+    # print "BEGIN", rev_dep_expr
+    # (1) strip surrounding parens (as added by check_dep on all dependencies)
+    if expr.startswith("(") and expr.endswith(")"): expr = expr[1:-1]
+    # (2) split into ORed clauses
+    terms = split_top_level_clauses(expr, " or ")
+    # (3) remove the direct dependencies conjoined with the SEL vars
+    edited_terms = map(remove_direct_dep_from_rev_dep_term, terms)
+    rev_dep_expr = "(%s)" % (" or ".join(edited_terms))
+    # print "END", rev_dep_expr
+    
   # handle boolean defaults
   if var in def_bool_lines.keys():
     has_defaults.add(var)
