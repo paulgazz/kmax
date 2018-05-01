@@ -180,6 +180,19 @@ with lockfile.LockFile(datafile):
   with open(datafile, "wb") as f:
     pickle.dump(buildsystemdata, f)
 
+# get presence conditions
+unit_pc_datafile = './unit_pc'
+kmaxdata.backup_existing_file(unit_pc_datafile)
+with tempfile.NamedTemporaryFile(dir=kmaxdata.kmax_scratch) as tmp:
+  pc_command = compunit_command + ' --get-presence-conditions' + remaining_arguments
+  print pc_command
+  popen = subprocess.call(pc_command, shell=True, stdout=tmp)
+  tmp.seek(0, os.SEEK_SET)
+  with lockfile.LockFile(unit_pc_datafile):
+    with open(unit_pc_datafile, 'ab') as dataf:
+      for line in tmp:
+        dataf.write(line)
+
 def chgext(filename, f, t):
   if filename.endswith(f):
     return filename[:-2] + t
@@ -353,18 +366,3 @@ print everycfile
 #           f.write(c_file + '\n')
 #       else:
 #         f.write(compilation_unit + '\n')
-
-# # get presence conditions
-# unit_pc_datafile = kmaxdata.unit_pc_datafile(version, arch)
-# kmaxdata.backup_existing_file(unit_pc_datafile)
-# with tempfile.NamedTemporaryFile(dir=kmaxdata.kmax_scratch) as tmp:
-#   pc_command = compunit_command + ' --get-presence-conditions' + remaining_arguments
-#   print pc_command
-#   popen = subprocess.call(pc_command, shell=True, stdout=tmp)
-#   tmp.seek(0, os.SEEK_SET)
-#   with lockfile.LockFile(unit_pc_datafile):
-#     with open(unit_pc_datafile, 'ab') as dataf:
-#       for line in tmp:
-#         dataf.write(line)
-
-# instance.exit()
