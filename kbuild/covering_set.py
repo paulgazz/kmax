@@ -1015,10 +1015,13 @@ class Kbuild:
                                 self.token_pc[v] = self.T
                             # update nested_condition
                             self.token_pc[v] = conjunction(self.token_pc[v], condition)
-                            if (name in ["obj-y", "obj-m"]):
+                            if (name in ["obj-y", "obj-m", "lib-y", "lib-m"]):
                                 # save final BDD for the token
                                 if v.endswith(".o"):
-                                    self.unit_pc[v] = self.token_pc[v]
+                                    if v not in self.unit_pc:
+                                        self.unit_pc[v] = self.token_pc[v]
+                                    else:
+                                        self.unit_pc[v] = disjunction(self.unit_pc[v], self.token_pc[v])
                                     # print self.bdd_to_str(self.unit_pc[v])
                                 elif v.endswith("/"):
                                     self.subdir_pc[v] = self.token_pc[v]
@@ -1038,10 +1041,13 @@ class Kbuild:
                                     self.token_pc[v] = self.T
                                 # update nested_condition
                                 self.token_pc[v] = conjunction(self.token_pc[v], nested_condition)
-                                if (expanded_name in ["obj-y", "obj-m"]):
+                                if (expanded_name in ["obj-y", "obj-m", "lib-y", "lib-m"]):
                                     # save final BDD for the token
                                     if v.endswith(".o"):
-                                        self.unit_pc[v] = self.token_pc[v]
+                                        if v not in self.unit_pc:
+                                            self.unit_pc[v] = self.token_pc[v]
+                                        else:
+                                            self.unit_pc[v] = disjunction(self.unit_pc[v], self.token_pc[v])
                                         # print self.bdd_to_str(self.unit_pc[v])
                                     elif v.endswith("/"):
                                         self.subdir_pc[v] = self.token_pc[v]
