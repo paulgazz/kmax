@@ -700,7 +700,7 @@ def remove_condition(var):
     var in nonbools_nonvisibles or \
     args.remove_all_nonvisibles and var not in userselectable or \
     args.remove_independent_nonvisibles and var not in userselectable and var not in in_dependencies or \
-    args.remove_orphaned_nonvisibles and var not in userselectable and var in bools and var not in has_defaults and var not in has_selects # or \
+    args.remove_orphaned_nonvisibles and var not in userselectable and var in bools and var not in in_dependencies and var not in has_defaults and var not in has_selects
 
 # print "|".join([ var for var in varnums.keys() if var not in userselectable and var not in in_dependencies and isinstance(var, str) ])
 # exit(1)
