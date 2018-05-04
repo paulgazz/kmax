@@ -1,0 +1,22 @@
+choice
+  bool "A Structured Choice "
+  
+  config VAL_1
+    bool "Value 1"
+    
+  config SUB_VAL_1
+    bool "Visible Sub Value 1"
+    depends on VAL_1
+    
+  config SUB_VAL_2
+    bool "Visible Sub Value 2"
+    depends on VAL_1
+    
+  config VAL_2
+    bool "Value 2"
+    
+  config DEAD_SUB_VAL
+    bool "Dead Sub Value"
+    depends on VAL_1
+    
+endchoice
