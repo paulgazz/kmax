@@ -1,0 +1,7 @@
+config INT_VAR
+  int "Integer Variable"
+  default "Hello World"
+
+config HEX_VAR
+  hex "Hex Variable"
+  default "Hello World"
