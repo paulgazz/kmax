@@ -624,6 +624,10 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_
       # value will be taken as long as the conditions are met.
       # nonvisibles default to off if these conditions are not met.
 
+      # nonvisibles that have no default, default to off
+      if def_y_expr == None:
+        def_y_expr = "(0)"
+
       consequent = dep_expr
       if consequent == None:
         consequent = def_y_expr
