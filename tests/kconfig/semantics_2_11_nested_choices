@@ -1,0 +1,24 @@
+config MODULES
+  def_bool y
+  option modules
+choice
+  tristate "Top Level Choice"
+  
+  config VAL_1
+  tristate "Value 1"
+  
+  config VAL_2
+  tristate "Value 2"
+  
+  if VAL_2
+    choice
+      tristate "Nested Choice"
+      
+      config SUB_VAL_1
+        tristate "Nested Value 1"
+        
+      config SUB_VAL_2
+        tristate "Nested Value 2"
+    endchoice
+  endif
+endchoice

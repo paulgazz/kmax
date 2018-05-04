@@ -1,0 +1,18 @@
+config VAR_1
+  bool "Variable 1"
+
+config VAR_2
+  bool "Variable 2"
+  
+  config NESTED_VAR_1
+    bool "Nested Variable 1"
+    depends on VAR_2
+
+  if VAR_1 && VAR_2
+    config NESTED_VAR_2
+      bool "Nested Variable 2"
+  endif
+  
+  config NESTED_VAR_3
+    bool "Nested Variable 3"
+    depends on VAR_2
