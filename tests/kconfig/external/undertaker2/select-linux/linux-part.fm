@@ -1,0 +1,89 @@
+config MODULES
+    bool "Modules"
+    default y
+
+menuconfig IP_SCTP
+    tristate "The SCTP Protocol (EXPERIMENTAL)"
+    depends on INET && EXPERIMENTAL
+    depends on IPV6 || IPV6=n
+    select CRYPTO
+#    select CRYPTO_HMAC
+#    select CRYPTO_SHA1
+#    select CRYPTO_MD5 if SCTP_HMAC_MD5
+#    select LIBCRC32C
+
+config INET
+    bool "TCP/IP networking"
+
+config EXPERIMENTAL
+    bool "Prompt for development and/or incomplete code/drivers"
+
+config NET
+    bool "Networking support"
+
+config CRYPTO
+    tristate "Cryptographic API"
+
+config IPV6
+    tristate "The IPv6 protocol"
+    default m
+
+#config XFRM
+#       bool
+#       select CRYPTO
+#      depends on NET
+
+#config XFRM_IPCOMP
+#    tristate
+#    select XFRM
+#    select CRYPTO
+
+#config XFRM_IPCOMP
+#    tristate
+#    select XFRM
+#    select CRYPTO
+#    select CRYPTO_DEFLATE
+
+#config INET_AH
+#    tristate "IP: AH transformation"
+#    select XFRM
+#    select CRYPTO
+#    select CRYPTO_HMAC
+#    select CRYPTO_MD5
+#    select CRYPTO_SHA1
+
+#config INET_ESP
+#    tristate "IP: ESP transformation"
+#    select XFRM
+#    select CRYPTO
+#    select CRYPTO_AUTHENC
+#    select CRYPTO_HMAC
+#    select CRYPTO_MD5
+#    select CRYPTO_CBC
+#    select CRYPTO_SHA1
+#    select CRYPTO_DES
+
+#config TCP_MD5SIG
+#    bool "TCP: MD5 Signature Option support (RFC2385) (EXPERIMENTAL)"
+#    depends on EXPERIMENTAL
+#    select CRYPTO
+#    select CRYPTO_MD5
+
+#config INET6_AH
+#    tristate "IPv6: AH transformation"
+#    select XFRM
+#    select CRYPTO
+#    select CRYPTO_HMAC
+#    select CRYPTO_MD5
+#    select CRYPTO_SHA1
+
+#config INET6_ESP
+#    tristate "IPv6: ESP transformation"
+#    select XFRM
+#    select CRYPTO
+#    select CRYPTO_AUTHENC
+#    select CRYPTO_HMAC
+#    select CRYPTO_MD5
+#    select CRYPTO_CBC
+#    select CRYPTO_SHA1
+#    select CRYPTO_DES

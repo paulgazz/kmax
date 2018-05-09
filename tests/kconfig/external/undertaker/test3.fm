@@ -1,0 +1,18 @@
+config MODULES
+	default y
+        bool
+          option modules
+
+config A
+	bool "A"
+
+
+config B
+	bool "B"
+
+
+config C
+	tristate 
+	prompt "Cab" if A && B
+	default y if A=y
+	default m if B=y

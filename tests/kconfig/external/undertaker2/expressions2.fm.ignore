@@ -1,0 +1,14 @@
+config MODULES
+	bool 
+	option modules
+
+config F4
+	bool "F4"
+
+config F5
+	bool "F5"
+
+
+config Z1
+	tristate "Z1"
+	depends on F4 ||F5

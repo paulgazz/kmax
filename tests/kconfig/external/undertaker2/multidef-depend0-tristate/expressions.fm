@@ -1,0 +1,29 @@
+config MODULES
+	bool 
+	default y
+
+
+#tristates
+
+config F1
+	tristate
+	prompt "P1"
+
+
+config F2
+	tristate
+	prompt "P2"
+
+
+config F3
+	tristate
+	prompt "P3.1"
+	depends on F1
+
+config F3
+	tristate
+	prompt "P3.2"
+	depends on F2
+
+
+

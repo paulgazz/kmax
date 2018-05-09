@@ -1,0 +1,11 @@
+config F1
+	bool "F1"
+config F2
+	bool "F2"
+
+config F3
+	bool "F3"
+	depends on F1
+	depends on F2
+
+
