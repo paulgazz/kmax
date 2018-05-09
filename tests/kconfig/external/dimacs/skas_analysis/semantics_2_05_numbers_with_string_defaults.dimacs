@@ -1,0 +1,5 @@
+c 1 CONFIG_HEX_VAR nonbool Hello World
+c 2 CONFIG_INT_VAR nonbool Hello World
+p cnf 2 2
+1 0
+2 0

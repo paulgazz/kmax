@@ -1,0 +1,2 @@
+bool CONFIG_A nonselectable
+dep CONFIG_A ("B" and "C")

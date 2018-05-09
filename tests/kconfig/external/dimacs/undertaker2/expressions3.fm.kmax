@@ -1,0 +1,22 @@
+bool CONFIG_F5 selectable
+bool CONFIG_X2 selectable
+bool CONFIG_X5 selectable
+bool CONFIG_F4 selectable
+bool CONFIG_MODULES nonselectable
+def_bool CONFIG_MODULES 1 (1)
+bool CONFIG_F3 selectable
+bool CONFIG_X1 selectable
+bool CONFIG_Y1 selectable
+bool CONFIG_Z1 selectable
+bool CONFIG_X4 selectable
+bool CONFIG_F2 selectable
+bool CONFIG_F1 selectable
+bool CONFIG_X3 selectable
+bool CONFIG_F6 selectable
+dep CONFIG_X2 (CONFIG_F1 and CONFIG_F2)
+dep CONFIG_X5 ((CONFIG_F1 or CONFIG_F2) and CONFIG_F3)
+dep CONFIG_X1 (CONFIG_F1 or CONFIG_F2)
+dep CONFIG_Y1 (CONFIG_X1 and CONFIG_F2 or CONFIG_F3)
+dep CONFIG_Z1 (CONFIG_F4 or CONFIG_F5)
+dep CONFIG_X4 (CONFIG_F1)
+dep CONFIG_X3 (CONFIG_F1)

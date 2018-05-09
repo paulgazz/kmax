@@ -1,0 +1,7 @@
+bool CONFIG_VAL_2 selectable
+bool CONFIG_VAL_1 selectable
+bool CONFIG_SUB_VAL selectable
+bool_choice CONFIG_VAL_1 CONFIG_VAL_2 CONFIG_SUB_VAL|(1)
+dep CONFIG_VAL_2 (1)
+dep CONFIG_VAL_1 (1)
+dep CONFIG_SUB_VAL (1 and CONFIG_VAL_1)

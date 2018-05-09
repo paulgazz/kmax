@@ -1,0 +1,3 @@
+c 1 CONFIG_VAR hidden_bool
+p cnf 1 1
+1 0
