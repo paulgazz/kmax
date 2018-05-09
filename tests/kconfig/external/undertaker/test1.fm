@@ -1,0 +1,13 @@
+
+config A
+	bool "A"
+
+
+config B
+	bool "B"
+
+
+config C
+	bool "C" 
+	default y if A=y
+	depends on A && B

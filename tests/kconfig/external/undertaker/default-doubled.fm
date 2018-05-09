@@ -1,0 +1,15 @@
+
+config HAS_IOMEM
+       boolean "Has iomem"
+
+config SPI
+       boolean "SPI"
+
+if SPI
+
+config SPI_MASTER
+       boolean
+       default HAS_IOMEM
+
+
+endif

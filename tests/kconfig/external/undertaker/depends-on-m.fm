@@ -1,0 +1,7 @@
+config MODULES
+	bool "Module Support"
+	option modules
+
+config TRI
+	tristate "TRISTATE"
+	depends on m
