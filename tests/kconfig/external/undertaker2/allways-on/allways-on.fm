@@ -1,0 +1,9 @@
+config OMNIPRESENT
+	bool
+	default y
+
+config I_DO_NOT_EXIST
+	bool
+	default n
+
+
