@@ -757,6 +757,8 @@ def print_dimacs(varnum_map, clause_list):
         defaultval = nonbool_defaults[varname]
         if nonbool_types[varname] != "string":
           defaultval = defaultval[1:-1]  # strip off quotes for nonstrings
+        if nonbool_types[varname] == "string":
+          defaultval = defaultval.replace("\\", "\\\\") # escape
       else:
         defaultval = '""' if nonbool_types[varname] == "string" else "0"
       defaultval = " " + defaultval
