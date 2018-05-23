@@ -38,12 +38,14 @@ archs = None
 do_kbuild = True
 presence_conditions_only = False
 get_running_time = False
+boolean_configs = False
 
 if len(args) > 1 and args[1] == "-h":
-  print "USAGE: " + os.path.basename(args[0]) + " [ [-q] [-t] [-g] version [arch] ]"
+  print "USAGE: " + os.path.basename(args[0]) + " [ [-q] [-t] [-g] [-B] version [arch] ]"
   print "  setting -q will only run kconfig, not kbuild"
   print "  setting -t will only time kconfig and kbuild, but no analysis"
   print "  setting -g will only get presence conditions, not the set of units"
+  print "  setting -B will treat every configuration variable as Boolean"
   exit(1)
 
 if len(args) > 1 and args[1] == "-q":
@@ -54,6 +56,9 @@ if len(args) > 1 and args[1] == "-t":
   args = args[1:]
 if len(args) > 1 and args[1] == "-g":
   presence_conditions_only = True
+  args = args[1:]
+if len(args) > 1 and args[1] == "-B":
+  boolean_configs = True
   args = args[1:]
 
 if len(args) > 1:
@@ -145,6 +150,8 @@ for version in versions:
         compunit_command = 'compilation_units.py'
         if get_running_time:
           compunit_command += ' --no-aggregation'
+        if boolean_configs:
+          compunit_command += ' -B'
         if arch == "um":
           compunit_command += ' -D SUBARCH=x86'
         remaining_arguments =  ' -D srctree=. -D OS=Linux -D ARCH=' + arch + ' -C ' + kconfigdatafile + ' arch/' + arch + '/Makefile ' + " ".join(buildsystemdata.alldirs)

@@ -90,6 +90,11 @@ argparser.add_argument('-C',
                        type=str,
                        help="""the name of a KConfigData file containing \
 configuration variable data""")
+argparser.add_argument('-B',
+                       '--boolean-configs',
+                       action="store_true",
+                       help="""\
+Treat all configuration variables as Boolean variables""")
 argparser.add_argument('-b',
                        '--boot-strap',
                        action="store_true",
@@ -319,6 +324,11 @@ class Kbuild:
 
             return Multiverse([ (is_defined, ''),
                                 (not_defined, '-nommu') ])
+        elif name.startswith("CONFIG_") and args.boolean_configs:
+            varbdd = self.boolean_variables[name].bdd
+            notvarbdd = negation(varbdd)
+            return Multiverse([ (varbdd, 'y'),
+                                (notvarbdd, None) ])
         elif isBooleanConfig(name) or not hasConfig() and name.startswith("CONFIG_"):
         # if (isBooleanConfig(name) or name.startswith("CONFIG_")) \
         #    and not isNonbooleanConfig(name):
