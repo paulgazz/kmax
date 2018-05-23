@@ -47,16 +47,11 @@ argparser.add_argument('--include-nonbool-defaults',
 argparser.add_argument('--comment-format-v2',
                        action="store_true",
                        help="""add extra formatting information to dimacs comments to distinguish them from normal comments""")
-argparser.add_argument('-r',
-                       '--use-root',
-                       action="store_true",
-                       help="""add an extra variable for the root of the feature model""")
 args = argparser.parse_args()
 
 debug = args.debug
 
 root_var = "SPECIAL_ROOT_VARIABLE"
-use_root_var = args.use_root
 
 # mapping from configuration variable name to dimacs variable number
 varnums = {}
@@ -65,12 +60,11 @@ varnums = {}
 dep_exprs = {}
 rev_dep_exprs = {}
 
+# collect visibility conditions
+prompt_lines = defaultdict(set)
+
 # collect defaults
 def_bool_lines = defaultdict(set)
-
-# the names of configuration variables that are "visible" to the user,
-# i.e., that are selectable by the user
-userselectable = set()
 
 # names of variables that should be removed later. this is currently
 # used to captures string constants in boolean expressions, where it
@@ -83,11 +77,15 @@ has_defaults = set()
 bools = set()
 choice_vars = set()
 
+# nonbool var attributes
 nonbools = set()
 nonbools_with_dep = set()
 nonbools_nonvisibles = set()
 nonbool_defaults = {}
 nonbool_types = {}
+
+# vars that can be set by the user via an environment variable (and thus are free variables)
+envs = {}
 
 ghost_bools = {}
 
@@ -345,30 +343,28 @@ def negation(a):
 
 # collect clauses
 clauses = []
-if use_root_var:
-  userselectable.add(root_var)
-  clauses.append([lookup_varnum(root_var)])
 for line in sys.stdin:
   if debug: sys.stderr.write("started %s\n" % (line))
   instr, data = line.strip().split(" ", 1)
-  if (instr == "bool"):
-    varname, selectability = data.split(" ", 1)
-    selectable = True if selectability == "selectable" or selectability == "environment" else False
-    if selectable:
-      userselectable.add(varname)
-    bools.add(varname)
+  if (instr == "config"):
+    varname, typename = data.split(" ", 1)
     lookup_varnum(varname)
+    if typename == "bool":
+      bools.add(varname)
+    else:
+      nonbools.add(varname)
+      nonbool_types[varname] = typename
+  elif (instr == "prompt"):
+    varname, condition = data.split(" ", 1)
+    if var in prompt_lines:
+      sys.stderr.write("found duplicate prompt for %s. currently unsupported\n" % (var))
+    prompt_lines[var].add(line)
+  elif (instr == "env"):
+    varname = data
+    envs.add(varnme)
   elif (instr == "def_bool"):
     var, line = data.split(" ", 1)
     def_bool_lines[var].add(line)
-  elif (instr == "nonbool"):
-    varname, selectability, type_name = data.split(" ", 2)
-    selectable = True if selectability == "selectable" or selectability == "environment" else False
-    if selectable:
-      userselectable.add(varname)
-    lookup_varnum(varname)
-    nonbools.add(varname)
-    nonbool_types[varname] = type_name
   elif (instr == "def_nonbool"):
     var, val_and_expr = data.split(" ", 1)
     val, expr = val_and_expr.split("|", 1)
@@ -422,8 +418,6 @@ for line in sys.stdin:
     or_vars = ""
     for var in config_vars:
       or_vars = or_vars + " or " + var
-    if use_root_var and dep_expr == "(1)":
-      dep_expr = root_var
     choice_dep = "((not %s)%s) and ((not (0%s)) or (%s))" % (dep_expr, or_vars, or_vars, dep_expr)
     # print choice_dep
     new_clauses = convert_to_cnf(choice_dep)
@@ -676,10 +670,6 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_
           clause1 = None
           clause2 = None
           final_expr = None
-
-      if use_root_var and final_expr == None:
-        # if no dependencies, then depend on special root variable
-        final_expr = root_var
 
       if final_expr != None:
         # print final_expr
