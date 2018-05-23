@@ -353,7 +353,7 @@ for line in sys.stdin:
   instr, data = line.strip().split(" ", 1)
   if (instr == "bool"):
     varname, selectability = data.split(" ", 1)
-    selectable = True if selectability == "selectable" else False
+    selectable = True if selectability == "selectable" or selectability == "environment" else False
     if selectable:
       userselectable.add(varname)
     bools.add(varname)
@@ -363,7 +363,7 @@ for line in sys.stdin:
     def_bool_lines[var].add(line)
   elif (instr == "nonbool"):
     varname, selectability, type_name = data.split(" ", 2)
-    selectable = True if selectability == "selectable" else False
+    selectable = True if selectability == "selectable" or selectability == "environment" else False
     if selectable:
       userselectable.add(varname)
     lookup_varnum(varname)

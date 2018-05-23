@@ -1841,7 +1841,15 @@ int main(int argc, char **argv)
           break;
         }
         has_env = sym_get_env_prop(sym) != NULL;
-        printf("bool %s%s %s\n", config_prefix, sym->name, (has_prompt || has_env) ? "selectable" : "nonselectable");
+        char *visibility_name;
+        if (has_prompt) {
+          visibility_name = "selectable";
+        } else if (has_env) {
+          visibility_name = "environment";
+        } else {
+          visibility_name = "nonselectable";
+        }
+        printf("bool %s%s %s\n", config_prefix, sym->name, visibility_name);
         if (! has_prompt) {
           // if there is no prompt, this config var is not
           // user-selectable.  therefore it's defaults will always
