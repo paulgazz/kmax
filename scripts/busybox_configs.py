@@ -91,6 +91,7 @@ config_path = config_name
 # These are taken from the top-level Makefile's core-y and libs-y
 # variables.  This is correct at least for Kmax ESEC/FSE '17 paper
 # version 1.25.0 and branch 1_22_stable (for iGen journal).
+# added klibc-utils for version 1.28.1
 alldirs = set([
   "applets/",
   "archival/",
@@ -99,6 +100,7 @@ alldirs = set([
   "coreutils/",
   "coreutils/libcoreutils/",
   "debianutils/",
+  "klibc-utils/" \
   "e2fsprogs/",
   "editors/",
   "findutils/",
@@ -129,11 +131,12 @@ buildsystemdata.alldirs = list(alldirs)
 
 buildsystemdata.kconfig_files = []
 for dir in buildsystemdata.alldirs:
-  for path, subdirs, filenames in os.walk(dir):
-    buildsystemdata.kconfig_files += \
-      [ os.path.join(path, fn)
-        for fn in filenames
-        if fn.startswith(config_name) ]
+  if os.path.exists(dir):
+    for path, subdirs, filenames in os.walk(dir):
+      buildsystemdata.kconfig_files += \
+        [ os.path.join(path, fn)
+          for fn in filenames
+          if fn.startswith(config_name) ]
 kconfigdata = kmaxdata.KConfigData()
 
 check_dep_command = "check_dep"

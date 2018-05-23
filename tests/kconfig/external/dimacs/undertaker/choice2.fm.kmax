@@ -1,0 +1,11 @@
+bool CONFIG_VM_2G selectable
+bool CONFIG_VM_3G_OPT selectable
+bool CONFIG_MODULES selectable
+bool CONFIG_VM_2G_OPT selectable
+bool CONFIG_VM_1G selectable
+bool CONFIG_VM_3G selectable
+dep CONFIG_VM_2G (1)
+dep CONFIG_VM_3G_OPT (1 and  not "X86_PAE")
+dep CONFIG_VM_2G_OPT (1 and  not "X86_PAE")
+dep CONFIG_VM_1G (1)
+dep CONFIG_VM_3G (1)

@@ -48,7 +48,9 @@ can be converted to dimacs using the accompanying `dimacs.py` script.
   separate `dep` lines.
 - `dep`s are a kconfig dependency.  selecting `config_var` implies
   that the `expr` holds true.  `rev_dep` identifies those that come
-  from a reverse dependency.
+  from a reverse dependency.  we can assume these lines come after the
+  definition of the variable with `bool_line`, etc, and that `rev_dep`
+  comes after `dep`.
 - the `expr` may contain non-boolean relations, which can themselves
   be treated as a boolean variable.  1 and 0 mean true and false
   respectively.
@@ -61,12 +63,5 @@ can be converted to dimacs using the accompanying `dimacs.py` script.
 
 # DIMACS comment format
 
-- `c variable_number CONFIG_VAR bool|hidden_bool|nonbool DEFAULT_VALUE?`
+- `c variable_number CONFIG_VAR bool|choice_bool|hidden_bool|nonbool|string|int DEFAULT_VALUE?`
 - `c variable_number GHOST_BOOL_NUM_NAME nonbool_var_name DEFAULT_VALUE`
-
-# TODO
-
-- when converting to dimacs, add extra booleans when any expression
-  depends on tristate `y` or `m` individually.  this will enable
-  on-demand support representation of tristate variables
-- finish description (and check_dep implementation) of `nonbool_expr`

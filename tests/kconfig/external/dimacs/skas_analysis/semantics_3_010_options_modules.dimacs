@@ -1,0 +1,4 @@
+c 1 CONFIG_UNNAMED_VAR bool
+c 2 CONFIG_MODULES bool
+c 3 CONFIG_TRISTATE_VAR bool
+p cnf 3 0

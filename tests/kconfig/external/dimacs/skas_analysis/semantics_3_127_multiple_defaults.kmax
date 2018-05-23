@@ -1,0 +1,3 @@
+bool CONFIG_VAR nonselectable
+def_bool CONFIG_VAR 1 (1)
+def_bool CONFIG_VAR 0 (1)

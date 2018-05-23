@@ -1,0 +1,5 @@
+bool CONFIG_F5 selectable
+bool CONFIG_F4 selectable
+bool CONFIG_MODULES nonselectable
+bool CONFIG_Z1 selectable
+dep CONFIG_Z1 (CONFIG_F4 or CONFIG_F5)

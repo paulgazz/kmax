@@ -1,0 +1,6 @@
+c 1 CONFIG_B bool
+c 2 CONFIG_A bool
+c 3 CONFIG_C bool
+p cnf 3 2
+-3 2 0
+-3 1 0

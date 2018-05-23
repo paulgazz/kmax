@@ -1,0 +1,6 @@
+nonbool CONFIG_STR_VAL selectable string
+def_nonbool CONFIG_STR_VAL "Hello World"|(1)
+bool CONFIG_BOOL_VAL selectable
+bool_choice CONFIG_STR_VAL CONFIG_BOOL_VAL|(1)
+dep CONFIG_STR_VAL (1)
+dep CONFIG_BOOL_VAL (1)
