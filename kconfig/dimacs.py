@@ -61,7 +61,7 @@ dep_exprs = {}
 rev_dep_exprs = {}
 
 # collect visibility conditions
-prompt_lines = defaultdict(set)
+prompt_lines = {}
 
 # collect defaults
 def_bool_lines = defaultdict(set)
@@ -359,7 +359,7 @@ for line in sys.stdin:
     varname, condition = data.split(" ", 1)
     if varname in prompt_lines:
       sys.stderr.write("found duplicate prompt for %s. currently unsupported\n" % (varname))
-    prompt_lines[var].add(condition)
+    prompt_lines[varname] = condition
   elif (instr == "env"):
     varname = data
     envs.add(varname)
@@ -720,9 +720,9 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_
       # restrict the dependency to only the visible condition
       if prompt_expr != None:
         final_expr = conjunction(prompt_expr, final_expr)
-      # print final_expr
-      new_clauses = convert_to_cnf(final_expr)
-      clauses.extend(new_clauses)
+      # # print final_expr
+      # new_clauses = convert_to_cnf(final_expr)
+      # clauses.extend(new_clauses)
   else:
     assert True
 
