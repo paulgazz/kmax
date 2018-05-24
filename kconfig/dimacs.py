@@ -359,10 +359,15 @@ for line in sys.stdin:
     varname, condition = data.split(" ", 1)
     if varname in prompt_lines:
       sys.stderr.write("found duplicate prompt for %s. currently unsupported\n" % (varname))
+    has_prompt.add(varname)
     prompt_lines[varname] = condition
   elif (instr == "env"):
     varname = data
     envs.add(varname)
+    # treat variables that can be passed in as environment variables as
+    # always selectable.
+    has_prompt.add(varname)
+    prompt_lines[varname] = "(1)"  # note: this depends on env lines being after prompt lines
   elif (instr == "def_bool"):
     var, line = data.split(" ", 1)
     def_bool_lines[var].add(line)
@@ -541,12 +546,11 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_
     rev_dep_expr = None
 
   # collect prompt condition
-  if var in prompt_lines.keys():
-    has_prompt.add(var)
+  if var in has_prompt:
     prompt_expr = prompt_lines[var]
   else:
     prompt_expr = None
-    
+
   # check for bad selects
   if rev_dep_expr != None:
     sys.stderr.write("warning: TODO: update checker using prompt conditions\n")
