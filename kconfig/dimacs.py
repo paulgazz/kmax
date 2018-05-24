@@ -779,6 +779,34 @@ for clause in clauses:
   else:
     filtered_clauses.append(remapped_clause)
 
+def is_true(clause):
+  neg = set()
+  pos = set()
+  for elem in clause:
+    if elem > 0:
+      if abs(elem) in neg:
+        return True
+      pos.add(abs(elem))
+      pass
+    elif elem < 0:
+      if abs(elem) in pos:
+        return True
+      neg.add(abs(elem))
+      pass
+    else:
+      # should never have a varnum of 0
+      assert True
+  return False
+    
+# remove true clauses
+filtered_clauses = filter(lambda x: not is_true(x), filtered_clauses)
+
+# convert clauses to strings
+string_clauses = ["%s 0" % (" ".join([str(num) for num in sorted(clause, key=abs)])) for clause in filtered_clauses]
+
+# deduplicate clauses
+string_clauses = list(set(string_clauses))
+
 # emit dimacs format
 def print_dimacs(varnum_map, clause_list):
   if args.comment_format_v2:
@@ -816,6 +844,6 @@ def print_dimacs(varnum_map, clause_list):
         print "%s %d %s hidden_bool" % (comment_prefix, varnum_map[varname], varname)
   print "p cnf %d %d" % (len(varnum_map), len(clause_list))
   for clause in clause_list:
-    print "%s 0" % (" ".join([str(num) for num in clause]))
+    print clause
 
-print_dimacs(varnums, filtered_clauses)
+print_dimacs(varnums, string_clauses)
