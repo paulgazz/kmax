@@ -347,7 +347,10 @@ clauses = []
 for line in sys.stdin:
   if debug: sys.stderr.write("started %s\n" % (line))
   instr, data = line.strip().split(" ", 1)
-  if (instr == "config"):
+  if instr.startswith("#"):
+    # skip a comment
+    pass
+  elif (instr == "config"):
     varname, typename = data.split(" ", 1)
     lookup_varnum(varname)
     if typename == "bool":
@@ -522,7 +525,7 @@ def remove_direct_dep_from_rev_dep_term(term):
 
 
 # generate clauses for dependencies and defaults
-for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_bool_lines.keys())):
+for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_bool_lines.keys())).union(set(prompt_lines.keys())):
   # get direct dependencies
   if var in dep_exprs.keys():
     dep_expr = dep_exprs[var]
@@ -553,7 +556,6 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_
 
   # check for bad selects
   if rev_dep_expr != None:
-    sys.stderr.write("warning: TODO: update checker using prompt conditions\n")
     good_select = var not in has_prompt or var not in has_dependencies
     if not good_select:
       if args.remove_bad_selects:
@@ -566,7 +568,9 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_
 
   # filter out dependency expressions from configurations that are
   # reverse dependencies.  if a var SEL is a reverse dependency for
-  # VAR, VAR's rev_dep_expr will contain "SEL and DIR_DEP", which is not
+  # VAR, VAR's rev_dep_expr will contain "SEL and DIR_DEP".  we can
+  # remove the DIR_DEP for SEL, since it will be covered when
+  # processing SEL.  this reduces clause size.
   if rev_dep_expr != None and rev_dep_expr != "(1)":
     # get all the top-level terms of this clause.  the reverse
     # dependency will be a union of "SEL and DIR_DEP" terms,
@@ -714,6 +718,11 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_
     else:  # var is visible
       if rev_dep_expr != None:
         sys.stderr.write("warning: no support for reverse dependencies on nonbooleans: %s\n" % (var))
+      # include the prompt condition as part of the dependency
+      if prompt_expr != None and dep_expr != None:
+        dep_expr = conjunction(prompt_expr, dep_expr)
+      elif prompt_expr != None and dep_expr == None:
+        dep_expr = prompt_expr
       # bi-implication var <-> dep_expr, because a nonboolean always
       # has a value as long as its dependencies are met.
       if dep_expr == None:
@@ -721,12 +730,9 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_
         final_expr = var
       else:
         final_expr = biimplication(var, dep_expr)
-      # restrict the dependency to only the visible condition
-      if prompt_expr != None:
-        final_expr = conjunction(prompt_expr, final_expr)
-      # # print final_expr
-      # new_clauses = convert_to_cnf(final_expr)
-      # clauses.extend(new_clauses)
+      # print final_expr
+      new_clauses = convert_to_cnf(final_expr)
+      clauses.extend(new_clauses)
   else:
     assert True
 
