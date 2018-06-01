@@ -50,6 +50,8 @@ argparser.add_argument('--comment-format-v2',
 args = argparser.parse_args()
 
 debug = args.debug
+remove_true_clauses = True
+deduplicate_clauses = True
 
 root_var = "SPECIAL_ROOT_VARIABLE"
 
@@ -561,10 +563,10 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_
       if args.remove_bad_selects:
         # restrict reverse dependencies to variables that are not
         # user-visible and have no dependencies.
-        sys.stderr.write("warn: removing bad select statements for %s.  this is the expression: %s\n" % (var, rev_dep_expr))
+        sys.stderr.write("warning: removing bad select statements for %s.  this is the expression: %s\n" % (var, rev_dep_expr))
         rev_dep_expr = None
       else:
-        sys.stderr.write("warn: found bad select statement(s) for %s\n" % (var))
+        sys.stderr.write("warning: found bad select statement(s) for %s\n" % (var))
 
   # filter out dependency expressions from configurations that are
   # reverse dependencies.  if a var SEL is a reverse dependency for
@@ -606,36 +608,54 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_
       # prompt, because it couldn't be user-selectable
       visible_expr = None
     else:
-      # V -> (E | A) and A -> V, where E is direct dep, and A is reverse dep
-
-      # intuitively, this makes sense.  if V is on, then either its
-      # direct dependency E or reverse dependency A must have been
-      # satisfied.  if the direct dependency is off, then the variable
-      # must have only been set when its reverse dependency is set
-      # (biimplication).
+      if dep_expr != None and rev_dep_expr == None:
+        # only direct dependency
+        visible_expr = implication(var, dep_expr)
+      elif dep_expr == None and rev_dep_expr != None:
+        # only reverse dependency
+        visible_expr = implication(rev_dep_expr, var)
+        pass
+      elif dep_expr != None and rev_dep_expr != None:
+        # both kinds
+        clause1 = conjunction(rev_dep_expr, var)
+        clause2 = conjunction(negation(rev_dep_expr), implication(var, dep_expr))
+        visible_expr = disjunction(clause1, clause2)
+        pass
+      else:
+        # neither kind means it's a free variable
+        visible_expr = None
 
       if args.include_bool_defaults and var in def_bool_lines.keys():
-        sys.stderr.write("warn: defaults are ignored for visibles, because they are user-selectable: %s\n" % (var))
+        sys.stderr.write("warning: defaults are ignored for visibles, because they are user-selectable: %s\n" % (var))
+      
+      # # V -> (E | A) and A -> V, where E is direct dep, and A is reverse dep
 
-      # clause1 = var -> (dep_expr or rev_dep_expr)
-      # clause2 = rev_dep_expr -> var
+      # # intuitively, this makes sense.  if V is on, then either its
+      # # direct dependency E or reverse dependency A must have been
+      # # satisfied.  if the direct dependency is off, then the variable
+      # # must have only been set when its reverse dependency is set
+      # # (biimplication).
 
-      if rev_dep_expr != None:
-        if dep_expr != None:
-          clause1 = implication(var, disjunction(dep_expr, rev_dep_expr))
-          clause2 = implication(rev_dep_expr, var)
-          visible_expr = conjunction(clause1, clause2)
-        else: # no direct dependency means biimplication between rev_dep and var
-          visible_expr = biimplication(var, rev_dep_expr)
-      else:
-        if dep_expr != None:  # no reverse dependency means that only the direct dependency applies
-          clause1 = implication(var, dep_expr)
-          clause2 = None
-          visible_expr = clause1
-        else: # no direct or reverse dependencies
-          clause1 = None
-          clause2 = None
-          visible_expr = None
+
+      # # clause1 = var -> (dep_expr or rev_dep_expr)
+      # # clause2 = rev_dep_expr -> var
+
+      # if rev_dep_expr != None:
+      #   if dep_expr != None:
+      #     clause1 = implication(var, disjunction(dep_expr, rev_dep_expr))
+      #     clause2 = implication(rev_dep_expr, var)
+      #     visible_expr = conjunction(clause1, clause2)
+      #   else: # no direct dependency means biimplication between rev_dep and var
+      #     visible_expr = biimplication(var, rev_dep_expr)
+      # else:
+      #   if dep_expr != None:  # no reverse dependency means that only the direct dependency applies
+      #     clause1 = implication(var, dep_expr)
+      #     clause2 = None
+      #     visible_expr = clause1
+      #   else: # no direct or reverse dependencies
+      #     clause1 = None
+      #     clause2 = None
+      #     visible_expr = None
 
     # compute the expression for the nonvisible condition
     if prompt_expr == "(1)":
@@ -693,6 +713,10 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_
     else:
       cond_nonvisible_expr = None
 
+    # sys.stderr.write("var %s\n" % (var))
+    # sys.stderr.write("visible %s\n" % (cond_visible_expr))
+    # sys.stderr.write("nonvisible %s\n" % (cond_nonvisible_expr))
+      
     if cond_visible_expr != None and cond_nonvisible_expr != None:
       final_expr = disjunction(cond_visible_expr, cond_nonvisible_expr)
     elif cond_visible_expr != None and cond_nonvisible_expr == None:
@@ -809,13 +833,15 @@ def is_true(clause):
   return False
     
 # remove true clauses
-filtered_clauses = filter(lambda x: not is_true(x), filtered_clauses)
+if remove_true_clauses:
+  filtered_clauses = filter(lambda x: not is_true(x), filtered_clauses)
 
 # convert clauses to strings
 string_clauses = ["%s 0" % (" ".join([str(num) for num in sorted(clause, key=abs)])) for clause in filtered_clauses]
 
 # deduplicate clauses
-string_clauses = list(set(string_clauses))
+if deduplicate_clauses:
+  string_clauses = list(set(string_clauses))
 
 # emit dimacs format
 def print_dimacs(varnum_map, clause_list):
