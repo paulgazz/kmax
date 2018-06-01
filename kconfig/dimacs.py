@@ -79,6 +79,7 @@ has_prompt = set()
 
 bools = set()
 choice_vars = set()
+bool_choices = []
 
 # nonbool var attributes
 nonbools = set()
@@ -412,28 +413,7 @@ for line in sys.stdin:
   elif (instr == "bool_choice"):
     var_string, dep_expr = data.split("|",1)
     config_vars = var_string.split(" ")
-    # print config_vars
-    # mutex choice: a -> !b, a -> !c, ..., b -> !a, b -> !c, ...
-    choice_vars.update(set(config_vars))
-    for i in range(0, len(config_vars)):
-      for j in range(0, len(config_vars)):
-        if i != j:
-          var_i = lookup_varnum(config_vars[i])
-          var_j = lookup_varnum(config_vars[j])
-          clause = [-var_i, -var_j]
-          # print clause
-          clauses.append(clause)
-    # add dependency, dep <-> (a | b | ... ), i.e., .  this ensures at least
-    # one is selected and that if one is selected the dependency must
-    # hold
-    or_vars = ""
-    for var in config_vars:
-      or_vars = or_vars + " or " + var
-    choice_dep = "((not %s)%s) and ((not (0%s)) or (%s))" % (dep_expr, or_vars, or_vars, dep_expr)
-    # print choice_dep
-    new_clauses = convert_to_cnf(choice_dep)
-    # print new_clauses
-    clauses.extend(new_clauses)
+    bool_choices.append((config_vars, dep_expr))
   elif (instr == "dep"):
     var, expr = data.split(" ", 1)
     if var in dep_exprs:
@@ -525,7 +505,53 @@ def remove_direct_dep_from_rev_dep_term(term):
     else:  # it has no dependencies, so there is nothing to do
       return term
 
+# generate clauses for boolean choices
+for (config_vars, dep_expr) in bool_choices:
+  # print config_vars
+  # mutex choice: a -> !b, a -> !c, ..., b -> !a, b -> !c, ...
+  choice_vars.update(set(config_vars))
+  for i in range(0, len(config_vars)):
+    for j in range(0, len(config_vars)):
+      if i != j:
+        var_i = lookup_varnum(config_vars[i])
+        var_j = lookup_varnum(config_vars[j])
+        clause = [-var_i, -var_j]
+        # print clause
+        clauses.append(clause)
+  assert len(config_vars) > 0
 
+  # adding the following clauses:
+
+  # dep_expr and individual_conditions -> possible_choices
+  # possible_choices -> dep_expr
+
+  # this says that, if the dependencies are met for any choice and
+  # for the choice block itself, one of the options must be
+  # selected.  otherwise no option needs to be selected.
+  # conversely, if a choice is selected, that implies the choice
+  # blocks conditions have been met.  the individual dependencies of
+  # the choice options are met by the "dep" lines.
+
+  possible_choices = ""
+  individual_conditions = ""
+  delim = ""
+  for var in config_vars:
+    possible_choices = possible_choices + delim + var
+    if var in dep_exprs and dep_exprs[var] != None:
+      individual_dep_expr = "(%s)" % (dep_exprs[var])
+    else:
+      individual_dep_expr = "(1)"
+    individual_conditions = individual_conditions + delim + individual_dep_expr
+    delim = " or "
+
+  clause1 = implication(conjunction(dep_expr, individual_conditions), possible_choices)
+  clause2 = implication(possible_choices, dep_expr)
+  final_expression = conjunction(clause1, clause2)
+  # print choice_dep
+  new_clauses = convert_to_cnf(final_expression)
+  # print new_clauses
+  clauses.extend(new_clauses)
+    
 # generate clauses for dependencies and defaults
 for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_bool_lines.keys())).union(set(prompt_lines.keys())):
   # get direct dependencies
