@@ -47,16 +47,13 @@ argparser.add_argument('--include-nonbool-defaults',
 argparser.add_argument('--comment-format-v2',
                        action="store_true",
                        help="""add extra formatting information to dimacs comments to distinguish them from normal comments""")
-argparser.add_argument('-r',
-                       '--use-root',
-                       action="store_true",
-                       help="""add an extra variable for the root of the feature model""")
 args = argparser.parse_args()
 
 debug = args.debug
+remove_true_clauses = True
+deduplicate_clauses = True
 
 root_var = "SPECIAL_ROOT_VARIABLE"
-use_root_var = args.use_root
 
 # mapping from configuration variable name to dimacs variable number
 varnums = {}
@@ -65,12 +62,11 @@ varnums = {}
 dep_exprs = {}
 rev_dep_exprs = {}
 
+# collect visibility conditions
+prompt_lines = {}
+
 # collect defaults
 def_bool_lines = defaultdict(set)
-
-# the names of configuration variables that are "visible" to the user,
-# i.e., that are selectable by the user
-userselectable = set()
 
 # names of variables that should be removed later. this is currently
 # used to captures string constants in boolean expressions, where it
@@ -79,15 +75,21 @@ variables_to_remove = set()
 
 # keep track of variables that have default values
 has_defaults = set()
+has_prompt = set()
 
 bools = set()
 choice_vars = set()
+bool_choices = []
 
+# nonbool var attributes
 nonbools = set()
 nonbools_with_dep = set()
 nonbools_nonvisibles = set()
 nonbool_defaults = {}
 nonbool_types = {}
+
+# vars that can be set by the user via an environment variable (and thus are free variables)
+envs = set()
 
 ghost_bools = {}
 
@@ -345,30 +347,36 @@ def negation(a):
 
 # collect clauses
 clauses = []
-if use_root_var:
-  userselectable.add(root_var)
-  clauses.append([lookup_varnum(root_var)])
 for line in sys.stdin:
   if debug: sys.stderr.write("started %s\n" % (line))
   instr, data = line.strip().split(" ", 1)
-  if (instr == "bool"):
-    varname, selectability = data.split(" ", 1)
-    selectable = True if selectability == "selectable" or selectability == "environment" else False
-    if selectable:
-      userselectable.add(varname)
-    bools.add(varname)
+  if instr.startswith("#"):
+    # skip a comment
+    pass
+  elif (instr == "config"):
+    varname, typename = data.split(" ", 1)
     lookup_varnum(varname)
+    if typename == "bool":
+      bools.add(varname)
+    else:
+      nonbools.add(varname)
+      nonbool_types[varname] = typename
+  elif (instr == "prompt"):
+    varname, condition = data.split(" ", 1)
+    if varname in prompt_lines:
+      sys.stderr.write("found duplicate prompt for %s. currently unsupported\n" % (varname))
+    has_prompt.add(varname)
+    prompt_lines[varname] = condition
+  elif (instr == "env"):
+    varname = data
+    envs.add(varname)
+    # treat variables that can be passed in as environment variables as
+    # always selectable.
+    has_prompt.add(varname)
+    prompt_lines[varname] = "(1)"  # note: this depends on env lines being after prompt lines
   elif (instr == "def_bool"):
     var, line = data.split(" ", 1)
     def_bool_lines[var].add(line)
-  elif (instr == "nonbool"):
-    varname, selectability, type_name = data.split(" ", 2)
-    selectable = True if selectability == "selectable" or selectability == "environment" else False
-    if selectable:
-      userselectable.add(varname)
-    lookup_varnum(varname)
-    nonbools.add(varname)
-    nonbool_types[varname] = type_name
   elif (instr == "def_nonbool"):
     var, val_and_expr = data.split(" ", 1)
     val, expr = val_and_expr.split("|", 1)
@@ -405,30 +413,7 @@ for line in sys.stdin:
   elif (instr == "bool_choice"):
     var_string, dep_expr = data.split("|",1)
     config_vars = var_string.split(" ")
-    # print config_vars
-    # mutex choice: a -> !b, a -> !c, ..., b -> !a, b -> !c, ...
-    choice_vars.update(set(config_vars))
-    for i in range(0, len(config_vars)):
-      for j in range(0, len(config_vars)):
-        if i != j:
-          var_i = lookup_varnum(config_vars[i])
-          var_j = lookup_varnum(config_vars[j])
-          clause = [-var_i, -var_j]
-          # print clause
-          clauses.append(clause)
-    # add dependency, dep <-> (a | b | ... ), i.e., .  this ensures at least
-    # one is selected and that if one is selected the dependency must
-    # hold
-    or_vars = ""
-    for var in config_vars:
-      or_vars = or_vars + " or " + var
-    if use_root_var and dep_expr == "(1)":
-      dep_expr = root_var
-    choice_dep = "((not %s)%s) and ((not (0%s)) or (%s))" % (dep_expr, or_vars, or_vars, dep_expr)
-    # print choice_dep
-    new_clauses = convert_to_cnf(choice_dep)
-    # print new_clauses
-    clauses.extend(new_clauses)
+    bool_choices.append((config_vars, dep_expr))
   elif (instr == "dep"):
     var, expr = data.split(" ", 1)
     if var in dep_exprs:
@@ -520,9 +505,55 @@ def remove_direct_dep_from_rev_dep_term(term):
     else:  # it has no dependencies, so there is nothing to do
       return term
 
+# generate clauses for boolean choices
+for (config_vars, dep_expr) in bool_choices:
+  # print config_vars
+  # mutex choice: a -> !b, a -> !c, ..., b -> !a, b -> !c, ...
+  choice_vars.update(set(config_vars))
+  for i in range(0, len(config_vars)):
+    for j in range(0, len(config_vars)):
+      if i != j:
+        var_i = lookup_varnum(config_vars[i])
+        var_j = lookup_varnum(config_vars[j])
+        clause = [-var_i, -var_j]
+        # print clause
+        clauses.append(clause)
+  assert len(config_vars) > 0
 
+  # adding the following clauses:
+
+  # dep_expr and individual_conditions -> possible_choices
+  # possible_choices -> dep_expr
+
+  # this says that, if the dependencies are met for any choice and
+  # for the choice block itself, one of the options must be
+  # selected.  otherwise no option needs to be selected.
+  # conversely, if a choice is selected, that implies the choice
+  # blocks conditions have been met.  the individual dependencies of
+  # the choice options are met by the "dep" lines.
+
+  possible_choices = ""
+  individual_conditions = ""
+  delim = ""
+  for var in config_vars:
+    possible_choices = possible_choices + delim + var
+    if var in dep_exprs and dep_exprs[var] != None:
+      individual_dep_expr = "(%s)" % (dep_exprs[var])
+    else:
+      individual_dep_expr = "(1)"
+    individual_conditions = individual_conditions + delim + individual_dep_expr
+    delim = " or "
+
+  clause1 = implication(conjunction(dep_expr, individual_conditions), possible_choices)
+  clause2 = implication(possible_choices, dep_expr)
+  final_expression = conjunction(clause1, clause2)
+  # print choice_dep
+  new_clauses = convert_to_cnf(final_expression)
+  # print new_clauses
+  clauses.extend(new_clauses)
+    
 # generate clauses for dependencies and defaults
-for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_bool_lines.keys())):
+for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_bool_lines.keys())).union(set(prompt_lines.keys())):
   # get direct dependencies
   if var in dep_exprs.keys():
     dep_expr = dep_exprs[var]
@@ -545,21 +576,29 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_
   if args.remove_reverse_dependencies:
     rev_dep_expr = None
 
+  # collect prompt condition
+  if var in has_prompt:
+    prompt_expr = prompt_lines[var]
+  else:
+    prompt_expr = None
+
   # check for bad selects
   if rev_dep_expr != None:
-    good_select = var not in userselectable or var not in has_dependencies
+    good_select = var not in has_prompt or var not in has_dependencies
     if not good_select:
       if args.remove_bad_selects:
         # restrict reverse dependencies to variables that are not
         # user-visible and have no dependencies.
-        sys.stderr.write("warn: removing bad select statements for %s.  this is the expression: %s\n" % (var, rev_dep_expr))
+        sys.stderr.write("warning: removing bad select statements for %s.  this is the expression: %s\n" % (var, rev_dep_expr))
         rev_dep_expr = None
       else:
-        sys.stderr.write("warn: found bad select statement(s) for %s\n" % (var))
+        sys.stderr.write("warning: found bad select statement(s) for %s\n" % (var))
 
   # filter out dependency expressions from configurations that are
   # reverse dependencies.  if a var SEL is a reverse dependency for
-  # VAR, VAR's rev_dep_expr will contain "SEL and DIR_DEP", which is not
+  # VAR, VAR's rev_dep_expr will contain "SEL and DIR_DEP".  we can
+  # remove the DIR_DEP for SEL, since it will be covered when
+  # processing SEL.  this reduces clause size.
   if rev_dep_expr != None and rev_dep_expr != "(1)":
     # get all the top-level terms of this clause.  the reverse
     # dependency will be a union of "SEL and DIR_DEP" terms,
@@ -575,46 +614,81 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_
     rev_dep_expr = "(%s)" % (" or ".join(edited_terms))
     # print "END", rev_dep_expr
     
-  # handle boolean defaults
+  # collect boolean default expression
   if var in def_bool_lines.keys():
     has_defaults.add(var)
-    if args.include_bool_defaults or args.include_nonvisible_bool_defaults and var not in userselectable:
-      def_y_expr = "(0)"
-      delim = " or "
-      for def_bool_line in def_bool_lines[var]:
-        val, expr = def_bool_line.split(" ", 1)
-        if val == "1":
-          def_y_expr = def_y_expr + delim + "(" + expr + ")"
-    else:
-      # don't include default values
-      def_y_expr = None
+    def_y_expr = "(0)"
+    delim = " or "
+    for def_bool_line in def_bool_lines[var]:
+      val, expr = def_bool_line.split(" ", 1)
+      if val == "1":
+        def_y_expr = def_y_expr + delim + "(" + expr + ")"
   else:
     def_y_expr = None
 
   # create clauses for dependencies and defaults
-  if var in nonbools:
-    nonbools_with_dep.add(var)
-    if var not in userselectable:
-      # no support for nonbool nonvisibles, because we don't support
-      # nonboolean constraints and there is no way for the user to
-      # directly modify these.
-      nonbools_nonvisibles.add(var)
-      sys.stderr.write("warning: no support for nonvisible nonbools: %s\n" % (var))
-    else:  # var is visible
-      if rev_dep_expr != None:
-        sys.stderr.write("warning: no support for reverse dependencies on nonbooleans: %s\n" % (var))
-      # bi-implication var <-> dep_expr, because a nonboolean always
-      # has a value as long as its dependencies are met.
-      if dep_expr == None:
-        # the nonbool is always on when no dependencies
-        final_expr = var
+  if var in bools:
+    # compute the expression for the visible condition
+    if var not in has_prompt:
+      # don't bother computing the visible expression if there is no
+      # prompt, because it couldn't be user-selectable
+      visible_expr = None
+    else:
+      if dep_expr != None and rev_dep_expr == None:
+        # only direct dependency
+        visible_expr = implication(var, dep_expr)
+      elif dep_expr == None and rev_dep_expr != None:
+        # only reverse dependency
+        visible_expr = implication(rev_dep_expr, var)
+        pass
+      elif dep_expr != None and rev_dep_expr != None:
+        # both kinds
+        clause1 = conjunction(rev_dep_expr, var)
+        clause2 = conjunction(negation(rev_dep_expr), implication(var, dep_expr))
+        visible_expr = disjunction(clause1, clause2)
+        pass
       else:
-        final_expr = biimplication(var, dep_expr)
-      # print final_expr
-      new_clauses = convert_to_cnf(final_expr)
-      clauses.extend(new_clauses)
-  else:  # var is a boolean
-    if var not in userselectable:
+        # neither kind means it's a free variable
+        visible_expr = None
+
+      if args.include_bool_defaults and var in def_bool_lines.keys():
+        sys.stderr.write("warning: defaults are ignored for visibles, because they are user-selectable: %s\n" % (var))
+      
+      # # V -> (E | A) and A -> V, where E is direct dep, and A is reverse dep
+
+      # # intuitively, this makes sense.  if V is on, then either its
+      # # direct dependency E or reverse dependency A must have been
+      # # satisfied.  if the direct dependency is off, then the variable
+      # # must have only been set when its reverse dependency is set
+      # # (biimplication).
+
+
+      # # clause1 = var -> (dep_expr or rev_dep_expr)
+      # # clause2 = rev_dep_expr -> var
+
+      # if rev_dep_expr != None:
+      #   if dep_expr != None:
+      #     clause1 = implication(var, disjunction(dep_expr, rev_dep_expr))
+      #     clause2 = implication(rev_dep_expr, var)
+      #     visible_expr = conjunction(clause1, clause2)
+      #   else: # no direct dependency means biimplication between rev_dep and var
+      #     visible_expr = biimplication(var, rev_dep_expr)
+      # else:
+      #   if dep_expr != None:  # no reverse dependency means that only the direct dependency applies
+      #     clause1 = implication(var, dep_expr)
+      #     clause2 = None
+      #     visible_expr = clause1
+      #   else: # no direct or reverse dependencies
+      #     clause1 = None
+      #     clause2 = None
+      #     visible_expr = None
+
+    # compute the expression for the nonvisible condition
+    if prompt_expr == "(1)":
+      # there is no possibility of the variable being nonvisible, so
+      # don't bother computing the expression
+      nonvisible_expr = None
+    else:
       # I <-> ((E & D) | A)
       # I is the variable, A is the selects (reverse deps), E is the direct dep, D is the default y condition
 
@@ -640,51 +714,77 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_
         consequent = disjunction(consequent, rev_dep_expr)
 
       if consequent != None:
-        expr = biimplication(var, consequent)
-        # print expr
-        new_clauses = convert_to_cnf(expr)
-        # print new_clauses
-        clauses.extend(new_clauses)
-    else:  # visible variables
-      # V -> (E | A) and A -> V, where E is direct dep, and A is reverse dep
-
-      # intuitively, this makes sense.  if V is on, then either its
-      # direct dependency E or reverse dependency A must have been
-      # satisfied.  if the direct dependency is off, then the variable
-      # must have only been set when its reverse dependency is set
-      # (biimplication).
-
-      if args.include_bool_defaults and var in def_bool_lines.keys():
-        sys.stderr.write("warn: defaults currently ignored for visibles: %s\n" % (var))
-
-      # clause1 = var -> (dep_expr or rev_dep_expr)
-      # clause2 = rev_dep_expr -> var
-
-      if rev_dep_expr != None:
-        if dep_expr != None:
-          clause1 = implication(var, disjunction(dep_expr, rev_dep_expr))
-          clause2 = implication(rev_dep_expr, var)
-          final_expr = conjunction(clause1, clause2)
-        else: # no direct dependency means biimplication between rev_dep and var
-          final_expr = biimplication(var, rev_dep_expr)
+        nonvisible_expr = biimplication(var, consequent)
+        # print nonvisible_expr
       else:
-        if dep_expr != None:  # no reverse dependency means that only the direct dependency applies
-          clause1 = implication(var, dep_expr)
-          clause2 = None
-          final_expr = clause1
-        else: # no direct or reverse dependencies
-          clause1 = None
-          clause2 = None
-          final_expr = None
+        nonvisible_expr = None
 
-      if use_root_var and final_expr == None:
-        # if no dependencies, then depend on special root variable
-        final_expr = root_var
+    # compute the complete expression for the variable
+    # prompt_expr and visible_expr or not prompt_expr and nonvisible_expr
+    if visible_expr != None:
+      if prompt_expr != None:
+        cond_visible_expr = conjunction(prompt_expr, visible_expr)
+      else:
+        # if there is no prompt expression, it means there is no possibility of visibility
+        cond_visible_expr = None
+    else:
+      cond_visible_expr = None
+      
+    if nonvisible_expr != None:
+      if prompt_expr != None:
+        cond_nonvisible_expr = conjunction(negation(prompt_expr), nonvisible_expr)
+      else:
+        # if there is no prompt_expr, it means the variable is unconditionally nonvisible
+        cond_nonvisible_expr = nonvisible_expr
+    else:
+      cond_nonvisible_expr = None
 
-      if final_expr != None:
-        # print final_expr
-        new_clauses = convert_to_cnf(final_expr)
-        clauses.extend(new_clauses)
+    # sys.stderr.write("var %s\n" % (var))
+    # sys.stderr.write("visible %s\n" % (cond_visible_expr))
+    # sys.stderr.write("nonvisible %s\n" % (cond_nonvisible_expr))
+      
+    if cond_visible_expr != None and cond_nonvisible_expr != None:
+      final_expr = disjunction(cond_visible_expr, cond_nonvisible_expr)
+    elif cond_visible_expr != None and cond_nonvisible_expr == None:
+      final_expr = cond_visible_expr
+    elif cond_visible_expr == None and cond_nonvisible_expr != None:
+      final_expr = cond_nonvisible_expr
+    else: # cond_visible_expr == None and cond_nonvisible_expr == None:
+      final_expr = None
+
+    if final_expr != None:
+      new_clauses = convert_to_cnf(final_expr)
+      # print new_clauses
+      clauses.extend(new_clauses)
+        
+  elif var in nonbools:
+    nonbools_with_dep.add(var)
+    if var not in has_prompt:
+      # no support for nonbool nonvisibles, because we don't support
+      # nonboolean constraints and there is no way for the user to
+      # directly modify these.
+      nonbools_nonvisibles.add(var)
+      sys.stderr.write("warning: no support for nonvisible nonbools: %s\n" % (var))
+    else:  # var is visible
+      if rev_dep_expr != None:
+        sys.stderr.write("warning: no support for reverse dependencies on nonbooleans: %s\n" % (var))
+      # include the prompt condition as part of the dependency
+      if prompt_expr != None and dep_expr != None:
+        dep_expr = conjunction(prompt_expr, dep_expr)
+      elif prompt_expr != None and dep_expr == None:
+        dep_expr = prompt_expr
+      # bi-implication var <-> dep_expr, because a nonboolean always
+      # has a value as long as its dependencies are met.
+      if dep_expr == None:
+        # the nonbool is always on when no dependencies
+        final_expr = var
+      else:
+        final_expr = biimplication(var, dep_expr)
+      # print final_expr
+      new_clauses = convert_to_cnf(final_expr)
+      clauses.extend(new_clauses)
+  else:
+    assert True
 
 if force_all_nonbools_on:
   for nonbool in (nonbools):
@@ -702,18 +802,15 @@ def remove_condition(var):
   return \
     var in variables_to_remove or \
     var in nonbools_nonvisibles or \
-    args.remove_all_nonvisibles and var not in userselectable or \
-    args.remove_independent_nonvisibles and var not in userselectable and var not in in_dependencies or \
-    args.remove_orphaned_nonvisibles and var not in userselectable and var in bools and var not in in_dependencies and var not in has_defaults and var not in has_selects
-
-# print "|".join([ var for var in varnums.keys() if var not in userselectable and var not in in_dependencies and isinstance(var, str) ])
-# exit(1)
+    args.remove_all_nonvisibles and var not in has_prompt or \
+    args.remove_independent_nonvisibles and var not in has_prompt and var not in in_dependencies or \
+    args.remove_orphaned_nonvisibles and var not in has_prompt and var in bools and var not in in_dependencies and var not in has_defaults and var not in has_selects
 
 keep_vars = filter(lambda var: not remove_condition(var), varnums.keys())
 keep_varnums = filter(lambda (name, num): name in keep_vars, sorted(varnums.items(), key=lambda tup: tup[1]))
 
 for var in varnums.keys():
-  if var not in userselectable and var in bools and var not in has_defaults and var not in has_selects:
+  if var not in has_prompt and var in bools and var not in has_defaults and var not in has_selects:
     if args.remove_orphaned_nonvisibles:
       sys.stderr.write("warning: remove orphaned nonvisible variables: %s\n" % (var))
     else:
@@ -741,6 +838,36 @@ for clause in clauses:
     pass
   else:
     filtered_clauses.append(remapped_clause)
+
+def is_true(clause):
+  neg = set()
+  pos = set()
+  for elem in clause:
+    if elem > 0:
+      if abs(elem) in neg:
+        return True
+      pos.add(abs(elem))
+      pass
+    elif elem < 0:
+      if abs(elem) in pos:
+        return True
+      neg.add(abs(elem))
+      pass
+    else:
+      # should never have a varnum of 0
+      assert True
+  return False
+    
+# remove true clauses
+if remove_true_clauses:
+  filtered_clauses = filter(lambda x: not is_true(x), filtered_clauses)
+
+# convert clauses to strings
+string_clauses = ["%s 0" % (" ".join([str(num) for num in sorted(clause, key=abs)])) for clause in filtered_clauses]
+
+# deduplicate clauses
+if deduplicate_clauses:
+  string_clauses = list(set(string_clauses))
 
 # emit dimacs format
 def print_dimacs(varnum_map, clause_list):
@@ -770,7 +897,7 @@ def print_dimacs(varnum_map, clause_list):
     else:
       if varname in choice_vars:
         print "%s %d %s choice_bool" % (comment_prefix, varnum_map[varname], varname)
-      elif varname in userselectable:
+      elif varname in has_prompt:
         print "%s %d %s bool" % (comment_prefix, varnum_map[varname], varname)
       elif varname in ghost_bools.keys():
         nonbool_var, defval = ghost_bools[varname]
@@ -779,6 +906,6 @@ def print_dimacs(varnum_map, clause_list):
         print "%s %d %s hidden_bool" % (comment_prefix, varnum_map[varname], varname)
   print "p cnf %d %d" % (len(varnum_map), len(clause_list))
   for clause in clause_list:
-    print "%s 0" % (" ".join([str(num) for num in clause]))
+    print clause
 
-print_dimacs(varnums, filtered_clauses)
+print_dimacs(varnums, string_clauses)

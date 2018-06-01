@@ -1833,43 +1833,42 @@ int main(int argc, char **argv)
       case S_BOOLEAN:
         // fall through
       case S_TRISTATE:
-        // get selectability
+        printf("config %s%s bool\n", config_prefix, sym->name);
+        // print prompt conditions, if any
         prop = NULL;
         has_prompt = false;
         for_all_prompts(sym, prop) {
+          if ((NULL != prop)) {
+            printf("prompt %s%s", config_prefix, sym->name);
+            printf(" (");
+            if (NULL != prop->visible.expr) {
+              print_python_expr(prop->visible.expr, stdout, E_NONE);
+            } else {
+              printf("1");
+            }
+            printf(")");
+            printf("\n");
+          }
           has_prompt = true;
-          break;
         }
         has_env = sym_get_env_prop(sym) != NULL;
-        char *visibility_name;
-        if (has_prompt) {
-          visibility_name = "selectable";
-        } else if (has_env) {
-          visibility_name = "environment";
-        } else {
-          visibility_name = "nonselectable";
+        if (has_env) {
+          printf("env %s%s\n", config_prefix, sym->name);
         }
-        printf("bool %s%s %s\n", config_prefix, sym->name, visibility_name);
-        if (! has_prompt) {
-          // if there is no prompt, this config var is not
-          // user-selectable.  therefore it's defaults will always
-          // hold, given the conditions of the default, i.e.,
-          // default_if implies default_value.  note that this is not
-          // necessarily true in the presence of 'select' operations.
-          prop = NULL;
-          for_all_defaults(sym, prop) {
-            if ((NULL != prop) && (NULL != (prop->expr))) {
-              printf("def_bool %s%s ", config_prefix, sym->name);
-              print_python_expr(prop->expr, stdout, E_NONE);
-              printf(" (");
-              if (NULL != prop->visible.expr) {
-                print_python_expr(prop->visible.expr, stdout, E_NONE);
-              } else {
-                printf("1");
-              }
-              printf(")");
-              printf("\n");
+        // print default values
+        prop = NULL;
+        for_all_defaults(sym, prop) {
+          if ((NULL != prop) && (NULL != (prop->expr))) {
+            printf("def_bool %s%s ", config_prefix, sym->name);
+            print_python_expr(prop->expr, stdout, E_NONE);
+            printf(" (");
+            if (NULL != prop->visible.expr) {
+              print_python_expr(prop->visible.expr, stdout, E_NONE);
+            } else {
+              printf("1");
             }
+            printf(")");
+            printf("\n");
           }
         }
         break;
@@ -1897,15 +1896,32 @@ int main(int argc, char **argv)
           // should not reach here
           break;
         }
+
+        char *typename = is_string ? "string" : "number";
         
-        // get selectability
+        printf("config %s%s %s\n", config_prefix, sym->name, typename);
+        // print prompt conditions, if any
         prop = NULL;
         has_prompt = false;
         for_all_prompts(sym, prop) {
+          if ((NULL != prop)) {
+            printf("prompt %s%s", config_prefix, sym->name);
+            printf(" (");
+            if (NULL != prop->visible.expr) {
+              print_python_expr(prop->visible.expr, stdout, E_NONE);
+            } else {
+              printf("1");
+            }
+            printf(")");
+            printf("\n");
+          }
           has_prompt = true;
-          break;
         }
-        printf("nonbool %s%s %s %s\n", config_prefix, sym->name, has_prompt ? "selectable" : "nonselectable", is_string ? "string" : "nonstring");
+        has_env = sym_get_env_prop(sym) != NULL;
+        if (has_env) {
+          printf("env %s%s\n", config_prefix, sym->name);
+        }
+        // print default values
         prop = NULL;
         bool has_default = false;
         for_all_defaults(sym, prop) {
