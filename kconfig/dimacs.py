@@ -59,9 +59,11 @@ root_var = "SPECIAL_ROOT_VARIABLE"
 # mapping from configuration variable name to dimacs variable number
 varnums = {}
 
-# collect dep and rev_dep lines
+# collect dep lines
 dep_exprs = {}
-rev_dep_exprs = {}
+
+# collect select lines
+selects = {}
 
 # collect visibility conditions
 prompt_lines = {}
@@ -421,12 +423,13 @@ for line in sys.stdin:
       sys.stderr.write("found duplicate dep for %s. currently unsupported\n" % (var))
       exit(1)
     dep_exprs[var] = expr
-  elif (instr == "rev_dep"):
-    var, expr = data.split(" ", 1)
-    if var in rev_dep_exprs:
-      sys.stderr.write("found duplicate rev_dep for %s. currently unsupported\n" % (var))
-      exit(1)
-    rev_dep_exprs[var] = expr
+  elif (instr == "select"):
+    selected_var, selecting_var, expr = data.split(" ", 2)
+    if selected_var not in selects.keys():
+      selects[selected_var] = {}
+    if selecting_var not in selects[selected_var].keys():
+      selects[selected_var][selecting_var] = set()
+    selects[selected_var][selecting_var].add(expr)
   elif (instr == "bi"):
     expr1, expr2 = data.split("|", 1)
     # print expr1, expr2
@@ -554,7 +557,7 @@ for (config_vars, dep_expr) in bool_choices:
   clauses.extend(new_clauses)
 
 # generate clauses for dependencies and defaults
-for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_bool_lines.keys())).union(set(prompt_lines.keys())):
+for var in set(dep_exprs.keys()).union(set(selects.keys())).union(set(def_bool_lines.keys())).union(set(prompt_lines.keys())):
   if debug: sys.stderr.write("processing %s\n" % (var))
   # get direct dependencies
   if var in dep_exprs.keys():
@@ -566,12 +569,18 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_
     dep_expr = None
 
   # get reverse dependencies
-  if var in rev_dep_exprs.keys():
-    rev_dep_expr = rev_dep_exprs[var]
+  if var in selects.keys():
     has_selects.add(var)
-    if rev_dep_expr != "(1)":
-      has_dependencies.add(var)  # track vars that have dependencies
-      in_dependencies.update(get_identifiers(rev_dep_expr))  # track vars that are in other dependencies
+    has_dependencies.add(var)  # track vars that have dependencies
+    selecting_vars = selects[var].keys()
+    rev_dep_expr = None
+    for selecting_var in selecting_vars:
+      in_dependencies.add(selecting_var)
+      if rev_dep_expr == None:
+        rev_dep_expr = selecting_var
+      else:
+        rev_dep_expr = disjunction(rev_dep_expr, selecting_var)
+    # sys.stderr.write("rev_dep_expr: %s\n" % (rev_dep_expr))
   else:
     rev_dep_expr = None
 
@@ -596,27 +605,6 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_
       else:
         sys.stderr.write("warning: found bad select statement(s) for %s\n" % (var))
 
-  # filter out dependency expressions from configurations that are
-  # reverse dependencies.  if a var SEL is a reverse dependency for
-  # VAR, VAR's rev_dep_expr will contain "SEL and DIR_DEP".  we can
-  # remove the DIR_DEP for SEL, since it will be covered when
-  # processing SEL.  this reduces clause size.
-  if rev_dep_expr != None and rev_dep_expr != "(1)":
-    # get all the top-level terms of this clause.  the reverse
-    # dependency will be a union of "SEL and DIR_DEP" terms,
-    # representing each of the reverse dependencies.
-    expr = rev_dep_expr
-    # print "BEGIN", rev_dep_expr
-    # (1) strip surrounding parens (as added by check_dep on all dependencies)
-    if expr.startswith("(") and expr.endswith(")"): expr = expr[1:-1]
-    # (2) split into ORed clauses
-    terms = split_top_level_clauses(expr, " or ")
-    # (3) remove the direct dependencies conjoined with the SEL vars
-    edited_terms = map(remove_direct_dep_from_rev_dep_term, terms)
-    sys.stderr.write("%s %s\n" % (var, edited_terms))
-    rev_dep_expr = "(%s)" % (" or ".join(edited_terms))
-    # print "END", rev_dep_expr
-    
   # collect boolean default expression
   if var in def_bool_lines.keys():
     has_defaults.add(var)
