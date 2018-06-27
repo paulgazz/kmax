@@ -5,6 +5,7 @@ import ast
 import traceback
 import argparse
 from collections import defaultdict
+import time
 
 # this script takes the check_dep --dimacs output and converts it into
 # a dimacs-compatible format
@@ -551,9 +552,10 @@ for (config_vars, dep_expr) in bool_choices:
   new_clauses = convert_to_cnf(final_expression)
   # print new_clauses
   clauses.extend(new_clauses)
-    
+
 # generate clauses for dependencies and defaults
 for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_bool_lines.keys())).union(set(prompt_lines.keys())):
+  if debug: sys.stderr.write("processing %s\n" % (var))
   # get direct dependencies
   if var in dep_exprs.keys():
     dep_expr = dep_exprs[var]
@@ -611,6 +613,7 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_
     terms = split_top_level_clauses(expr, " or ")
     # (3) remove the direct dependencies conjoined with the SEL vars
     edited_terms = map(remove_direct_dep_from_rev_dep_term, terms)
+    sys.stderr.write("%s %s\n" % (var, edited_terms))
     rev_dep_expr = "(%s)" % (" or ".join(edited_terms))
     # print "END", rev_dep_expr
     
@@ -643,9 +646,14 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_
         pass
       elif dep_expr != None and rev_dep_expr != None:
         # both kinds
-        clause1 = conjunction(rev_dep_expr, var)
-        clause2 = conjunction(negation(rev_dep_expr), implication(var, dep_expr))
-        visible_expr = disjunction(clause1, clause2)
+        clause1 = disjunction(rev_dep_expr, disjunction(dep_expr, negation(var)))
+        clause2 = disjunction(negation(rev_dep_expr), var)
+        visible_expr = conjunction(clause1, clause2)
+
+        # # unsimplified form
+        # clause1 = conjunction(rev_dep_expr, var)
+        # clause2 = conjunction(negation(rev_dep_expr), implication(var, dep_expr))
+        # visible_expr = disjunction(clause1, clause2)
         pass
       else:
         # neither kind means it's a free variable
@@ -806,6 +814,7 @@ def remove_condition(var):
     args.remove_independent_nonvisibles and var not in has_prompt and var not in in_dependencies or \
     args.remove_orphaned_nonvisibles and var not in has_prompt and var in bools and var not in in_dependencies and var not in has_defaults and var not in has_selects
 
+if debug: sys.stderr.write("filtering vars\n")
 keep_vars = filter(lambda var: not remove_condition(var), varnums.keys())
 keep_varnums = filter(lambda (name, num): name in keep_vars, sorted(varnums.items(), key=lambda tup: tup[1]))
 
@@ -816,6 +825,7 @@ for var in varnums.keys():
     else:
       sys.stderr.write("warning: %s is an orphaned nonvisible variable\n" % (var))
     
+if debug: sys.stderr.write("renumbering\n")
 # renumber variables
 num_mapping = {}
 for (name, old_num) in keep_varnums:
@@ -824,8 +834,12 @@ for (name, old_num) in keep_varnums:
 # update varnums
 varnums = {name: num_mapping[old_num] for (name, old_num) in keep_varnums}
 
+if debug: sys.stderr.write("trimming clauses\n")
 # remove vars from clauses
 filtered_clauses = []
+original_num_clauses = len(clauses)
+num_processed = 0
+start_time = time.time()
 for clause in clauses:
   # trim undefined vars from clauses
   filtered_clause = filter(lambda x: abs(x) in num_mapping.keys(), clause)
@@ -838,6 +852,12 @@ for clause in clauses:
     pass
   else:
     filtered_clauses.append(remapped_clause)
+  num_processed += 1
+  if debug:
+    if time.time() - start_time > 2:
+      sys.stderr.write("trimmed %s/%s clauses\n" % (num_processed, original_num_clauses))
+      start_time = time.time()
+if debug: sys.stderr.write("finished trimming %s/%s clauses\n" % (num_processed, original_num_clauses))
 
 def is_true(clause):
   neg = set()
@@ -858,13 +878,16 @@ def is_true(clause):
       assert True
   return False
     
+if debug: sys.stderr.write("trimming true clauses\n")
 # remove true clauses
 if remove_true_clauses:
   filtered_clauses = filter(lambda x: not is_true(x), filtered_clauses)
 
+if debug: sys.stderr.write("stringifying clauses\n")
 # convert clauses to strings
 string_clauses = ["%s 0" % (" ".join([str(num) for num in sorted(clause, key=abs)])) for clause in filtered_clauses]
 
+if debug: sys.stderr.write("deduplicating clauses\n")
 # deduplicate clauses
 if deduplicate_clauses:
   string_clauses = list(set(string_clauses))
@@ -908,4 +931,5 @@ def print_dimacs(varnum_map, clause_list):
   for clause in clause_list:
     print clause
 
+if debug: sys.stderr.write("printing dimacs file\n")
 print_dimacs(varnums, string_clauses)
