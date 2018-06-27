@@ -22,6 +22,7 @@ can be converted to dimacs using the accompanying `dimacs.py` script.
     clause_line := 'clause' clause_elem+
     bool_choice_line := 'bool_choice' config_var+ '|' '(' expr ')'
     dep_line := dep_name config_var '(' expr ')'
+    select_line := 'select' config_var config_var '(' expr ')'
     dep_name := 'dep' | 'rev_dep'
     bi_line := expr '|' expr
     contraint_line := expr
@@ -48,13 +49,19 @@ can be converted to dimacs using the accompanying `dimacs.py` script.
   on the individual choice variables' dependencies are expressed with
   separate `dep` lines.
 - `dep`s are a kconfig dependency.  selecting `config_var` implies
-  that the `expr` holds true.  `rev_dep` identifies those that come
-  from a reverse dependency.  we can assume these lines come after the
-  definition of the variable with `bool_line`, etc, and that `rev_dep`
-  comes after `dep`.
+  that the `expr` holds true.  we can assume this line comes after the
+  definition of the variable with `bool_line`, etc.
 - the `expr` may contain non-boolean relations, which can themselves
   be treated as a boolean variable.  1 and 0 mean true and false
   respectively.
+- `select` says that the first var gets selected by the second var,
+  under the given conditional expression.  note that the given
+  conditional expression may be a duplicate of the selecting vars
+  dependencies and can be deduplicated.  note also there may be
+  repeated `select`s for the same combination of selected and
+  selecting variables, because the same config can be declared
+  multiple times, each selecting the same variable, optionally with
+  differing conditions.
 - `def_bool` defines (possibly multiple) defaults for a boolean
   variable.  This is only meant for nonselectable booleans, since it
   will constrain a variable to that value.
