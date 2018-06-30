@@ -2028,8 +2028,8 @@ int main(int argc, char **argv)
             // variable name, which zconf.y guarantees
             print_python_expr(prop->expr, stdout, E_NONE);
             printf(" %s%s (", config_prefix, sym->name);
-            if (NULL != prop->visible.expr) {
-              print_python_expr(prop->visible.expr, stdout, E_NONE);
+            if (NULL != prop->original_expr) {
+              print_python_expr(prop->original_expr, stdout, E_NONE);
             } else {
               printf("1");
             }
