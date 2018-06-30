@@ -8,10 +8,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* // temp: for printing */
-/* #include <stdio.h> */
-/* void print_python_expr(struct expr *e, FILE *out, enum expr_type prevtoken); */
-
 #include "lkc.h"
 
 static const char nohelp_text[] = "There is no help available for this option.";
@@ -135,26 +131,6 @@ static struct property *menu_add_prop(enum prop_type type, char *prompt, struct 
 
 	prop->menu = current_entry;
 	prop->expr = expr;
-  /* if (P_SELECT == type) { */
-  /*   printf("YO1: "); */
-  /*   print_python_expr(expr, stdout, E_NONE); */
-  /*   printf(" "); */
-  /*   if (NULL != dep) { */
-  /*     print_python_expr(dep, stdout, E_NONE); */
-  /*   } else { */
-  /*     printf("NONE"); */
-  /*   } */
-  /*   printf("\n"); */
-  /*   printf("YO2: "); */
-  /*   print_python_expr(expr, stdout, E_NONE); */
-  /*   printf(" "); */
-  /*   if (NULL != menu_check_dep(dep)) { */
-  /*     print_python_expr(menu_check_dep(dep), stdout, E_NONE); */
-  /*   } else { */
-  /*     printf("NONE"); */
-  /*   } */
-  /*   printf("\n"); */
-  /* } */
 	prop->visible.expr = menu_check_dep(dep);
   if (P_SELECT == type) {
     // hang on to the original for kmax
