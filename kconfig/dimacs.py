@@ -572,14 +572,45 @@ for var in set(dep_exprs.keys()).union(set(selects.keys())).union(set(def_bool_l
   if var in selects.keys():
     has_selects.add(var)
     has_dependencies.add(var)  # track vars that have dependencies
-    selecting_vars = selects[var].keys()
+    selecting_vars = selects[var]
     rev_dep_expr = None
-    for selecting_var in selecting_vars:
-      in_dependencies.add(selecting_var)
-      if rev_dep_expr == None:
-        rev_dep_expr = selecting_var
+    for selecting_var in selecting_vars.keys():
+      deps = selecting_vars[selecting_var]
+
+      # compute the select dependency (select_dep) for the var that
+      # does the selecting.  this is complicated by the fact that one
+      # var can be used many times to select the same var under
+      # different conditions.
+      if len(deps) == 0:
+        select_dep = None
       else:
-        rev_dep_expr = disjunction(rev_dep_expr, selecting_var)
+        # optimization: if any are (1), then the whole thing is (1).
+        # we set it to None since it is as if there is no dependency.
+        if len(filter(lambda x: x == "(1)", deps)) > 0:
+          select_dep = None
+        else:
+          # generate the union of all dependencies for this selecting
+          # var
+          if len(deps) == 1:
+            select_dep = list(deps)[0]
+          else:
+            select_dep = "(%s)" % (" or ".join(deps))
+      # print
+      # print "JFK", selecting_var
+      # print "JFK", deps
+      # print "JFK", select_dep
+      if select_dep == None:
+        selecting_term = selecting_var
+      else:
+        selecting_term = conjunction(selecting_var, select_dep)
+
+      # update reverse dependency
+      if rev_dep_expr == None:
+        rev_dep_expr = selecting_term
+      else:
+        rev_dep_expr = disjunction(rev_dep_expr, selecting_term)
+    in_dependencies.update(get_identifiers(rev_dep_expr))
+    # print "REV", rev_dep_expr
     # sys.stderr.write("rev_dep_expr: %s\n" % (rev_dep_expr))
   else:
     rev_dep_expr = None
