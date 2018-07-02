@@ -465,6 +465,12 @@ for line in sys.stdin:
       sys.stderr.write("found duplicate dep for %s. currently unsupported\n" % (var))
       exit(1)
     dep_exprs[var] = expr
+  elif (instr == "rev_dep"):
+    var, expr = data.split(" ", 1)
+    if var in rev_dep_exprs:
+      sys.stderr.write("found duplicate rev_dep for %s. currently unsupported\n" % (var))
+      exit(1)
+    rev_dep_exprs[var] = expr
   elif (instr == "select"):
     selected_var, selecting_var, expr = data.split(" ", 2)
     if selected_var not in selects.keys():
@@ -496,6 +502,31 @@ in_dependencies = set()
 
 # keep track of variables that have reverse dependencies
 has_selects = set()
+
+def split_top_level_clauses(expr, separator):
+  terms = []
+  cur_term = ""
+  depth = 0
+  for c in expr:
+    if c == "(":
+      depth += 1
+    elif c == ")":
+      depth -= 1
+      
+    if depth == 0:
+      cur_term += c
+      if cur_term.endswith(separator):
+        # save the term we just saw
+        terms.append(cur_term[:-len(separator)])
+        cur_term = ""
+    elif depth > 0:
+      cur_term += c
+    else:
+      sys.stderr.write("fatal: misnested parentheses in reverse dependencies: %s\n" % expr)
+      exit(1)
+  # save the last term
+  terms.append(cur_term)
+  return terms
 
 def split_top_level_clauses(expr, separator):
   terms = []
@@ -612,51 +643,78 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(sele
     dep_expr = None
 
   # get reverse dependencies
-  if var in selects.keys():
-    has_selects.add(var)
-    has_dependencies.add(var)  # track vars that have dependencies
-    selecting_vars = selects[var]
-    rev_dep_expr = None
-    for selecting_var in selecting_vars.keys():
-      deps = selecting_vars[selecting_var]
+  if True:  # use rev_dep lines
+    if var in rev_dep_exprs.keys():
+      rev_dep_expr = rev_dep_exprs[var]
+      has_selects.add(var)
+      if rev_dep_expr != "(1)":
+        has_dependencies.add(var)  # track vars that have dependencies
+        in_dependencies.update(get_identifiers(rev_dep_expr))  # track vars that are in other dependencies
+    else:
+      rev_dep_expr = None
 
-      # compute the select dependency (select_dep) for the var that
-      # does the selecting.  this is complicated by the fact that one
-      # var can be used many times to select the same var under
-      # different conditions.
-      if len(deps) == 0:
-        select_dep = None
-      else:
-        # optimization: if any are (1), then the whole thing is (1).
-        # we set it to None since it is as if there is no dependency.
-        if len(filter(lambda x: x == "(1)", deps)) > 0:
+    # filter out dependency expressions from configurations that are
+    # reverse dependencies.  if a var SEL is a reverse dependency for
+    # VAR, VAR's rev_dep_expr will contain "SEL and DIR_DEP".  we can
+    # remove the DIR_DEP for SEL, since it will be covered when
+    # processing SEL.  this reduces clause size.
+    if rev_dep_expr != None and rev_dep_expr != "(1)":
+      # get all the top-level terms of this clause.  the reverse
+      # dependency will be a union of "SEL and DIR_DEP" terms,
+      # representing each of the reverse dependencies.
+      expr = rev_dep_expr
+      # print "BEGIN", rev_dep_expr
+      # (1) strip surrounding parens (as added by check_dep on all dependencies)
+      if expr.startswith("(") and expr.endswith(")"): expr = expr[1:-1]
+      # (2) split into ORed clauses
+      terms = split_top_level_clauses(expr, " or ")
+      # (3) remove the direct dependencies conjoined with the SEL vars
+      edited_terms = map(remove_direct_dep_from_rev_dep_term, terms)
+      sys.stderr.write("%s %s\n" % (var, edited_terms))
+      rev_dep_expr = "(%s)" % (" or ".join(edited_terms))
+      # print "END", rev_dep_expr
+      
+  else:  # use select lines
+    if var in selects.keys():
+      has_selects.add(var)
+      has_dependencies.add(var)  # track vars that have dependencies
+      selecting_vars = selects[var]
+      rev_dep_expr = None
+      for selecting_var in selecting_vars.keys():
+        deps = selecting_vars[selecting_var]
+
+        # compute the select dependency (select_dep) for the var that
+        # does the selecting.  this is complicated by the fact that one
+        # var can be used many times to select the same var under
+        # different conditions.
+        if len(deps) == 0:
           select_dep = None
         else:
-          # generate the union of all dependencies for this selecting
-          # var
-          if len(deps) == 1:
-            select_dep = list(deps)[0]
+          # optimization: if any are (1), then the whole thing is (1).
+          # we set it to None since it is as if there is no dependency.
+          if len(filter(lambda x: x == "(1)", deps)) > 0:
+            select_dep = None
           else:
-            select_dep = "(%s)" % (" or ".join(deps))
-      # print
-      # print "JFK", selecting_var
-      # print "JFK", deps
-      # print "JFK", select_dep
-      if select_dep == None:
-        selecting_term = selecting_var
-      else:
-        selecting_term = conjunction(selecting_var, select_dep)
+            # generate the union of all dependencies for this selecting
+            # var
+            if len(deps) == 1:
+              select_dep = list(deps)[0]
+            else:
+              select_dep = "(%s)" % (" or ".join(deps))
+        if select_dep == None:
+          selecting_term = selecting_var
+        else:
+          selecting_term = conjunction(selecting_var, select_dep)
 
-      # update reverse dependency
-      if rev_dep_expr == None:
-        rev_dep_expr = selecting_term
-      else:
-        rev_dep_expr = disjunction(rev_dep_expr, selecting_term)
-    in_dependencies.update(get_identifiers(rev_dep_expr))
-    # print "REV", rev_dep_expr
-    # sys.stderr.write("rev_dep_expr: %s\n" % (rev_dep_expr))
-  else:
-    rev_dep_expr = None
+        # update reverse dependency
+        if rev_dep_expr == None:
+          rev_dep_expr = selecting_term
+        else:
+          rev_dep_expr = disjunction(rev_dep_expr, selecting_term)
+      in_dependencies.update(get_identifiers(rev_dep_expr))
+      if debug_expressions: sys.stderr.write("rev_dep_expr: %s\n" % (rev_dep_expr))
+    else:
+      rev_dep_expr = None
 
   if args.remove_reverse_dependencies:
     rev_dep_expr = None
