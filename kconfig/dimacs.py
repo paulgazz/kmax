@@ -23,6 +23,10 @@ argparser.add_argument('-d',
                        '--debug',
                        action="store_true",
                        help="""turn on debugging output""")
+argparser.add_argument('-e',
+                       '--debug-expressions',
+                       action="store_true",
+                       help="""print all expressions""")
 argparser.add_argument('--remove-all-nonvisibles',
                        action="store_true",
                        help="""whether to leave only those config vars that can be selected by the user.  this is defined as config vars that have a kconfig prompt.""")
@@ -53,6 +57,7 @@ argparser.add_argument('--comment-format-v2',
 args = argparser.parse_args()
 
 debug = args.debug
+debug_expressions = args.debug_expressions
 remove_true_clauses = True
 deduplicate_clauses = True
 
@@ -63,6 +68,7 @@ varnums = {}
 
 # collect dep lines
 dep_exprs = {}
+rev_dep_exprs = {}
 
 # collect select lines
 selects = {}
@@ -293,7 +299,41 @@ def convert_to_cnf(expr):
   else:
     # constants don't add any clauses
     return []
-  
+
+def pretty_printer(expr, stream=sys.stdout):
+  depth = 0
+  for i in range(0, len(expr)):
+    if expr[i] == "(":
+      if (i < len(expr) - 1 and expr[i + 1] == "("):
+        stream.write("\n")
+        stream.write("%s" % (". " * depth))
+        stream.write("%s" % (expr[i]))
+        depth += 1
+      else:
+        stream.write("\n")
+        stream.write("%s" % (". " * depth))
+        stream.write("%s" % (expr[i]))
+        stream.write("\n")
+        depth += 1
+        stream.write("%s" % (". " * depth))
+    elif expr[i] == ")":
+      if (i < len(expr) - 1 and expr[i + 1] == ")"):
+        stream.write("\n")
+        depth -= 1
+        stream.write("%s" % (". " * depth))
+        stream.write("%s" % (expr[i]))
+      else:
+        stream.write("\n")
+        depth -= 1
+        stream.write("%s" % (". " * depth))
+        stream.write("%s" % (expr[i]))
+        stream.write("\n")
+        stream.write("%s" % (". " * depth))
+    elif expr[i] == " ":
+      pass
+    else:
+      stream.write("%s" % (expr[i]))
+
 def collect_identifiers(node):
   """takes a tree and returns a list of clauses or a constant value"""
   nodetype = node[0]
@@ -553,13 +593,14 @@ for (config_vars, dep_expr) in bool_choices:
   clause1 = implication(conjunction(dep_expr, individual_conditions), possible_choices)
   clause2 = implication(possible_choices, dep_expr)
   final_expression = conjunction(clause1, clause2)
-  # print choice_dep
+  if debug_expressions:
+    sys.stderr.write("bool choice")
+    pretty_printer(final_expression, stream=sys.stderr)
   new_clauses = convert_to_cnf(final_expression)
-  # print new_clauses
   clauses.extend(new_clauses)
 
 # generate clauses for dependencies and defaults
-for var in set(dep_exprs.keys()).union(set(selects.keys())).union(set(def_bool_lines.keys())).union(set(prompt_lines.keys())):
+for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(selects.keys())).union(set(def_bool_lines.keys())).union(set(prompt_lines.keys())):
   if debug: sys.stderr.write("processing %s\n" % (var))
   # get direct dependencies
   if var in dep_exprs.keys():
@@ -768,9 +809,11 @@ for var in set(dep_exprs.keys()).union(set(selects.keys())).union(set(def_bool_l
     else:
       cond_nonvisible_expr = None
 
-    # sys.stderr.write("var %s\n" % (var))
-    # sys.stderr.write("visible %s\n" % (cond_visible_expr))
-    # sys.stderr.write("nonvisible %s\n" % (cond_nonvisible_expr))
+    if debug_expressions: sys.stderr.write("var %s\n" % (var))
+    if debug_expressions: sys.stderr.write("unconditional visible %s\n" % (visible_expr))
+    if debug_expressions: sys.stderr.write("visible %s\n" % (cond_visible_expr))
+    if debug_expressions: sys.stderr.write("unconditional nonvisible %s\n" % (cond_nonvisible_expr))
+    if debug_expressions: sys.stderr.write("nonvisible %s\n" % (cond_nonvisible_expr))
       
     if cond_visible_expr != None and cond_nonvisible_expr != None:
       final_expr = disjunction(cond_visible_expr, cond_nonvisible_expr)
@@ -782,6 +825,7 @@ for var in set(dep_exprs.keys()).union(set(selects.keys())).union(set(def_bool_l
       final_expr = None
 
     if final_expr != None:
+      if debug_expressions: sys.stderr.write("%s final expression is %s\n" % (var, final_expr))
       new_clauses = convert_to_cnf(final_expr)
       # print new_clauses
       clauses.extend(new_clauses)
