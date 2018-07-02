@@ -10,6 +10,8 @@ import time
 # this script takes the check_dep --dimacs output and converts it into
 # a dimacs-compatible format
 
+sys.setrecursionlimit(2000) # temporary fix until we improve parsing
+
 argparser = argparse.ArgumentParser(
     description="""\
 Convert Kmax-produced Kconfig constraints from stdin into a dimacs file.
@@ -273,10 +275,10 @@ def convert(node):
 def convert_to_cnf(expr):
   try:
     ast = compiler.parse(expr)
-  except:
-    sys.stderr.write("error: could not parse %s\n" % (line))
-    sys.stderr.write(traceback.format_exc())
-    sys.stderr.write("\n")
+  except RuntimeError as e:
+    sys.stderr.write("exception: %s\n" % (e))
+    sys.stderr.write("could not convert expression to cnf\n%s\n" % (expr))
+    exit(1)
     return []
   # get Discard(ACTUAL_EXPR) from Module(None, Stmt([Discard(ACTUAL_EXPR)))
   actual_expr = ast.getChildNodes()[0].getChildNodes()[0]
