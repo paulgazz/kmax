@@ -102,6 +102,11 @@ argparser.add_argument('-B',
                        action="store_true",
                        help="""\
 Treat all configuration variables as Boolean variables""")
+argparser.add_argument('-n',
+                       '--naive-append',
+                       action="store_true",
+                       help="""\
+use naive append behavior, which has more exponential explosion""")
 
 
 args = argparser.parse_args()
@@ -164,6 +169,8 @@ def covering_set(kbuild_dir,        # src directory to process
   if args.boolean_configs:
     covering_set_args.append("-B")
 
+  if args.naive_append:
+    covering_set_args.append("-n")
   covering_set_args.append(kbuild_dir)
 
   p = subprocess.Popen(covering_set_args,
