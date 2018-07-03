@@ -1,0 +1,24 @@
+config MODULES
+	bool
+	option modules
+
+config FOO
+	tristate "foo"
+
+config BAR
+	tristate "bar"
+
+config FOOBAR
+	prompt "foobar" if FOO
+	default y
+	tristate
+
+config BARFOO
+	prompt "barfoo" if FOO
+	default n
+	tristate
+
+config BAZ
+	prompt "baz" if FOO
+	default BAR
+	tristate

@@ -1,0 +1,5 @@
+c 1 CONFIG_TRISTATE_VAL bool
+c 2 CONFIG_MODULES hidden_bool
+c 3 CONFIG_BOOL_VAL bool
+p cnf 3 1
+2 0

@@ -1,0 +1,22 @@
+
+config CFG80211
+	tristate "cfg80211 - wireless configuration API"
+
+
+config CFG80211_INTERNAL_REGDB
+	bool "use statically compiled regulatory rules database" if EXPERT
+	default n
+	depends on CFG80211
+
+
+
+config EXPERT
+	bool "Configure standard kernel features (expert users)"
+
+
+
+config MODULES
+	bool "Enable loadable module support"
+	
+
+

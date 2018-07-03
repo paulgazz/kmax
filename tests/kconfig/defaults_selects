@@ -1,0 +1,11 @@
+config A
+  boolean "a"
+  depends on B
+
+config B
+  boolean
+  default n
+
+config C
+  boolean
+  select B

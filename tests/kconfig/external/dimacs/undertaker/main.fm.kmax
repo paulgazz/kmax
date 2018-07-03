@@ -1,0 +1,10 @@
+bool CONFIG_einseitig selectable
+bool CONFIG_Synchronization nonselectable
+bool CONFIG_blockierend selectable
+bool CONFIG_nichtblockierend selectable
+bool CONFIG_unterdrueckend selectable
+bool CONFIG_mehrseitig nonselectable
+rev_dep CONFIG_Synchronization (CONFIG_einseitig or CONFIG_mehrseitig)
+dep CONFIG_unterdrueckend (CONFIG_einseitig)
+rev_dep CONFIG_unterdrueckend (CONFIG_einseitig)
+rev_dep CONFIG_mehrseitig (CONFIG_blockierend or CONFIG_nichtblockierend)

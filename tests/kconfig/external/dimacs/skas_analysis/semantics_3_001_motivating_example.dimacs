@@ -1,0 +1,11 @@
+c 1 CONFIG_VAL2 choice_bool
+c 2 CONFIG_MODULES bool
+c 3 CONFIG_STR_VAR nonbool ""
+c 4 CONFIG_VAL1 choice_bool
+c 5 CONFIG_TRI_VAR bool
+p cnf 5 5
+-4 -1 0
+-1 -4 0
+4 1 0
+-3 2 0
+-2 3 0

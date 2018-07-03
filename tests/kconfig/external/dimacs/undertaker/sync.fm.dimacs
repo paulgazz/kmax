@@ -1,0 +1,14 @@
+c 1 CONFIG_einseitig bool
+c 2 CONFIG_Synchronization hidden_bool
+c 3 CONFIG_blockierend bool
+c 4 CONFIG_nichtblockierend bool
+c 5 CONFIG_unterdrueckend bool
+c 6 CONFIG_mehrseitig hidden_bool
+p cnf 6 7
+-6 3 4 0
+-3 6 0
+-4 6 0
+-2 1 6 0
+-1 2 0
+-6 2 0
+-5 1 0

@@ -1,0 +1,26 @@
+config MODULES
+	bool 
+	default y
+
+
+#booleans
+
+config F1
+	bool
+	prompt "P1"
+
+
+config F2
+	bool
+	prompt "P2"
+
+
+config F3
+	bool
+	prompt "P3"
+
+config F4
+	bool
+	prompt "P4"
+	depends on (F3 && F1) || (!F2 && F3) || (F2 && ! (F3 && y))
+

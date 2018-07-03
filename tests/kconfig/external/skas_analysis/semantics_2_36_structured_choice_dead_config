@@ -1,0 +1,24 @@
+config EXT_VAR
+  bool "Not nested Variable"
+
+choice
+  bool "Choice"
+  config VAR_1
+    bool "Variable 1"
+    
+  config VAR_2
+    bool "Variable 2"
+
+    config NESTED_VAR_1
+      bool "Nested Variable 1"
+      depends on VAR_2
+      
+    if EXT_VAR
+      config NESTED_VAR_2
+        bool "Dead Sub Value"
+        depends on VAR_2
+    endif
+    config NESTED_VAR_3
+      bool "Nested Variable 3"
+      depends on VAR_2
+endchoice

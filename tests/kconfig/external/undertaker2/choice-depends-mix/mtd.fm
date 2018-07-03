@@ -1,0 +1,19 @@
+config MODULES
+	bool "Enable loadable module support"
+
+config MTD
+	tristate 
+	default m
+
+choice
+	prompt "Flash cmd/query data swapping"
+	default MTD_CFI_NOSWAP
+	depends on MTD!=n
+#	depends on MTD
+
+config MTD_CFI_NOSWAP
+	bool "NO"
+
+config MTD_CFI_SWAP
+	bool "YES"
+endchoice

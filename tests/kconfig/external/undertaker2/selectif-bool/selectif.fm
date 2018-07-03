@@ -1,0 +1,16 @@
+config ARCH_SUPPORTS_MSI
+    bool
+    default n
+
+config PCI
+    bool "PCI support"
+    default y
+    select ARCH_SUPPORTS_MSI if (X86_LOCAL_APIC && X86_IO_APIC)
+
+config X86_LOCAL_APIC
+    def_bool y
+    prompt "x86 local apic"
+
+config X86_IO_APIC
+    def_bool y
+    prompt "x86 io apic"

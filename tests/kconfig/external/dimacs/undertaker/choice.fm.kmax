@@ -1,0 +1,11 @@
+bool CONFIG_VMSPLIT_2G_OPT selectable
+bool CONFIG_VMSPLIT_1G selectable
+bool CONFIG_VMSPLIT_3G selectable
+bool CONFIG_MODULES selectable
+bool CONFIG_VMSPLIT_3G_OPT selectable
+bool CONFIG_VMSPLIT_2G selectable
+dep CONFIG_VMSPLIT_2G_OPT (1 and  not "X86_PAE")
+dep CONFIG_VMSPLIT_1G (1)
+dep CONFIG_VMSPLIT_3G (1)
+dep CONFIG_VMSPLIT_3G_OPT (1 and  not "X86_PAE")
+dep CONFIG_VMSPLIT_2G (1)

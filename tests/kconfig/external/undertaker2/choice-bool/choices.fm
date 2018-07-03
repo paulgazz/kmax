@@ -1,0 +1,13 @@
+config F
+	bool "F"
+choice
+prompt "My Choice"
+	config A
+		bool "A"
+	config B
+		bool "B"
+	config C
+		bool "C"
+		depends on F
+
+endchoice

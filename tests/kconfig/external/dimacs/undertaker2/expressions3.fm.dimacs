@@ -1,0 +1,26 @@
+c 1 CONFIG_F5 bool
+c 2 CONFIG_X2 bool
+c 3 CONFIG_X5 bool
+c 4 CONFIG_F4 bool
+c 5 CONFIG_MODULES hidden_bool
+c 6 CONFIG_F3 bool
+c 7 CONFIG_X1 bool
+c 8 CONFIG_Y1 bool
+c 9 CONFIG_Z1 bool
+c 10 CONFIG_X4 bool
+c 11 CONFIG_F2 bool
+c 12 CONFIG_F1 bool
+c 13 CONFIG_X3 bool
+c 14 CONFIG_F6 bool
+p cnf 14 11
+5 0
+-9 4 1 0
+-8 7 6 0
+-8 11 6 0
+-7 12 11 0
+-2 12 0
+-2 11 0
+-13 12 0
+-10 12 0
+-3 12 11 0
+-3 6 0

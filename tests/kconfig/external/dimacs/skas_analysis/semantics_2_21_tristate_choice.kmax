@@ -1,0 +1,7 @@
+bool CONFIG_BOOL_VAL_1 selectable
+bool CONFIG_MODULES selectable
+bool CONFIG_TRISTATE_VAL_1 selectable
+bool CONFIG_TRISTATE_VAL_2 selectable
+dep CONFIG_BOOL_VAL_1 (1)
+dep CONFIG_TRISTATE_VAL_1 (1)
+dep CONFIG_TRISTATE_VAL_2 (1)

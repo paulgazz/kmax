@@ -1,0 +1,5 @@
+bool I selectable
+bool A selectable
+bool B selectable
+bool D selectable
+constraint (A and I) or (not A and ((not I or B and D) and (not (B and D) or I)))

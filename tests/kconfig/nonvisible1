@@ -1,0 +1,9 @@
+bool VAR nonselectable
+bool DEP selectable
+bool SELECT selectable
+bool DEFAULT selectable
+bool DUMMY selectable
+def_bool VAR 1 (DEFAULT)
+def_bool VAR 0 (DUMMY)
+dep VAR (DEP)
+rev_dep VAR (SELECT)

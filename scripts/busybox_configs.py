@@ -26,6 +26,7 @@ import kmaxdata
 import lockfile # pip install lockfile
 import tempfile
 import csv
+import argparse
 from collections import defaultdict
 
 # Collect stats on archs, kconfig files, kbuild files, and config vars
@@ -33,13 +34,34 @@ from collections import defaultdict
 
 # USAGE: collect_buildsystem.py
 
-args = sys.argv
 
-if len(args) == 1:
-  print "USAGE: " + os.path.basename(args[0]) + " busybox_path"
-  exit(1)
 
-busybox_path = args[1]
+
+argparser = argparse.ArgumentParser(
+    formatter_class=argparse.RawDescriptionHelpFormatter,
+    description="""\
+Collect stats on archs, kconfig files, kbuild files, and config vars
+and pickle the data to stdout.
+    """,
+    epilog="""\
+    """
+    )
+argparser.add_argument('busybox_path',
+                       type=str,
+                       help="""the Busybox distribution directory to analyze""")
+argparser.add_argument('-B',
+                       '--boolean-configs',
+                       action="store_true",
+                       help="""\
+Treat all configuration variables as Boolean variables""")
+
+args = argparser.parse_args()
+
+if len(args.busybox_path) == 0:
+  argparser.print_help()
+  sys.exit(1)
+
+busybox_path = args.busybox_path
 
 os.chdir(busybox_path)
 command = 'make gen_build_files'
@@ -69,6 +91,7 @@ config_path = config_name
 # These are taken from the top-level Makefile's core-y and libs-y
 # variables.  This is correct at least for Kmax ESEC/FSE '17 paper
 # version 1.25.0 and branch 1_22_stable (for iGen journal).
+# added klibc-utils for version 1.28.1
 alldirs = set([
   "applets/",
   "archival/",
@@ -77,6 +100,7 @@ alldirs = set([
   "coreutils/",
   "coreutils/libcoreutils/",
   "debianutils/",
+  "klibc-utils/" \
   "e2fsprogs/",
   "editors/",
   "findutils/",
@@ -107,11 +131,12 @@ buildsystemdata.alldirs = list(alldirs)
 
 buildsystemdata.kconfig_files = []
 for dir in buildsystemdata.alldirs:
-  for path, subdirs, filenames in os.walk(dir):
-    buildsystemdata.kconfig_files += \
-      [ os.path.join(path, fn)
-        for fn in filenames
-        if fn.startswith(config_name) ]
+  if os.path.exists(dir):
+    for path, subdirs, filenames in os.walk(dir):
+      buildsystemdata.kconfig_files += \
+        [ os.path.join(path, fn)
+          for fn in filenames
+          if fn.startswith(config_name) ]
 kconfigdata = kmaxdata.KConfigData()
 
 check_dep_command = "check_dep"
@@ -158,6 +183,8 @@ compunit_command = 'compilation_units.py'
 #   compunit_command += ' --no-aggregation'
 # remaining_arguments = ' -C ' + kconfigdatafile + ' ' + " ".join([os.path.join(x, build_name) for x in buildsystemdata.alldirs])
 remaining_arguments = ' -C ' + kconfigdatafile + ' ' + " ".join(buildsystemdata.alldirs)
+if args.boolean_configs:
+  remaining_arguments += ' -B'
 
 command = compunit_command + remaining_arguments
 print command

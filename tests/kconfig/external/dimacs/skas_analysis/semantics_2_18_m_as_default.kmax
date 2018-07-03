@@ -1,0 +1,3 @@
+bool CONFIG_VAR1 selectable
+bool CONFIG_VAR2 selectable
+bool CONFIG_MODULES selectable

@@ -1,0 +1,2 @@
+Symbol F4 shows a complex boolean expression.
+Symbol F5 issus a multiple definition

@@ -1,0 +1,7 @@
+bool CONFIG_VAL_2 selectable
+bool CONFIG_VAL_1 selectable
+bool CONFIG_CONST_FALSE nonselectable
+def_bool CONFIG_CONST_FALSE 0 (1)
+bool_choice CONFIG_VAL_1 CONFIG_VAL_2|(1)
+dep CONFIG_VAL_2 (1 and CONFIG_CONST_FALSE)
+dep CONFIG_VAL_1 (1 and CONFIG_CONST_FALSE)

@@ -1,0 +1,11 @@
+config MODULES
+  bool "Enable Tristate Support "
+  option modules
+  
+config VAR1
+  bool "Boolean Variable"
+  default m
+  
+config VAR2
+  tristate "Tristate Variable"
+  default m

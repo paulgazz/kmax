@@ -1,0 +1,16 @@
+c 1 CONFIG_VAL_2 choice_bool
+c 2 CONFIG_VAL_1 choice_bool
+c 3 CONFIG_SUB_VAL_1 bool
+c 4 CONFIG_SUB_VAL_2 bool
+c 5 CONFIG_DEAD_SUB_VAL choice_bool
+p cnf 5 10
+-2 -1 0
+-2 -5 0
+-1 -2 0
+-1 -5 0
+-5 -2 0
+-5 -1 0
+2 1 5 0
+-5 2 0
+-4 2 0
+-3 2 0

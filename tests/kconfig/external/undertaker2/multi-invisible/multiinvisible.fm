@@ -1,0 +1,19 @@
+config BLOCK
+    bool "BLOCK"
+
+config MMU
+    bool "MMU"
+    
+config FOO
+    bool "FOO"
+
+config SWAP
+	bool "Support for paging of anonymous memory (swap)"
+	depends on MMU && BLOCK
+	default y
+
+config SWAP
+	def_bool n
+	prompt "SWAP" if FOO
+
+
