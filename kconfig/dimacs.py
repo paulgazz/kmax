@@ -672,35 +672,36 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(sele
       terms = map(remove_direct_dep_from_rev_dep_term, terms)
       if debug: sys.stderr.write("%s %s\n" % (var, terms))
 
-      # print "END", rev_dep_expr
+      if False:
+        rev_dep_expr = "(%s)" % (" or ".join(terms))
+      else:
+        # optimization to reduce cnf blowup: combine factors by
+        # disjunction for top-level terms, i.e., A & D1 or A & D2 => A &
+        # (D1 or D2).
 
-      # optimization to reduce cnf blowup: combine factors by
-      # disjunction for top-level terms, i.e., A & D1 or A & D2 => A &
-      # (D1 or D2).
+        # assume the first factor is the reverse dependency and the rest
+        # of the term is the reverse dependency's dependency (heuristic
+        # based on how kconfig emits expressions)
+        split_factors = [ term.split(" and ", 1) for term in terms ]
+        # split_factors is now a list containing lists of either 1 or 2
+        # elements, the former having now dependency factor.
 
-      # assume the first factor is the reverse dependency and the rest
-      # of the term is the reverse dependency's dependency (heuristic
-      # based on how kconfig emits expressions)
-      split_factors = [ term.split(" and ", 1) for term in terms ]
-      # split_factors is now a list containing lists of either 1 or 2
-      # elements, the former having now dependency factor.
+        # aggregate split factors
+        if debug: sys.stderr.write("split_factors %s\n" % (split_factors))
+        combined_terms = defaultdict(set)
+        for split_factor in split_factors:
+          assert len(split_factor) == 1 or len(split_factor) == 2
+          if len(split_factor) == 1:
+            combined_terms[split_factor[0]].add("(1)")
+          elif len(split_factor) == 2:
+            combined_terms[split_factor[0]].add(split_factor[1])
+        if debug: sys.stderr.write("combined_terms %s\n" % (combined_terms))
 
-      # aggregate split factors
-      if debug: sys.stderr.write("split_factors %s\n" % (split_factors))
-      combined_terms = defaultdict(set)
-      for split_factor in split_factors:
-        assert len(split_factor) == 1 or len(split_factor) == 2
-        if len(split_factor) == 1:
-          combined_terms[split_factor[0]].add("(1)")
-        elif len(split_factor) == 2:
-          combined_terms[split_factor[0]].add(split_factor[1])
-      if debug: sys.stderr.write("combined_terms %s\n" % (combined_terms))
-
-      stringified_terms = ["%s and (%s)" % (select_var, " or ".join(combined_terms[select_var]))
-                           for select_var in combined_terms.keys()]
-      # rev_dep_expr = "(%s)" % (" or ".join(stringified_terms))
-      rev_dep_expr = "(%s)" % (" or ".join(stringified_terms))
-      if debug: sys.stderr.write("stringified %s\n" % (rev_dep_expr))
+        stringified_terms = ["%s and (%s)" % (select_var, " or ".join(combined_terms[select_var]))
+                             for select_var in combined_terms.keys()]
+        # rev_dep_expr = "(%s)" % (" or ".join(stringified_terms))
+        rev_dep_expr = "(%s)" % (" or ".join(stringified_terms))
+        if debug: sys.stderr.write("stringified %s\n" % (rev_dep_expr))
       
   else:  # use select lines (deprecated)
     if var in selects.keys():
