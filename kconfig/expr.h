@@ -151,6 +151,7 @@ struct property {
 	enum prop_type type;       /* type of property */
 	const char *text;          /* the prompt value - P_PROMPT, P_MENU, P_COMMENT */
 	struct expr_value visible;
+	struct expr *original_expr;/* kmax - expr from if part of select */
 	struct expr *expr;         /* the optional conditional part of the property */
 	struct menu *menu;         /* the menu the property are associated with
 	                            * valid for: P_SELECT, P_RANGE, P_CHOICE,

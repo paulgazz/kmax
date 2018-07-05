@@ -132,6 +132,10 @@ static struct property *menu_add_prop(enum prop_type type, char *prompt, struct 
 	prop->menu = current_entry;
 	prop->expr = expr;
 	prop->visible.expr = menu_check_dep(dep);
+  if (P_SELECT == type) {
+    // hang on to the original for kmax
+    prop->original_expr = prop->visible.expr;
+  }
 
 	if (prompt) {
 		if (isspace(*prompt)) {

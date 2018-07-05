@@ -2017,6 +2017,25 @@ int main(int argc, char **argv)
         }
 
         if (enable_reverse_dependencies) {
+          // print all the variables selected by this variable
+          /* struct property *prop; */
+          /* for_all_properties(sym, prop, P_SELECT) { */
+          /*   // the current var itself is the var doing the select */
+          /*   // prop->expr is the variable being selected */
+          /*   // prop->visible.expr is the "if ..." after the select */
+          /*   printf("select "); */
+          /*   // note: this assumes that prop->expr is only a single */
+          /*   // variable name, which zconf.y guarantees */
+          /*   print_python_expr(prop->expr, stdout, E_NONE); */
+          /*   printf(" %s%s (", config_prefix, sym->name); */
+          /*   if (NULL != prop->original_expr) { */
+          /*     print_python_expr(prop->original_expr, stdout, E_NONE); */
+          /*   } else { */
+          /*     printf("1"); */
+          /*   } */
+          /*   printf(")\n"); */
+          /* } */
+
           if (sym->rev_dep.expr) {
             no_dependencies = false;
             printf("rev_dep %s%s (", config_prefix, sym->name);

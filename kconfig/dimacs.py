@@ -5,9 +5,12 @@ import ast
 import traceback
 import argparse
 from collections import defaultdict
+import time
 
 # this script takes the check_dep --dimacs output and converts it into
 # a dimacs-compatible format
+
+sys.setrecursionlimit(2000) # temporary fix until we improve parsing
 
 argparser = argparse.ArgumentParser(
     description="""\
@@ -20,6 +23,10 @@ argparser.add_argument('-d',
                        '--debug',
                        action="store_true",
                        help="""turn on debugging output""")
+argparser.add_argument('-e',
+                       '--debug-expressions',
+                       action="store_true",
+                       help="""print all expressions""")
 argparser.add_argument('--remove-all-nonvisibles',
                        action="store_true",
                        help="""whether to leave only those config vars that can be selected by the user.  this is defined as config vars that have a kconfig prompt.""")
@@ -50,6 +57,7 @@ argparser.add_argument('--comment-format-v2',
 args = argparser.parse_args()
 
 debug = args.debug
+debug_expressions = args.debug_expressions
 remove_true_clauses = True
 deduplicate_clauses = True
 
@@ -58,9 +66,12 @@ root_var = "SPECIAL_ROOT_VARIABLE"
 # mapping from configuration variable name to dimacs variable number
 varnums = {}
 
-# collect dep and rev_dep lines
+# collect dep lines
 dep_exprs = {}
 rev_dep_exprs = {}
+
+# collect select lines
+selects = {}
 
 # collect visibility conditions
 prompt_lines = {}
@@ -270,10 +281,10 @@ def convert(node):
 def convert_to_cnf(expr):
   try:
     ast = compiler.parse(expr)
-  except:
-    sys.stderr.write("error: could not parse %s\n" % (line))
-    sys.stderr.write(traceback.format_exc())
-    sys.stderr.write("\n")
+  except RuntimeError as e:
+    sys.stderr.write("exception: %s\n" % (e))
+    sys.stderr.write("could not convert expression to cnf\n%s\n" % (expr))
+    exit(1)
     return []
   # get Discard(ACTUAL_EXPR) from Module(None, Stmt([Discard(ACTUAL_EXPR)))
   actual_expr = ast.getChildNodes()[0].getChildNodes()[0]
@@ -288,7 +299,41 @@ def convert_to_cnf(expr):
   else:
     # constants don't add any clauses
     return []
-  
+
+def pretty_printer(expr, stream=sys.stdout):
+  depth = 0
+  for i in range(0, len(expr)):
+    if expr[i] == "(":
+      if (i < len(expr) - 1 and expr[i + 1] == "("):
+        stream.write("\n")
+        stream.write("%s" % (". " * depth))
+        stream.write("%s" % (expr[i]))
+        depth += 1
+      else:
+        stream.write("\n")
+        stream.write("%s" % (". " * depth))
+        stream.write("%s" % (expr[i]))
+        stream.write("\n")
+        depth += 1
+        stream.write("%s" % (". " * depth))
+    elif expr[i] == ")":
+      if (i < len(expr) - 1 and expr[i + 1] == ")"):
+        stream.write("\n")
+        depth -= 1
+        stream.write("%s" % (". " * depth))
+        stream.write("%s" % (expr[i]))
+      else:
+        stream.write("\n")
+        depth -= 1
+        stream.write("%s" % (". " * depth))
+        stream.write("%s" % (expr[i]))
+        stream.write("\n")
+        stream.write("%s" % (". " * depth))
+    elif expr[i] == " ":
+      pass
+    else:
+      stream.write("%s" % (expr[i]))
+
 def collect_identifiers(node):
   """takes a tree and returns a list of clauses or a constant value"""
   nodetype = node[0]
@@ -426,6 +471,13 @@ for line in sys.stdin:
       sys.stderr.write("found duplicate rev_dep for %s. currently unsupported\n" % (var))
       exit(1)
     rev_dep_exprs[var] = expr
+  elif (instr == "select"):
+    selected_var, selecting_var, expr = data.split(" ", 2)
+    if selected_var not in selects.keys():
+      selects[selected_var] = {}
+    if selecting_var not in selects[selected_var].keys():
+      selects[selected_var][selecting_var] = set()
+    selects[selected_var][selecting_var].add(expr)
   elif (instr == "bi"):
     expr1, expr2 = data.split("|", 1)
     # print expr1, expr2
@@ -450,6 +502,31 @@ in_dependencies = set()
 
 # keep track of variables that have reverse dependencies
 has_selects = set()
+
+def split_top_level_clauses(expr, separator):
+  terms = []
+  cur_term = ""
+  depth = 0
+  for c in expr:
+    if c == "(":
+      depth += 1
+    elif c == ")":
+      depth -= 1
+      
+    if depth == 0:
+      cur_term += c
+      if cur_term.endswith(separator):
+        # save the term we just saw
+        terms.append(cur_term[:-len(separator)])
+        cur_term = ""
+    elif depth > 0:
+      cur_term += c
+    else:
+      sys.stderr.write("fatal: misnested parentheses in reverse dependencies: %s\n" % expr)
+      exit(1)
+  # save the last term
+  terms.append(cur_term)
+  return terms
 
 def split_top_level_clauses(expr, separator):
   terms = []
@@ -547,13 +624,15 @@ for (config_vars, dep_expr) in bool_choices:
   clause1 = implication(conjunction(dep_expr, individual_conditions), possible_choices)
   clause2 = implication(possible_choices, dep_expr)
   final_expression = conjunction(clause1, clause2)
-  # print choice_dep
+  if debug_expressions:
+    sys.stderr.write("bool choice")
+    pretty_printer(final_expression, stream=sys.stderr)
   new_clauses = convert_to_cnf(final_expression)
-  # print new_clauses
   clauses.extend(new_clauses)
-    
+
 # generate clauses for dependencies and defaults
-for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_bool_lines.keys())).union(set(prompt_lines.keys())):
+for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(selects.keys())).union(set(def_bool_lines.keys())).union(set(prompt_lines.keys())):
+  if debug: sys.stderr.write("processing %s\n" % (var))
   # get direct dependencies
   if var in dep_exprs.keys():
     dep_expr = dep_exprs[var]
@@ -564,14 +643,107 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_
     dep_expr = None
 
   # get reverse dependencies
-  if var in rev_dep_exprs.keys():
-    rev_dep_expr = rev_dep_exprs[var]
-    has_selects.add(var)
-    if rev_dep_expr != "(1)":
+  if True:  # use rev_dep lines always
+    if var in rev_dep_exprs.keys():
+      rev_dep_expr = rev_dep_exprs[var]
+      has_selects.add(var)
+      if rev_dep_expr != "(1)":
+        has_dependencies.add(var)  # track vars that have dependencies
+        in_dependencies.update(get_identifiers(rev_dep_expr))  # track vars that are in other dependencies
+    else:
+      rev_dep_expr = None
+
+    # filter out dependency expressions from configurations that are
+    # reverse dependencies.  if a var SEL is a reverse dependency for
+    # VAR, VAR's rev_dep_expr will contain "SEL and DIR_DEP".  we can
+    # remove the DIR_DEP for SEL, since it will be covered when
+    # processing SEL.  this reduces clause size.
+    if rev_dep_expr != None and rev_dep_expr != "(1)":
+      # get all the top-level terms of this clause.  the reverse
+      # dependency will be a union of "SEL and DIR_DEP" terms,
+      # representing each of the reverse dependencies.
+      expr = rev_dep_expr
+      # print "BEGIN", rev_dep_expr
+      # (1) strip surrounding parens (as added by check_dep on all dependencies)
+      if expr.startswith("(") and expr.endswith(")"): expr = expr[1:-1]
+      # (2) split into ORed clauses
+      terms = split_top_level_clauses(expr, " or ")
+      # (3) remove the direct dependencies conjoined with the SEL vars
+      terms = map(remove_direct_dep_from_rev_dep_term, terms)
+      if debug: sys.stderr.write("%s %s\n" % (var, terms))
+
+      if False:
+        rev_dep_expr = "(%s)" % (" or ".join(terms))
+      else:
+        # optimization to reduce cnf blowup: combine factors by
+        # disjunction for top-level terms, i.e., A & D1 or A & D2 => A &
+        # (D1 or D2).
+
+        # assume the first factor is the reverse dependency and the rest
+        # of the term is the reverse dependency's dependency (heuristic
+        # based on how kconfig emits expressions)
+        split_factors = [ term.split(" and ", 1) for term in terms ]
+        # split_factors is now a list containing lists of either 1 or 2
+        # elements, the former having now dependency factor.
+
+        # aggregate split factors
+        if debug: sys.stderr.write("split_factors %s\n" % (split_factors))
+        combined_terms = defaultdict(set)
+        for split_factor in split_factors:
+          assert len(split_factor) == 1 or len(split_factor) == 2
+          if len(split_factor) == 1:
+            combined_terms[split_factor[0]].add("(1)")
+          elif len(split_factor) == 2:
+            combined_terms[split_factor[0]].add(split_factor[1])
+        if debug: sys.stderr.write("combined_terms %s\n" % (combined_terms))
+
+        stringified_terms = ["%s and (%s)" % (select_var, " or ".join(combined_terms[select_var]))
+                             for select_var in combined_terms.keys()]
+        # rev_dep_expr = "(%s)" % (" or ".join(stringified_terms))
+        rev_dep_expr = "(%s)" % (" or ".join(stringified_terms))
+        if debug: sys.stderr.write("stringified %s\n" % (rev_dep_expr))
+      
+  else:  # use select lines (deprecated)
+    if var in selects.keys():
+      has_selects.add(var)
       has_dependencies.add(var)  # track vars that have dependencies
-      in_dependencies.update(get_identifiers(rev_dep_expr))  # track vars that are in other dependencies
-  else:
-    rev_dep_expr = None
+      selecting_vars = selects[var]
+      rev_dep_expr = None
+      for selecting_var in selecting_vars.keys():
+        deps = selecting_vars[selecting_var]
+
+        # compute the select dependency (select_dep) for the var that
+        # does the selecting.  this is complicated by the fact that one
+        # var can be used many times to select the same var under
+        # different conditions.
+        if len(deps) == 0:
+          select_dep = None
+        else:
+          # optimization: if any are (1), then the whole thing is (1).
+          # we set it to None since it is as if there is no dependency.
+          if len(filter(lambda x: x == "(1)", deps)) > 0:
+            select_dep = None
+          else:
+            # generate the union of all dependencies for this selecting
+            # var
+            if len(deps) == 1:
+              select_dep = list(deps)[0]
+            else:
+              select_dep = "(%s)" % (" or ".join(deps))
+        if select_dep == None:
+          selecting_term = selecting_var
+        else:
+          selecting_term = conjunction(selecting_var, select_dep)
+
+        # update reverse dependency
+        if rev_dep_expr == None:
+          rev_dep_expr = selecting_term
+        else:
+          rev_dep_expr = disjunction(rev_dep_expr, selecting_term)
+      in_dependencies.update(get_identifiers(rev_dep_expr))
+      if debug_expressions: sys.stderr.write("rev_dep_expr: %s\n" % (rev_dep_expr))
+    else:
+      rev_dep_expr = None
 
   if args.remove_reverse_dependencies:
     rev_dep_expr = None
@@ -594,26 +766,6 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_
       else:
         sys.stderr.write("warning: found bad select statement(s) for %s\n" % (var))
 
-  # filter out dependency expressions from configurations that are
-  # reverse dependencies.  if a var SEL is a reverse dependency for
-  # VAR, VAR's rev_dep_expr will contain "SEL and DIR_DEP".  we can
-  # remove the DIR_DEP for SEL, since it will be covered when
-  # processing SEL.  this reduces clause size.
-  if rev_dep_expr != None and rev_dep_expr != "(1)":
-    # get all the top-level terms of this clause.  the reverse
-    # dependency will be a union of "SEL and DIR_DEP" terms,
-    # representing each of the reverse dependencies.
-    expr = rev_dep_expr
-    # print "BEGIN", rev_dep_expr
-    # (1) strip surrounding parens (as added by check_dep on all dependencies)
-    if expr.startswith("(") and expr.endswith(")"): expr = expr[1:-1]
-    # (2) split into ORed clauses
-    terms = split_top_level_clauses(expr, " or ")
-    # (3) remove the direct dependencies conjoined with the SEL vars
-    edited_terms = map(remove_direct_dep_from_rev_dep_term, terms)
-    rev_dep_expr = "(%s)" % (" or ".join(edited_terms))
-    # print "END", rev_dep_expr
-    
   # collect boolean default expression
   if var in def_bool_lines.keys():
     has_defaults.add(var)
@@ -643,9 +795,14 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_
         pass
       elif dep_expr != None and rev_dep_expr != None:
         # both kinds
-        clause1 = conjunction(rev_dep_expr, var)
-        clause2 = conjunction(negation(rev_dep_expr), implication(var, dep_expr))
-        visible_expr = disjunction(clause1, clause2)
+        clause1 = disjunction(rev_dep_expr, disjunction(dep_expr, negation(var)))
+        clause2 = disjunction(negation(rev_dep_expr), var)
+        visible_expr = conjunction(clause1, clause2)
+
+        # # unsimplified form
+        # clause1 = conjunction(rev_dep_expr, var)
+        # clause2 = conjunction(negation(rev_dep_expr), implication(var, dep_expr))
+        # visible_expr = disjunction(clause1, clause2)
         pass
       else:
         # neither kind means it's a free variable
@@ -739,9 +896,11 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_
     else:
       cond_nonvisible_expr = None
 
-    # sys.stderr.write("var %s\n" % (var))
-    # sys.stderr.write("visible %s\n" % (cond_visible_expr))
-    # sys.stderr.write("nonvisible %s\n" % (cond_nonvisible_expr))
+    if debug_expressions: sys.stderr.write("var %s\n" % (var))
+    if debug_expressions: sys.stderr.write("unconditional visible %s\n" % (visible_expr))
+    if debug_expressions: sys.stderr.write("visible %s\n" % (cond_visible_expr))
+    if debug_expressions: sys.stderr.write("unconditional nonvisible %s\n" % (cond_nonvisible_expr))
+    if debug_expressions: sys.stderr.write("nonvisible %s\n" % (cond_nonvisible_expr))
       
     if cond_visible_expr != None and cond_nonvisible_expr != None:
       final_expr = disjunction(cond_visible_expr, cond_nonvisible_expr)
@@ -753,6 +912,7 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(def_
       final_expr = None
 
     if final_expr != None:
+      if debug_expressions: sys.stderr.write("%s final expression is %s\n" % (var, final_expr))
       new_clauses = convert_to_cnf(final_expr)
       # print new_clauses
       clauses.extend(new_clauses)
@@ -806,6 +966,7 @@ def remove_condition(var):
     args.remove_independent_nonvisibles and var not in has_prompt and var not in in_dependencies or \
     args.remove_orphaned_nonvisibles and var not in has_prompt and var in bools and var not in in_dependencies and var not in has_defaults and var not in has_selects
 
+if debug: sys.stderr.write("filtering vars\n")
 keep_vars = filter(lambda var: not remove_condition(var), varnums.keys())
 keep_varnums = filter(lambda (name, num): name in keep_vars, sorted(varnums.items(), key=lambda tup: tup[1]))
 
@@ -816,6 +977,7 @@ for var in varnums.keys():
     else:
       sys.stderr.write("warning: %s is an orphaned nonvisible variable\n" % (var))
     
+if debug: sys.stderr.write("renumbering\n")
 # renumber variables
 num_mapping = {}
 for (name, old_num) in keep_varnums:
@@ -824,8 +986,12 @@ for (name, old_num) in keep_varnums:
 # update varnums
 varnums = {name: num_mapping[old_num] for (name, old_num) in keep_varnums}
 
+if debug: sys.stderr.write("trimming clauses\n")
 # remove vars from clauses
 filtered_clauses = []
+original_num_clauses = len(clauses)
+num_processed = 0
+start_time = time.time()
 for clause in clauses:
   # trim undefined vars from clauses
   filtered_clause = filter(lambda x: abs(x) in num_mapping.keys(), clause)
@@ -838,6 +1004,12 @@ for clause in clauses:
     pass
   else:
     filtered_clauses.append(remapped_clause)
+  num_processed += 1
+  if debug:
+    if time.time() - start_time > 2:
+      sys.stderr.write("trimmed %s/%s clauses\n" % (num_processed, original_num_clauses))
+      start_time = time.time()
+if debug: sys.stderr.write("finished trimming %s/%s clauses\n" % (num_processed, original_num_clauses))
 
 def is_true(clause):
   neg = set()
@@ -858,13 +1030,16 @@ def is_true(clause):
       assert True
   return False
     
+if debug: sys.stderr.write("trimming true clauses\n")
 # remove true clauses
 if remove_true_clauses:
   filtered_clauses = filter(lambda x: not is_true(x), filtered_clauses)
 
+if debug: sys.stderr.write("stringifying clauses\n")
 # convert clauses to strings
 string_clauses = ["%s 0" % (" ".join([str(num) for num in sorted(clause, key=abs)])) for clause in filtered_clauses]
 
+if debug: sys.stderr.write("deduplicating clauses\n")
 # deduplicate clauses
 if deduplicate_clauses:
   string_clauses = list(set(string_clauses))
@@ -908,4 +1083,5 @@ def print_dimacs(varnum_map, clause_list):
   for clause in clause_list:
     print clause
 
+if debug: sys.stderr.write("printing dimacs file\n")
 print_dimacs(varnums, string_clauses)
