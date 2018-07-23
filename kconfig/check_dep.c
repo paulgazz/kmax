@@ -408,7 +408,7 @@ void print_python_expr(struct expr *e, FILE *out, enum expr_type prevtoken)
     if (strcmp(e->right.sym->name, "y") == 0 ||
         strcmp(e->right.sym->name, "m") == 0) {
       // TODO: actually print out ==m instead
-      fprintf(out, "!");
+      fprintf(out, " not ");
       print_python_symbol(out, e->left.sym);
     } else if (strcmp(e->right.sym->name, "n") == 0) {
       print_python_symbol(out, e->left.sym);
