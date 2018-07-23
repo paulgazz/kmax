@@ -13,6 +13,12 @@ https://github.com/openstack/pylockfile
 https://pypi.python.org/packages/source/e/enum34/enum34-1.0.tar.gz#md5=9d57f5454c70c11707998ea26c1b0a7c
 
     python setup.py install --user
+    
+### regex
+
+Improved regular expression library
+
+    pip install regex
 
 ### pycudd
 

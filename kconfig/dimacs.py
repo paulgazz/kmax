@@ -6,6 +6,7 @@ import traceback
 import argparse
 from collections import defaultdict
 import time
+import regex  # pip install regex
 
 # this script takes the check_dep --dimacs output and converts it into
 # a dimacs-compatible format
@@ -553,10 +554,50 @@ def split_top_level_clauses(expr, separator):
   terms.append(cur_term)
   return terms
 
+token_pattern = regex.compile("(\(|\)|[^() ]+| +)+")
+
+def tokenize(expr):
+  return token_pattern.match(expr).captures(1)
+
+def replace_tokens(expr, match_expr, rep_expr):
+  sys.stderr.write("replace_tokens('%s', '%s', '%s')\n" % (expr, match_expr, rep_expr))
+  expr_tokens = tokenize(expr)
+  match_tokens = tokenize(match_expr)
+  # 1 2 3 4 5
+  # a a
+  #   a a
+  #     a a
+  #       a a
+  return_expr = ""
+  if len(match_tokens) > len(expr_tokens):
+    return_expr = expr
+  elif len(match_tokens) == 0:
+    return_expr = expr
+  else:
+    new_expr = ""
+    i = 0
+    while i < len(expr_tokens):
+      matches = True
+      for j in range(len(match_tokens)):
+        if i + j < len(expr_tokens) and expr_tokens[i + j] == match_tokens[j]:
+          # still matches
+          pass
+        else:
+          matches = False
+          break
+      if matches:
+        new_expr += rep_expr
+        i += len(match_tokens)
+      else:
+        new_expr += expr_tokens[i]
+        i += 1
+    return_expr = new_expr
+  sys.stderr.write("return_expr:  %s\n" % (return_expr))
+  return return_expr
+
 def remove_direct_dep_from_rev_dep_term(term):
   # the first factor of the term is the SEL var the selects the
   # variable.  this is how kconfig stores the term.
-  # print "FJDKSL", term, "JFDKSL"
   split_term = term.split(" and ", 1)
   if len(split_term) < 2:
     return term
@@ -568,11 +609,13 @@ def remove_direct_dep_from_rev_dep_term(term):
       # remove the parens
       if dep_expr.startswith("(") and dep_expr.endswith(")"): dep_expr = dep_expr[1:-1]
       # now we an expression that we can cut out from the reverse dependency's term
-      remaining_factors = str.replace(remaining_factors, dep_expr, "1")
-      # print "JFKLDSJKFLDS", remaining_factors, len(remaining_factors)
+      remaining_factors_replaced = replace_tokens(remaining_factors, dep_expr, "1")
+      # remaining_factors_replaced_str = str.replace(remaining_factors, dep_expr, "1")
+      # if remaining_factors_replaced != remaining_factors_replaced_str:
+      #   sys.stderr.write("DIFF\n%s\n%s\n" % (remaining_factors_replaced, remaining_factors_replaced_str))
       # reconstruct the term
-      if len(remaining_factors) > 0:
-        term = "%s and %s" % (first_factor, remaining_factors)
+      if len(remaining_factors_replaced) > 0:
+        term = "%s and %s" % (first_factor, remaining_factors_replaced)
       else:
         # the entire dependency was replaced, so the term is just the
         # reverse dependency variable
@@ -663,14 +706,15 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(sele
       # dependency will be a union of "SEL and DIR_DEP" terms,
       # representing each of the reverse dependencies.
       expr = rev_dep_expr
-      # print "BEGIN", rev_dep_expr
+      if debug: sys.stderr.write("rev_dep_expr %s\n" % (rev_dep_expr))
       # (1) strip surrounding parens (as added by check_dep on all dependencies)
       if expr.startswith("(") and expr.endswith(")"): expr = expr[1:-1]
       # (2) split into ORed clauses
       terms = split_top_level_clauses(expr, " or ")
       # (3) remove the direct dependencies conjoined with the SEL vars
+      if debug: sys.stderr.write("after split: %s %s\n" % (var, terms))
       terms = map(remove_direct_dep_from_rev_dep_term, terms)
-      if debug: sys.stderr.write("%s %s\n" % (var, terms))
+      if debug: sys.stderr.write("after rem:   %s %s\n" % (var, terms))
 
       if False:
         rev_dep_expr = "(%s)" % (" or ".join(terms))
