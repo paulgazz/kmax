@@ -893,35 +893,85 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(sele
       # don't bother computing the expression
       nonvisible_expr = None
     else:
-      # I <-> ((E & D) | A)
-      # I is the variable, A is the selects (reverse deps), E is the direct dep, D is the default y condition
-
-      # because nonvisible variables cannot be modified by the user
-      # interactively, we use a bi-implication between it's dependencies
-      # and default values and selects.  this says that the default
-      # value will be taken as long as the conditions are met.
-      # nonvisibles default to off if these conditions are not met.
-
       # nonvisibles that have no default, default to off
       if def_y_expr == None:
         def_y_expr = "(0)"
 
-      consequent = dep_expr
-      if consequent == None:
-        consequent = def_y_expr
-      elif def_y_expr != None:
-        consequent = conjunction(consequent, def_y_expr)
+      # visible
+      # elif dep_expr != None and rev_dep_expr != None:
+        # clause1 = disjunction(rev_dep_expr, disjunction(dep_expr, negation(var)))
+        # clause2 = disjunction(negation(rev_dep_expr), var)
+        # visible_expr = conjunction(clause1, clause2)
+      
+      
+      # A rev_dep_expr
+      # B dep_expr
+      # Idef def_y_expr
+      # I var
 
-      if consequent == None:
-        consequent = rev_dep_expr
-      elif rev_dep_expr != None:
-        consequent = disjunction(consequent, rev_dep_expr)
+      # unsimplified:
+      # (rev_dep_expr and var) or (not rev_dep_expr and (var biimp (dep_expr and def_y_expr)))
 
-      if consequent != None:
-        nonvisible_expr = biimplication(var, consequent)
-        # print nonvisible_expr
+      # simplified
+      # (    A or     B or not I            ) and
+      # (    A or not B or     I or not Idef) and
+      # (not A          or     I            ) and
+      # (         not B or     I or not Idef)
+
+      
+      if dep_expr != None and rev_dep_expr == None:
+        clause1 = disjunction(dep_expr, negation(var))
+        clause2 = disjunction(negation(dep_expr), disjunction(var, negation(def_y_expr)))
+        clause3 = var
+        clause4 = disjunction(negation(dep_expr), disjunction(var, negation(def_y_expr)))
+        nonvisible_expr = conjunction(clause1, conjunction(clause2, conjunction(clause3, clause4)))
+      elif dep_expr == None and rev_dep_expr != None:
+        clause1 = "(1)"
+        clause2 = disjunction(rev_dep_expr, disjunction(var, negation(def_y_expr)))
+        clause3 = disjunction(negation(rev_dep_expr), var)
+        clause4 = disjunction(var, negation(def_y_expr))
+        nonvisible_expr = conjunction(clause1, conjunction(clause2, conjunction(clause3, clause4)))
+      elif dep_expr != None and rev_dep_expr != None:
+        clause1 = disjunction(rev_dep_expr, disjunction(dep_expr, negation(var)))
+        clause2 = disjunction(rev_dep_expr, disjunction(negation(dep_expr), disjunction(var, negation(def_y_expr))))
+        clause3 = disjunction(negation(rev_dep_expr), var)
+        clause4 = disjunction(negation(dep_expr), disjunction(var, negation(def_y_expr)))
+        nonvisible_expr = conjunction(clause1, conjunction(clause2, conjunction(clause3, clause4)))
       else:
-        nonvisible_expr = None
+        clause1 = "(1)"
+        clause2 = disjunction(rev_dep_expr, disjunction(var, negation(def_y_expr)))
+        clause3 = disjunction(negation(rev_dep_expr), var)
+        clause4 = disjunction(var, negation(def_y_expr))
+        nonvisible_expr = conjunction(clause1, conjunction(clause2, conjunction(clause3, clause4)))
+      
+      # # I <-> ((E & D) | A)
+      # # I is the variable, A is the selects (reverse deps), E is the direct dep, D is the default y condition
+
+      # # because nonvisible variables cannot be modified by the user
+      # # interactively, we use a bi-implication between it's dependencies
+      # # and default values and selects.  this says that the default
+      # # value will be taken as long as the conditions are met.
+      # # nonvisibles default to off if these conditions are not met.
+
+
+      # # old
+      # # var biimp (dep_expr and def_y_expr or rev_dep_expr)
+      # consequent = dep_expr
+      # if consequent == None:
+      #   consequent = def_y_expr
+      # elif def_y_expr != None:
+      #   consequent = conjunction(consequent, def_y_expr)
+
+      # if consequent == None:
+      #   consequent = rev_dep_expr
+      # elif rev_dep_expr != None:
+      #   consequent = disjunction(consequent, rev_dep_expr)
+
+      # if consequent != None:
+      #   nonvisible_expr = biimplication(var, consequent)
+      #   # print nonvisible_expr
+      # else:
+      #   nonvisible_expr = None
 
     # compute the complete expression for the variable
     # prompt_expr and visible_expr or not prompt_expr and nonvisible_expr
