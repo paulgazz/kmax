@@ -560,7 +560,7 @@ def tokenize(expr):
   return token_pattern.match(expr).captures(1)
 
 def replace_tokens(expr, match_expr, rep_expr):
-  sys.stderr.write("replace_tokens('%s', '%s', '%s')\n" % (expr, match_expr, rep_expr))
+  # sys.stderr.write("replace_tokens('%s', '%s', '%s')\n" % (expr, match_expr, rep_expr))
   expr_tokens = tokenize(expr)
   match_tokens = tokenize(match_expr)
   # 1 2 3 4 5
@@ -592,7 +592,7 @@ def replace_tokens(expr, match_expr, rep_expr):
         new_expr += expr_tokens[i]
         i += 1
     return_expr = new_expr
-  sys.stderr.write("return_expr:  %s\n" % (return_expr))
+  # sys.stderr.write("return_expr:  %s\n" % (return_expr))
   return return_expr
 
 def remove_direct_dep_from_rev_dep_term(term):
@@ -712,9 +712,9 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(sele
       # (2) split into ORed clauses
       terms = split_top_level_clauses(expr, " or ")
       # (3) remove the direct dependencies conjoined with the SEL vars
-      if debug: sys.stderr.write("after split: %s %s\n" % (var, terms))
+      # if debug: sys.stderr.write("after split: %s %s\n" % (var, terms))
       terms = map(remove_direct_dep_from_rev_dep_term, terms)
-      if debug: sys.stderr.write("after rem:   %s %s\n" % (var, terms))
+      # if debug: sys.stderr.write("after rem:   %s %s\n" % (var, terms))
 
       if False:
         rev_dep_expr = "(%s)" % (" or ".join(terms))
@@ -731,7 +731,7 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(sele
         # elements, the former having now dependency factor.
 
         # aggregate split factors
-        if debug: sys.stderr.write("split_factors %s\n" % (split_factors))
+        # if debug: sys.stderr.write("split_factors %s\n" % (split_factors))
         combined_terms = defaultdict(set)
         for split_factor in split_factors:
           assert len(split_factor) == 1 or len(split_factor) == 2
@@ -739,13 +739,16 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(sele
             combined_terms[split_factor[0]].add("(1)")
           elif len(split_factor) == 2:
             combined_terms[split_factor[0]].add(split_factor[1])
-        if debug: sys.stderr.write("combined_terms %s\n" % (combined_terms))
+        # if debug: sys.stderr.write("combined_terms %s\n" % (combined_terms))
 
         stringified_terms = ["%s and (%s)" % (select_var, " or ".join(combined_terms[select_var]))
                              for select_var in combined_terms.keys()]
         # rev_dep_expr = "(%s)" % (" or ".join(stringified_terms))
         rev_dep_expr = "(%s)" % (" or ".join(stringified_terms))
-        if debug: sys.stderr.write("stringified %s\n" % (rev_dep_expr))
+        if debug: # sys.stderr.write("stringified %s\n" % (rev_dep_expr))
+          sys.stderr.write("stringified\n")
+          pretty_printer(rev_dep_expr, stream=sys.stderr)
+
       
   else:  # use select lines (deprecated)
     if var in selects.keys():
