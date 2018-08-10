@@ -719,7 +719,7 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(sele
       terms = map(remove_direct_dep_from_rev_dep_term, terms)
       # if debug: sys.stderr.write("after rem:   %s %s\n" % (var, terms))
 
-      if False:
+      if False:  # don't ever use the unoptimized version
         rev_dep_expr = "(%s)" % (" or ".join(terms))
       else:
         # optimization to reduce cnf blowup: combine factors by
