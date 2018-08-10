@@ -377,8 +377,11 @@ def biimplication(antecedent, consequent):
 def conjunction(a, b):
   return "((%s) and (%s))" % (a, b)
 
-def disjunction(a, b):
-  return "((%s) or (%s))" % (a, b)
+# def disjunction(a, b):
+#   return "((%s) or (%s))" % (a, b)
+
+def disjunction(*args):
+  return "(%s)" % (" or ".join(map(lambda x: "(%s)" % (x), args)))
 
 def negation(a):
   return "(not (%s))" % (a)
