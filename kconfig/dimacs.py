@@ -383,6 +383,14 @@ def conjunction(a, b):
 def disjunction(*args):
   return "(%s)" % (" or ".join(map(lambda x: "(%s)" % (x), args)))
 
+def existential_disjunction(*args):
+  """Create a string expression disjoining all non-null elements of args."""
+  filtered_args = [ x for x in args if x is not None ]
+  if len(filtered_args) == 0:
+    return None
+  else:
+    return disjunction(*filtered_args)
+
 def negation(a):
   return "(not (%s))" % (a)
 
