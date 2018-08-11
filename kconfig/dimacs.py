@@ -853,17 +853,34 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(sele
       # R is the reverse dependency
       # P is the prompt condition
       # F is the default true condition for nonvisibles
-      
+
+      # this is a currently broken attempt
+      clauses = [
       # (P or R or D or !V) and
-      prompt_expr
+        [ prompt_expr, rev_dep_expr, dep_expr, negation(var) ],
       # (P or R or !D or V or !F) and
+        [ prompt_expr, rev_dep_expr, negation(dep_expr), var, negation(def_y_expr) ],
       # (P or !R or V) and
+        [ prompt_expr, negation(rev_dep_expr), var ],
       # (P or !V or !F) and
+        [ prompt_expr, negation(var), def_y_expr ],
       # (!P or R or D or !V) and
+        [ negation(prompt_expr), rev_dep_expr, dep_expr, negation(var) ],
       # (R or D or !V) and
+        [ rev_dep_expr, dep_expr, negation(var) ],
       # (R or D or !V or !F) and
+        [ rev_dep_expr, dep_expr, negation(var), negation(def_y_expr) ],
       # (!P or !R or V) and
+        [ negation(prompt_expr), negation(rev_dep_expr), var ],
       # (R! or V)
+        [ negation(rev_dep_expr), var ]
+      ]
+      for clause in clauses:
+        if clause is not None:
+          expression = existential_disjunction(*clause)
+          new_clauses = convert_to_cnf(expression)
+          clauses.extend(new_clauses)
+        
     else:
       if var not in has_prompt:
         # don't bother computing the visible expression if there is no
