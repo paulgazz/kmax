@@ -392,7 +392,10 @@ def existential_disjunction(*args):
     return disjunction(*filtered_args)
 
 def negation(a):
-  return "(not (%s))" % (a)
+  if a is None:
+    return a
+  else:
+    return "(not (%s))" % (a)
 
 # print convert_to_cnf("not a or (b and (c or d)) and not (e and f)")
 # print convert_to_cnf("not a or (b and (c or d)) and not (e and f)")
