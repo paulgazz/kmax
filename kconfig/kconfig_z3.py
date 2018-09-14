@@ -56,6 +56,9 @@ argparser.add_argument('--include-nonbool-defaults',
 argparser.add_argument('--comment-format-v2',
                        action="store_true",
                        help="""add extra formatting information to dimacs comments to distinguish them from normal comments""")
+argparser.add_argument('--use-z3',
+                       action="store_true",
+                       help="""generate z3 clauses (instead of dimacs clauses)""")
 args = argparser.parse_args()
 
 debug = args.debug
@@ -63,10 +66,19 @@ debug_expressions = args.debug_expressions
 remove_true_clauses = True
 deduplicate_clauses = True
 
+use_z3 = args.use_z3
+
 root_var = "SPECIAL_ROOT_VARIABLE"
 
 # mapping from configuration variable name to dimacs variable number
 varnums = {}
+
+# mapping from configuration variable name to z3 variable
+z3vars = {}
+
+# dimacs clauses
+clauses = []
+z3_clauses = []
 
 # collect dep lines
 dep_exprs = {}
@@ -307,10 +319,123 @@ def convert_to_cnf(expr):
     # constants don't add any clauses
     return []
 
-def add_dimacs_clauses(expr):
-  new_clauses = convert_to_cnf(expr)
-  # print new_clauses
-  clauses.extend(new_clauses)
+def convert_z3_ast(node):
+  """takes a tree and returns a list of clauses or a constant value"""
+  nodetype = node[0]
+  if nodetype == "or":
+    left = node[1]
+    right = node[2]
+    l = convert(left)
+    r = convert(right)
+
+    # check for constants
+    if isinstance(l, int):
+      if l == 0:
+        return r
+      else:
+        return 1
+    if isinstance(r, int):
+      if r == 0:
+        return l
+      else:
+        return 1
+
+    assert(isinstance(l, list) and isinstance(r, list))
+    # construct new clauses by taking each pairwise combination of l and r's elements
+    new_clauses = []
+    for lc in l:
+      for rc in r:
+        assert(isinstance(lc, list) and isinstance(rc, list))
+        new_clauses.append(lc + rc)
+    return new_clauses
+
+  elif nodetype == "and":
+    left = node[1]
+    right = node[2]
+    l = convert(left)
+    r = convert(right)
+
+    # check for constants
+    if isinstance(l, int):
+      if l == 0:
+        return 0
+      else:
+        return r
+    if isinstance(r, int):
+      if r == 0:
+        return 0
+      else:
+        return l
+      
+    assert(isinstance(l, list) and isinstance(r, list))
+    return l + r  # join two lists of clauses
+
+  elif nodetype == "not":
+    negated_node = node[1]
+    negated_type = negated_node[0]
+    if negated_type == "name":
+      varnum = lookup_varnum(negated_node[1])
+      return [[-varnum]]
+    if negated_type == "const":
+      value = negated_node[1]
+      if value == 0:
+        return 1
+      else:
+        return 0
+    elif negated_type == "not":
+      return convert(negated_node[1]) # double-negation
+    elif negated_type == "and":
+      left = negated_node[1]
+      right = negated_node[2]
+      return convert(("or", ("not", left), ("not", right))) # de morgan
+    elif negated_type == "or":
+      left = negated_node[1]
+      right = negated_node[2]
+      return convert(("and", ("not", left), ("not", right))) # de morgan
+    else:
+      assert(False)
+
+  elif nodetype == "name":
+    varnum = lookup_varnum(node[1])
+    return [[varnum]]
+
+  elif nodetype == "const":
+    return node[1]
+
+  else:
+    assert(False)
+
+def convert_to_z3(expr):
+  try:
+    ast = compiler.parse(expr)
+  except RuntimeError as e:
+    sys.stderr.write("exception: %s\n" % (e))
+    sys.stderr.write("could not convert expression to cnf\n%s\n" % (expr))
+    exit(1)
+    return []
+  # get Discard(ACTUAL_EXPR) from Module(None, Stmt([Discard(ACTUAL_EXPR)))
+  actual_expr = ast.getChildNodes()[0].getChildNodes()[0]
+  # print ast
+  transformer = Transformer()
+  compiler.walk(actual_expr, transformer, walker=transformer, verbose=True)
+  tree = transformer.tree
+  # print tree
+  clauses = convert(tree)
+  if (isinstance(clauses, list)):
+    return clauses
+  else:
+    # constants don't add any clauses
+    return []
+
+def add_clauses(expr):
+  """Either convert to dimacs or to z3"""
+  if use_z3:
+    new_clauses = convert_to_z3(expr)
+    z3_clauses.extend(new_clauses)
+  else:
+    new_clauses = convert_to_cnf(expr)
+    # print new_clauses
+    clauses.extend(new_clauses)
 
 def pretty_printer(expr, stream=sys.stdout):
   depth = 0
@@ -417,7 +542,6 @@ def negation(a):
 # exit(1)
 
 # collect clauses
-clauses = []
 for line in sys.stdin:
   if debug: sys.stderr.write("started %s\n" % (line))
   instr, data = line.strip().split(" ", 1)
@@ -464,7 +588,7 @@ for line in sys.stdin:
         full_expr = "(not (" + expr + ")) or (" + ghost_bool_name + ")"
         # print line
         # print full_expr
-        add_dimacs_clauses(full_expr)
+        add_clauses(full_expr)
     else:
       # just add the first nonbool default
       if var not in nonbool_defaults:
@@ -507,10 +631,10 @@ for line in sys.stdin:
     # print expr1, expr2
     final_expr = "(((not %s) or %s) and ((%s) or (not %s)))" % (expr1, expr2, expr1, expr2)
     # print final_expr
-    add_dimacs_clauses(final_expr_expr)
+    add_clauses(final_expr_expr)
   elif (instr == "constraint"):
     expr = data
-    add_dimacs_clauses(expr)
+    add_clauses(expr)
   else:
     sys.stderr.write("unsupported instruction: %s\n" % (line))
     exit(1)
@@ -693,7 +817,7 @@ for (config_vars, dep_expr) in bool_choices:
   if debug_expressions:
     sys.stderr.write("bool choice")
     pretty_printer(final_expression, stream=sys.stderr)
-  add_dimacs_clauses(final_expression)
+  add_clauses(final_expression)
 
 # generate clauses for dependencies and defaults
 for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(selects.keys())).union(set(def_bool_lines.keys())).union(set(prompt_lines.keys())):
@@ -886,7 +1010,7 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(sele
       for clause in clauses:
         if clause is not None:
           expression = existential_disjunction(*clause)
-          add_dimacs_clauses(expression)
+          add_clauses(expression)
         
     else:
       if var not in has_prompt:
@@ -1075,7 +1199,7 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(sele
 
       if final_expr != None:
         if debug_expressions: sys.stderr.write("%s final expression is %s\n" % (var, final_expr))
-        add_dimacs_clauses(final_expr)
+        add_clauses(final_expr)
         
   elif var in nonbools:
     nonbools_with_dep.add(var)
@@ -1101,9 +1225,16 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(sele
       else:
         final_expr = biimplication(var, dep_expr)
       # print final_expr
-      add_dimacs_clauses(final_expr)
+      add_clauses(final_expr)
   else:
     assert True
+
+if use_z3:
+  # print clauses for now
+  for clause in z3_clauses:
+    print clause
+  # quit and don't do dimacs clause processing
+  exit(1)
 
 if force_all_nonbools_on:
   for nonbool in (nonbools):
