@@ -325,8 +325,8 @@ def convert_z3_ast(node):
   if nodetype == "or":
     left = node[1]
     right = node[2]
-    l = convert(left)
-    r = convert(right)
+    l = convert_z3_ast(left)
+    r = convert_z3_ast(right)
 
     # check for constants
     if isinstance(l, int):
@@ -345,15 +345,15 @@ def convert_z3_ast(node):
     new_clauses = []
     for lc in l:
       for rc in r:
-        assert(isinstance(lc, list) and isinstance(rc, list))
-        new_clauses.append(lc + rc)
+        # assert(isinstance(lc, list) and isinstance(rc, list))
+        new_clauses.append(z3.Or(lc,rc))
     return new_clauses
 
   elif nodetype == "and":
     left = node[1]
     right = node[2]
-    l = convert(left)
-    r = convert(right)
+    l = convert_z3_ast(left)
+    r = convert_z3_ast(right)
 
     # check for constants
     if isinstance(l, int):
@@ -368,14 +368,20 @@ def convert_z3_ast(node):
         return l
       
     assert(isinstance(l, list) and isinstance(r, list))
-    return l + r  # join two lists of clauses
+    # construct new clauses by taking each pairwise combination of l and r's elements
+    new_clauses = []
+    for lc in l:
+      for rc in r:
+        # assert(isinstance(lc, list) and isinstance(rc, list))
+        new_clauses.append(z3.And(lc,rc))
+    return new_clauses
 
   elif nodetype == "not":
     negated_node = node[1]
     negated_type = negated_node[0]
     if negated_type == "name":
-      varnum = lookup_varnum(negated_node[1])
-      return [[-varnum]]
+      z3var = lookup_z3var(negated_node[1])
+      return [z3.Not(z3var)]
     if negated_type == "const":
       value = negated_node[1]
       if value == 0:
@@ -383,21 +389,21 @@ def convert_z3_ast(node):
       else:
         return 0
     elif negated_type == "not":
-      return convert(negated_node[1]) # double-negation
+      return convert_z3_ast(negated_node[1]) # double-negation
     elif negated_type == "and":
       left = negated_node[1]
       right = negated_node[2]
-      return convert(("or", ("not", left), ("not", right))) # de morgan
+      return convert_z3_ast(("or", ("not", left), ("not", right))) # de morgan
     elif negated_type == "or":
       left = negated_node[1]
       right = negated_node[2]
-      return convert(("and", ("not", left), ("not", right))) # de morgan
+      return convert_z3_ast(("and", ("not", left), ("not", right))) # de morgan
     else:
       assert(False)
 
   elif nodetype == "name":
-    varnum = lookup_varnum(node[1])
-    return [[varnum]]
+    z3var = lookup_z3var(node[1])
+    return [z3var]
 
   elif nodetype == "const":
     return node[1]
@@ -420,7 +426,7 @@ def convert_to_z3(expr):
   compiler.walk(actual_expr, transformer, walker=transformer, verbose=True)
   tree = transformer.tree
   # print tree
-  clauses = convert(tree)
+  clauses = convert_z3_ast(tree)
   if (isinstance(clauses, list)):
     return clauses
   else:
