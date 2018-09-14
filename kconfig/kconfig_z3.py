@@ -117,6 +117,11 @@ def lookup_varnum(varname):
     varnums[varname] = len(varnums) + 1
   return varnums[varname]
 
+def lookup_z3var(varname):
+  if varname not in z3vars:
+    z3vars[varname] = z3.Bool(varname)
+  return z3vars[varname]
+
 ghost_bool_count = 0
 def get_ghost_bool_name(var):
   global ghost_bool_count
@@ -302,6 +307,11 @@ def convert_to_cnf(expr):
     # constants don't add any clauses
     return []
 
+def add_dimacs_clauses(expr):
+  new_clauses = convert_to_cnf(expr)
+  # print new_clauses
+  clauses.extend(new_clauses)
+
 def pretty_printer(expr, stream=sys.stdout):
   depth = 0
   for i in range(0, len(expr)):
@@ -454,9 +464,7 @@ for line in sys.stdin:
         full_expr = "(not (" + expr + ")) or (" + ghost_bool_name + ")"
         # print line
         # print full_expr
-        new_clauses = convert_to_cnf(full_expr)
-        # print new_clauses
-        clauses.extend(new_clauses)
+        add_dimacs_clauses(full_expr)
     else:
       # just add the first nonbool default
       if var not in nonbool_defaults:
@@ -499,10 +507,10 @@ for line in sys.stdin:
     # print expr1, expr2
     final_expr = "(((not %s) or %s) and ((%s) or (not %s)))" % (expr1, expr2, expr1, expr2)
     # print final_expr
-    clauses.extend(convert_to_cnf(final_expr))
+    add_dimacs_clauses(final_expr_expr)
   elif (instr == "constraint"):
     expr = data
-    clauses.extend(convert_to_cnf(expr))
+    add_dimacs_clauses(expr)
   else:
     sys.stderr.write("unsupported instruction: %s\n" % (line))
     exit(1)
@@ -685,8 +693,7 @@ for (config_vars, dep_expr) in bool_choices:
   if debug_expressions:
     sys.stderr.write("bool choice")
     pretty_printer(final_expression, stream=sys.stderr)
-  new_clauses = convert_to_cnf(final_expression)
-  clauses.extend(new_clauses)
+  add_dimacs_clauses(final_expression)
 
 # generate clauses for dependencies and defaults
 for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(selects.keys())).union(set(def_bool_lines.keys())).union(set(prompt_lines.keys())):
@@ -879,8 +886,7 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(sele
       for clause in clauses:
         if clause is not None:
           expression = existential_disjunction(*clause)
-          new_clauses = convert_to_cnf(expression)
-          clauses.extend(new_clauses)
+          add_dimacs_clauses(expression)
         
     else:
       if var not in has_prompt:
@@ -1069,9 +1075,7 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(sele
 
       if final_expr != None:
         if debug_expressions: sys.stderr.write("%s final expression is %s\n" % (var, final_expr))
-        new_clauses = convert_to_cnf(final_expr)
-        # print new_clauses
-        clauses.extend(new_clauses)
+        add_dimacs_clauses(final_expr)
         
   elif var in nonbools:
     nonbools_with_dep.add(var)
@@ -1097,8 +1101,7 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(sele
       else:
         final_expr = biimplication(var, dep_expr)
       # print final_expr
-      new_clauses = convert_to_cnf(final_expr)
-      clauses.extend(new_clauses)
+      add_dimacs_clauses(final_expr)
   else:
     assert True
 
