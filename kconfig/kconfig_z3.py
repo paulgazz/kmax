@@ -1240,8 +1240,20 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(sele
 
 if use_z3:
   # print clauses for now
-  for clause in z3_clauses:
-    print clause
+  # for clause in z3_clauses:
+  #   print clause
+  final_z3 = z3.And([ x for x in z3_clauses if z3.is_expr(x) ])
+  print final_z3
+
+  s = z3.Solver()
+  # s.add(z3.Not(final_z3))
+  s.add(final_z3)
+  print s.check()
+
+  # s = z3.Solver()
+  # s.add(z3.Not(final_z3))
+  # print s.check()
+
   # quit and don't do dimacs clause processing
   exit(1)
 
