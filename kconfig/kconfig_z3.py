@@ -427,6 +427,9 @@ def convert_to_z3(expr):
   tree = transformer.tree
   # print tree
   clauses = convert_z3_ast(tree)
+  print clauses
+  if isinstance(clauses, list):
+    clauses = [ z3.simplify(clause) if z3.is_expr(clause) else clause for clause in clauses ]
   if (isinstance(clauses, list)):
     return clauses
   else:
