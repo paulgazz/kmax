@@ -7,6 +7,7 @@ import argparse
 from collections import defaultdict
 import time
 import regex  # pip install regex
+import z3
 
 # this script takes the check_dep --dimacs output and converts it into
 # a dimacs-compatible format
@@ -55,6 +56,9 @@ argparser.add_argument('--include-nonbool-defaults',
 argparser.add_argument('--comment-format-v2',
                        action="store_true",
                        help="""add extra formatting information to dimacs comments to distinguish them from normal comments""")
+argparser.add_argument('--use-z3',
+                       action="store_true",
+                       help="""generate z3 clauses (instead of dimacs clauses)""")
 args = argparser.parse_args()
 
 debug = args.debug
@@ -62,10 +66,19 @@ debug_expressions = args.debug_expressions
 remove_true_clauses = True
 deduplicate_clauses = True
 
+use_z3 = args.use_z3
+
 root_var = "SPECIAL_ROOT_VARIABLE"
 
 # mapping from configuration variable name to dimacs variable number
 varnums = {}
+
+# mapping from configuration variable name to z3 variable
+z3vars = {}
+
+# dimacs clauses
+clauses = []
+z3_clauses = []
 
 # collect dep lines
 dep_exprs = {}
@@ -115,6 +128,11 @@ def lookup_varnum(varname):
   if varname not in varnums:
     varnums[varname] = len(varnums) + 1
   return varnums[varname]
+
+def lookup_z3var(varname):
+  if varname not in z3vars:
+    z3vars[varname] = z3.Bool(varname)
+  return z3vars[varname]
 
 ghost_bool_count = 0
 def get_ghost_bool_name(var):
@@ -301,6 +319,133 @@ def convert_to_cnf(expr):
     # constants don't add any clauses
     return []
 
+def convert_z3_ast(node):
+  """takes a tree and returns a list of clauses or a constant value"""
+  nodetype = node[0]
+  if nodetype == "or":
+    left = node[1]
+    right = node[2]
+    l = convert_z3_ast(left)
+    r = convert_z3_ast(right)
+
+    # check for constants
+    if isinstance(l, int):
+      if l == 0:
+        return r
+      else:
+        return 1
+    if isinstance(r, int):
+      if r == 0:
+        return l
+      else:
+        return 1
+
+    assert(isinstance(l, list) and isinstance(r, list))
+    # construct new clauses by taking each pairwise combination of l and r's elements
+    new_clauses = []
+    for lc in l:
+      for rc in r:
+        # assert(isinstance(lc, list) and isinstance(rc, list))
+        new_clauses.append(z3.Or(lc,rc))
+    return new_clauses
+
+  elif nodetype == "and":
+    left = node[1]
+    right = node[2]
+    l = convert_z3_ast(left)
+    r = convert_z3_ast(right)
+
+    # check for constants
+    if isinstance(l, int):
+      if l == 0:
+        return 0
+      else:
+        return r
+    if isinstance(r, int):
+      if r == 0:
+        return 0
+      else:
+        return l
+      
+    assert(isinstance(l, list) and isinstance(r, list))
+    # construct new clauses by taking each pairwise combination of l and r's elements
+    new_clauses = []
+    for lc in l:
+      for rc in r:
+        # assert(isinstance(lc, list) and isinstance(rc, list))
+        new_clauses.append(z3.And(lc,rc))
+    return new_clauses
+
+  elif nodetype == "not":
+    negated_node = node[1]
+    negated_type = negated_node[0]
+    if negated_type == "name":
+      z3var = lookup_z3var(negated_node[1])
+      return [z3.Not(z3var)]
+    if negated_type == "const":
+      value = negated_node[1]
+      if value == 0:
+        return 1
+      else:
+        return 0
+    elif negated_type == "not":
+      return convert_z3_ast(negated_node[1]) # double-negation
+    elif negated_type == "and":
+      left = negated_node[1]
+      right = negated_node[2]
+      return convert_z3_ast(("or", ("not", left), ("not", right))) # de morgan
+    elif negated_type == "or":
+      left = negated_node[1]
+      right = negated_node[2]
+      return convert_z3_ast(("and", ("not", left), ("not", right))) # de morgan
+    else:
+      assert(False)
+
+  elif nodetype == "name":
+    z3var = lookup_z3var(node[1])
+    return [z3var]
+
+  elif nodetype == "const":
+    return node[1]
+
+  else:
+    assert(False)
+
+def convert_to_z3(expr):
+  try:
+    ast = compiler.parse(expr)
+  except RuntimeError as e:
+    sys.stderr.write("exception: %s\n" % (e))
+    sys.stderr.write("could not convert expression to cnf\n%s\n" % (expr))
+    exit(1)
+    return []
+  # get Discard(ACTUAL_EXPR) from Module(None, Stmt([Discard(ACTUAL_EXPR)))
+  actual_expr = ast.getChildNodes()[0].getChildNodes()[0]
+  # print ast
+  transformer = Transformer()
+  compiler.walk(actual_expr, transformer, walker=transformer, verbose=True)
+  tree = transformer.tree
+  # print tree
+  clauses = convert_z3_ast(tree)
+  print clauses
+  if isinstance(clauses, list):
+    clauses = [ z3.simplify(clause) if z3.is_expr(clause) else clause for clause in clauses ]
+  if (isinstance(clauses, list)):
+    return clauses
+  else:
+    # constants don't add any clauses
+    return []
+
+def add_clauses(expr):
+  """Either convert to dimacs or to z3"""
+  if use_z3:
+    new_clauses = convert_to_z3(expr)
+    z3_clauses.extend(new_clauses)
+  else:
+    new_clauses = convert_to_cnf(expr)
+    # print new_clauses
+    clauses.extend(new_clauses)
+
 def pretty_printer(expr, stream=sys.stdout):
   depth = 0
   for i in range(0, len(expr)):
@@ -377,11 +522,25 @@ def biimplication(antecedent, consequent):
 def conjunction(a, b):
   return "((%s) and (%s))" % (a, b)
 
-def disjunction(a, b):
-  return "((%s) or (%s))" % (a, b)
+# def disjunction(a, b):
+#   return "((%s) or (%s))" % (a, b)
+
+def disjunction(*args):
+  return "(%s)" % (" or ".join(map(lambda x: "(%s)" % (x), args)))
+
+def existential_disjunction(*args):
+  """Create a string expression disjoining all non-null elements of args."""
+  filtered_args = [ x for x in args if x is not None ]
+  if len(filtered_args) == 0:
+    return None
+  else:
+    return disjunction(*filtered_args)
 
 def negation(a):
-  return "(not (%s))" % (a)
+  if a is None:
+    return a
+  else:
+    return "(not (%s))" % (a)
 
 # print convert_to_cnf("not a or (b and (c or d)) and not (e and f)")
 # print convert_to_cnf("not a or (b and (c or d)) and not (e and f)")
@@ -392,7 +551,6 @@ def negation(a):
 # exit(1)
 
 # collect clauses
-clauses = []
 for line in sys.stdin:
   if debug: sys.stderr.write("started %s\n" % (line))
   instr, data = line.strip().split(" ", 1)
@@ -439,9 +597,7 @@ for line in sys.stdin:
         full_expr = "(not (" + expr + ")) or (" + ghost_bool_name + ")"
         # print line
         # print full_expr
-        new_clauses = convert_to_cnf(full_expr)
-        # print new_clauses
-        clauses.extend(new_clauses)
+        add_clauses(full_expr)
     else:
       # just add the first nonbool default
       if var not in nonbool_defaults:
@@ -484,10 +640,10 @@ for line in sys.stdin:
     # print expr1, expr2
     final_expr = "(((not %s) or %s) and ((%s) or (not %s)))" % (expr1, expr2, expr1, expr2)
     # print final_expr
-    clauses.extend(convert_to_cnf(final_expr))
+    add_clauses(final_expr_expr)
   elif (instr == "constraint"):
     expr = data
-    clauses.extend(convert_to_cnf(expr))
+    add_clauses(expr)
   else:
     sys.stderr.write("unsupported instruction: %s\n" % (line))
     exit(1)
@@ -560,7 +716,7 @@ def tokenize(expr):
   return token_pattern.match(expr).captures(1)
 
 def replace_tokens(expr, match_expr, rep_expr):
-  sys.stderr.write("replace_tokens('%s', '%s', '%s')\n" % (expr, match_expr, rep_expr))
+  # sys.stderr.write("replace_tokens('%s', '%s', '%s')\n" % (expr, match_expr, rep_expr))
   expr_tokens = tokenize(expr)
   match_tokens = tokenize(match_expr)
   # 1 2 3 4 5
@@ -592,7 +748,7 @@ def replace_tokens(expr, match_expr, rep_expr):
         new_expr += expr_tokens[i]
         i += 1
     return_expr = new_expr
-  sys.stderr.write("return_expr:  %s\n" % (return_expr))
+  # sys.stderr.write("return_expr:  %s\n" % (return_expr))
   return return_expr
 
 def remove_direct_dep_from_rev_dep_term(term):
@@ -670,8 +826,7 @@ for (config_vars, dep_expr) in bool_choices:
   if debug_expressions:
     sys.stderr.write("bool choice")
     pretty_printer(final_expression, stream=sys.stderr)
-  new_clauses = convert_to_cnf(final_expression)
-  clauses.extend(new_clauses)
+  add_clauses(final_expression)
 
 # generate clauses for dependencies and defaults
 for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(selects.keys())).union(set(def_bool_lines.keys())).union(set(prompt_lines.keys())):
@@ -712,11 +867,11 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(sele
       # (2) split into ORed clauses
       terms = split_top_level_clauses(expr, " or ")
       # (3) remove the direct dependencies conjoined with the SEL vars
-      if debug: sys.stderr.write("after split: %s %s\n" % (var, terms))
+      # if debug: sys.stderr.write("after split: %s %s\n" % (var, terms))
       terms = map(remove_direct_dep_from_rev_dep_term, terms)
-      if debug: sys.stderr.write("after rem:   %s %s\n" % (var, terms))
+      # if debug: sys.stderr.write("after rem:   %s %s\n" % (var, terms))
 
-      if False:
+      if False:  # don't ever use the unoptimized version
         rev_dep_expr = "(%s)" % (" or ".join(terms))
       else:
         # optimization to reduce cnf blowup: combine factors by
@@ -731,7 +886,7 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(sele
         # elements, the former having now dependency factor.
 
         # aggregate split factors
-        if debug: sys.stderr.write("split_factors %s\n" % (split_factors))
+        # if debug: sys.stderr.write("split_factors %s\n" % (split_factors))
         combined_terms = defaultdict(set)
         for split_factor in split_factors:
           assert len(split_factor) == 1 or len(split_factor) == 2
@@ -739,13 +894,16 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(sele
             combined_terms[split_factor[0]].add("(1)")
           elif len(split_factor) == 2:
             combined_terms[split_factor[0]].add(split_factor[1])
-        if debug: sys.stderr.write("combined_terms %s\n" % (combined_terms))
+        # if debug: sys.stderr.write("combined_terms %s\n" % (combined_terms))
 
         stringified_terms = ["%s and (%s)" % (select_var, " or ".join(combined_terms[select_var]))
                              for select_var in combined_terms.keys()]
         # rev_dep_expr = "(%s)" % (" or ".join(stringified_terms))
         rev_dep_expr = "(%s)" % (" or ".join(stringified_terms))
-        if debug: sys.stderr.write("stringified %s\n" % (rev_dep_expr))
+        if debug: # sys.stderr.write("stringified %s\n" % (rev_dep_expr))
+          sys.stderr.write("stringified\n")
+          pretty_printer(rev_dep_expr, stream=sys.stderr)
+
       
   else:  # use select lines (deprecated)
     if var in selects.keys():
@@ -825,141 +983,232 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(sele
   # create clauses for dependencies and defaults
   if var in bools:
     # compute the expression for the visible condition
-    if var not in has_prompt:
-      # don't bother computing the visible expression if there is no
-      # prompt, because it couldn't be user-selectable
-      visible_expr = None
-    else:
-      if dep_expr != None and rev_dep_expr == None:
-        # only direct dependency
-        visible_expr = implication(var, dep_expr)
-      elif dep_expr == None and rev_dep_expr != None:
-        # only reverse dependency
-        visible_expr = implication(rev_dep_expr, var)
-        pass
-      elif dep_expr != None and rev_dep_expr != None:
-        # both kinds
-        clause1 = disjunction(rev_dep_expr, disjunction(dep_expr, negation(var)))
-        clause2 = disjunction(negation(rev_dep_expr), var)
-        visible_expr = conjunction(clause1, clause2)
+    super_simplified_expression = False
+    if super_simplified_expression:
+      # V prompt P
+      # R selects V
+      # V depends on D
+      # V default y if F
+      # V is the variable
+      # D is the direct dependency
+      # R is the reverse dependency
+      # P is the prompt condition
+      # F is the default true condition for nonvisibles
 
-        # # unsimplified form
-        # clause1 = conjunction(rev_dep_expr, var)
-        # clause2 = conjunction(negation(rev_dep_expr), implication(var, dep_expr))
-        # visible_expr = disjunction(clause1, clause2)
-        pass
-      else:
-        # neither kind means it's a free variable
+      # this is a currently broken attempt
+      clauses = [
+      # (P or R or D or !V) and
+        [ prompt_expr, rev_dep_expr, dep_expr, negation(var) ],
+      # (P or R or !D or V or !F) and
+        [ prompt_expr, rev_dep_expr, negation(dep_expr), var, negation(def_y_expr) ],
+      # (P or !R or V) and
+        [ prompt_expr, negation(rev_dep_expr), var ],
+      # (P or !V or !F) and
+        [ prompt_expr, negation(var), def_y_expr ],
+      # (!P or R or D or !V) and
+        [ negation(prompt_expr), rev_dep_expr, dep_expr, negation(var) ],
+      # (R or D or !V) and
+        [ rev_dep_expr, dep_expr, negation(var) ],
+      # (R or D or !V or !F) and
+        [ rev_dep_expr, dep_expr, negation(var), negation(def_y_expr) ],
+      # (!P or !R or V) and
+        [ negation(prompt_expr), negation(rev_dep_expr), var ],
+      # (R! or V)
+        [ negation(rev_dep_expr), var ]
+      ]
+      for clause in clauses:
+        if clause is not None:
+          expression = existential_disjunction(*clause)
+          add_clauses(expression)
+        
+    else:
+      if var not in has_prompt:
+        # don't bother computing the visible expression if there is no
+        # prompt, because it couldn't be user-selectable
         visible_expr = None
-
-      if args.include_bool_defaults and var in def_bool_lines.keys():
-        sys.stderr.write("warning: defaults are ignored for visibles, because they are user-selectable: %s\n" % (var))
-      
-      # # V -> (E | A) and A -> V, where E is direct dep, and A is reverse dep
-
-      # # intuitively, this makes sense.  if V is on, then either its
-      # # direct dependency E or reverse dependency A must have been
-      # # satisfied.  if the direct dependency is off, then the variable
-      # # must have only been set when its reverse dependency is set
-      # # (biimplication).
-
-
-      # # clause1 = var -> (dep_expr or rev_dep_expr)
-      # # clause2 = rev_dep_expr -> var
-
-      # if rev_dep_expr != None:
-      #   if dep_expr != None:
-      #     clause1 = implication(var, disjunction(dep_expr, rev_dep_expr))
-      #     clause2 = implication(rev_dep_expr, var)
-      #     visible_expr = conjunction(clause1, clause2)
-      #   else: # no direct dependency means biimplication between rev_dep and var
-      #     visible_expr = biimplication(var, rev_dep_expr)
-      # else:
-      #   if dep_expr != None:  # no reverse dependency means that only the direct dependency applies
-      #     clause1 = implication(var, dep_expr)
-      #     clause2 = None
-      #     visible_expr = clause1
-      #   else: # no direct or reverse dependencies
-      #     clause1 = None
-      #     clause2 = None
-      #     visible_expr = None
-
-    # compute the expression for the nonvisible condition
-    if prompt_expr == "(1)":
-      # there is no possibility of the variable being nonvisible, so
-      # don't bother computing the expression
-      nonvisible_expr = None
-    else:
-      # I <-> ((E & D) | A)
-      # I is the variable, A is the selects (reverse deps), E is the direct dep, D is the default y condition
-
-      # because nonvisible variables cannot be modified by the user
-      # interactively, we use a bi-implication between it's dependencies
-      # and default values and selects.  this says that the default
-      # value will be taken as long as the conditions are met.
-      # nonvisibles default to off if these conditions are not met.
-
-      # nonvisibles that have no default, default to off
-      if def_y_expr == None:
-        def_y_expr = "(0)"
-
-      consequent = dep_expr
-      if consequent == None:
-        consequent = def_y_expr
-      elif def_y_expr != None:
-        consequent = conjunction(consequent, def_y_expr)
-
-      if consequent == None:
-        consequent = rev_dep_expr
-      elif rev_dep_expr != None:
-        consequent = disjunction(consequent, rev_dep_expr)
-
-      if consequent != None:
-        nonvisible_expr = biimplication(var, consequent)
-        # print nonvisible_expr
       else:
+        if dep_expr != None and rev_dep_expr == None:
+          # only direct dependency
+          visible_expr = implication(var, dep_expr)
+        elif dep_expr == None and rev_dep_expr != None:
+          # only reverse dependency
+          visible_expr = implication(rev_dep_expr, var)
+          pass
+        elif dep_expr != None and rev_dep_expr != None:
+          # both kinds
+          clause1 = disjunction(rev_dep_expr, disjunction(dep_expr, negation(var)))
+          clause2 = disjunction(negation(rev_dep_expr), var)
+          visible_expr = conjunction(clause1, clause2)
+
+          # # unsimplified form
+          # clause1 = conjunction(rev_dep_expr, var)
+          # clause2 = conjunction(negation(rev_dep_expr), implication(var, dep_expr))
+          # visible_expr = disjunction(clause1, clause2)
+          pass
+        else:
+          # neither kind means it's a free variable
+          visible_expr = None
+
+        if args.include_bool_defaults and var in def_bool_lines.keys():
+          sys.stderr.write("warning: defaults are ignored for visibles, because they are user-selectable: %s\n" % (var))
+
+        # # V -> (E | A) and A -> V, where E is direct dep, and A is reverse dep
+
+        # # intuitively, this makes sense.  if V is on, then either its
+        # # direct dependency E or reverse dependency A must have been
+        # # satisfied.  if the direct dependency is off, then the variable
+        # # must have only been set when its reverse dependency is set
+        # # (biimplication).
+
+
+        # # clause1 = var -> (dep_expr or rev_dep_expr)
+        # # clause2 = rev_dep_expr -> var
+
+        # if rev_dep_expr != None:
+        #   if dep_expr != None:
+        #     clause1 = implication(var, disjunction(dep_expr, rev_dep_expr))
+        #     clause2 = implication(rev_dep_expr, var)
+        #     visible_expr = conjunction(clause1, clause2)
+        #   else: # no direct dependency means biimplication between rev_dep and var
+        #     visible_expr = biimplication(var, rev_dep_expr)
+        # else:
+        #   if dep_expr != None:  # no reverse dependency means that only the direct dependency applies
+        #     clause1 = implication(var, dep_expr)
+        #     clause2 = None
+        #     visible_expr = clause1
+        #   else: # no direct or reverse dependencies
+        #     clause1 = None
+        #     clause2 = None
+        #     visible_expr = None
+
+      # compute the expression for the nonvisible condition
+      # if prompt_expr == "(1)" or prompt_expr == dep_expr:
+      #   sys.stderr.write("no prompt\n")
+      if prompt_expr == "(1)":
+        # there is no possibility of the variable being nonvisible, so
+        # don't bother computing the expression
         nonvisible_expr = None
-
-    # compute the complete expression for the variable
-    # prompt_expr and visible_expr or not prompt_expr and nonvisible_expr
-    if visible_expr != None:
-      if prompt_expr != None:
-        cond_visible_expr = conjunction(prompt_expr, visible_expr)
       else:
-        # if there is no prompt expression, it means there is no possibility of visibility
+        # nonvisibles that have no default, default to off
+        if def_y_expr == None:
+          def_y_expr = "(0)"
+        simplified_nonvisibles = False
+        if simplified_nonvisibles:
+          # visible
+          # elif dep_expr != None and rev_dep_expr != None:
+            # clause1 = disjunction(rev_dep_expr, disjunction(dep_expr, negation(var)))
+            # clause2 = disjunction(negation(rev_dep_expr), var)
+            # visible_expr = conjunction(clause1, clause2)
+
+
+          # A rev_dep_expr
+          # B dep_expr
+          # Idef def_y_expr
+          # I var
+
+          # unsimplified:
+          # (rev_dep_expr and var) or (not rev_dep_expr and (var biimp (dep_expr and def_y_expr)))
+
+          # simplified
+          # (    A or     B or not I            ) and
+          # (    A or not B or     I or not Idef) and
+          # (not A          or     I            ) and
+          # (         not B or     I or not Idef)
+
+
+          if dep_expr != None and rev_dep_expr == None:
+            clause1 = disjunction(dep_expr, negation(var))
+            clause2 = disjunction(negation(dep_expr), disjunction(var, negation(def_y_expr)))
+            clause3 = var
+            clause4 = disjunction(negation(dep_expr), disjunction(var, negation(def_y_expr)))
+            nonvisible_expr = conjunction(clause1, conjunction(clause2, conjunction(clause3, clause4)))
+          elif dep_expr == None and rev_dep_expr != None:
+            clause1 = "(1)"
+            clause2 = disjunction(rev_dep_expr, disjunction(var, negation(def_y_expr)))
+            clause3 = disjunction(negation(rev_dep_expr), var)
+            clause4 = disjunction(var, negation(def_y_expr))
+            nonvisible_expr = conjunction(clause1, conjunction(clause2, conjunction(clause3, clause4)))
+          elif dep_expr != None and rev_dep_expr != None:
+            clause1 = disjunction(rev_dep_expr, disjunction(dep_expr, negation(var)))
+            clause2 = disjunction(rev_dep_expr, disjunction(negation(dep_expr), disjunction(var, negation(def_y_expr))))
+            clause3 = disjunction(negation(rev_dep_expr), var)
+            clause4 = disjunction(negation(dep_expr), disjunction(var, negation(def_y_expr)))
+            nonvisible_expr = conjunction(clause1, conjunction(clause2, conjunction(clause3, clause4)))
+          else:
+            clause1 = "(1)"
+            clause2 = disjunction(rev_dep_expr, disjunction(var, negation(def_y_expr)))
+            clause3 = disjunction(negation(rev_dep_expr), var)
+            clause4 = disjunction(var, negation(def_y_expr))
+            nonvisible_expr = conjunction(clause1, conjunction(clause2, conjunction(clause3, clause4)))
+
+        else:
+          # old
+          
+          # I <-> ((E & D) | A)
+          # I is the variable, A is the selects (reverse deps), E is the direct dep, D is the default y condition
+
+          # because nonvisible variables cannot be modified by the user
+          # interactively, we use a bi-implication between it's dependencies
+          # and default values and selects.  this says that the default
+          # value will be taken as long as the conditions are met.
+          # nonvisibles default to off if these conditions are not met.
+
+          # var biimp (dep_expr and def_y_expr or rev_dep_expr)
+          consequent = dep_expr
+          if consequent == None:
+            consequent = def_y_expr
+          elif def_y_expr != None:
+            consequent = conjunction(consequent, def_y_expr)
+
+          if consequent == None:
+            consequent = rev_dep_expr
+          elif rev_dep_expr != None:
+            consequent = disjunction(consequent, rev_dep_expr)
+
+          if consequent != None:
+            nonvisible_expr = biimplication(var, consequent)
+            # print nonvisible_expr
+          else:
+            nonvisible_expr = None
+
+      # compute the complete expression for the variable
+      # prompt_expr and visible_expr or not prompt_expr and nonvisible_expr
+      if visible_expr != None:
+        if prompt_expr != None:
+          cond_visible_expr = conjunction(prompt_expr, visible_expr)
+        else:
+          # if there is no prompt expression, it means there is no possibility of visibility
+          cond_visible_expr = None
+      else:
         cond_visible_expr = None
-    else:
-      cond_visible_expr = None
-      
-    if nonvisible_expr != None:
-      if prompt_expr != None:
-        cond_nonvisible_expr = conjunction(negation(prompt_expr), nonvisible_expr)
+
+      if nonvisible_expr != None:
+        if prompt_expr != None:
+          cond_nonvisible_expr = conjunction(negation(prompt_expr), nonvisible_expr)
+        else:
+          # if there is no prompt_expr, it means the variable is unconditionally nonvisible
+          cond_nonvisible_expr = nonvisible_expr
       else:
-        # if there is no prompt_expr, it means the variable is unconditionally nonvisible
-        cond_nonvisible_expr = nonvisible_expr
-    else:
-      cond_nonvisible_expr = None
+        cond_nonvisible_expr = None
 
-    if debug_expressions: sys.stderr.write("var %s\n" % (var))
-    if debug_expressions: sys.stderr.write("unconditional visible %s\n" % (visible_expr))
-    if debug_expressions: sys.stderr.write("visible %s\n" % (cond_visible_expr))
-    if debug_expressions: sys.stderr.write("unconditional nonvisible %s\n" % (cond_nonvisible_expr))
-    if debug_expressions: sys.stderr.write("nonvisible %s\n" % (cond_nonvisible_expr))
-      
-    if cond_visible_expr != None and cond_nonvisible_expr != None:
-      final_expr = disjunction(cond_visible_expr, cond_nonvisible_expr)
-    elif cond_visible_expr != None and cond_nonvisible_expr == None:
-      final_expr = cond_visible_expr
-    elif cond_visible_expr == None and cond_nonvisible_expr != None:
-      final_expr = cond_nonvisible_expr
-    else: # cond_visible_expr == None and cond_nonvisible_expr == None:
-      final_expr = None
+      if debug_expressions: sys.stderr.write("var %s\n" % (var))
+      if debug_expressions: sys.stderr.write("unconditional visible %s\n" % (visible_expr))
+      if debug_expressions: sys.stderr.write("visible %s\n" % (cond_visible_expr))
+      if debug_expressions: sys.stderr.write("unconditional nonvisible %s\n" % (cond_nonvisible_expr))
+      if debug_expressions: sys.stderr.write("nonvisible %s\n" % (cond_nonvisible_expr))
 
-    if final_expr != None:
-      if debug_expressions: sys.stderr.write("%s final expression is %s\n" % (var, final_expr))
-      new_clauses = convert_to_cnf(final_expr)
-      # print new_clauses
-      clauses.extend(new_clauses)
+      if cond_visible_expr != None and cond_nonvisible_expr != None:
+        final_expr = disjunction(cond_visible_expr, cond_nonvisible_expr)
+      elif cond_visible_expr != None and cond_nonvisible_expr == None:
+        final_expr = cond_visible_expr
+      elif cond_visible_expr == None and cond_nonvisible_expr != None:
+        final_expr = cond_nonvisible_expr
+      else: # cond_visible_expr == None and cond_nonvisible_expr == None:
+        final_expr = None
+
+      if final_expr != None:
+        if debug_expressions: sys.stderr.write("%s final expression is %s\n" % (var, final_expr))
+        add_clauses(final_expr)
         
   elif var in nonbools:
     nonbools_with_dep.add(var)
@@ -985,10 +1234,28 @@ for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(sele
       else:
         final_expr = biimplication(var, dep_expr)
       # print final_expr
-      new_clauses = convert_to_cnf(final_expr)
-      clauses.extend(new_clauses)
+      add_clauses(final_expr)
   else:
     assert True
+
+if use_z3:
+  # print clauses for now
+  # for clause in z3_clauses:
+  #   print clause
+  final_z3 = z3.And([ x for x in z3_clauses if z3.is_expr(x) ])
+  print final_z3
+
+  s = z3.Solver()
+  # s.add(z3.Not(final_z3))
+  s.add(final_z3)
+  print s.check()
+
+  # s = z3.Solver()
+  # s.add(z3.Not(final_z3))
+  # print s.check()
+
+  # quit and don't do dimacs clause processing
+  exit(1)
 
 if force_all_nonbools_on:
   for nonbool in (nonbools):
