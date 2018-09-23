@@ -4,11 +4,19 @@
 
 ### lockfile
 
+    pip install lockfile
+
+Or
+
 https://github.com/openstack/pylockfile
 
     python setup.py install --user
 
 ### enum34
+
+    pip install lockfile
+
+Or
 
 https://pypi.python.org/packages/source/e/enum34/enum34-1.0.tar.gz#md5=9d57f5454c70c11707998ea26c1b0a7c
 
@@ -27,10 +35,13 @@ http://bears.ece.ucsb.edu/ftp/pub/pycudd2.0/pycudd2.0.2.tar.gz
 The package contains two directories, `cudd-2.4.2/` and `pycudd/`.
 First enter `cudd-2.4.2/`.
 
-Be sure to edit the cudd-2.4.2/Makefile to build a 64-bit version if
-your machine is 64-bit, according to the directions in the README
-file.  Install swig for the python to c interface.  In apt-based
-distributions `apt-get install swig`.
+If you are running a 64-bit machine, edit the Makefile by uncommenting
+the line shown here starting with `XCFLAGS`.  You may see a compiler
+error about `sys/cdefs.h` if you haven't edited the Makefile to build
+for 64-bit.
+
+    # Gcc 4.2.4 or higher on x86_64 (64-bit compilation)
+    XCFLAGS	= -mtune=native -DHAVE_IEEE_754 -DBSD -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8 -fPIC
 
 Now compile cudd-2.4.2 and create shared libraries for pycudd:
 
@@ -40,6 +51,9 @@ Now compile cudd-2.4.2 and create shared libraries for pycudd:
 `make libso` may fail on nanotrav, but as long as the `lib/` directory
 contains six shared object libraries, libcudd.so, libdddmp.so, etc,
 then pycudd should build.
+
+Install swig for the python to c interface.  In apt-based
+distributions `apt-get install swig`.
 
 Finally, go up to the parent directory, enter `pycudd/`, and build:
 
@@ -126,3 +140,4 @@ have boolean variables, `CONFIG_ETHERNET=y` and
 `defined(CONFIG_ETHERNET)` are boolean representations of these
 variables that reflect both ways Makefiles can test variables, via
 `ifeq` and `ifdef`.
+    
