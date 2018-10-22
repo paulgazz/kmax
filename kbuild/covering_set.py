@@ -34,6 +34,13 @@ from pymake import parser, parserdata, data, functions
 from collections import defaultdict, namedtuple
 from cStringIO import StringIO
 
+import z3
+import pdb
+import vcommon as CM
+trace = pdb.set_trace
+
+mlog = None
+
 argparser = argparse.ArgumentParser(
     formatter_class=argparse.RawDescriptionHelpFormatter,
     description="""\
@@ -46,6 +53,13 @@ given Kbuild Makefile.
 argparser.add_argument('makefile',
                        type=str,
                        help="""the name of a Linux Makefile or subdir""")
+
+argparser.add_argument("--logger_level", "-logger_level", "-log", "--log",
+                       help="set logger info",
+                       type=int, 
+                       choices=range(5),
+                       default = 3)    
+
 argparser.add_argument('-t',
                        '--table',
                        action="store_true",
@@ -106,6 +120,13 @@ argparser.add_argument('-V',
                        help="""\
 Increase the debugging output""")
 args = argparser.parse_args()
+
+
+logger_level = CM.getLogLevel(args.logger_level)
+mlog = CM.getLogger(__name__, logger_level)
+
+if __debug__:
+    mlog.warn("DEBUG MODE ON. Can be slow! (Use python -O ... for optimization)")
 
 debug_level = 1 # default to 1, can set to 0 for no debugging output
 if (args.verbose):
