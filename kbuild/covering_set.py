@@ -41,155 +41,141 @@ trace = pdb.set_trace
 
 mlog = None
 
-argparser = argparse.ArgumentParser(
-    formatter_class=argparse.RawDescriptionHelpFormatter,
-    description="""\
-Find a set of configurations that covers all configuration variables in the
-given Kbuild Makefile.
-    """,
-    epilog="""\
-    """
-    )
-argparser.add_argument('makefile',
-                       type=str,
-                       help="""the name of a Linux Makefile or subdir""")
+class VarEntry(tuple):
+    RECURSIVE = "RECURSIVE"
+    SIMPLE = "SIMPLE"
+    
+    def __new__(cls, val, cond, zcond, flavor):
+        return super(VarEntry, cls).__new__(cls, (val, cond, zcond, flavor))
+    
+    def __init__(self, val, cond, zcond, flavor):
+        assert val is None or (isinstance(val, str) and val), val
+        assert isinstance(cond, pycudd.DdNode), cond
+        assert z3.is_expr(zcond), cond
+        assert flavor in set({VarEntry.RECURSIVE, VarEntry.SIMPLE}), flavor
 
-argparser.add_argument("--logger_level", "-logger_level", "-log", "--log",
-                       help="set logger info",
-                       type=int, 
-                       choices=range(5),
-                       default = 3)    
+        self.val = val.strip() if isinstance(val, str) else val
+        self.cond = cond
+        self.zcond = z3.simplify(zcond)
+        self.flavor = flavor
 
-argparser.add_argument('-t',
-                       '--table',
-                       action="store_true",
-                       help="""show symbol table entries""")
-argparser.add_argument('-v',
-                       '--variable',
-                       type=str,
-                       help="""show symbol table entries for VARIABLE only""")
-argparser.add_argument('-n',
-                       '--naive-append',
-                       action="store_true",
-                       help="""\
-use naive append behavior, which has more exponential explosion""")
-argparser.add_argument('-A',
-                       '--and-append',
-                       action="store_true",
-                       help="""\
-append by conjoining conditions""")
-argparser.add_argument('-g',
-                       '--get-presence-conditions',
-                       action="store_true",
-                       help="""\
-get presence conditions for each compilation units""")
-argparser.add_argument('-r',
-                       '--recursive',
-                       action="store_true",
-                       help="""\
-recursively enter subdirectories""")
-argparser.add_argument('-D',
-                       '--define',
-                       action='append',
-                       help="""\
-recursively enter subdirectories""")
-argparser.add_argument('-p',
-                       '--pickle',
-                       action="store_true",
-                       help="""\
-pickle a tuple of two sets containing the compilation units and subdirectories \
-respectively""")
-argparser.add_argument('-C',
-                       '--config-vars',
-                       type=str,
-                       help="""the name of a KConfigData file containing \
-configuration variable data""")
-argparser.add_argument('-B',
-                       '--boolean-configs',
-                       action="store_true",
-                       help="""\
-Treat all configuration variables as Boolean variables""")
-argparser.add_argument('-b',
-                       '--boot-strap',
-                       action="store_true",
-                       help="""\
-Get the top-level directories from the arch-specifier Makefile""")
-argparser.add_argument('-V',
-                       '--verbose',
-                       action="store_true",
-                       help="""\
-Increase the debugging output""")
-args = argparser.parse_args()
+    def __str__(self, printCond=None):
+        ss = [self.val, self.flavor]
+        if printCond:
+            ss.append(printCond(self.cond))
+            
+        ss.append(self.zcond)
+            
+        return ", ".join(map(str,ss))
+    
+
+class BoolVar(tuple):
+    def __new__(cls, bdd, zbdd, idx):
+        assert isinstance(bdd, pycudd.DdNode), bdd
+        assert idx >= 0, idx
+        
+        return super(BoolVar, cls).__new__(cls, (bdd, zbdd, idx))
+    
+    def __init__(self, bdd, zbdd, idx):
+        assert isinstance(bdd, pycudd.DdNode), bdd
+        assert z3.is_expr(zbdd), zbdd
+        assert idx >= 0, idx
+        
+        self.bdd = bdd
+        self.zbdd = zbdd
+        self.idx = idx
+
+    def __str__(self, printCond=None):
+        ss = [self.idx, zbdd]
+        if printCond:
+            ss.append(printCond(self.bdd))
+
+        return ", ".join(map(str,ss))
 
 
-logger_level = CM.getLogLevel(args.logger_level)
-mlog = CM.getLogger(__name__, logger_level)
+#BooleanVariable = namedtuple('BooleanVariable', 'bdd index')
+class CondDef(tuple):
+    def __new__(cls, cond, zcond, mdef):
+        return super(CondDef, cls).__new__(cls, (cond, zcond, mdef))
+    
+    def __init__(self, cond, zcond, mdef):
+        assert isinstance(cond, pycudd.DdNode), cond
+        assert z3.is_expr(zcond)
+        
+        assert mdef is None or isinstance(mdef, str), mdef  #CONFIG_A, 'y', 'm'
+        self.cond = cond
+        self.zcond = zcond
+        self.mdef = mdef
 
-if __debug__:
-    mlog.warn("DEBUG MODE ON. Can be slow! (Use python -O ... for optimization)")
+    def __str__(self, printCond=None):
+        if not printCond:
+            return "{}".format(self.mdef)
+        else:
+            return "({}, {}, {})".format(printCond(self.cond), self.zcond, self.mdef)
 
-debug_level = 1 # default to 1, can set to 0 for no debugging output
-if (args.verbose):
-    debug_level = 2
-kconfigdata = None
-all_config_var_names = None
-boolean_config_var_names = None
-nonboolean_config_var_names = None
-if args.config_vars:
-    with open(args.config_vars, 'rb') as f:
-        kconfigdata = pickle.load(f)
-        boolean_config_var_names = [ "CONFIG_" + c
-                                     for c in kconfigdata.bool_vars ]
-        nonboolean_config_var_names = [ "CONFIG_" + c
-                                        for c in kconfigdata.nonbool_vars ]
-        all_config_var_names = [ "CONFIG_" + c
-                                        for c in kconfigdata.config_vars ]
-
-class Flavor:
-    RECURSIVE = 1
-    SIMPLE = 2
-
-VariableEntry = namedtuple('VariableEntry', 'value condition flavor')
-
-class Variable(list):
-    def __init__(self):
-        list.__init__(self, [])
-        # TODO figure out what to do with "override"
-
-BooleanVariable = namedtuple('BooleanVariable', 'bdd index')
+    @classmethod
+    def mkOne(cls, name, cond, zcond):
+        assert isinstance(name, str) and name, name
+        assert isinstance(cond, pycudd.DdNode), cond
+        assert z3.is_expr(zcond)
+        
+        return cls(cond, zcond, name)
 
 class Multiverse(list):
-    """A list of (condition, definition) pairs."""
+    def __init__(self, ls=[]):
+        assert all(isinstance(cd, CondDef) for cd in ls), ls
+        
+        list.__init__(self, ls)
 
-    def __init__(self, data=[]):
-        list.__init__(self, data)
+    def append(self, cd):
+        assert isinstance(cd, CondDef), cd
 
-    def __repr__(self):
-        return "<Multiverse>(%r)" % \
-            ([(c, v) for c, v in self])
+        super(CondDefs, self).append(cd)
+        
+    def __str__(self, printCond=None):
+        return "CondDefs([{}])".format(
+            ', '.join([p.__str__(printCond) for p in self]))
 
-def fatal(msg, var=None):
-    """Report internal error and exit."""
-    sys.stderr.write("FATAL: " + str(msg) + ' ' + str(var) + '\n')
-    exit(1)
+    @classmethod
+    def mkOne(cls, name, cond, zcond):
+        assert isinstance(name, str) and name, name
+        assert isinstance(cond, pycudd.DdNode), cond
+        assert z3.is_expr(zcond)
 
-def warn(msg, var=None):
-    """Report warning"""
-    sys.stderr.write("WARN: " + str(msg) + ' ' + str(var) + '\n')
+        return cls([CondDef.mkOne(name, cond, zcond)])    
+    
+# class Multiverse(list):
+#     """A list of (condition, definition) pairs."""
 
-def debug(level, *args):
-    global debug_level
-    if (level <= debug_level):
-        sys.stderr.write(' '.join(map(lambda arg: str(arg), args)) + '\n')
+#     def __init__(self, data=[]):
+#         list.__init__(self, data)
+
+#     def __repr__(self):
+#         return "<Multiverse>(%r)" % \
+#             ([(c, zc, v) for c, zc, v in self])
+
+# def fatal(msg, var=None):
+#     """Report internal error and exit."""
+#     sys.stderr.write("FATAL: " + str(msg) + ' ' + str(var) + '\n')
+#     exit(1)
+
+# def warn(msg, var=None):
+#     """Report warning"""
+#     sys.stderr.write("WARN: " + str(msg) + ' ' + str(var) + '\n')
+
+# def debug(level, *args):
+#     global debug_level
+#     if (level <= debug_level):
+#         sys.stderr.write(' '.join(map(lambda arg: str(arg), args)) + '\n')
 
 # Placeholders for symbolic boolean operations
-def conjunction(a, b):
+def conj(a, b):
     return a & b
 
-def disjunction(a, b):
+def disj(a, b):
     return a | b
 
-def negation(a):
+def neg(a):
     return ~a
 
 def dedup_multiverse(multiverse):
@@ -199,7 +185,7 @@ def dedup_multiverse(multiverse):
         if value not in value_map:
             value_map[value] = condition
         else:
-            value_map[value] = disjunction(value_map[value], condition)
+            value_map[value] = disj(value_map[value], condition)
     dedup = []
     for value, condition in value_map.iteritems():
         dedup.append( (condition, value) )
@@ -222,11 +208,31 @@ def isNonbooleanConfig(name):
         return name in nonboolean_config_var_names
     return False
 
+
+
+class ZSolver:
+    zT = z3.BoolVal(True)
+    zF = z3.BoolVal(False)        
+    
+    def __init__(self):
+        self.solver = z3.Solver()
+
+    def zcheck(self, f):
+        self.solver.push()
+        self.solver.add(f)
+        ret = self.solver.check()
+        self.solver.pop()
+        return ret
+
+
+    
 class Kbuild:
     def __init__(self):
         # BDD engine
         self.mgr = pycudd.DdManager()
         self.mgr.SetDefault()
+
+        self.zsolver = ZSolver()        
 
         # Boolean constants
         self.T = self.mgr.One()
@@ -234,7 +240,11 @@ class Kbuild:
 
         # Conditional symbol table for variables
         self.variables = defaultdict(
-            lambda: [VariableEntry(None, self.T, Flavor.RECURSIVE)])
+            lambda: [VarEntry(
+                None,
+                self.T,
+                ZSolver.zT,
+                VarEntry.RECURSIVE)])
         # None means the variable is undefined. Variables are
         # recursively-expanded by default, e.g., when += is used on an
         # undefined variable.
@@ -242,8 +252,9 @@ class Kbuild:
         # Mapping of boolean variable names to BDD variable number.
         # Automatically increments the variable number.
         self.boolean_variables = defaultdict(
-            lambda: BooleanVariable(self.mgr.IthVar(len(self.boolean_variables)),
-                                    len(self.boolean_variables)))
+            lambda: BoolVar(self.mgr.IthVar(len(self.boolean_variables)),
+                            z3.Bool("b{}".format(len(self.boolean_variables))),
+                            len(self.boolean_variables)))
         self.undefined_variables = set()
 
         # token presence conditions
@@ -321,10 +332,11 @@ class Kbuild:
 
     def get_defined(self, variable, expected):
         variable_name = "defined(" + variable + ")"
+        bdd, zbdd = self.boolean_variables[variable_name].bdd, self.boolean_variables[variable_name].zbdd
         if expected:
-            return self.boolean_variables[variable_name].bdd
+            return bdd, zbdd
         else:
-            return negation(self.boolean_variables[variable_name].bdd)
+            return neg(bdd), z3.Not(zbdd)
 
     def process_variableref(self, name):
         if name == 'BITS':
@@ -347,28 +359,36 @@ class Kbuild:
                                 (not_defined, '-nommu') ])
         elif name.startswith("CONFIG_") and args.boolean_configs:
             varbdd = self.boolean_variables[name].bdd
-            notvarbdd = negation(varbdd)
+            notvarbdd = neg(varbdd)
             return Multiverse([ (varbdd, 'y'),
                                 (notvarbdd, None) ])
+        
         elif isBooleanConfig(name) or not hasConfig() and name.startswith("CONFIG_"):
         # if (isBooleanConfig(name) or name.startswith("CONFIG_")) \
         #    and not isNonbooleanConfig(name):
             # TODO don't use 'm' for truly boolean config vars
             equals_y = self.boolean_variables[name + "=y"].bdd
+            zequals_y = self.boolean_variables[name + "=y"].zbdd
+            
             equals_m = self.boolean_variables[name + "=m"].bdd
-            is_defined_y = conjunction(self.get_defined(name, True),
-                                       conjunction(equals_y,
-                                                   negation(equals_m)))
-            is_defined_m = conjunction(self.get_defined(name, True),
-                                       conjunction(equals_m,
-                                                   negation(equals_y)))
-            not_defined = disjunction(self.get_defined(name, False),
-                                      conjunction(negation(is_defined_y),
-                                                  negation(is_defined_m)))
+            zequals_m = self.boolean_variables[name + "=m"].zbdd
 
-            return Multiverse([ (is_defined_y, 'y'),
-                                (is_defined_m, 'm'),
-                                (not_defined, None) ])
+            defined, zdefined = self.get_defined(name, True)
+            is_defined_y = conj(defined, conj(equals_y, neg(equals_m)))
+            zis_defined_y = z3.And(zdefined, z3.And(zequals_y, z3.Not(zequals_m)))
+                                                    
+            
+            is_defined_m = conj(defined, conj(equals_m, neg(equals_y)))
+            zis_defined_m = z3.And(zdefined, z3.And(zequals_m, z3.Not(zequals_y)))
+
+            notdefined, znotdefined = self.get_defined(name, False)
+            not_defined = disj(notdefined, conj(neg(is_defined_y), neg(is_defined_m)))
+            znot_defined = z3.Or(znotdefined, z3.And(z3.Not(zis_defined_y), z3.Not(zis_defined_m)))   
+            
+
+            return Multiverse([ CondDef(is_defined_y, zis_defined_y, 'y'),
+                                CondDef(is_defined_m, zis_defined_m, 'm'),
+                                CondDef(not_defined, znot_defined, None) ])
         # elif (name.startswith("CONFIG_")) and not isNonbooleanConfig(name):
         #     return Multiverse([ (self.T, '') ])
         else:
@@ -378,13 +398,13 @@ class Kbuild:
             elif name not in self.variables and not isNonbooleanConfig(name):
                 # Leave undefined variables unexpanded
                 self.undefined_variables.add(name)
-                self.variables[name] = [VariableEntry("$(%s)" % (name),
-                                                      self.T,
-                                                      Flavor.RECURSIVE)]
+                self.variables[name] = [VarEntry("$(%s)" % (name),
+                                                 self.T, ZSolver.zT,
+                                                 VarEntry.RECURSIVE)]
 
-                warn("Undefined variable expansion", name)
-                return Multiverse( [(condition, value)
-                                    for value, condition, _ in self.variables[name]])
+                mlog.warn("Undefined variable expansion: {}".format(name))
+                return Multiverse([CondDef(condition, zcondition, value)
+                                   for value, condition, zcondition, _ in self.variables[name]])
             else:
                 expansions = []
                 equivs = self.get_var_equiv_set(name)
@@ -407,11 +427,17 @@ class Kbuild:
             name = self.repack_singleton(self.process_expansion(function.vname))
             
             expanded_names = []
-            for name_cond, name_value  in name:
+            for name_cond, name_zcond, name_value  in name:
                 expanded_name = self.process_variableref(name_value)
-                for (expanded_cond, expanded_value) in expanded_name:
-                    expanded_names.append(( conjunction(name_cond, expanded_cond), expanded_value ))
+                for (expanded_cond, expanded_zcond, expanded_value) in expanded_name:
+                    expanded_names.append(
+                        CondDef(conj(name_cond, expanded_cond),
+                                z3.And(name_zcond, expanded_zcond),
+                                expanded_value)
+                    )
+                    
             return Multiverse(expanded_names)
+        
         elif isinstance(function, functions.SubstFunction):
             from_values = self.repack_singleton(self.process_expansion(function._arguments[0]))
             to_values = self.repack_singleton(self.process_expansion(function._arguments[1]))
@@ -427,7 +453,7 @@ class Kbuild:
             hoisted_results = []
             # Compute the function for each combination of arguments
             for (c1, s), (c2, r), (c3, d) in hoisted_arguments:
-                instance_condition = conjunction(c1, conjunction(c2, c3))
+                instance_condition = conj(c1, conj(c2, c3))
                 if instance_condition != self.F:
                     if r == None: r = ""  # Fixes bug in net/l2tp/Makefile
                     instance_result = None if d == None else d.replace(s, r)
@@ -453,7 +479,7 @@ class Kbuild:
             for name_cond, name_value in name:
                 expanded_name = self.process_variableref(name_value)
                 for (expanded_cond, expanded_value) in expanded_name:
-                    in_values.append( (conjunction(name_cond, expanded_cond), expanded_value) )
+                    in_values.append( (conj(name_cond, expanded_cond), expanded_value) )
 
             # then do patsubst
             hoisted_arguments = tuple((s, r, d)
@@ -463,7 +489,7 @@ class Kbuild:
 
             hoisted_results = []
             for (c1, s), (c2, r), (c3, d) in hoisted_arguments:
-                instance_condition = conjunction(c1, conjunction(c2, c3))
+                instance_condition = conj(c1, conj(c2, c3))
                 if instance_condition != self.F:
                     if r == None: r = ""  # Fixes bug in net/l2tp/Makefile
                     if r"%" not in s:
@@ -489,18 +515,18 @@ class Kbuild:
                 if value == None:
                     value = ""
                 if (len(str(value)) > 0):
-                    then_condition = disjunction(then_condition, condition)
+                    then_condition = disj(then_condition, condition)
                 else:
-                    else_condition = disjunction(then_condition, condition)
+                    else_condition = disj(then_condition, condition)
             expansions = []
             for condition, value in then_part:
-                condition = conjunction(then_condition, condition)
+                condition = conj(then_condition, condition)
                 if condition != self.F:
                     expansions.append((condition, value))
             if len(function._arguments) > 2:
                 else_part = self.repack_singleton(self.process_expansion(function._arguments[2]))
                 for condition, value in else_part:
-                    condition = conjunction(else_condition, condition)
+                    condition = conj(else_condition, condition)
                     if condition != self.F:
                         expansions.append((condition, value))
             return Multiverse(expansions)
@@ -521,7 +547,7 @@ class Kbuild:
             hoisted_results = []
             # Compute the function for each combination of arguments
             for (c1, s), (c2, d) in hoisted_arguments:
-                instance_condition = conjunction(c1, c2)
+                instance_condition = conj(c1, c2)
                 if instance_condition != self.F:
                     if d != None:
                         instance_result = " ".join([d_token for d_token in d.split() if d_token != s])
@@ -557,7 +583,7 @@ class Kbuild:
             hoisted_results = []
             # Compute the function for each combination of arguments
             for (c1, s), (c2, r), (c3, d) in hoisted_arguments:
-                instance_condition = conjunction(c1, conjunction(c2, c3))
+                instance_condition = conj(c1, conj(c2, c3))
                 if instance_condition != self.F:
                     if r == None: r = ""  # Fixes bug in net/l2tp/Makefile
                     pattern = "^" + s.replace(r"%", r"(.*)", 1) + "$"
@@ -579,7 +605,7 @@ class Kbuild:
             hoisted_results = []
             for (prefix_cond, prefix) in prefixes:
                 for (tokens_cond, token_string) in token_strings:
-                    resulting_cond = conjunction(prefix_cond, tokens_cond)
+                    resulting_cond = conj(prefix_cond, tokens_cond)
                     if resulting_cond != self.F:
                         # append prefix to each token in the token_string
                         if token_string != None:
@@ -608,7 +634,7 @@ class Kbuild:
 
     def repack_singleton(self, expansion):
         if isinstance(expansion, str):
-            return Multiverse([(self.T, expansion)])
+            return Multiverse([CondDef(self.T, ZSolver.zT, expansion)])
         else:
             return expansion
 
@@ -622,26 +648,28 @@ class Kbuild:
 
     def hoist(self, expansion):
         """Hoists a list of expansions, strings, and Multiverses."""
-        hoisted = Multiverse([(self.T, [])])
+        hoisted = Multiverse([CondDef(self.T, ZSolver.zT, [])])
         for element in expansion:
             if isinstance(element, Multiverse):
                 newlist = []
-                for subcondition, subverse in element:
-                    for condition, verse in hoisted:
-                        newcondition = conjunction(condition, subcondition)
+                for subcondition, zsubcondition, subverse in element:
+                    for condition, zcondition, verse in hoisted:
+                        newcondition = conj(condition, subcondition)
+                        newzcondition = z3.And(zcondition, zsubcondition)
+                        
                         newverse = list(verse)
                         if isinstance(subverse, list):
                             newverse += subverse
                         else:
                             newverse.append(subverse)
-                        newlist.append((newcondition, newverse))
+                        newlist.append(CondDef(newcondition, newzcondition, newverse))
                 hoisted = Multiverse(newlist)
             else:
-                for condition, verse in hoisted:
+                for condition, zcondition, verse in hoisted:
                     verse.append(element)
 
-        multiverse = Multiverse( [ (condition, self.join_values(verse))
-                                   for condition, verse in hoisted ] )
+        multiverse = Multiverse( [ CondDef(condition, zcondition, self.join_values(verse))
+                                   for condition, zcondition, verse in hoisted ] )
         multiverse = dedup_multiverse(multiverse)
         return multiverse
 
@@ -659,7 +687,7 @@ class Kbuild:
                            for element, isfunc in expansion ])
         else: fatal("Unsupported BaseExpansion subtype.", expansion)
 
-    def process_conditionalblock(self, block, presence_condition):
+    def process_conditionalblock(self, block, presence_condition, presence_zcondition):
         """Find a satisfying configuration for each branch of the
         conditional block."""
         # See if the block has an else branch.  Assumes no "else if".
@@ -669,7 +697,7 @@ class Kbuild:
             warn("unsupported conditional block", block)
             return
 
-        debug(2, "conditionalblock")
+        mlog.debug("conditionalblock")
         # Process first branch
         condition, statements = block[0]  # condition is a Condition object
         first_branch_condition = None
@@ -680,11 +708,11 @@ class Kbuild:
             if isinstance(expansion, str):
                 first_branch_condition = self.get_defined(expansion, condition.expected)
             else:
-                hoisted_condition = reduce(disjunction,
+                hoisted_condition = reduce(disj,
                                            [ c for c, v in expansion if v != None ])
-                first_branch_condition = conjunction(presence_condition,
+                first_branch_condition = conj(presence_condition,
                                                     hoisted_condition)
-            else_branch_condition = negation(first_branch_condition)
+            else_branch_condition = neg(first_branch_condition)
         elif isinstance(condition, parserdata.EqCondition):  # ifeq
             exp1 = self.repack_singleton(self.process_expansion(condition.exp1))
             exp2 = self.repack_singleton(self.process_expansion(condition.exp2))
@@ -698,33 +726,34 @@ class Kbuild:
                         v1 = ""
                     if v2 == None:
                         v2 = ""
-                    term_condition = conjunction(c1, c2)
+                    term_condition = conj(c1, c2)
                     if term_condition != self.F and (v1 == v2) == condition.expected:
-                        hoisted_condition = disjunction(hoisted_condition,
+                        hoisted_condition = disj(hoisted_condition,
                                                         term_condition)
                     elif term_condition != self.F:
-                        hoisted_else = disjunction(hoisted_else,
+                        hoisted_else = disj(hoisted_else,
                                                    term_condition)
                     if contains_unexpanded(v1) or contains_unexpanded(v2):
                         # this preserves configurations where we
                         # didn't have values for a config option
                         new_var_name = str(v1) + "=" + str(v2)
                         new_bdd_var = self.boolean_variables[new_var_name].bdd
-                        hoisted_condition = disjunction(hoisted_condition,
+                        hoisted_condition = disj(hoisted_condition,
                                                         new_bdd_var)
-                        hoisted_else = disjunction(hoisted_else,
-                                                   negation(new_bdd_var))
+                        hoisted_else = disj(hoisted_else,
+                                                   neg(new_bdd_var))
 
-                first_branch_condition = conjunction(presence_condition,
+                first_branch_condition = conj(presence_condition,
                                                      hoisted_condition)
-                else_branch_condition = conjunction(presence_condition,
+                else_branch_condition = conj(presence_condition,
                                                     hoisted_else)
         else: fatal("unsupported conditional branch", condition)
 
         if first_branch_condition == None:
             fatal("Could not get if branch condition", first_branch_condition)
 
-        self.process_statements(statements, first_branch_condition)  # Enter first branch
+        # Enter first branch            
+        self.process_statements(statements, first_branch_condition, first_branch_zcondition)
 
         if not has_else:
             return
@@ -733,7 +762,7 @@ class Kbuild:
         condition, statements = block[1]
         self.process_statements(statements, else_branch_condition)  # Enter else branch
 
-    def expand_and_flatten(self, value, presence_condition):
+    def expand_and_flatten(self, value, presence_condition, presence_zcondition):
         """Parse and expand a variable definition, flattening any
         recursive expansions by hoisting
 
@@ -747,7 +776,7 @@ class Kbuild:
 
         expanded = self.process_expansion(e)
         if isinstance(expanded, str):
-            return Multiverse([(presence_condition, expanded)])
+            return Multiverse([CondDef(presence_condition, presence_zcondition, expanded)])
         else:
             return expanded
 
@@ -827,7 +856,7 @@ class Kbuild:
         after = len(combined)
         return combined
 
-    def add_variable_entry(self, name, presence_condition, token, value):
+    def add_variable_entry(self, name, presence_condition, presence_zcondition, token, value):
         """Given a presence condition, the variable's name, its assignment
         operator, and the definition, update the variable's list of
         configurations to reflect the dry-runs needed to cover all its
@@ -839,18 +868,21 @@ class Kbuild:
             for equiv_name in equivs:
                 # Update all existing definitions' presence conditions
                 self.variables[equiv_name] = \
-                    map(lambda (old_value, old_condition, old_flavor): \
-                            VariableEntry(old_value, \
-                                          conjunction(old_condition, \
-                                                      negation(presence_condition)), \
-                                              old_flavor), \
-                            self.variables[equiv_name])
+                    map(lambda (old_value, old_condition, old_zcondition, old_flavor): 
+                            VarEntry(old_value, 
+                                    conj(old_condition, 
+                                                neg(presence_condition)),
+                                    z3.And(old_zcondition,
+                                           z3.Not(presence_zcondition)),
+                                    old_flavor), 
+                        self.variables[equiv_name])
 
                 # Add complete definition to variable (needed to find variable
                 # expansions at use-time)
-                self.variables[equiv_name].append(VariableEntry(value,
-                                                     presence_condition,
-                                                     Flavor.RECURSIVE))
+                self.variables[equiv_name].append(
+                    VarEntry(value,
+                            presence_condition, presence_zcondition,
+                            VarEntry.RECURSIVE))
 
             # TODO: handle reassignment, but does it really matter?  Use
             # reassignment example from kbuild_examples.tex as a test
@@ -867,22 +899,25 @@ class Kbuild:
                 # definition might refer to itself as in
                 # linux-3.0.0/crypto/Makefile
                 old_variables = \
-                    map(lambda (old_value, old_condition, old_flavor): \
-                            VariableEntry(old_value, \
-                                         conjunction(old_condition, \
-                                                     negation(presence_condition)), \
-                                             old_flavor), \
-                            self.variables[equiv_name])
+                    map(lambda (old_value, old_condition, old_zcondition, old_flavor): 
+                            VarEntry(old_value, 
+                                    conj(old_condition, 
+                                                neg(presence_condition)),
+                                    z3.And(old_zcondition,
+                                           z3.Not(presence_zcondition)),
+                                          old_flavor), 
+                        self.variables[equiv_name])
 
                 # Expand and flatten self.variables in the definition and add the
                 # resulting definitions.
-                new_definitions = self.expand_and_flatten(value, presence_condition)
+                new_definitions = self.expand_and_flatten(value, presence_condition, presence_zcondition)
                 new_definitions = self.combine_expansions(new_definitions)
                 new_variables = []
-                for new_condition, new_value in new_definitions:
-                    new_variables.append(VariableEntry(new_value,
-                                                         new_condition,
-                                                         Flavor.SIMPLE))
+                for new_condition, new_zcondition, new_value in new_definitions:
+                    new_variables.append(VarEntry(new_value,
+                                                 new_condition,
+                                                 new_zcondition,
+                                                 VarEntry.SIMPLE))
 
                 self.variables[equiv_name] = old_variables + new_variables
                 # TODO: check for computed variable names, compute them, and
@@ -893,19 +928,19 @@ class Kbuild:
                 new_variables = []
                 for entry in self.variables[name]:
                     old_value, old_condition, old_flavor = entry
-                    new_condition = conjunction(old_condition, presence_condition)
+                    new_condition = conj(old_condition, presence_condition)
                     if new_condition == self.F:
                         # Make two separate definitions.  One updates the
                         # existing definition's presence_condition.  The
                         # other creates a new definition
-                        updated_condition = conjunction(old_condition,
-                                                        negation(presence_condition))
-                        new_variables.append(VariableEntry(old_value,
-                                                           updated_condition,
-                                                           old_flavor))
-                        new_condition = conjunction(negation(old_condition),
+                        updated_condition = conj(old_condition,
+                                                        neg(presence_condition))
+                        new_variables.append(VarEntry(old_value,
+                                                     updated_condition,
+                                                     old_flavor))
+                        new_condition = conj(neg(old_condition),
                                                     presence_condition)
-                        if old_flavor == Flavor.SIMPLE:
+                        if old_flavor == VarEntry.SIMPLE:
                             expanded = self.expand_and_flatten(value, new_condition)
                             expanded = self.combine_expansions(expanded)
                             for expanded_condition, expanded_value in expanded:
@@ -913,7 +948,7 @@ class Kbuild:
                                                                expanded_condition,
                                                                old_flavor)
                                 new_variables.append(expanded_entry)
-                        elif old_flavor == Flavor.RECURSIVE:
+                        elif old_flavor == VarEntry.RECURSIVE:
                             new_variables.append(VariableEntry(value,
                                                                new_condition,
                                                                old_flavor))
@@ -921,7 +956,7 @@ class Kbuild:
                     else:
                         # Append directly to the existing definition.
                         appended_value = self.append_values(old_value, value)
-                        if old_flavor == Flavor.SIMPLE:
+                        if old_flavor == VarEntry.SIMPLE:
                             expanded = self.expand_and_flatten(appended_value,
                                                           new_condition)
                             expanded = self.combine_expansions(expanded)
@@ -930,7 +965,7 @@ class Kbuild:
                                                                expanded_condition,
                                                                old_flavor)
                                 new_variables.append(expanded_entry)
-                        elif old_flavor == Flavor.RECURSIVE:
+                        elif old_flavor == VarEntry.RECURSIVE:
                             new_variables.append(VariableEntry(appended_value,
                                                                new_condition,
                                                                old_flavor))
@@ -940,7 +975,7 @@ class Kbuild:
                 # self.variables[name] = \
                 #     map(lambda (old_value, old_condition, old_flavor):
                 #             VariableEntry(self.append_values(old_value, value),
-                #                           conjunction(old_condition,
+                #                           conj(old_condition,
                 #                                       presence_condition),
                 #                           old_flavor),
                 #         self.variables[name])
@@ -951,29 +986,46 @@ class Kbuild:
                     # append instead of computing the cartesian
                     # product of appended variable definitions
                     simply = self.F
+                    zsimply = ZSolver.zF
                     recursively = self.F
+                    zrecursively = ZSolver.zF
+                    
                     # find conditions for recursively- and simply-expanded variables
                     for entry in self.variables[name]:
-                        old_value, old_condition, old_flavor = entry
+                        old_value, old_condition, old_zcondition, old_flavor = entry
                         # TODO: optimization, memoize these
-                        if old_flavor == Flavor.SIMPLE:
-                            simply = disjunction(simply, old_condition)
-                        elif old_flavor == Flavor.RECURSIVE:
-                            recursively = disjunction(recursively, old_condition)
-                        else: fatal("Variable flavor is not defined", flavor)
+                        if old_flavor == VarEntry.SIMPLE:
+                            simply = disj(simply, old_condition)
+                            zsimply = z3.Or(zsimply, old_zcondition)
+                            
+                        elif old_flavor == VarEntry.RECURSIVE:
+                            recursively = disj(recursively, old_condition)
+                            zrecurisvely = z3.Or(zrecursively, old_zcondition)
+                            
+                        else:
+                            mlog.error("Variable flavor {} is not defined".format(flavor))
+                        
                     new_var_name = self.get_var_equiv(name)
+
+                    #tvn: TODO: add check for zrecursively
                     if recursively != self.F:
-                        self.variables[new_var_name].append(VariableEntry(value,
-                                                                                      presence_condition,
-                                                                                      Flavor.RECURSIVE))
+                        self.variables[new_var_name].append(
+                            VarEntry(value,
+                                     presence_condition,
+                                     presence_zcondition,
+                                     VarEntry.RECURSIVE))
+
+                    #tvn: TODO: add check for zsimply
                     if simply != self.F:
                         new_definitions = self.expand_and_flatten(value, presence_condition)
                         new_definitions = self.combine_expansions(new_definitions)
                         new_variables = []
-                        for new_condition, new_value in new_definitions:
-                            new_variables.append(VariableEntry(new_value,
-                                                                 new_condition,
-                                                                 Flavor.SIMPLE))
+                        for new_condition, new_zcondition, new_value in new_definitions:
+                            new_variables.append(
+                                VariableEntry(new_value,
+                                              new_condition,
+                                              new_zcondition,
+                                              VarEntry.SIMPLE))
 
                         self.variables[new_var_name] = new_variables
                 else:  # naive append
@@ -983,8 +1035,8 @@ class Kbuild:
                     old_definitions = \
                         map(lambda (old_value, old_condition, old_flavor): \
                                 VariableEntry(old_value, \
-                                             conjunction(old_condition, \
-                                                         negation(presence_condition)), \
+                                             conj(old_condition, \
+                                                  neg(presence_condition)), \
                                                  old_flavor), \
                                 self.variables[name])
 
@@ -993,15 +1045,15 @@ class Kbuild:
                     # Append the value to each of the old definitions.
                     appended_definitions = []
                     for old_value, old_condition, flavor in self.variables[name]:
-                        nested_condition = conjunction(old_condition, presence_condition)
-                        if flavor == Flavor.RECURSIVE:
+                        nested_condition = conj(old_condition, presence_condition)
+                        if flavor == VarEntry.RECURSIVE:
                             # If it's recursively-expanded (=), append the definition to
                             # each existing def, and "and" the presence conditions
                             c = VariableEntry(self.append_values(old_value, value),
                                                   nested_condition,
                                                   flavor)
                             appended_definitions.append(c)
-                        elif flavor == Flavor.SIMPLE:
+                        elif flavor == VarEntry.SIMPLE:
                             # If it's simply-expanded (:=), need to expand and
                             # flatten the resulting appended definition
                             expanded = self.expand_and_flatten(self.append_values(old_value,
@@ -1012,7 +1064,7 @@ class Kbuild:
                             for new_condition, new_value in expanded:
                                 appended_definitions.append(VariableEntry(new_value,
                                                                           new_condition,
-                                                                          Flavor.SIMPLE))
+                                                                          VarEntry.SIMPLE))
                         else: fatal("Variable flavor is not defined", flavor)
                     self.variables[name] = Multiverse(old_definitions + appended_definitions)
         elif token == "?=":
@@ -1026,17 +1078,23 @@ class Kbuild:
         for equiv_name in equivs:
             # Trim definitions with a presence condition of FALSE
             self.variables[equiv_name] = \
-                [ entry for entry in self.variables[equiv_name] if entry.condition != self.F ]
+                [ entry for entry in self.variables[equiv_name] if entry.cond != self.F ]
 
-    def process_setvariable(self, setvar, condition):
+    def process_setvariable(self, setvar, condition, zcondition):
         """Find a satisfying set of configurations for variable."""
+
+
+        assert isinstance(setvar, parserdata.SetVariable), setvar
+        assert isinstance(condition, pycudd.DdNode), condition
+        assert z3.is_expr(zcondition), zcondition
+        
         name = self.process_expansion(setvar.vnameexp)
         token = setvar.token
         value = setvar.value
 
         if isinstance(name, str):
-            debug(2, "setvariable under presence condition "
-                  + name + " " + token +  " " + value + " " + self.bdd_to_str(condition))
+            mlog.debug("setvariable under presence condition {} {} {} {}".format(
+                name, token, value, self.bdd_to_str(condition)))
             if (args.get_presence_conditions):
                 if (name.endswith("-y") or name.endswith("-m")):
                     splitvalue = value.split()
@@ -1045,24 +1103,25 @@ class Kbuild:
                             if not v in self.token_pc.keys():
                                 self.token_pc[v] = self.T
                             # update nested_condition
-                            self.token_pc[v] = conjunction(self.token_pc[v], condition)
+                            self.token_pc[v] = conj(self.token_pc[v], condition)
                             if (name in ["obj-y", "obj-m", "lib-y", "lib-m"]):
                                 # save final BDD for the token
                                 if v.endswith(".o"):
                                     if v not in self.unit_pc:
                                         self.unit_pc[v] = self.token_pc[v]
                                     else:
-                                        self.unit_pc[v] = disjunction(self.unit_pc[v], self.token_pc[v])
+                                        self.unit_pc[v] = disj(self.unit_pc[v], self.token_pc[v])
                                     # print self.bdd_to_str(self.unit_pc[v])
                                 elif v.endswith("/"):
                                     self.subdir_pc[v] = self.token_pc[v]
-            self.add_variable_entry(name, condition, token, value)
+            self.add_variable_entry(name, condition, zcondition, token, value)
+            
         else:
             for local_condition, expanded_name in name:
                 debug(2, "setvariable under presence condition "
                           + expanded_name + " " + token + " "
                       + self.bdd_to_str(local_condition))
-                nested_condition = conjunction(local_condition, condition)
+                nested_condition = conj(local_condition, condition)
                 if (args.get_presence_conditions):
                     if (expanded_name.endswith("-y") or expanded_name.endswith("-m")):
                         splitvalue = value.split()
@@ -1071,24 +1130,24 @@ class Kbuild:
                                 if not v in self.token_pc.keys():
                                     self.token_pc[v] = self.T
                                 # update nested_condition
-                                self.token_pc[v] = conjunction(self.token_pc[v], nested_condition)
+                                self.token_pc[v] = conj(self.token_pc[v], nested_condition)
                                 if (expanded_name in ["obj-y", "obj-m", "lib-y", "lib-m"]):
                                     # save final BDD for the token
                                     if v.endswith(".o"):
                                         if v not in self.unit_pc:
                                             self.unit_pc[v] = self.token_pc[v]
                                         else:
-                                            self.unit_pc[v] = disjunction(self.unit_pc[v], self.token_pc[v])
+                                            self.unit_pc[v] = disj(self.unit_pc[v], self.token_pc[v])
                                         # print self.bdd_to_str(self.unit_pc[v])
                                     elif v.endswith("/"):
                                         self.subdir_pc[v] = self.token_pc[v]
 
                 self.add_variable_entry(expanded_name, nested_condition, token, value)
 
-    def process_rule(self, rule, condition):
-        pass
+    def process_rule(self, rule, condition, zcondition):
+        raise NotImplementedError
 
-    def process_include(self, s, condition):
+    def process_include(self, s, condition, zcondition):
         expanded_include = self.repack_singleton(self.process_expansion(s.exp))
         for include_cond, include_files in expanded_include:
             if include_files != None:
@@ -1101,31 +1160,34 @@ class Kbuild:
                         include_statements = parser.parsestring(s, include_makefile.name)
                         self.process_statements(include_statements, include_cond)
 
-    def process_statements(self, statements, condition):
+    def process_statements(self, statements, condition, zcondition):
         """Find configurations in the given list of statements under the
         given presence condition."""
         for s in statements:
             if isinstance(s, parserdata.ConditionBlock):
-                self.process_conditionalblock(s, condition)
+                self.process_conditionalblock(s, condition, zcondition)
             elif isinstance(s, parserdata.SetVariable):
-                self.process_setvariable(s, condition)
+                self.process_setvariable(s, condition, zcondition)
             elif (isinstance(s, parserdata.Rule) or
                   isinstance(s, parserdata.StaticPatternRule)):
-                self.process_rule(s, condition)
+                self.process_rule(s, condition, zcondition)
             elif (isinstance(s, parserdata.Include)):
-                self.process_include(s, condition)
+                self.process_include(s, condition, zcondition)
+
+
 
 def split_definitions(kbuild, pending_variable):
     """get every whitespace-delimited token in all definitions of the
     given variable name, expanding any variable invocations first"""
     values = []
     for index, entry in enumerate(kbuild.variables[pending_variable]):
-        value, presence_condition, flavor = entry
+        value, presence_condition, presence_zcondition, flavor = entry
         # Expand any variables used in definitions
         if value != None:
             expanded_values = kbuild.repack_singleton(
-                kbuild.expand_and_flatten(value, presence_condition))
-            for expanded_condition, expanded_value in expanded_values:
+                kbuild.expand_and_flatten(value, presence_condition, presence_zcondition))
+            
+            for expanded_condition, expanded_zcondition, expanded_value in expanded_values:
                 if expanded_value != None:
                     split_expanded_values = expanded_value.split()
                     values.extend(split_expanded_values)
@@ -1134,11 +1196,11 @@ def split_definitions(kbuild, pending_variable):
                         composite_unit = "-".join(pending_variable.split('-')[:-1]) + ".o"
                         if composite_unit in kbuild.token_pc:
                             for v in split_expanded_values:
-                                composite_condition = conjunction(expanded_condition, kbuild.token_pc[composite_unit])
+                                composite_condition = conj(expanded_condition, kbuild.token_pc[composite_unit])
                                 if not v in kbuild.token_pc.keys():
                                     kbuild.token_pc[v] = kbuild.T
                                 # update nested_condition
-                                kbuild.token_pc[v] = conjunction(kbuild.token_pc[v], composite_condition)
+                                kbuild.token_pc[v] = conj(kbuild.token_pc[v], composite_condition)
 
     return values
 
@@ -1218,14 +1280,14 @@ def extract(makefile_path,
             c_file_targets,
             unit_pcs,
             subdir_pcs):
-    debug(1, "processing makefile", makefile_path)
+    mlog.debug("processing makefile: {}".format(makefile_path))
     if os.path.isdir(makefile_path):
         subdir = makefile_path
         makefile_path = os.path.join(subdir, "Kbuild")
         if not os.path.isfile(makefile_path):
             makefile_path = os.path.join(subdir, "Makefile") 
     if not os.path.isfile(makefile_path):
-        fatal("not found", makefile_path)
+        mlog.error("{} not found".format(makefile_path))
         exit(1)
 
     obj = os.path.dirname(makefile_path)
@@ -1240,7 +1302,7 @@ def extract(makefile_path,
 
     kbuild.add_definitions(args.define)
 
-    kbuild.process_statements(statements, kbuild.T)
+    kbuild.process_statements(statements, kbuild.T, ZSolver.zT)
     # OPTIMIZE: list by combining non-exclusive configurations
     # OPTIMIZE: find maximal list and combine configurations
     # TODO: emit list of configurations for the dry-runs
@@ -1258,14 +1320,16 @@ def extract(makefile_path,
         # print " ".join(subdirectories)
         # exit(0)
         toplevel = set()
-        for var in set(["core-y", "core-m", "drivers-y", "drivers-m", "net-y", "net-m", "libs-y", "libs-m"]):
+        for var in set(["core-y", "core-m", "drivers-y", "drivers-m",
+                        "net-y", "net-m", "libs-y", "libs-m"]):
             toplevel.update(split_definitions(kbuild, var))
         print " ".join([t for t in toplevel if t.endswith("/") and not t.startswith("-")])
         exit(0)
 
     collect_units(kbuild,
                   "",
-                  set(["core-y", "core-m", "drivers-y", "drivers-m", "net-y", "net-m", "libs-y", "libs-m", "head-y", "head-m"]),
+                  set(["core-y", "core-m", "drivers-y", "drivers-m",
+                       "net-y", "net-m", "libs-y", "libs-m", "head-y", "head-m"]),
                   compilation_units,
                   subdirectories,
                   composites)
@@ -1276,7 +1340,7 @@ def extract(makefile_path,
                   compilation_units,
                   subdirectories,
                   composites,
-                  True and args.get_presence_conditions)
+                  args.get_presence_conditions)  #tvn: remove True and
 
     for v in set([ "subdir-y", "subdir-m" ]):
         for u in split_definitions(kbuild, v):
@@ -1389,9 +1453,109 @@ def contains_unexpanded(s):
     else:
         return False
 
-def main():
-    """Find a covering set of configurations for the given
-    Makefile(s)."""
+
+
+if __name__ == '__main__':
+
+    aparser = argparse.ArgumentParser("find interactions from Kbuild Makefile")
+    ag = aparser.add_argument
+    ag('makefile',
+       type=str,
+       help="""the name of a Linux Makefile or subdir""")
+    
+    ag("--logger_level", "-logger_level", "-log", "--log",
+       help="set logger info",
+       type=int, 
+       choices=range(5),
+       default = 3)    
+    
+    ag('-t',
+       '--table',
+       action="store_true",
+       help="""show symbol table entries""")
+    ag('-v',
+       '--variable',
+       type=str,
+       help="""show symbol table entries for VARIABLE only""")
+    ag('-n',
+       '--naive-append',
+       action="store_true",
+       help="""\
+    use naive append behavior, which has more exponential explosion""")
+    ag('-A',
+       '--and-append',
+       action="store_true",
+       help="""\
+    append by conjoining conditions""")
+    ag('-g',
+       '--get-presence-conditions',
+       action="store_true",
+       help="""\
+    get presence conditions for each compilation units""")
+    ag('-r',
+       '--recursive',
+       action="store_true",
+       help="""\
+    recursively enter subdirectories""")
+    ag('-D',
+       '--define',
+       action='append',
+       help="""\
+    recursively enter subdirectories""")
+    ag('-p',
+       '--pickle',
+       action="store_true",
+       help="""\
+    pickle a tuple of two sets containing the compilation units and subdirectories \
+    respectively""")
+    ag('-C',
+       '--config-vars',
+       type=str,
+       help="""the name of a KConfigData file containing \
+    configuration variable data""")
+    ag('-B',
+       '--boolean-configs',
+       action="store_true",
+       help="""\
+    Treat all configuration variables as Boolean variables""")
+    ag('-b',
+       '--boot-strap',
+       action="store_true",
+       help="""\
+    Get the top-level directories from the arch-specifier Makefile""")
+    ag('-V',
+       '--verbose',
+       action="store_true",
+       help="""\
+    Increase the debugging output""")
+    args = aparser.parse_args()
+
+
+    logger_level = CM.getLogLevel(args.logger_level)
+    mlog = CM.getLogger(__name__, logger_level)
+
+    if __debug__:
+        mlog.warn("DEBUG MODE ON. Can be slow! (Use python -O ... for optimization)")
+
+    debug_level = 1 # default to 1, can set to 0 for no debugging output
+    if (args.verbose):
+        debug_level = 2
+    kconfigdata = None
+    all_config_var_names = None
+    boolean_config_var_names = None
+    
+    nonboolean_config_var_names = None
+    if args.config_vars:
+        with open(args.config_vars, 'rb') as f:
+            kconfigdata = pickle.load(f)
+            boolean_config_var_names = [ "CONFIG_" + c for c in kconfigdata.bool_vars ]
+            nonboolean_config_var_names = [ "CONFIG_" + c for c in kconfigdata.nonbool_vars ]
+            all_config_var_names = [ "CONFIG_" + c for c in kconfigdata.config_vars ]
+
+        
+
+    """Find a covering set of configurations for the given Makefile(s)."""
+    
 
     compilation_units = set()
     library_units = set()
@@ -1446,8 +1610,5 @@ def main():
             print v, b
         for v, b in subdir_pcs:
             print v, b
-    debug(1, len(compilation_units), "compilation unit(s)")
-    debug(1, len(library_units), "library unit(s)")
-
-if __name__ == '__main__':
-    main()
+    mlog.debug("{} compilation unit(s)".format(len(compilation_units)))
+    mlog.debug("{} library unit(s)".format(len(library_units)))
