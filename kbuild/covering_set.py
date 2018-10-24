@@ -254,7 +254,7 @@ class Kbuild:
             self.var_equiv_sets[name] = new_set
             return name
         else:
-            new_name = "EQUIV_SET" + str(len(existing_set)) + existing_name
+            new_name = "EQUIV_SET_{}_{}".format(len(existing_set), existing_name)
             self.var_equiv_sets[existing_name].add(new_name)
             return new_name
 
@@ -275,19 +275,6 @@ class Kbuild:
             new_name = "EQUIV_SET" + str(len(existing_set)) + existing_name
             return self.var_equiv_sets[existing_name]
 
-    # def print_variable(self, name, variable):
-    #     print "VARIABLE:", name
-    #     for value, condition, flavor in variable:
-    #         print "  ---"
-    #         print "  VALUE:", value
-    #         print "  BDD:", self.bdd_to_str(condition)
-    #         print "  FLAVOR:", flavor
-
-    # def print_variables_table(self):
-    #     for name in self.variables:
-    #         self.print_variable(name, self.variables[name])
-    #         print
-
     def printSymbTable(self, printCond=None):
         for name in self.variables:
             print "var: {}".format(name)
@@ -295,7 +282,6 @@ class Kbuild:
                             for i,v in enumerate(self.variables[name]))
             print '---------'
             
-
     def add_definitions(self, defines):
         if defines == None:
             return
@@ -1084,30 +1070,40 @@ class Kbuild:
         token = setvar.token
         value = setvar.value
 
+        def f(s, cond, zcond):
+            if (s.endswith("-y") or s.endswith("-m")):
+                splitvalue = value.split()
+                for v in splitvalue:
+                    if v.endswith(".o") or v.endswith("/"):
+                        if v not in self.token_pc:
+                            self.token_pc[v] = (self.T, ZSolver.T)
+
+                        # update nested_condition
+                        tc, tzc = self.token_pc[v]
+                        self.token_pc[v] = (conj(tc, cond), z3.And(tzc, zcond))
+                        if s in ["obj-y", "obj-m", "lib-y", "lib-m"]:
+                            # save final BDD for the token
+                            if v.endswith(".o"):
+                                if v not in self.unit_pc:
+                                    self.unit_pc[v] = self.token_pc[v]
+                                else:
+                                    uc, uzc = self.unit_pc[v]
+                                    tc, tzc = self.token_pc[v]
+                                    self.unit_pc[v] = (disj(uc, tc), z3.Or(uzc, tzc))
+
+                                # print self.bdd_to_str(self.unit_pc[v])
+                            elif v.endswith("/"):
+                                self.subdir_pc[v] = self.token_pc[v]
+            
+
         if isinstance(name, str):
             assert isinstance(condition, pycudd.DdNode), condition
             mlog.debug("setvariable {} {} {} under presence condition  {}; {}".format(
                 name, token, value, self.bdd_to_str(condition),  z3.simplify(zcondition)))
             
             if (args.get_presence_conditions):
-                if (name.endswith("-y") or name.endswith("-m")):
-                    splitvalue = value.split()
-                    for v in splitvalue:
-                        if v.endswith(".o") or v.endswith("/"):
-                            if not v in self.token_pc.keys():
-                                self.token_pc[v] = self.T
-                            # update nested_condition
-                            self.token_pc[v] = conj(self.token_pc[v], condition)
-                            if (name in ["obj-y", "obj-m", "lib-y", "lib-m"]):
-                                # save final BDD for the token
-                                if v.endswith(".o"):
-                                    if v not in self.unit_pc:
-                                        self.unit_pc[v] = self.token_pc[v]
-                                    else:
-                                        self.unit_pc[v] = disj(self.unit_pc[v], self.token_pc[v])
-                                    # print self.bdd_to_str(self.unit_pc[v])
-                                elif v.endswith("/"):
-                                    self.subdir_pc[v] = self.token_pc[v]
+                f(name, condition, zcondition)
+                
             self.add_variable_entry(name, condition, zcondition, token, value)
             
         else:
@@ -1120,25 +1116,8 @@ class Kbuild:
                 nested_zcondition = z3.And(local_zcondition, zcondition)
                 
                 if (args.get_presence_conditions):
-                    if (expanded_name.endswith("-y") or expanded_name.endswith("-m")):
-                        splitvalue = value.split()
-                        for v in splitvalue:
-                            if v.endswith(".o") or v.endswith("/"):
-                                if not v in self.token_pc.keys():
-                                    self.token_pc[v] = self.T
-                                # update nested_condition
-                                self.token_pc[v] = conj(self.token_pc[v], nested_condition)
-                                if (expanded_name in ["obj-y", "obj-m", "lib-y", "lib-m"]):
-                                    # save final BDD for the token
-                                    if v.endswith(".o"):
-                                        if v not in self.unit_pc:
-                                            self.unit_pc[v] = self.token_pc[v]
-                                        else:
-                                            self.unit_pc[v] = disj(self.unit_pc[v], self.token_pc[v])
-                                        # print self.bdd_to_str(self.unit_pc[v])
-                                    elif v.endswith("/"):
-                                        self.subdir_pc[v] = self.token_pc[v]
-
+                    f(expanded_name, nested_condition, nested_zcondition)
+                    
                 self.add_variable_entry(expanded_name, nested_condition, nested_zcondition, token, value)
 
     def process_rule(self, rule, condition, zcondition):
@@ -1193,11 +1172,17 @@ def split_definitions(kbuild, pending_variable):
                         composite_unit = "-".join(pending_variable.split('-')[:-1]) + ".o"
                         if composite_unit in kbuild.token_pc:
                             for v in split_expanded_values:
-                                composite_condition = conj(expanded_condition, kbuild.token_pc[composite_unit])
+                                tc, tzc = kbuild.token_pc[composite_unit]
+                                composite_condition = conj(expanded_condition, tc)
+                                composite_zcondition = z3.And(expanded_zcondition, tzc)
+                                
                                 if not v in kbuild.token_pc.keys():
-                                    kbuild.token_pc[v] = kbuild.T
+                                    kbuild.token_pc[v] = kbuild.T, ZSolver.T
+                                    
                                 # update nested_condition
-                                kbuild.token_pc[v] = conj(kbuild.token_pc[v], composite_condition)
+                                tc, tzc = kbuild.token_pc[v]
+                                kbuild.token_pc[v] = (conj(tc, composite_condition),
+                                                      z3.And(tzc, composite_zcondition))
 
     return values
 
@@ -1243,18 +1228,21 @@ def collect_units(kbuild,            # current kbuild instance
                         pending_variables.update(kbuild.get_var_equiv_set(composite_variable1))
                         pending_variables.update(kbuild.get_var_equiv_set(composite_variable2))
                         if store_pcs:
-                            if (elem not in kbuild.token_pc): kbuild.token_pc[elem] = kbuild.T
+                            raise NotImplementedError
+                            if (elem not in kbuild.token_pc):
+                                kbuild.token_pc[elem] = (kbuild.T, ZSolver.T)
                             kbuild.composite_pc[elem] = kbuild.token_pc[elem]
                         
                     if os.path.isfile(unit_name[:-2] + ".c") or os.path.isfile(unit_name[:-2] + ".S"): 
                         compilation_units.add(unit_name)
                         if store_pcs:
-                            if (elem not in kbuild.token_pc): kbuild.token_pc[elem] = kbuild.T
+                            raise NotImplementedError
+                            if (elem not in kbuild.token_pc): kbuild.token_pc[elem] = (kbuild.T, ZSolver.T)
                             kbuild.unit_pc[elem] = kbuild.token_pc[elem]
                 else:
                     compilation_units.add(unit_name)
                     if store_pcs:
-                        if (elem not in kbuild.token_pc): kbuild.token_pc[elem] = kbuild.T
+                        if (elem not in kbuild.token_pc): kbuild.token_pc[elem] = (kbuild.T, ZSolver.T)
                         kbuild.unit_pc[elem] = kbuild.token_pc[elem]
             elif elem.endswith("/"):
                 # scripts/Makefile.lib takes anything that
@@ -1262,7 +1250,9 @@ def collect_units(kbuild,            # current kbuild instance
                 # $(patsubst %/,%,$(filter %/, $(obj-y)))
                 subdirectories.add(unit_name)
                 if store_pcs:
-                    if (elem not in kbuild.token_pc): kbuild.token_pc[elem] = kbuild.T
+                    raise NotImplementedError
+                    if (elem not in kbuild.token_pc):
+                        kbuild.token_pc[elem] = kbuild.T
                     kbuild.subdir_pc[elem] = kbuild.token_pc[elem]
 
 def extract(makefile_path,
@@ -1428,12 +1418,23 @@ def extract(makefile_path,
     elif args.table:
         kbuild.printSymbTable(printCond=kbuild.bdd_to_str)
 
-    for v in kbuild.unit_pc.keys():
-        path = os.path.normpath(os.path.join(obj, v))
-        unit_pcs.append((path, kbuild.bdd_to_str(kbuild.unit_pc[v])))
-    for v in kbuild.subdir_pc.keys():
-        path = os.path.normpath(os.path.join(obj, v))
-        subdir_pcs.append((path, kbuild.bdd_to_str(kbuild.subdir_pc[v])))
+
+    def _f(d, s):
+        for name, (cond, zcond) in d.iteritems():
+            s.add((os.path.normpath(os.path.join(obj, name)), kbuild.bdd_to_str(cond), zcond))
+                   
+                   
+
+    _f(kbuild.unit_pc, unit_pcs)
+    _f(kbuild.subdir_pc, subdir_pcs)
+    
+    # for v in kbuild.unit_pc:
+    #     path = os.path.normpath(os.path.join(obj, v))
+    #     unit_pcs.append((path, kbuild.bdd_to_str(kbuild.unit_pc[v])))
+        
+    # for v in kbuild.subdir_pc.keys():
+    #     path = os.path.normpath(os.path.join(obj, v))
+    #     subdir_pcs.append((path, kbuild.bdd_to_str(kbuild.subdir_pc[v])))
 
     #clean up         
     _pycudd.delete_DdManager(kbuild.mgr)
@@ -1566,8 +1567,8 @@ if __name__ == '__main__':
     clean_files = set()
     c_file_targets = set()
     subdirectories = set()
-    unit_pcs = []
-    subdir_pcs = []
+    unit_pcs = set()
+    subdir_pcs = set()
     subdirectories.add(args.makefile)
     while len(subdirectories) > 0:
         subdirectories.update(extract(subdirectories.pop(),
@@ -1605,11 +1606,10 @@ if __name__ == '__main__':
         # print clean_files
         # print c_file_targets
         # print subdirectories
-        # for v, b in unit_pcs:
-        #     print v, b
-        # for v, b in subdir_pcs:
-        #     print v, b
-
-        pass
+        for v, b, zb in unit_pcs:
+            print v, b, z3.simplify(zb)
+        for v, b, zb in subdir_pcs:
+            print v, b, z3.simplify(zb)
+            
     #mlog.debug("{} compilation unit(s)".format(len(compilation_units)))
     #mlog.debug("{} library unit(s)".format(len(library_units)))
