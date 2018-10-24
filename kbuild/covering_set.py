@@ -181,14 +181,16 @@ def neg(a):
 def dedup_multiverse(multiverse):
     before = len(multiverse)
     value_map = {}
-    for condition, value in multiverse:
+    for condition, zcondition, value in multiverse:
         if value not in value_map:
-            value_map[value] = condition
+            value_map[value] = (condition, zcondition)
         else:
-            value_map[value] = disj(value_map[value], condition)
+            c, zc = value_map[value]
+            value_map[value] = (disj(c, condition), z3.Or(zc, zcondition))
     dedup = []
-    for value, condition in value_map.iteritems():
-        dedup.append( (condition, value) )
+    
+    for value, (condition, zcondition) in value_map.iteritems():
+        dedup.append( (condition, zcondition, value) )
     after = len(dedup)
     if after < before:
         multiverse = Multiverse(dedup)
@@ -251,10 +253,17 @@ class Kbuild:
 
         # Mapping of boolean variable names to BDD variable number.
         # Automatically increments the variable number.
-        self.boolean_variables = defaultdict(
-            lambda: BoolVar(self.mgr.IthVar(len(self.boolean_variables)),
-                            z3.Bool("b{}".format(len(self.boolean_variables))),
-                            len(self.boolean_variables)))
+
+        def f():
+            idx = len(self.boolean_variables)
+            bdd = self.mgr.IthVar(idx)
+            zbdd = z3.Bool("b{}".format(idx))
+            print self.bdd_to_str(bdd), zbdd, idx 
+            # CM.pause()
+            return BoolVar(bdd, zbdd, idx)
+        
+        self.boolean_variables = defaultdict(lambda: f())
+            
         self.undefined_variables = set()
 
         # token presence conditions
@@ -332,7 +341,9 @@ class Kbuild:
 
     def get_defined(self, variable, expected):
         variable_name = "defined(" + variable + ")"
-        bdd, zbdd = self.boolean_variables[variable_name].bdd, self.boolean_variables[variable_name].zbdd
+        bdd = self.boolean_variables[variable_name].bdd
+        zbdd = self.boolean_variables[variable_name].zbdd
+        
         if expected:
             return bdd, zbdd
         else:
@@ -413,7 +424,7 @@ class Kbuild:
                         if value == None:
                             expansions.append((condition, value))
                         else:
-                            expansions = expansions + self.expand_and_flatten(value, condition)
+                            expansions = expansions + self.expand_and_flatten(value, condition, zcondition)
 
                 # print expansions
                 # return Multiverse( [(condition, value)
@@ -633,6 +644,8 @@ class Kbuild:
             return self.repack_singleton(function.to_source())
 
     def repack_singleton(self, expansion):
+        assert isinstance(expansion, (str, Multiverse)), expansion
+        
         if isinstance(expansion, str):
             return Multiverse([CondDef(self.T, ZSolver.zT, expansion)])
         else:
@@ -648,7 +661,7 @@ class Kbuild:
 
     def hoist(self, expansion):
         """Hoists a list of expansions, strings, and Multiverses."""
-        hoisted = Multiverse([CondDef(self.T, ZSolver.zT, [])])
+        hoisted = [(self.T, ZSolver.zT, [])]
         for element in expansion:
             if isinstance(element, Multiverse):
                 newlist = []
@@ -662,8 +675,8 @@ class Kbuild:
                             newverse += subverse
                         else:
                             newverse.append(subverse)
-                        newlist.append(CondDef(newcondition, newzcondition, newverse))
-                hoisted = Multiverse(newlist)
+                        newlist.append((newcondition, newzcondition, newverse))
+                hoisted = newlist
             else:
                 for condition, zcondition, verse in hoisted:
                     verse.append(element)
@@ -713,26 +726,37 @@ class Kbuild:
                 first_branch_condition = conj(presence_condition,
                                                     hoisted_condition)
             else_branch_condition = neg(first_branch_condition)
+            
         elif isinstance(condition, parserdata.EqCondition):  # ifeq
             exp1 = self.repack_singleton(self.process_expansion(condition.exp1))
             exp2 = self.repack_singleton(self.process_expansion(condition.exp2))
 
             # Hoist multiple expansions around equality operation
             hoisted_condition = self.F
+            hoisted_zcondition = ZSolver.zF
+            
             hoisted_else = self.F
-            for c1, v1 in exp1:
-                for c2, v2 in exp2:
-                    if v1 == None:  # None means undefined, so use empty string for comparison
-                        v1 = ""
-                    if v2 == None:
-                        v2 = ""
-                    term_condition = conj(c1, c2)
+            hoisted_zelse = ZSolver.zF
+
+            for cd1 in exp1:
+                for cd2 in exp2:
+                    
+                    v1 = "" if cd1.mdef == None else cd1.mdef
+                    v2 = "" if cd2.mdef == None else cd2.mdef
+                        
+                    term_condition = conj(cd1.cond, cd2.cond)
+                    term_zcondition = z3.And(cd1.zcond, cd2.zcond)
+
+                    #TODO: check term_zcondition == term_condition
+                    
                     if term_condition != self.F and (v1 == v2) == condition.expected:
-                        hoisted_condition = disj(hoisted_condition,
-                                                        term_condition)
+                        hoisted_condition = disj(hoisted_condition, term_condition)
+                        hoisted_zcondition = z3.Or(hoisted_zcondition, term_zcondition)
+                        
                     elif term_condition != self.F:
-                        hoisted_else = disj(hoisted_else,
-                                                   term_condition)
+                        hoisted_else = disj(hoisted_else, term_condition)
+                        hoisted_zelse = z3.Or(hoisted_zelse, term_zcondition)
+                        
                     if contains_unexpanded(v1) or contains_unexpanded(v2):
                         # this preserves configurations where we
                         # didn't have values for a config option
@@ -743,13 +767,14 @@ class Kbuild:
                         hoisted_else = disj(hoisted_else,
                                                    neg(new_bdd_var))
 
-                first_branch_condition = conj(presence_condition,
-                                                     hoisted_condition)
-                else_branch_condition = conj(presence_condition,
-                                                    hoisted_else)
+                first_branch_condition = conj(presence_condition, hoisted_condition)
+                first_branch_zcondition = z3.And(presence_zcondition, hoisted_zcondition)      
+                else_branch_condition = conj(presence_condition, hoisted_else)
+                else_branch_zcondition = z3.And(presence_zcondition, hoisted_zelse)
+                
         else: fatal("unsupported conditional branch", condition)
 
-        if first_branch_condition == None:
+        if first_branch_condition is None:
             fatal("Could not get if branch condition", first_branch_condition)
 
         # Enter first branch            
@@ -760,7 +785,7 @@ class Kbuild:
 
         # Process the else branch
         condition, statements = block[1]
-        self.process_statements(statements, else_branch_condition)  # Enter else branch
+        self.process_statements(statements, else_branch_condition, else_branch_zcondition)  # Enter else branch
 
     def expand_and_flatten(self, value, presence_condition, presence_zcondition):
         """Parse and expand a variable definition, flattening any
@@ -814,7 +839,7 @@ class Kbuild:
                 minterm = list(line)
                 term = []
                 for name in self.boolean_variables:
-                    value = minterm[self.boolean_variables[name].index]
+                    value = minterm[self.boolean_variables[name].idx]
                     if value == '1':
                         term.append(name)
                     elif value == '0':
@@ -1017,7 +1042,9 @@ class Kbuild:
 
                     #tvn: TODO: add check for zsimply
                     if simply != self.F:
-                        new_definitions = self.expand_and_flatten(value, presence_condition)
+                        new_definitions = self.expand_and_flatten(value, presence_condition,presence_zcondition)
+                                                                  
+
                         new_definitions = self.combine_expansions(new_definitions)
                         new_variables = []
                         for new_condition, new_zcondition, new_value in new_definitions:
@@ -1093,8 +1120,10 @@ class Kbuild:
         value = setvar.value
 
         if isinstance(name, str):
-            mlog.debug("setvariable under presence condition {} {} {} {}".format(
-                name, token, value, self.bdd_to_str(condition)))
+            assert isinstance(condition, pycudd.DdNode), condition
+            mlog.debug("setvariable {} {} {} under presence condition  {}; {}".format(
+                name, token, value, self.bdd_to_str(condition),  z3.simplify(zcondition)))
+            
             if (args.get_presence_conditions):
                 if (name.endswith("-y") or name.endswith("-m")):
                     splitvalue = value.split()
@@ -1117,11 +1146,14 @@ class Kbuild:
             self.add_variable_entry(name, condition, zcondition, token, value)
             
         else:
-            for local_condition, expanded_name in name:
-                debug(2, "setvariable under presence condition "
-                          + expanded_name + " " + token + " "
-                      + self.bdd_to_str(local_condition))
+            for local_condition, local_zcondition, expanded_name in name:
+                mlog.debug("setvariable under presence condition {} {} {} {}"
+                           .format(expanded_name, token,
+                                   self.bdd_to_str(local_condition), local_zcondition))
+                           
                 nested_condition = conj(local_condition, condition)
+                nested_zcondition = z3.And(local_zcondition, zcondition)
+                
                 if (args.get_presence_conditions):
                     if (expanded_name.endswith("-y") or expanded_name.endswith("-m")):
                         splitvalue = value.split()
@@ -1142,7 +1174,7 @@ class Kbuild:
                                     elif v.endswith("/"):
                                         self.subdir_pc[v] = self.token_pc[v]
 
-                self.add_variable_entry(expanded_name, nested_condition, token, value)
+                self.add_variable_entry(expanded_name, nested_condition, nested_zcondition, token, value)
 
     def process_rule(self, rule, condition, zcondition):
         raise NotImplementedError
@@ -1180,7 +1212,7 @@ def split_definitions(kbuild, pending_variable):
     """get every whitespace-delimited token in all definitions of the
     given variable name, expanding any variable invocations first"""
     values = []
-    for index, entry in enumerate(kbuild.variables[pending_variable]):
+    for idx, entry in enumerate(kbuild.variables[pending_variable]):
         value, presence_condition, presence_zcondition, flavor = entry
         # Expand any variables used in definitions
         if value != None:
@@ -1444,7 +1476,7 @@ def extract(makefile_path,
 def check_unexpanded_variables(l, desc):
     for x in l:
         if contains_unexpanded(x):
-            warn("A " + desc + " contains an unexpanded variable or call", x)
+            mlog.warn("A {} contains an unexpanded variable or call {}".format(desc, x))
 
 match_unexpanded_variables = re.compile(r'.*\$\(.*\).*')
 def contains_unexpanded(s):
