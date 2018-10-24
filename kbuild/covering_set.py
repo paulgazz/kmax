@@ -1,24 +1,3 @@
-#!/usr/bin/env python
-
-# Kmax
-# Copyright (C) 2012-2015 Paul Gazzillo
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-# Given a Kbuild Makefile, emit a set of configurations that cover all
-# compilation units in the Makefile.
-
 import sys
 import os
 import operator
@@ -66,8 +45,7 @@ class VarEntry(tuple):
             
         ss.append(self.zcond)
             
-        return ", ".join(map(str,ss))
-    
+        return ", ".join(map(str,ss))    
 
 class BoolVar(tuple):
     def __new__(cls, bdd, zbdd, idx):
@@ -144,30 +122,6 @@ class Multiverse(list):
 
         return cls([CondDef.mkOne(name, cond, zcond)])    
     
-# class Multiverse(list):
-#     """A list of (condition, definition) pairs."""
-
-#     def __init__(self, data=[]):
-#         list.__init__(self, data)
-
-#     def __repr__(self):
-#         return "<Multiverse>(%r)" % \
-#             ([(c, zc, v) for c, zc, v in self])
-
-# def fatal(msg, var=None):
-#     """Report internal error and exit."""
-#     sys.stderr.write("FATAL: " + str(msg) + ' ' + str(var) + '\n')
-#     exit(1)
-
-# def warn(msg, var=None):
-#     """Report warning"""
-#     sys.stderr.write("WARN: " + str(msg) + ' ' + str(var) + '\n')
-
-# def debug(level, *args):
-#     global debug_level
-#     if (level <= debug_level):
-#         sys.stderr.write(' '.join(map(lambda arg: str(arg), args)) + '\n')
-
 # Placeholders for symbolic boolean operations
 def conj(a, b):
     return a & b
@@ -210,11 +164,9 @@ def isNonbooleanConfig(name):
         return name in nonboolean_config_var_names
     return False
 
-
-
 class ZSolver:
-    zT = z3.BoolVal(True)
-    zF = z3.BoolVal(False)        
+    T = z3.BoolVal(True)
+    F = z3.BoolVal(False)        
     
     def __init__(self):
         self.solver = z3.Solver()
@@ -225,7 +177,6 @@ class ZSolver:
         ret = self.solver.check()
         self.solver.pop()
         return ret
-
 
     
 class Kbuild:
@@ -245,24 +196,13 @@ class Kbuild:
             lambda: [VarEntry(
                 None,
                 self.T,
-                ZSolver.zT,
+                ZSolver.T,
                 VarEntry.RECURSIVE)])
         # None means the variable is undefined. Variables are
         # recursively-expanded by default, e.g., when += is used on an
         # undefined variable.
 
-        # Mapping of boolean variable names to BDD variable number.
-        # Automatically increments the variable number.
-
-        def f():
-            idx = len(self.boolean_variables)
-            bdd = self.mgr.IthVar(idx)
-            zbdd = z3.Bool("b{}".format(idx))
-            print self.bdd_to_str(bdd), zbdd, idx 
-            # CM.pause()
-            return BoolVar(bdd, zbdd, idx)
-        
-        self.boolean_variables = defaultdict(lambda: f())
+        self.bvars = {}
             
         self.undefined_variables = set()
 
@@ -280,6 +220,22 @@ class Kbuild:
 
         # variable equivalence classes for optimized append
         self.var_equiv_sets = {}
+
+    def get_bvars(self, name):
+        # Mapping of boolean variable names to BDD variable number.
+        # Automatically increments the variable number.
+        
+        assert isinstance(name, str), name
+        try:
+            return self.bvars[name]
+        except KeyError:
+            idx = len(self.bvars)
+            bdd = self.mgr.IthVar(idx)
+            zbdd = z3.Bool(name.format(idx))
+            bv = BoolVar(bdd, zbdd, idx)
+            self.bvars[name] = bv
+            return bv
+    
         
     def get_var_equiv(self, name):
         # get a new randomized variable name that is equivalent to the
@@ -319,18 +275,26 @@ class Kbuild:
             new_name = "EQUIV_SET" + str(len(existing_set)) + existing_name
             return self.var_equiv_sets[existing_name]
 
-    def print_variable(self, name, variable):
-        print "VARIABLE:", name
-        for value, condition, flavor in variable:
-            print "  ---"
-            print "  VALUE:", value
-            print "  BDD:", self.bdd_to_str(condition)
-            print "  FLAVOR:", flavor
+    # def print_variable(self, name, variable):
+    #     print "VARIABLE:", name
+    #     for value, condition, flavor in variable:
+    #         print "  ---"
+    #         print "  VALUE:", value
+    #         print "  BDD:", self.bdd_to_str(condition)
+    #         print "  FLAVOR:", flavor
 
-    def print_variables_table(self, variables):
-        for name in variables:
-            self.print_variable(name, variables[name])
-            print
+    # def print_variables_table(self):
+    #     for name in self.variables:
+    #         self.print_variable(name, self.variables[name])
+    #         print
+
+    def printSymbTable(self, printCond=None):
+        for name in self.variables:
+            print "var: {}".format(name)
+            print '\n'.join("{}. {}".format(i, v.__str__(printCond))
+                            for i,v in enumerate(self.variables[name]))
+            print '---------'
+            
 
     def add_definitions(self, defines):
         if defines == None:
@@ -341,8 +305,8 @@ class Kbuild:
 
     def get_defined(self, variable, expected):
         variable_name = "defined(" + variable + ")"
-        bdd = self.boolean_variables[variable_name].bdd
-        zbdd = self.boolean_variables[variable_name].zbdd
+        bdd = self.get_bvars(variable_name).bdd
+        zbdd = self.get_bvars(variable_name).zbdd
         
         if expected:
             return bdd, zbdd
@@ -352,15 +316,18 @@ class Kbuild:
     def process_variableref(self, name):
         if name == 'BITS':
             # TODO get real entry from top-level makefiles
-            return Multiverse([ (self.boolean_variables["BITS=32"].bdd, "32"),
-                                (self.boolean_variables["BITS=64"].bdd, "64") ])
+            bv32 = self.get_bvars("BITS=32")
+            bv64 = self.get_bvars("BITS=64")
+            return Multiverse([ CondDef(bv32.bdd, bv32.zbdd, "32"),
+                                CondDef(bv64.bdd, bv64.zbdd, "64") ])
+        
         # elif name == 'ARCH':
         #     # TODO user-defined
         #     return Multiverse([ (self.T, "x86") ])
         elif name == "CONFIG_WORD_SIZE":
             # TODO get defaults from Kconfig files
-            return Multiverse([ (self.boolean_variables["CONFIG_WORD_SIZE=32"].bdd, "32"),
-                                (self.boolean_variables["CONFIG_WORD_SIZE=64"].bdd, "64") ])
+            return Multiverse([ (self.bvars["CONFIG_WORD_SIZE=32"].bdd, "32"),
+                                (self.bvars["CONFIG_WORD_SIZE=64"].bdd, "64") ])
         elif name not in self.variables and name == "MMU":
             # TODO get globals from arch Makefiles
             is_defined = self.get_defined("CONFIG_MMU", True)
@@ -369,7 +336,7 @@ class Kbuild:
             return Multiverse([ (is_defined, ''),
                                 (not_defined, '-nommu') ])
         elif name.startswith("CONFIG_") and args.boolean_configs:
-            varbdd = self.boolean_variables[name].bdd
+            varbdd = self.bvars[name].bdd
             notvarbdd = neg(varbdd)
             return Multiverse([ (varbdd, 'y'),
                                 (notvarbdd, None) ])
@@ -378,11 +345,11 @@ class Kbuild:
         # if (isBooleanConfig(name) or name.startswith("CONFIG_")) \
         #    and not isNonbooleanConfig(name):
             # TODO don't use 'm' for truly boolean config vars
-            equals_y = self.boolean_variables[name + "=y"].bdd
-            zequals_y = self.boolean_variables[name + "=y"].zbdd
+            equals_y = self.get_bvars(name + "=y").bdd
+            zequals_y = self.get_bvars(name + "=y").zbdd
             
-            equals_m = self.boolean_variables[name + "=m"].bdd
-            zequals_m = self.boolean_variables[name + "=m"].zbdd
+            equals_m = self.get_bvars(name + "=m").bdd
+            zequals_m = self.get_bvars(name + "=m").zbdd
 
             defined, zdefined = self.get_defined(name, True)
             is_defined_y = conj(defined, conj(equals_y, neg(equals_m)))
@@ -410,7 +377,7 @@ class Kbuild:
                 # Leave undefined variables unexpanded
                 self.undefined_variables.add(name)
                 self.variables[name] = [VarEntry("$(%s)" % (name),
-                                                 self.T, ZSolver.zT,
+                                                 self.T, ZSolver.T,
                                                  VarEntry.RECURSIVE)]
 
                 mlog.warn("Undefined variable expansion: {}".format(name))
@@ -647,7 +614,7 @@ class Kbuild:
         assert isinstance(expansion, (str, Multiverse)), expansion
         
         if isinstance(expansion, str):
-            return Multiverse([CondDef(self.T, ZSolver.zT, expansion)])
+            return Multiverse([CondDef(self.T, ZSolver.T, expansion)])
         else:
             return expansion
 
@@ -661,7 +628,7 @@ class Kbuild:
 
     def hoist(self, expansion):
         """Hoists a list of expansions, strings, and Multiverses."""
-        hoisted = [(self.T, ZSolver.zT, [])]
+        hoisted = [(self.T, ZSolver.T, [])]
         for element in expansion:
             if isinstance(element, Multiverse):
                 newlist = []
@@ -733,10 +700,10 @@ class Kbuild:
 
             # Hoist multiple expansions around equality operation
             hoisted_condition = self.F
-            hoisted_zcondition = ZSolver.zF
+            hoisted_zcondition = ZSolver.F
             
             hoisted_else = self.F
-            hoisted_zelse = ZSolver.zF
+            hoisted_zelse = ZSolver.F
 
             for cd1 in exp1:
                 for cd2 in exp2:
@@ -761,7 +728,7 @@ class Kbuild:
                         # this preserves configurations where we
                         # didn't have values for a config option
                         new_var_name = str(v1) + "=" + str(v2)
-                        new_bdd_var = self.boolean_variables[new_var_name].bdd
+                        new_bdd_var = self.bvars[new_var_name].bdd
                         hoisted_condition = disj(hoisted_condition,
                                                         new_bdd_var)
                         hoisted_else = disj(hoisted_else,
@@ -838,8 +805,8 @@ class Kbuild:
             for line in filter(lambda l: len(l) > 0, (l.rstrip() for l in f.readlines())):
                 minterm = list(line)
                 term = []
-                for name in self.boolean_variables:
-                    value = minterm[self.boolean_variables[name].idx]
+                for name in self.bvars:
+                    value = minterm[self.bvars[name].idx]
                     if value == '1':
                         term.append(name)
                     elif value == '0':
@@ -1011,9 +978,9 @@ class Kbuild:
                     # append instead of computing the cartesian
                     # product of appended variable definitions
                     simply = self.F
-                    zsimply = ZSolver.zF
+                    zsimply = ZSolver.F
                     recursively = self.F
-                    zrecursively = ZSolver.zF
+                    zrecursively = ZSolver.F
                     
                     # find conditions for recursively- and simply-expanded variables
                     for entry in self.variables[name]:
@@ -1048,11 +1015,10 @@ class Kbuild:
                         new_definitions = self.combine_expansions(new_definitions)
                         new_variables = []
                         for new_condition, new_zcondition, new_value in new_definitions:
-                            new_variables.append(
-                                VariableEntry(new_value,
-                                              new_condition,
-                                              new_zcondition,
-                                              VarEntry.SIMPLE))
+                            new_variables.append(VarEntry(
+                                new_value, new_condition, new_zcondition, VarEntry.SIMPLE))
+                                
+                                         
 
                         self.variables[new_var_name] = new_variables
                 else:  # naive append
@@ -1109,7 +1075,6 @@ class Kbuild:
 
     def process_setvariable(self, setvar, condition, zcondition):
         """Find a satisfying set of configurations for variable."""
-
 
         assert isinstance(setvar, parserdata.SetVariable), setvar
         assert isinstance(condition, pycudd.DdNode), condition
@@ -1334,7 +1299,7 @@ def extract(makefile_path,
 
     kbuild.add_definitions(args.define)
 
-    kbuild.process_statements(statements, kbuild.T, ZSolver.zT)
+    kbuild.process_statements(statements, kbuild.T, ZSolver.T)
     # OPTIMIZE: list by combining non-exclusive configurations
     # OPTIMIZE: find maximal list and combine configurations
     # TODO: emit list of configurations for the dry-runs
@@ -1459,8 +1424,9 @@ def extract(makefile_path,
     check_unexpanded_variables(kbuild.variables.keys(), "variable name")
     if args.variable:
         kbuild.print_variable(args.variable, kbuild.variables[args.variable])
+
     elif args.table:
-        kbuild.print_variables_table(kbuild.variables)
+        kbuild.printSymbTable(printCond=kbuild.bdd_to_str)
 
     for v in kbuild.unit_pc.keys():
         path = os.path.normpath(os.path.join(obj, v))
@@ -1469,6 +1435,7 @@ def extract(makefile_path,
         path = os.path.normpath(os.path.join(obj, v))
         subdir_pcs.append((path, kbuild.bdd_to_str(kbuild.subdir_pc[v])))
 
+    #clean up         
     _pycudd.delete_DdManager(kbuild.mgr)
 
     return subdirectories
@@ -1630,17 +1597,19 @@ if __name__ == '__main__':
                      unit_pcs,
                      subdir_pcs), sys.stdout)
     else:
-        print compilation_units
-        print library_units
-        print hostprog_units
-        print unconfigurable_units
-        print extra_targets
-        print clean_files
-        print c_file_targets
-        print subdirectories
-        for v, b in unit_pcs:
-            print v, b
-        for v, b in subdir_pcs:
-            print v, b
-    mlog.debug("{} compilation unit(s)".format(len(compilation_units)))
-    mlog.debug("{} library unit(s)".format(len(library_units)))
+        # print compilation_units
+        # print library_units
+        # print hostprog_units
+        # print unconfigurable_units
+        # print extra_targets
+        # print clean_files
+        # print c_file_targets
+        # print subdirectories
+        # for v, b in unit_pcs:
+        #     print v, b
+        # for v, b in subdir_pcs:
+        #     print v, b
+
+        pass
+    #mlog.debug("{} compilation unit(s)".format(len(compilation_units)))
+    #mlog.debug("{} library unit(s)".format(len(library_units)))
