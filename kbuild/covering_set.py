@@ -1618,23 +1618,29 @@ if __name__ == '__main__':
 
         
         # print compilation_units
-        # print library_units
-        # print hostprog_units
-        # print unconfigurable_units
-        # print extra_targets
-        # print clean_files
-        # print c_file_targets
-        # print subdirectories
+        # print 
+        # print 
+        # print 
+        # print 
+        # print 
+        # print 
+        # print 
         # for v, b, zb in unit_pcs:
         #     print v, b, z3.simplify(zb)
         # for v, b, zb in subdir_pcs:
         #     print v, b, z3.simplify(zb)
 
-        print_results(compilation_units, "compilation units")
-        print_results(unit_pcs, "unit_pcs")
-        print_results(subdir_pcs, "subdir_pcs")        
-            
-    #mlog.debug("{} compilation unit(s)".format(len(compilation_units)))
-    #mlog.debug("{} library unit(s)".format(len(library_units)))
+        results = [(compilation_units, "compilation units"),
+                   (library_units, "library_units"), 
+                   (hostprog_units, "hostprog_units"),
+                   (unconfigurable_units, "unconfigurable"),
+                   (extra_targets, "extra_targets"),
+                   (clean_files, "clean_files"),
+                   (c_file_targets, "c_file_targets"),
+                   (subdirectories, "subdirectories"),
+                   (unit_pcs, "unit_pcs"),
+                   (subdir_pcs, "subdir_pcs")]
 
+        _ = [print_results(*r) for r in results]
+                   
 
