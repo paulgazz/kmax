@@ -1,3 +1,0 @@
-ifneq ($(CONFIG_A),y)
-obj-$(CONFIG_B) += kcmp.o
-endif

@@ -1,3 +1,0 @@
-objs-yy := omapfb_main.o lcdc.o
-
-omapfb-objs := $(objs-yy)

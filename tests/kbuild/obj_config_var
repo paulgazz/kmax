@@ -1,3 +1,0 @@
-# Output: CONFIG_FB_OMAP=y
-
-obj-$(CONFIG_FB_OMAP) += omapfb.o

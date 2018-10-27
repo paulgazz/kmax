@@ -20,57 +20,6 @@ trace = pdb.set_trace
 
 mlog = None
 
-class VarEntry(tuple):
-    RECURSIVE = "RECURSIVE"
-    SIMPLE = "SIMPLE"
-    
-    def __new__(cls, val, cond, zcond, flavor):
-        return super(VarEntry, cls).__new__(cls, (val, cond, zcond, flavor))
-    
-    def __init__(self, val, cond, zcond, flavor):
-        assert val is None or (isinstance(val, str) and val), val
-        assert isinstance(cond, pycudd.DdNode), cond
-        assert z3.is_expr(zcond), cond
-        assert flavor in set({VarEntry.RECURSIVE, VarEntry.SIMPLE}), flavor
-
-        self.val = val.strip() if isinstance(val, str) else val
-        self.cond = cond
-        self.zcond = z3.simplify(zcond)
-        self.flavor = flavor
-
-    def __str__(self, printCond=None):
-        ss = [self.val, self.flavor]
-        if printCond:
-            ss.append(printCond(self.cond))
-            
-        ss.append(self.zcond)
-            
-        return ", ".join(map(str,ss))    
-
-class BoolVar(tuple):
-    def __new__(cls, bdd, zbdd, idx):
-        assert isinstance(bdd, pycudd.DdNode), bdd
-        assert idx >= 0, idx
-        
-        return super(BoolVar, cls).__new__(cls, (bdd, zbdd, idx))
-    
-    def __init__(self, bdd, zbdd, idx):
-        assert isinstance(bdd, pycudd.DdNode), bdd
-        assert z3.is_expr(zbdd), zbdd
-        assert idx >= 0, idx
-        
-        self.bdd = bdd
-        self.zbdd = zbdd
-        self.idx = idx
-
-    def __str__(self, printCond=None):
-        ss = [self.idx, zbdd]
-        if printCond:
-            ss.append(printCond(self.bdd))
-
-        return ", ".join(map(str,ss))
-
-
 #BooleanVariable = namedtuple('BooleanVariable', 'bdd index')
 class CondDef(tuple):
     def __new__(cls, cond, zcond, mdef):
@@ -121,6 +70,62 @@ class Multiverse(list):
         assert z3.is_expr(zcond)
 
         return cls([CondDef.mkOne(name, cond, zcond)])    
+
+class VarEntry(tuple):
+    RECURSIVE = "RECURSIVE"
+    SIMPLE = "SIMPLE"
+    
+    def __new__(cls, val, cond, zcond, flavor):
+        return super(VarEntry, cls).__new__(cls, (val, cond, zcond, flavor))
+    
+    def __init__(self, val, cond, zcond, flavor):
+        assert val is None or (isinstance(val, str) and val), val
+        assert isinstance(cond, pycudd.DdNode), cond
+        assert z3.is_expr(zcond), cond
+        assert flavor in set({VarEntry.RECURSIVE, VarEntry.SIMPLE}), flavor
+
+        self.val = val.strip() if isinstance(val, str) else val
+        self.cond = cond
+        self.zcond = z3.simplify(zcond)
+        self.flavor = flavor
+
+    def __str__(self, printCond=None):
+        ss = [self.val, self.flavor]
+        if printCond:
+            ss.append(printCond(self.cond))
+            
+        ss.append(self.zcond)
+            
+        return ", ".join(map(str,ss))
+
+    @property
+    def condDef(self):
+        return CondDef(self.cond, self.zcond, self.val)
+
+class BoolVar(tuple):
+    def __new__(cls, bdd, zbdd, idx):
+        assert isinstance(bdd, pycudd.DdNode), bdd
+        assert idx >= 0, idx
+        
+        return super(BoolVar, cls).__new__(cls, (bdd, zbdd, idx))
+    
+    def __init__(self, bdd, zbdd, idx):
+        assert isinstance(bdd, pycudd.DdNode), bdd
+        assert z3.is_expr(zbdd), zbdd
+        assert idx >= 0, idx
+        
+        self.bdd = bdd
+        self.zbdd = zbdd
+        self.idx = idx
+
+    def __str__(self, printCond=None):
+        ss = [self.idx, zbdd]
+        if printCond:
+            ss.append(printCond(self.bdd))
+
+        return ", ".join(map(str,ss))
+
+
     
 # Placeholders for symbolic boolean operations
 def conj(a, b):
@@ -357,8 +362,8 @@ class Kbuild:
         #     return Multiverse([ (self.T, '') ])
         else:
             if name in self.undefined_variables:
-                return Multiverse( [(condition, value)
-                                    for value, condition, _ in self.variables[name]])
+                return Multiverse([v.condDef for v in self.variables[name]])
+            
             elif name not in self.variables and not isNonbooleanConfig(name):
                 # Leave undefined variables unexpanded
                 self.undefined_variables.add(name)
@@ -367,21 +372,18 @@ class Kbuild:
                                                  VarEntry.RECURSIVE)]
 
                 mlog.warn("Undefined variable expansion: {}".format(name))
-                return Multiverse([CondDef(condition, zcondition, value)
-                                   for value, condition, zcondition, _ in self.variables[name]])
+                return Multiverse([v.condDef for v in self.variables[name]])
+            
             else:
                 expansions = []
                 equivs = self.get_var_equiv_set(name)
                 for equiv_name in equivs:
-                    for value, condition, _ in self.variables[equiv_name]:
-                        if value == None:
-                            expansions.append((condition, value))
+                    for v in self.variables[equiv_name]:
+                        if v.val:
+                            expansions = expansions + self.expand_and_flatten(v.val, v.cond, v.zcond)
                         else:
-                            expansions = expansions + self.expand_and_flatten(value, condition, zcondition)
+                            expansions.append(v.condDef)
 
-                # print expansions
-                # return Multiverse( [(condition, value)
-                #                     for value, condition, _ in self.variables[name]])
                 return Multiverse(expansions)
 
     def process_function(self, function):
@@ -393,35 +395,48 @@ class Kbuild:
             expanded_names = []
             for name_cond, name_zcond, name_value  in name:
                 expanded_name = self.process_variableref(name_value)
-                for (expanded_cond, expanded_zcond, expanded_value) in expanded_name:
+                assert isinstance(expanded_name, Multiverse), expanded_name
+                
+                for v in expanded_name:
                     expanded_names.append(
-                        CondDef(conj(name_cond, expanded_cond),
-                                z3.And(name_zcond, expanded_zcond),
-                                expanded_value)
+                        CondDef(conj(name_cond, v.cond), z3.And(name_zcond, v.zcond), v.mdef)
                     )
                     
             return Multiverse(expanded_names)
         
         elif isinstance(function, functions.SubstFunction):
-            from_values = self.repack_singleton(self.process_expansion(function._arguments[0]))
-            to_values = self.repack_singleton(self.process_expansion(function._arguments[1]))
-            in_values = self.repack_singleton(self.process_expansion(function._arguments[2]))
+            from_vals = self.repack_singleton(self.process_expansion(function._arguments[0]))
+            to_vals = self.repack_singleton(self.process_expansion(function._arguments[1]))
+            in_vals = self.repack_singleton(self.process_expansion(function._arguments[2]))
 
             # Hoist conditionals around the function by getting all
             # combinations of arguments
-            hoisted_arguments = tuple((s, r, d)
-                                      for s in from_values
-                                      for r in to_values
-                                      for d in in_values)
-
             hoisted_results = []
-            # Compute the function for each combination of arguments
-            for (c1, s), (c2, r), (c3, d) in hoisted_arguments:
-                instance_condition = conj(c1, conj(c2, c3))
-                if instance_condition != self.F:
-                    if r == None: r = ""  # Fixes bug in net/l2tp/Makefile
-                    instance_result = None if d == None else d.replace(s, r)
-                    hoisted_results.append((instance_condition, instance_result))
+            for (sc, szc, s), (rc, rzc, r), (dc, dzc, d) in zip(from_vals, to_vals, in_vals):
+                instance_cond = conj(sc, conj(rc, dc))
+                instance_zcond = z3.And(szc, rzc, dzc)
+                if instance_cond != self.F:  #tvn: todo check
+                    if r is None: r = ""  # Fixes bug in net/l2tp/Makefile
+                    instance_result = None if d is None else d.replace(s, r)
+                    hoisted_results.append(CondDef(instance_cond, instance_zcond, instance_result))
+
+            return Multiverse(hoisted_results)
+                
+                
+            # hoisted_arguments = tuple((s, r, d)
+            #                           for s in from_values
+            #                           for r in to_values
+            #                           for d in in_values)
+
+            # hoisted_results = []
+            # trace()
+            # # Compute the function for each combination of arguments
+            # for (c1, zc1, s), (c2, zc2, r), (c3, zc3, d) in hoisted_arguments:
+            #     instance_condition = conj(c1, conj(c2, c3))
+            #     if instance_condition != self.F:
+            #         if r == None: r = ""  # Fixes bug in net/l2tp/Makefile
+            #         instance_result = None if d == None else d.replace(s, r)
+            #         hoisted_results.append((instance_condition, instance_result))
 
             return Multiverse(hoisted_results)
         # elif isinstance(function, functions.CallFunction):
@@ -740,11 +755,11 @@ class Kbuild:
         condition, statements = block[1]
         self.process_statements(statements, else_branch_condition, else_branch_zcondition)  # Enter else branch
 
-    def expand_and_flatten(self, value, presence_condition, presence_zcondition):
+    def expand_and_flatten(self, value, presence_cond, presence_zcond):
         """Parse and expand a variable definition, flattening any
         recursive expansions by hoisting
 
-        @return a Multiverse list of (condition, value) pairs"""
+        @return a Multiverse list of (cond, value) pairs"""
         # Parse the variable's definition
         d = parser.Data.fromstring(value, None)
         e, t, o = parser.parsemakesyntax(d, 0, (), parser.iterdata)
@@ -754,7 +769,7 @@ class Kbuild:
 
         expanded = self.process_expansion(e)
         if isinstance(expanded, str):
-            return Multiverse([CondDef(presence_condition, presence_zcondition, expanded)])
+            return Multiverse([CondDef(presence_cond, presence_zcond, expanded)])
         else:
             return expanded
 
@@ -1609,7 +1624,7 @@ if __name__ == '__main__':
             ss.append("{} {}".format(len(s), name))
 
             try:
-                ss.extend(("{}. {}: {}, {} ".format(i,v,c,zc)
+                ss.extend(("{}. {}: {}, {} ".format(i,v,c, z3.simplify(zc))
                                    for i,(v, c, zc) in enumerate(s)))
             except ValueError:
                 ss.append(', '.join(map(str,s)))
@@ -1617,19 +1632,6 @@ if __name__ == '__main__':
             print '\n'.join(ss)
 
         
-        # print compilation_units
-        # print 
-        # print 
-        # print 
-        # print 
-        # print 
-        # print 
-        # print 
-        # for v, b, zb in unit_pcs:
-        #     print v, b, z3.simplify(zb)
-        # for v, b, zb in subdir_pcs:
-        #     print v, b, z3.simplify(zb)
-
         results = [(compilation_units, "compilation units"),
                    (library_units, "library_units"), 
                    (hostprog_units, "hostprog_units"),
