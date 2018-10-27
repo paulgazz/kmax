@@ -1598,6 +1598,25 @@ if __name__ == '__main__':
                      unit_pcs,
                      subdir_pcs), sys.stdout)
     else:
+
+        def print_results(s, name):
+            assert isinstance(s, set), s
+
+            if not s:
+                return
+            ss = []
+
+            ss.append("{} {}".format(len(s), name))
+
+            try:
+                ss.extend(("{}. {}: {}, {} ".format(i,v,c,zc)
+                                   for i,(v, c, zc) in enumerate(s)))
+            except ValueError:
+                ss.append(', '.join(map(str,s)))
+
+            print '\n'.join(ss)
+
+        
         # print compilation_units
         # print library_units
         # print hostprog_units
@@ -1606,10 +1625,16 @@ if __name__ == '__main__':
         # print clean_files
         # print c_file_targets
         # print subdirectories
-        for v, b, zb in unit_pcs:
-            print v, b, z3.simplify(zb)
-        for v, b, zb in subdir_pcs:
-            print v, b, z3.simplify(zb)
+        # for v, b, zb in unit_pcs:
+        #     print v, b, z3.simplify(zb)
+        # for v, b, zb in subdir_pcs:
+        #     print v, b, z3.simplify(zb)
+
+        print_results(compilation_units, "compilation units")
+        print_results(unit_pcs, "unit_pcs")
+        print_results(subdir_pcs, "subdir_pcs")        
             
     #mlog.debug("{} compilation unit(s)".format(len(compilation_units)))
     #mlog.debug("{} library unit(s)".format(len(library_units)))
+
+
