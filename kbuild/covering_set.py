@@ -741,7 +741,7 @@ class Kbuild:
         else:
             fatal("unsupported conditional branch", cond)
 
-        assert first_branch_cond, "Could not get if branch cond {}".format(first_branch_cond)
+        assert first_branch_cond is not None, "Could not get if branch cond {}".format(first_branch_cond)
         
         # Enter first branch
         # trace()
