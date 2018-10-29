@@ -63,13 +63,35 @@ class Multiverse(list):
         return "CondDefs([{}])".format(
             ', '.join([p.__str__(printCond) for p in self]))
 
+
+    def dedup(self):
+        
+        uniqs = set(cd.mdef for cd in self)
+        if len(uniqs) == len(self):
+            return self
+
+        cache = {}
+        for cond, zcond, val in self:
+            if val in cache:
+                c, zc = cache[val]
+                cache[val] = (disj(c, cond), z3.Or(zc, zcond))
+            else:
+                cache[val] = (cond, zcond)
+
+        mv = Multiverse(CondDef(c, zc, v)
+                        for v, (c, zc)  in cache.iteritems())
+        return mv
+        
+
     @classmethod
     def mkOne(cls, name, cond, zcond):
         assert isinstance(name, str) and name, name
         assert isinstance(cond, pycudd.DdNode), cond
         assert z3.is_expr(zcond)
 
-        return cls([CondDef.mkOne(name, cond, zcond)])    
+        return cls([CondDef.mkOne(name, cond, zcond)])
+
+    
 
 class VarEntry(tuple):
     RECURSIVE = "RECURSIVE"
@@ -136,26 +158,6 @@ def disj(a, b):
 
 def neg(a):
     return ~a
-
-def dedup_multiverse(multiverse):
-    assert isinstance(multiverse, Multiverse), multiverse
-
-    uniqs = set(cd.mdef for cd in multiverse)
-    
-    if len(uniqs) == len(multiverse):
-        return multiverse
-
-    cache = {}
-    for cond, zcond, val in multiverse:
-        if val in cache:
-            c, zc = cache[val]
-            cache[val] = (disj(c, cond), z3.Or(zc, zcond))
-        else:
-            cache[val] = (cond, zcond)
-
-    mv = Multiverse(CondDef(c, zc, v)
-                    for v, (c, zc)  in cache.iteritems())
-    return mv
 
 def hasConfig():
     return all_config_var_names != None
@@ -639,7 +641,7 @@ class Kbuild:
         multiverse = Multiverse( [ CondDef(condition, zcondition, self.join_values(verse))
                                    for condition, zcondition, verse in hoisted ] )
 
-        multiverse = dedup_multiverse(multiverse)
+        multiverse = multiverse.dedup()
         return multiverse
 
     def process_expansion(self, expansion):
