@@ -79,7 +79,7 @@ class VarEntry(tuple):
         return super(VarEntry, cls).__new__(cls, (val, cond, zcond, flavor))
     
     def __init__(self, val, cond, zcond, flavor):
-        assert val is None or (isinstance(val, str) and val), val
+        assert val is None or isinstance(val, str), val
         assert isinstance(cond, pycudd.DdNode), cond
         assert z3.is_expr(zcond), cond
         assert flavor in set({VarEntry.RECURSIVE, VarEntry.SIMPLE}), flavor
@@ -138,23 +138,24 @@ def neg(a):
     return ~a
 
 def dedup_multiverse(multiverse):
-    before = len(multiverse)
-    value_map = {}
-    for condition, zcondition, value in multiverse:
-        if value not in value_map:
-            value_map[value] = (condition, zcondition)
-        else:
-            c, zc = value_map[value]
-            value_map[value] = (disj(c, condition), z3.Or(zc, zcondition))
-    dedup = []
+    assert isinstance(multiverse, Multiverse), multiverse
+
+    uniqs = set(cd.mdef for cd in multiverse)
     
-    for value, (condition, zcondition) in value_map.iteritems():
-        dedup.append( (condition, zcondition, value) )
-    after = len(dedup)
-    if after < before:
-        multiverse = Multiverse(dedup)
-        # debug("dedup:",before,"to",after)
-    return multiverse
+    if len(uniqs) == len(multiverse):
+        return multiverse
+
+    cache = {}
+    for cond, zcond, val in multiverse:
+        if val in cache:
+            c, zc = cache[val]
+            cache[val] = (disj(c, cond), z3.Or(zc, zcond))
+        else:
+            cache[val] = (cond, zcond)
+
+    mv = Multiverse(CondDef(c, zc, v)
+                    for v, (c, zc)  in cache.iteritems())
+    return mv
 
 def hasConfig():
     return all_config_var_names != None
@@ -421,24 +422,7 @@ class Kbuild:
                     hoisted_results.append(CondDef(instance_cond, instance_zcond, instance_result))
 
             return Multiverse(hoisted_results)
-                
-                
-            # hoisted_arguments = tuple((s, r, d)
-            #                           for s in from_values
-            #                           for r in to_values
-            #                           for d in in_values)
-
-            # hoisted_results = []
-            # trace()
-            # # Compute the function for each combination of arguments
-            # for (c1, zc1, s), (c2, zc2, r), (c3, zc3, d) in hoisted_arguments:
-            #     instance_condition = conj(c1, conj(c2, c3))
-            #     if instance_condition != self.F:
-            #         if r == None: r = ""  # Fixes bug in net/l2tp/Makefile
-            #         instance_result = None if d == None else d.replace(s, r)
-            #         hoisted_results.append((instance_condition, instance_result))
-
-            return Multiverse(hoisted_results)
+        
         # elif isinstance(function, functions.CallFunction):
         #     # TODO: implement and test on drivers/xen/
         #     # fatal("Unsupported function", function)
@@ -628,7 +612,10 @@ class Kbuild:
             return self.process_expansion(element)
 
     def hoist(self, expansion):
-        """Hoists a list of expansions, strings, and Multiverses."""
+        """Hoists a list of expansions, strings, and Multiverses.
+        return a Multiverse
+        """
+        
         hoisted = [(self.T, ZSolver.T, [])]
         for element in expansion:
             if isinstance(element, Multiverse):
@@ -651,6 +638,7 @@ class Kbuild:
 
         multiverse = Multiverse( [ CondDef(condition, zcondition, self.join_values(verse))
                                    for condition, zcondition, verse in hoisted ] )
+
         multiverse = dedup_multiverse(multiverse)
         return multiverse
 
@@ -659,16 +647,19 @@ class Kbuild:
 
         @param expansion is a pymake Expansion object
 
-        @return either a single string or a list of (condition, string)
+        @return either a single string or a Multiverse, i.e., list of (condition, string)
         pairs."""
         if isinstance(expansion, data.StringExpansion):
             return expansion.s
         elif isinstance(expansion, data.Expansion):
-            return self.hoist([ self.process_element(element, isfunc)
-                           for element, isfunc in expansion ])
-        else: fatal("Unsupported BaseExpansion subtype.", expansion)
+            mv = self.hoist([ self.process_element(element, isfunc)
+                              for element, isfunc in expansion ])
+            assert isinstance(mv, Multiverse), mv
+            return mv
+        else:
+            fatal("Unsupported BaseExpansion subtype.", expansion)
 
-    def process_conditionalblock(self, block, presence_condition, presence_zcondition):
+    def process_conditionalblock(self, block, presence_cond, presence_zcond):
         """Find a satisfying configuration for each branch of the
         conditional block."""
         # See if the block has an else branch.  Assumes no "else if".
@@ -680,28 +671,33 @@ class Kbuild:
 
         mlog.debug("conditionalblock")
         # Process first branch
-        condition, statements = block[0]  # condition is a Condition object
-        first_branch_condition = None
-        if isinstance(condition, parserdata.IfdefCondition):  # ifdef
+        cond, statements = block[0]  # condition is a Condition object
+        first_branch_cond = None
+        if isinstance(cond, parserdata.IfdefCondition):  # ifdef
             # TODO only care if condition.exp.variable_references contains
             # multiply-defined macros
-            expansion = self.process_expansion(condition.exp)
+            expansion = self.process_expansion(cond.exp)
             if isinstance(expansion, str):
-                first_branch_condition = self.get_defined(expansion, condition.expected)
+                first_branch_cond, first_branch_zcond = self.get_defined(expansion, cond.expected)
             else:
-                hoisted_condition = reduce(disj,
-                                           [ c for c, v in expansion if v != None ])
-                first_branch_condition = conj(presence_condition,
-                                                    hoisted_condition)
-            else_branch_condition = neg(first_branch_condition)
-            
-        elif isinstance(condition, parserdata.EqCondition):  # ifeq
-            exp1 = self.repack_singleton(self.process_expansion(condition.exp1))
-            exp2 = self.repack_singleton(self.process_expansion(condition.exp2))
+                #trace()
+                cds = [cd for cd in expansion if cd.mdef is not None]
+                hoisted_cond = reduce(disj, [cd.cond for cd in cds])
+                hoisted_zcond = z3.Or([cd.zcond for cd in cds])
+
+                first_branch_cond = conj(presence_cond, hoisted_cond)
+                first_branch_zcond = z3.And(presence_zcond, hoisted_zcond)
+                                              
+            else_branch_cond = neg(first_branch_cond)
+            else_branch_zcond = z3.Not(first_branch_zcond)
+
+        elif isinstance(cond, parserdata.EqCondition):  # ifeq
+            exp1 = self.repack_singleton(self.process_expansion(cond.exp1))
+            exp2 = self.repack_singleton(self.process_expansion(cond.exp2))
 
             # Hoist multiple expansions around equality operation
-            hoisted_condition = self.F
-            hoisted_zcondition = ZSolver.F
+            hoisted_cond = self.F
+            hoisted_zcond = ZSolver.F
             
             hoisted_else = self.F
             hoisted_zelse = ZSolver.F
@@ -712,48 +708,49 @@ class Kbuild:
                     v1 = "" if cd1.mdef == None else cd1.mdef
                     v2 = "" if cd2.mdef == None else cd2.mdef
                         
-                    term_condition = conj(cd1.cond, cd2.cond)
-                    term_zcondition = z3.And(cd1.zcond, cd2.zcond)
+                    term_cond = conj(cd1.cond, cd2.cond)
+                    term_zcond = z3.And(cd1.zcond, cd2.zcond)
 
-                    #TODO: check term_zcondition == term_condition
+                    #TODO: check term_zcond == term_cond
                     
-                    if term_condition != self.F and (v1 == v2) == condition.expected:
-                        hoisted_condition = disj(hoisted_condition, term_condition)
-                        hoisted_zcondition = z3.Or(hoisted_zcondition, term_zcondition)
+                    if term_cond != self.F and (v1 == v2) == cond.expected:
+                        hoisted_cond = disj(hoisted_cond, term_cond)
+                        hoisted_zcond = z3.Or(hoisted_zcond, term_zcond)
                         
-                    elif term_condition != self.F:
-                        hoisted_else = disj(hoisted_else, term_condition)
-                        hoisted_zelse = z3.Or(hoisted_zelse, term_zcondition)
+                    elif term_cond != self.F:
+                        hoisted_else = disj(hoisted_else, term_cond)
+                        hoisted_zelse = z3.Or(hoisted_zelse, term_zcond)
                         
                     if contains_unexpanded(v1) or contains_unexpanded(v2):
                         # this preserves configurations where we
                         # didn't have values for a config option
                         new_var_name = str(v1) + "=" + str(v2)
                         new_bdd_var = self.bvars[new_var_name].bdd
-                        hoisted_condition = disj(hoisted_condition,
+                        hoisted_cond = disj(hoisted_cond,
                                                         new_bdd_var)
                         hoisted_else = disj(hoisted_else,
                                                    neg(new_bdd_var))
 
-                first_branch_condition = conj(presence_condition, hoisted_condition)
-                first_branch_zcondition = z3.And(presence_zcondition, hoisted_zcondition)      
-                else_branch_condition = conj(presence_condition, hoisted_else)
-                else_branch_zcondition = z3.And(presence_zcondition, hoisted_zelse)
+                first_branch_cond = conj(presence_cond, hoisted_cond)
+                first_branch_zcond = z3.And(presence_zcond, hoisted_zcond)      
+                else_branch_cond = conj(presence_cond, hoisted_else)
+                else_branch_zcond = z3.And(presence_zcond, hoisted_zelse)
                 
-        else: fatal("unsupported conditional branch", condition)
+        else:
+            fatal("unsupported conditional branch", cond)
 
-        if first_branch_condition is None:
-            fatal("Could not get if branch condition", first_branch_condition)
-
-        # Enter first branch            
-        self.process_statements(statements, first_branch_condition, first_branch_zcondition)
+        assert first_branch_cond, "Could not get if branch cond {}".format(first_branch_cond)
+        
+        # Enter first branch
+        # trace()
+        self.process_statements(statements, first_branch_cond, first_branch_zcond)
 
         if not has_else:
             return
 
         # Process the else branch
-        condition, statements = block[1]
-        self.process_statements(statements, else_branch_condition, else_branch_zcondition)  # Enter else branch
+        cond, statements = block[1]
+        self.process_statements(statements, else_branch_cond, else_branch_zcond)  # Enter else branch
 
     def expand_and_flatten(self, value, presence_cond, presence_zcond):
         """Parse and expand a variable definition, flattening any
@@ -874,8 +871,8 @@ class Kbuild:
                 # expansions at use-time)
                 self.variables[equiv_name].append(
                     VarEntry(value,
-                            presence_condition, presence_zcondition,
-                            VarEntry.RECURSIVE))
+                             presence_condition, presence_zcondition, VarEntry.RECURSIVE))
+                             
 
             # TODO: handle reassignment, but does it really matter?  Use
             # reassignment example from kbuild_examples.tex as a test
@@ -1074,12 +1071,12 @@ class Kbuild:
             self.variables[equiv_name] = \
                 [ entry for entry in self.variables[equiv_name] if entry.cond != self.F ]
 
-    def process_setvariable(self, setvar, condition, zcondition):
+    def process_setvariable(self, setvar, cond, zcond):
         """Find a satisfying set of configurations for variable."""
 
         assert isinstance(setvar, parserdata.SetVariable), setvar
-        assert isinstance(condition, pycudd.DdNode), condition
-        assert z3.is_expr(zcondition), zcondition
+        assert isinstance(cond, pycudd.DdNode), cond
+        assert z3.is_expr(zcond), zcond
         
         name = self.process_expansion(setvar.vnameexp)
         token = setvar.token
@@ -1093,7 +1090,7 @@ class Kbuild:
                         if v not in self.token_pc:
                             self.token_pc[v] = (self.T, ZSolver.T)
 
-                        # update nested_condition
+                        # update nested_cond
                         tc, tzc = self.token_pc[v]
                         self.token_pc[v] = (conj(tc, cond), z3.And(tzc, zcond))
                         if s in ["obj-y", "obj-m", "lib-y", "lib-m"]:
@@ -1112,33 +1109,34 @@ class Kbuild:
             
 
         if isinstance(name, str):
-            assert isinstance(condition, pycudd.DdNode), condition
-            mlog.debug("setvariable {} {} {} under presence condition  {}; {}".format(
-                name, token, value, self.bdd_to_str(condition),  z3.simplify(zcondition)))
+            assert isinstance(cond, pycudd.DdNode), cond
+            mlog.debug("setvariable {} {} {} under presence cond  {}; {}".format(
+                name, token, value, self.bdd_to_str(cond),  z3.simplify(zcond)))
             
-            if (args.get_presence_conditions):
-                f(name, condition, zcondition)
+            if (args.get_presence_conds):
+                f(name, cond, zcond)
                 
-            self.add_variable_entry(name, condition, zcondition, token, value)
+            self.add_variable_entry(name, cond, zcond, token, value)
             
         else:
-            for local_condition, local_zcondition, expanded_name in name:
-                mlog.debug("setvariable under presence condition {} {} {} {}"
+            for local_cond, local_zcond, expanded_name in name:
+                mlog.debug("setvariable under presence cond {} {} {} {}"
                            .format(expanded_name, token,
-                                   self.bdd_to_str(local_condition), local_zcondition))
+                                   self.bdd_to_str(local_cond), local_zcond))
                            
-                nested_condition = conj(local_condition, condition)
-                nested_zcondition = z3.And(local_zcondition, zcondition)
+                nested_cond = conj(local_cond, cond)
+                nested_zcond = z3.And(local_zcond, zcond)
                 
-                if (args.get_presence_conditions):
-                    f(expanded_name, nested_condition, nested_zcondition)
+                if (args.get_presence_conds):
+                    f(expanded_name, nested_cond, nested_zcond)
                     
-                self.add_variable_entry(expanded_name, nested_condition, nested_zcondition, token, value)
+                self.add_variable_entry(expanded_name, nested_cond, nested_zcond, token, value)
 
-    def process_rule(self, rule, condition, zcondition):
-        raise NotImplementedError
+    def process_rule(self, rule, cond, zcond):
+        mlog.warn("just pass on rule {} {} {}".format(rule, self.bdd_to_str(cond), zcond))
+        pass
 
-    def process_include(self, s, condition, zcondition):
+    def process_include(self, s, cond, zcond):
         expanded_include = self.repack_singleton(self.process_expansion(s.exp))
         for include_cond, include_files in expanded_include:
             if include_files != None:
@@ -1151,19 +1149,19 @@ class Kbuild:
                         include_statements = parser.parsestring(s, include_makefile.name)
                         self.process_statements(include_statements, include_cond)
 
-    def process_statements(self, statements, condition, zcondition):
+    def process_statements(self, statements, cond, zcond):
         """Find configurations in the given list of statements under the
-        given presence condition."""
+        given presence cond."""
         for s in statements:
             if isinstance(s, parserdata.ConditionBlock):
-                self.process_conditionalblock(s, condition, zcondition)
+                self.process_conditionalblock(s, cond, zcond)
             elif isinstance(s, parserdata.SetVariable):
-                self.process_setvariable(s, condition, zcondition)
+                self.process_setvariable(s, cond, zcond)
             elif (isinstance(s, parserdata.Rule) or
                   isinstance(s, parserdata.StaticPatternRule)):
-                self.process_rule(s, condition, zcondition)
+                self.process_rule(s, cond, zcond)
             elif (isinstance(s, parserdata.Include)):
-                self.process_include(s, condition, zcondition)
+                self.process_include(s, cond, zcond)
 
 
 
@@ -1172,32 +1170,32 @@ def split_definitions(kbuild, pending_variable):
     given variable name, expanding any variable invocations first"""
     values = []
     for idx, entry in enumerate(kbuild.variables[pending_variable]):
-        value, presence_condition, presence_zcondition, flavor = entry
+        value, presence_cond, presence_zcond, flavor = entry
         # Expand any variables used in definitions
         if value != None:
             expanded_values = kbuild.repack_singleton(
-                kbuild.expand_and_flatten(value, presence_condition, presence_zcondition))
+                kbuild.expand_and_flatten(value, presence_cond, presence_zcond))
             
-            for expanded_condition, expanded_zcondition, expanded_value in expanded_values:
+            for expanded_cond, expanded_zcond, expanded_value in expanded_values:
                 if expanded_value != None:
                     split_expanded_values = expanded_value.split()
                     values.extend(split_expanded_values)
 
-                    if (args.get_presence_conditions):
+                    if (args.get_presence_conds):
                         composite_unit = "-".join(pending_variable.split('-')[:-1]) + ".o"
                         if composite_unit in kbuild.token_pc:
                             for v in split_expanded_values:
                                 tc, tzc = kbuild.token_pc[composite_unit]
-                                composite_condition = conj(expanded_condition, tc)
-                                composite_zcondition = z3.And(expanded_zcondition, tzc)
+                                composite_cond = conj(expanded_cond, tc)
+                                composite_zcond = z3.And(expanded_zcond, tzc)
                                 
                                 if not v in kbuild.token_pc.keys():
                                     kbuild.token_pc[v] = kbuild.T, ZSolver.T
                                     
-                                # update nested_condition
+                                # update nested_cond
                                 tc, tzc = kbuild.token_pc[v]
-                                kbuild.token_pc[v] = (conj(tc, composite_condition),
-                                                      z3.And(tzc, composite_zcondition))
+                                kbuild.token_pc[v] = (conj(tc, composite_cond),
+                                                      z3.And(tzc, composite_zcond))
 
     return values
 
@@ -1243,8 +1241,8 @@ def collect_units(kbuild,            # current kbuild instance
                         pending_variables.update(kbuild.get_var_equiv_set(composite_variable1))
                         pending_variables.update(kbuild.get_var_equiv_set(composite_variable2))
                         if store_pcs:
-                            raise NotImplementedError
                             if (elem not in kbuild.token_pc):
+                                raise NotImplementedError
                                 kbuild.token_pc[elem] = (kbuild.T, ZSolver.T)
                             kbuild.composite_pc[elem] = kbuild.token_pc[elem]
                         
@@ -1265,8 +1263,8 @@ def collect_units(kbuild,            # current kbuild instance
                 # $(patsubst %/,%,$(filter %/, $(obj-y)))
                 subdirectories.add(unit_name)
                 if store_pcs:
-                    raise NotImplementedError
                     if (elem not in kbuild.token_pc):
+                        raise NotImplementedError
                         kbuild.token_pc[elem] = kbuild.T
                     kbuild.subdir_pc[elem] = kbuild.token_pc[elem]
 
@@ -1342,7 +1340,7 @@ def extract(makefile_path,
                   compilation_units,
                   subdirectories,
                   composites,
-                  args.get_presence_conditions)  #tvn: remove True and
+                  args.get_presence_conds)  #tvn: remove True and
 
     for v in set([ "subdir-y", "subdir-m" ]):
         for u in split_definitions(kbuild, v):
@@ -1501,12 +1499,12 @@ if __name__ == '__main__':
        '--and-append',
        action="store_true",
        help="""\
-    append by conjoining conditions""")
+    append by conjoining conds""")
     ag('-g',
-       '--get-presence-conditions',
+       '--get-presence-conds',
        action="store_true",
        help="""\
-    get presence conditions for each compilation units""")
+    get presence conds for each compilation units""")
     ag('-r',
        '--recursive',
        action="store_true",
