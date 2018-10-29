@@ -1,0 +1,5 @@
+# Output: CONFIG_CHECKPOINT_RESTORE=y && CONFIG_X86=y
+
+ifeq ($(CONFIG_CHECKPOINT_RESTORE),y)
+obj-$(CONFIG_X86) += kcmp.o
+endif

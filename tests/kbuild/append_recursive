@@ -1,0 +1,3 @@
+objs-yy := omapfb_main.o lcdc.o
+
+objs-y$(CONFIG_FB_OMAP_LCDC_EXTERNAL) += sossi.o

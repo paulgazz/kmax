@@ -1,0 +1,8 @@
+p = varpfx/
+
+test = $(addprefix pfx/, first second)
+test2 = $(addprefix $(p), first second)
+
+all:
+	echo $(test)
+	echo $(test2)

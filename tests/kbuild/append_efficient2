@@ -1,0 +1,16 @@
+# Test the more efficient append behavior which appends the value to
+# all existing definitions
+
+# Testing exponential explosion of appending.
+
+obj-$(CONFIG_USB_UAS)		+= uas.o
+obj-$(CONFIG_USB_STORAGE)	+= usb-storage.o
+
+ifndef CONFIG_USB_UAS
+obj-y	+= conflict1.o
+endif
+# ifeq ($(CONFIG_USB_UAS),y)
+# ifneq ($(CONFIG_USB_STORAGE),y)
+# obj-y	+= test.o
+# endif
+# endif

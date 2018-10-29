@@ -1,0 +1,9 @@
+ifdef CONFIG_NO_BOOTMEM
+VAR=
+endif
+
+ifdef $(VAR)
+  obj-y += nobootmem.o
+else
+  obj-y += bootmem.o
+endif

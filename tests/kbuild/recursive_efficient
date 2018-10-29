@@ -1,0 +1,11 @@
+objs-y := unconditional.o
+
+ifdef CONFIG_A
+recursive := a.o
+endif
+
+ifdef CONFIG_B
+recursive := b.o
+endif
+
+objs-y += $(recursive)

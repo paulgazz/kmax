@@ -1,0 +1,4 @@
+obj-y := o$(MISSING).o
+
+all:
+	echo $(obj-y)
