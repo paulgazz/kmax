@@ -21,7 +21,7 @@ import sys
 import fnmatch
 import subprocess
 import cPickle as pickle
-import linuxinstance
+#import linuxinstance
 import kmaxdata
 import lockfile # pip install lockfile
 import tempfile
