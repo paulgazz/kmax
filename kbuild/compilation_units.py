@@ -173,6 +173,7 @@ def covering_set(kbuild_dir,        # src directory to process
     covering_set_args.append("-n")
   covering_set_args.append(kbuild_dir)
 
+  print ' '.join(covering_set_args)
   p = subprocess.Popen(covering_set_args,
                        stdout=subprocess.PIPE,
                        # stderr=subprocess.PIPE

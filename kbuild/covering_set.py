@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import sys
 import os
 import operator
@@ -323,25 +325,31 @@ class Kbuild:
         #     # TODO user-defined
         #     return Multiverse([ (self.T, "x86") ])
         elif name == "CONFIG_WORD_SIZE":
+
+            raise NotImplementedError
             # TODO get defaults from Kconfig files
             return Multiverse([ (self.bvars["CONFIG_WORD_SIZE=32"].bdd, "32"),
                                 (self.bvars["CONFIG_WORD_SIZE=64"].bdd, "64") ])
+
         elif name not in self.variables and name == "MMU":
+            raise NotImplementedError
+        
             # TODO get globals from arch Makefiles
             is_defined = self.get_defined("CONFIG_MMU", True)
             not_defined = self.get_defined("CONFIG_MMU", False)
 
             return Multiverse([ (is_defined, ''),
                                 (not_defined, '-nommu') ])
+
         elif name.startswith("CONFIG_") and args.boolean_configs:
-            varbdd = self.bvars[name].bdd
-            notvarbdd = neg(varbdd)
-            return Multiverse([ (varbdd, 'y'),
-                                (notvarbdd, None) ])
+            #varbdd = self.bvars[name].bdd
+            v = self.get_bvars(name).bdd
+            zv = self.get_bvars(name).zbdd
+            
+            return Multiverse([ CondDef(v, zv, 'y'),
+                                CondDef(neg(v), z3.Not(zv), None) ])
         
         elif isBooleanConfig(name) or not hasConfig() and name.startswith("CONFIG_"):
-        # if (isBooleanConfig(name) or name.startswith("CONFIG_")) \
-        #    and not isNonbooleanConfig(name):
             # TODO don't use 'm' for truly boolean config vars
             equals_y = self.get_bvars(name + "=y").bdd
             zequals_y = self.get_bvars(name + "=y").zbdd
