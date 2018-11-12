@@ -80,8 +80,9 @@ class Multiverse(list):
             else:
                 cache[val] = (cond, zcond)
 
-        mv = Multiverse(CondDef(c, zc, v)
-                        for v, (c, zc)  in cache.iteritems())
+        mv = Multiverse([CondDef(c, zc, v)
+                         for v, (c, zc)  in cache.iteritems()])
+        assert mv
         return mv
         
 
@@ -621,9 +622,11 @@ class Kbuild:
         if isinstance(element, str):
             return element
         elif isfunc:
-            return self.process_function(element)
+            ret = self.process_function(element)
+            return ret
         else:
-            return self.process_expansion(element)
+            ret = self.process_expansion(element)
+            return ret
 
     def hoist(self, expansion):
         """Hoists a list of expansions, strings, and Multiverses.
@@ -663,11 +666,12 @@ class Kbuild:
 
         @return either a single string or a Multiverse, i.e., list of (condition, string)
         pairs."""
+
         if isinstance(expansion, data.StringExpansion):
             return expansion.s
         elif isinstance(expansion, data.Expansion):
-            mv = self.hoist([ self.process_element(element, isfunc)
-                              for element, isfunc in expansion ])
+            mv = self.hoist([self.process_element(element, isfunc)
+                   for element, isfunc in expansion])
             assert isinstance(mv, Multiverse), mv
             return mv
         else:
@@ -689,6 +693,7 @@ class Kbuild:
         cond, statements = block[0]  # condition is a Condition object
         first_branch_cond = None
         if isinstance(cond, parserdata.IfdefCondition):  # ifdef
+            mlog.debug("Ifdef")
             # TODO only care if condition.exp.variable_references contains
             # multiply-defined macros
             expansion = self.process_expansion(cond.exp)
@@ -707,6 +712,7 @@ class Kbuild:
             else_branch_zcond = z3.Not(first_branch_zcond)
 
         elif isinstance(cond, parserdata.EqCondition):  # ifeq
+            mlog.debug("EqCond")
             exp1 = self.repack_singleton(self.process_expansion(cond.exp1))
             exp2 = self.repack_singleton(self.process_expansion(cond.exp2))
 

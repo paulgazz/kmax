@@ -655,8 +655,10 @@ class Kbuild:
         if isinstance(expansion, data.StringExpansion):
             return expansion.s
         elif isinstance(expansion, data.Expansion):
-            return self.hoist([ self.process_element(element, isfunc)
-                           for element, isfunc in expansion ])
+            mv = self.hoist([ self.process_element(element, isfunc)
+                                for element, isfunc in expansion ])
+            return mv
+        
         else: fatal("Unsupported BaseExpansion subtype.", expansion)
 
     def process_conditionalblock(self, block, presence_condition):
@@ -688,6 +690,7 @@ class Kbuild:
         elif isinstance(condition, parserdata.EqCondition):  # ifeq
             exp1 = self.repack_singleton(self.process_expansion(condition.exp1))
             exp2 = self.repack_singleton(self.process_expansion(condition.exp2))
+
 
             # Hoist multiple expansions around equality operation
             hoisted_condition = self.F
