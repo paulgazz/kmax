@@ -22,7 +22,6 @@ trace = pdb.set_trace
 
 mlog = None
 
-#BooleanVariable = namedtuple('BooleanVariable', 'bdd index')
 class CondDef(tuple):
     def __new__(cls, cond, zcond, mdef):
         return super(CondDef, cls).__new__(cls, (cond, zcond, mdef))
@@ -56,11 +55,6 @@ class Multiverse(list):
         
         list.__init__(self, ls)
 
-    # def append(self, cd):
-    #     assert isinstance(cd, CondDef), cd
-
-    #     super(CondDef, self).append(cd)
-        
     def __str__(self, printCond=None):
         return "CondDefs([{}])".format(
             ', '.join([p.__str__(printCond) for p in self]))
@@ -84,7 +78,6 @@ class Multiverse(list):
                          for v, (c, zc)  in cache.iteritems()])
         assert mv
         return mv
-        
 
     @classmethod
     def mkOne(cls, name, cond, zcond):
@@ -93,7 +86,6 @@ class Multiverse(list):
         assert z3.is_expr(zcond)
 
         return cls([CondDef.mkOne(name, cond, zcond)])
-
     
 
 class VarEntry(tuple):
@@ -150,7 +142,6 @@ class BoolVar(tuple):
 
         return ", ".join(map(str,ss))
 
-
     
 # Placeholders for symbolic boolean operations
 def conj(a, b):
@@ -163,7 +154,7 @@ def neg(a):
     return ~a
 
 def hasConfig():
-    return all_config_var_names != None
+    return all_config_var_names is not None
 
 def isBooleanConfig(name):
     if all_config_var_names != None and not isNonbooleanConfig(name):
@@ -171,7 +162,7 @@ def isBooleanConfig(name):
     return False
 
 def isNonbooleanConfig(name):
-    if nonboolean_config_var_names != None:
+    if nonboolean_config_var_names is not None:
         return name in nonboolean_config_var_names
     return False
 
@@ -421,6 +412,7 @@ class Kbuild:
             return Multiverse(expanded_names)
         
         elif isinstance(function, functions.SubstFunction):
+        
             from_vals = self.repack_singleton(self.process_expansion(function._arguments[0]))
             to_vals = self.repack_singleton(self.process_expansion(function._arguments[1]))
             in_vals = self.repack_singleton(self.process_expansion(function._arguments[2]))
@@ -448,6 +440,8 @@ class Kbuild:
         #     fatal("Unsupported function", function)
         #     return None
         elif isinstance(function, functions.SubstitutionRef):
+            raise NotImplementedError
+        
             from_values = self.repack_singleton(self.process_expansion(function.substfrom))
             to_values = self.repack_singleton(self.process_expansion(function.substto))
             name = self.repack_singleton(self.process_expansion(function.vname))
@@ -1500,15 +1494,17 @@ def contains_unexpanded(s):
     """
     return for strings such as $(test)
     """
-    assert isinstance(s, str) and s, s
+    assert s is None or isinstance(s, str), s
+    
     if s is not None and match_unexpanded_variables.match(s):
         return True
     else:
         return False
 
 
-if __name__ == '__main__':
 
+
+if __name__ == '__main__':
     aparser = argparse.ArgumentParser("find interactions from Kbuild Makefile")
     ag = aparser.add_argument
     ag('makefile',
@@ -1554,17 +1550,19 @@ if __name__ == '__main__':
        action='append',
        help="""\
     recursively enter subdirectories""")
+
     ag('-p',
        '--pickle',
        action="store_true",
        help="""\
     pickle a tuple of two sets containing the compilation units and subdirectories \
     respectively""")
+
     ag('-C',
        '--config-vars',
        type=str,
-       help="""the name of a KConfigData file containing \
-    configuration variable data""")
+       help="""the name of a KConfigData file containing configuration variable data""")
+
     ag('-B',
        '--boolean-configs',
        action="store_true",
@@ -1575,11 +1573,6 @@ if __name__ == '__main__':
        action="store_true",
        help="""\
     Get the top-level directories from the arch-specifier Makefile""")
-    ag('-V',
-       '--verbose',
-       action="store_true",
-       help="""\
-    Increase the debugging output""")
     args = aparser.parse_args()
 
 
@@ -1589,9 +1582,6 @@ if __name__ == '__main__':
     if __debug__:
         mlog.warn("DEBUG MODE ON. Can be slow! (Use python -O ... for optimization)")
 
-    debug_level = 1 # default to 1, can set to 0 for no debugging output
-    if (args.verbose):
-        debug_level = 2
     kconfigdata = None
     all_config_var_names = None
     boolean_config_var_names = None
@@ -1604,11 +1594,7 @@ if __name__ == '__main__':
             nonboolean_config_var_names = [ "CONFIG_" + c for c in kconfigdata.nonbool_vars ]
             all_config_var_names = [ "CONFIG_" + c for c in kconfigdata.config_vars ]
 
-        
-
     """Find a covering set of configurations for the given Makefile(s)."""
-    
-
     compilation_units = set()
     library_units = set()
     composites = set()
@@ -1682,4 +1668,3 @@ if __name__ == '__main__':
 
         _ = [print_results(*r) for r in results]
                    
-

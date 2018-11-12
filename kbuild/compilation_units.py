@@ -146,7 +146,7 @@ def covering_set(kbuild_dir,        # src directory to process
     return set()
 
   covering_set_args = [ "covering_set.py",
-                        "-p",
+                        #"-p",  #tvn why use this flag ? 
                         "-Dsrc=" + kbuild_dir,      # drivers/staging/wlags49_h25/, drivers/gpu/drm/nouveau/
                         # TODO default to empty variable
                         # "-Dobj=" + kbuild_dir,    # drivers/scsi/aic7xxx/
