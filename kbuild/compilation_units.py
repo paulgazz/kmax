@@ -177,7 +177,7 @@ def covering_set(kbuild_dir,        # src directory to process
 
 
   sys.stderr.write("running covering_set: {}\n".format(' '.join(covering_set_args)))
-  CM.pause()
+  #CM.pause()
   p = subprocess.Popen(covering_set_args,
                        stdout=subprocess.PIPE,
                        # stderr=subprocess.PIPE

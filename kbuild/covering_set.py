@@ -690,7 +690,7 @@ class Kbuild:
 
         mlog.debug("conditionalblock")
         # Process first branch
-        cond, statements = block[0]  # condition is a Condition object
+        cond, stmts = block[0]  # condition is a Condition object
         first_branch_cond = None
         if isinstance(cond, parserdata.IfdefCondition):  # ifdef
             mlog.debug("Ifdef")
@@ -712,7 +712,7 @@ class Kbuild:
             else_branch_zcond = z3.Not(first_branch_zcond)
 
         elif isinstance(cond, parserdata.EqCondition):  # ifeq
-            mlog.debug("EqCond")
+            mlog.debug("EqCond: {}".format(cond))
             exp1 = self.repack_singleton(self.process_expansion(cond.exp1))
             exp2 = self.repack_singleton(self.process_expansion(cond.exp2))
 
@@ -724,11 +724,9 @@ class Kbuild:
             hoisted_zelse = ZSolver.F
 
             for cd1 in exp1:
+                v1 = cd1.mdef if cd1.mdef else ""                
                 for cd2 in exp2:
-                    
-                    v1 = "" if cd1.mdef == None else cd1.mdef
-                    v2 = "" if cd2.mdef == None else cd2.mdef
-                        
+                    v2 = cd2.mdef if cd2.mdef else ""
                     term_cond = conj(cd1.cond, cd2.cond)
                     term_zcond = z3.And(cd1.zcond, cd2.zcond)
 
@@ -745,12 +743,14 @@ class Kbuild:
                     if contains_unexpanded(v1) or contains_unexpanded(v2):
                         # this preserves configurations where we
                         # didn't have values for a config option
-                        new_var_name = str(v1) + "=" + str(v2)
-                        new_bdd_var = self.bvars[new_var_name].bdd
-                        hoisted_cond = disj(hoisted_cond,
-                                                        new_bdd_var)
-                        hoisted_else = disj(hoisted_else,
-                                                   neg(new_bdd_var))
+                        v = self.get_bvars("{}={}".format(v1, v2))
+                        bdd = v.bdd
+                        zbdd = v.zbdd
+                        hoisted_cond = disj(hoisted_cond, bdd)
+                        hoisted_zcond = z3.Or(hoisted_zcond, zbdd)
+                        
+                        hoisted_else = disj(hoisted_else, neg(bdd))
+                        hoisted_zelse = z3.Or(hoisted_zelse, z3.Not(zbdd))
 
                 first_branch_cond = conj(presence_cond, hoisted_cond)
                 first_branch_zcond = z3.And(presence_zcond, hoisted_zcond)      
@@ -761,18 +761,19 @@ class Kbuild:
             mlog.error("unsupported conditional branch: {}".format(cond))
             exit(1)
 
-        assert first_branch_cond is not None, "Could not get if branch cond {}".format(first_branch_cond)
+        assert first_branch_cond is not None, \
+            "Could not get if branch cond {}".format(first_branch_cond)
         
         # Enter first branch
         # trace()
-        self.process_statements(statements, first_branch_cond, first_branch_zcond)
+        self.process_stmts(stmts, first_branch_cond, first_branch_zcond)
 
         if not has_else:
             return
 
         # Process the else branch
-        cond, statements = block[1]
-        self.process_statements(statements, else_branch_cond, else_branch_zcond)  # Enter else branch
+        cond, stmts = block[1]
+        self.process_stmts(stmts, else_branch_cond, else_branch_zcond)  # Enter else branch
 
     def expand_and_flatten(self, value, presence_cond, presence_zcond):
         """Parse and expand a variable definition, flattening any
@@ -1181,13 +1182,13 @@ class Kbuild:
                         include_makefile = open(include_file, "rU")
                         s = include_makefile.read()
                         include_makefile.close()
-                        include_statements = parser.parsestring(s, include_makefile.name)
-                        self.process_statements(include_statements, include_cond)
+                        include_stmts = parser.parsestring(s, include_makefile.name)
+                        self.process_stmts(include_stmts, include_cond)
 
-    def process_statements(self, statements, cond, zcond):
-        """Find configurations in the given list of statements under the
+    def process_stmts(self, stmts, cond, zcond):
+        """Find configurations in the given list of stmts under the
         given presence cond."""
-        for s in statements:
+        for s in stmts:
             if isinstance(s, parserdata.ConditionBlock):
                 self.process_conditionalblock(s, cond, zcond)
             elif isinstance(s, parserdata.SetVariable):
@@ -1331,13 +1332,13 @@ def extract(makefile_path,
     s = makefile.read()
     makefile.close()
 
-    statements = parser.parsestring(s, makefile.name)
+    stmts = parser.parsestring(s, makefile.name)
 
     kbuild = Kbuild()
 
     kbuild.add_definitions(args.define)
 
-    kbuild.process_statements(statements, kbuild.T, ZSolver.T)
+    kbuild.process_stmts(stmts, kbuild.T, ZSolver.T)
     # OPTIMIZE: list by combining non-exclusive configurations
     # OPTIMIZE: find maximal list and combine configurations
     # TODO: emit list of configurations for the dry-runs
@@ -1496,11 +1497,14 @@ def check_unexpanded_variables(l, desc):
 
 match_unexpanded_variables = re.compile(r'.*\$\(.*\).*')
 def contains_unexpanded(s):
-    if s != None and match_unexpanded_variables.match(s):
+    """
+    return for strings such as $(test)
+    """
+    assert isinstance(s, str) and s, s
+    if s is not None and match_unexpanded_variables.match(s):
         return True
     else:
         return False
-
 
 
 if __name__ == '__main__':
