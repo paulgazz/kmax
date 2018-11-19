@@ -8,7 +8,6 @@ import argparse
 import pycudd
 import _pycudd
 import tempfile
-import cPickle as pickle
 import re
 
 from pymake import parser, parserdata, data, functions
@@ -21,6 +20,38 @@ import vcommon as CM
 trace = pdb.set_trace
 
 mlog = None
+
+
+class Settings:
+    def __init__(self, args=None):
+        if args:
+            self.is_table = args.table
+            self.is_naive_append = args.naive_append
+            self.is_and_append = args.and_append
+
+            self.is_get_presence_conds = args.get_presence_conds
+            self.is_recursive = args.recursive
+
+            self.is_boolean_configs = args.boolean_configs
+            self.is_boot_strap = args.boot_strap
+
+            self.define = args.define
+
+            self.variable = args.variable
+            
+        else:
+            self.is_table = False
+            self.is_naive_append = False
+            self.is_and_append = False
+
+            self.is_get_presence_conds = False
+            self.is_recursive = False
+
+            self.is_boolean_configs = False        
+            self.is_boot_strap = False
+
+            self.define = []
+            self.variable = None
 
 class CondDef(tuple):
     def __new__(cls, cond, zcond, mdef):
@@ -187,7 +218,12 @@ class ZSolver:
 
     
 class Kbuild:
-    def __init__(self):
+    def __init__(self, settings):
+        assert isinstance(settings, Settings)
+        #settings
+        self.settings = settings
+        
+        
         # BDD engine
         self.mgr = pycudd.DdManager()
         self.mgr.SetDefault()
@@ -283,6 +319,8 @@ class Kbuild:
             return self.var_equiv_sets[existing_name]
 
     def printVar(self, name, printCond=None):
+        assert isinstance(name, str) and name, name
+        
         print "var: {}".format(name)
         print '\n'.join("{}. {}".format(i, v.__str__(printCond))
                         for i,v in enumerate(self.variables[name]))
@@ -338,7 +376,7 @@ class Kbuild:
             return Multiverse([ (is_defined, ''),
                                 (not_defined, '-nommu') ])
 
-        elif name.startswith("CONFIG_") and args.boolean_configs:
+        elif name.startswith("CONFIG_") and self.settings.is_boolean_configs:
             #varbdd = self.bvars[name].bdd
             v = self.get_bvars(name).bdd
             zv = self.get_bvars(name).zbdd
@@ -941,7 +979,7 @@ class Kbuild:
                 # collect any configurations resulting from those self.variables
 
         elif token == "+=":
-            if args.and_append: # efficient append by conjoining presence conditions
+            if self.settings.is_and_append: # efficient append by conjoining presence conditions
                 raise NotImplementedError
             
                 new_variables = []                
@@ -1001,7 +1039,49 @@ class Kbuild:
                 #                           old_flavor),
                 #         self.variables[name])
             else:
-                if not args.naive_append:
+                if self.settings.is_naive_append:
+                    # naive append
+                    # Negate old definitions just like assignment, except create a
+                    # new entry for each old entry, appending the value to each.
+
+                    old_definitions = \
+                        map(lambda (old_value, old_condition, old_flavor): \
+                                VarEntry(old_value, \
+                                             conj(old_condition, \
+                                                  neg(presence_condition)), \
+                                                 old_flavor), \
+                                self.variables[name])
+
+                    # TODO: support computed variable names used in the definition
+
+                    # Append the value to each of the old definitions.
+                    appended_definitions = []
+                    for old_value, old_condition, flavor in self.variables[name]:
+                        nested_condition = conj(old_condition, presence_condition)
+                        if flavor == VarEntry.RECURSIVE:
+                            # If it's recursively-expanded (=), append the definition to
+                            # each existing def, and "and" the presence conditions
+                            c = VarEntry(self.append_values(old_value, value),
+                                                  nested_condition,
+                                                  flavor)
+                            appended_definitions.append(c)
+                        else:
+                            assert flavor == VarEntry.SIMPLE
+                            # If it's simply-expanded (:=), need to expand and
+                            # flatten the resulting appended definition
+                            expanded = self.expand_and_flatten(self.append_values(old_value,
+                                                                        value),
+                                                          nested_condition)
+                            expanded = self.combine_expansions(expanded)
+
+                            for new_condition, new_value in expanded:
+                                appended_definitions.append(VarEntry(new_value,
+                                                                     new_condition,
+                                                                     VarEntry.SIMPLE))
+                            
+                    self.variables[name] = Multiverse(old_definitions + appended_definitions)
+                    
+                else:  
                     # optimize append for certain variables this
                     # optimization creates a new variable entry for
                     # append instead of computing the cartesian
@@ -1049,46 +1129,6 @@ class Kbuild:
                                          
 
                         self.variables[new_var_name] = new_variables
-                else:  # naive append
-                    # Negate old definitions just like assignment, except create a
-                    # new entry for each old entry, appending the value to each.
-
-                    old_definitions = \
-                        map(lambda (old_value, old_condition, old_flavor): \
-                                VarEntry(old_value, \
-                                             conj(old_condition, \
-                                                  neg(presence_condition)), \
-                                                 old_flavor), \
-                                self.variables[name])
-
-                    # TODO: support computed variable names used in the definition
-
-                    # Append the value to each of the old definitions.
-                    appended_definitions = []
-                    for old_value, old_condition, flavor in self.variables[name]:
-                        nested_condition = conj(old_condition, presence_condition)
-                        if flavor == VarEntry.RECURSIVE:
-                            # If it's recursively-expanded (=), append the definition to
-                            # each existing def, and "and" the presence conditions
-                            c = VarEntry(self.append_values(old_value, value),
-                                                  nested_condition,
-                                                  flavor)
-                            appended_definitions.append(c)
-                        else:
-                            assert flavor == VarEntry.SIMPLE
-                            # If it's simply-expanded (:=), need to expand and
-                            # flatten the resulting appended definition
-                            expanded = self.expand_and_flatten(self.append_values(old_value,
-                                                                        value),
-                                                          nested_condition)
-                            expanded = self.combine_expansions(expanded)
-
-                            for new_condition, new_value in expanded:
-                                appended_definitions.append(VarEntry(new_value,
-                                                                     new_condition,
-                                                                     VarEntry.SIMPLE))
-                            
-                    self.variables[name] = Multiverse(old_definitions + appended_definitions)
                     
         elif token == "?=":
             # TODO: if ?= is used on an undefined variable, it's
@@ -1147,7 +1187,7 @@ class Kbuild:
             mlog.debug("setvariable {} {} {} under presence cond  {}; {}".format(
                 name, token, value, self.bdd_to_str(cond),  z3.simplify(zcond)))
             
-            if (args.get_presence_conds):
+            if (self.settings.is_get_presence_conds):
                 f(name, cond, zcond)
                 
             self.add_variable_entry(name, cond, zcond, token, value)
@@ -1161,7 +1201,7 @@ class Kbuild:
                 nested_cond = conj(local_cond, cond)
                 nested_zcond = z3.And(local_zcond, zcond)
                 
-                if (args.get_presence_conds):
+                if (self.settings.is_get_presence_conds):
                     f(expanded_name, nested_cond, nested_zcond)
                     
                 self.add_variable_entry(expanded_name, nested_cond, nested_zcond, token, value)
@@ -1216,7 +1256,7 @@ class Kbuild:
                         split_expanded_values = expanded_value.split()
                         values.extend(split_expanded_values)
 
-                        if (args.get_presence_conds):
+                        if (self.settings.is_get_presence_conds):
                             composite_unit = "-".join(pending_variable.split('-')[:-1]) + ".o"
                             if composite_unit in self.token_pc:
                                 for v in split_expanded_values:
@@ -1237,7 +1277,7 @@ class Kbuild:
 
 class Run:
 
-    def __init__(self):
+    def __init__(self, settings):
         self.units_d = {
             'subdirectories' : set(),
             'compilation_units' : set(),
@@ -1252,8 +1292,10 @@ class Run:
             'unit_pcs' : set(),
             'subdir_pcs' : set()
         }
+
+        self.settings = settings
         
-    def go(self):
+    def go(self, makefile):
         kconfigdata = None
         all_config_var_names = None
         boolean_config_var_names = None
@@ -1269,12 +1311,12 @@ class Run:
         """Find a covering set of configurations for the given Makefile(s)."""
         
         subdirectories = self.units_d['subdirectories']
-        subdirectories.add(args.makefile)
+        subdirectories.add(makefile)
         while subdirectories:
             sdirs = self.extract(subdirectories.pop())
             subdirectories.update(sdirs)
 
-            if not args.recursive:
+            if not self.settings.is_recursive:
                 break
 
         for k, s in self.units_d.iteritems():
@@ -1404,8 +1446,8 @@ class Run:
 
         stmts = parser.parsestring(s, makefile.name)
 
-        kbuild = Kbuild()
-        kbuild.add_definitions(args.define)
+        kbuild = Kbuild(self.settings)
+        kbuild.add_definitions(self.settings.define)
         kbuild.process_stmts(stmts, kbuild.T, ZSolver.T)
         # OPTIMIZE: list by combining non-exclusive configurations
         # OPTIMIZE: find maximal list and combine configurations
@@ -1422,7 +1464,7 @@ class Run:
         unit_pcs = self.units_d['unit_pcs']
         subdir_pcs = self.units_d['subdir_pcs']
 
-        if args.boot_strap:
+        if self.settings.is_boot_strap:
             # collect_units(kbuild,
             #               obj,
             #               set(["core-y", "core-m", "drivers-y", "drivers-m", "net-y", "net-m", "libs-y", "libs-m"]),
@@ -1449,12 +1491,12 @@ class Run:
 
         pending_vars = set([ "obj-y", "obj-m" ]) 
         self.collect_units(kbuild,
-                      obj,
-                      pending_vars,
-                      compilation_units,
-                      subdirectories,
-                      composites,
-                      args.get_presence_conds)
+                           obj,
+                           pending_vars,
+                           compilation_units,
+                           subdirectories,
+                           composites,
+                           self.settings.is_get_presence_conds)
 
         for v in set([ "subdir-y", "subdir-m" ]):
             for u in kbuild.split_definitions(v):
@@ -1541,10 +1583,10 @@ class Run:
         self.check_unexpanded_vars(compilation_units, "compilation unit")
         self.check_unexpanded_vars(subdirectories, "subdirectory")
         self.check_unexpanded_vars(kbuild.variables.keys(), "variable name")
-        if args.variable:
-            kbuild.printVar(args.variable, printCond=kbuild.bdd_to_str)
+        if self.settings.variable:
+            kbuild.printVar(self.settings.variable, printCond=kbuild.bdd_to_str)
 
-        elif args.table:
+        elif self.settings.is_table:
             kbuild.printSymbTable(printCond=kbuild.bdd_to_str)
 
 
@@ -1598,6 +1640,7 @@ if __name__ == '__main__':
        '--table',
        action="store_true",
        help="""show symbol table entries""")
+    
     ag('-v',
        '--variable',
        type=str,
@@ -1607,33 +1650,29 @@ if __name__ == '__main__':
        action="store_true",
        help="""\
     use naive append behavior, which has more exponential explosion""")
+
     ag('-A',
        '--and-append',
        action="store_true",
-       help="""\
-    append by conjoining conds""")
+       help="""\append by conjoining conds""")
+       
     ag('-g',
        '--get-presence-conds',
        action="store_true",
        help="""\
     get presence conds for each compilation units""")
+    
     ag('-r',
        '--recursive',
        action="store_true",
        help="""\
     recursively enter subdirectories""")
+
     ag('-D',
        '--define',
        action='append',
        help="""\
     recursively enter subdirectories""")
-
-    ag('-p',
-       '--pickle',
-       action="store_true",
-       help="""\
-    pickle a tuple of two sets containing the compilation units and subdirectories \
-    respectively""")
 
     ag('-C',
        '--config-vars',
@@ -1645,6 +1684,7 @@ if __name__ == '__main__':
        action="store_true",
        help="""\
     Treat all configuration variables as Boolean variables""")
+    
     ag('-b',
        '--boot-strap',
        action="store_true",
@@ -1652,13 +1692,16 @@ if __name__ == '__main__':
     Get the top-level directories from the arch-specifier Makefile""")
     args = aparser.parse_args()
 
+    settings = Settings(args)
 
     logger_level = CM.getLogLevel(args.logger_level)
     mlog = CM.getLogger(__name__, logger_level)
+
+
 
     if __debug__:
         mlog.warn("DEBUG MODE ON. Can be slow! (Use python -O ... for optimization)")
 
 
-    m = Run()
-    m.go()
+    m = Run(settings)
+    m.go(args.makefile)
