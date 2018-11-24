@@ -24,35 +24,51 @@ mlog = None
 
 class Settings:
     def __init__(self, args=None):
-        if args:
+        try:
             self.is_table = args.table
-            self.is_naive_append = args.naive_append
-            self.is_and_append = args.and_append
-
-            self.is_get_presence_conds = args.get_presence_conds
-            self.is_recursive = args.recursive
-
-            self.is_boolean_configs = args.boolean_configs
-            self.is_boot_strap = args.boot_strap
-
-            self.define = args.define
-
-            self.variable = args.variable
-            
-        else:
+        except AttributeError:
             self.is_table = False
+            
+        try:
+            self.is_naive_append = args.naive_append
+        except AttributeError:
             self.is_naive_append = False
+                    
+        try:
+            self.is_and_append = args.and_append
+        except AttributeError:
             self.is_and_append = False
-
+            
+        try:
+            self.is_get_presence_conds = args.get_presence_conds
+        except AttributeError:
             self.is_get_presence_conds = False
+
+        try:
+            self.is_recursive = args.recursive
+        except AttributeError:
             self.is_recursive = False
-
-            self.is_boolean_configs = False        
+            
+        try:            
+            self.is_boolean_configs = args.boolean_configs
+        except AttributeError:
+            self.is_boolean_configs = False
+            
+        try:            
+            self.is_boot_strap = args.boot_strap
+        except AttributeError:
             self.is_boot_strap = False
-
+            
+        try:
+            self.define = args.define
+        except AttributeError:
             self.define = []
+            
+        try:            
+            self.variable = args.variable
+        except AttributeError:
             self.variable = None
-
+            
 class CondDef(tuple):
     def __new__(cls, cond, zcond, mdef):
         return super(CondDef, cls).__new__(cls, (cond, zcond, mdef))
@@ -220,9 +236,7 @@ class ZSolver:
 class Kbuild:
     def __init__(self, settings):
         assert isinstance(settings, Settings)
-        #settings
         self.settings = settings
-        
         
         # BDD engine
         self.mgr = pycudd.DdManager()
@@ -1295,7 +1309,11 @@ class Run:
 
         self.settings = settings
         
-    def go(self, makefile):
+    def go(self, makefiledirs):
+        assert isinstance(makefiledirs, set) and makefiledirs, makefiledirs
+        assert all(os.path.isfile(f) or os.path.isdir(f)
+                   for f in makefiledirs), makefiledirs
+        
         kconfigdata = None
         all_config_var_names = None
         boolean_config_var_names = None
@@ -1311,13 +1329,13 @@ class Run:
         """Find a covering set of configurations for the given Makefile(s)."""
         
         subdirectories = self.units_d['subdirectories']
-        subdirectories.add(makefile)
+        subdirectories.update(makefiledirs)
+
+        sdirs = []
         while subdirectories:
             sdirs = self.extract(subdirectories.pop())
-            subdirectories.update(sdirs)
-
-            if not self.settings.is_recursive:
-                break
+            if self.settings.is_recursive:
+                subdirectories.update(sdirs)
 
         for k, s in self.units_d.iteritems():
             if not s: continue
@@ -1331,19 +1349,6 @@ class Run:
             print "{} {}: {}".format(len(s), k, '\n'.join(ss))
 
         
-    # (compilation_units,
-    #             library_units,
-    #             hostprog_units,
-    #             unconfigurable_units,
-    #             extra_targets,
-    #             clean_files,
-    #             c_file_targets,
-    #             subdirectories,
-    #             composites,
-    #             unit_pcs,
-    #             subdir_pcs)
-
-
 
     @classmethod
     def collect_units(cls,
@@ -1428,7 +1433,7 @@ class Run:
     
     def extract(self, makefile_path):
 
-        mlog.debug("processing makefile: {}".format(makefile_path))
+        mlog.info("processing makefile: {}".format(makefile_path))
         if os.path.isdir(makefile_path):
             subdir = makefile_path
             makefile_path = os.path.join(subdir, "Kbuild")
@@ -1445,7 +1450,6 @@ class Run:
         makefile.close()
 
         stmts = parser.parsestring(s, makefile.name)
-
         kbuild = Kbuild(self.settings)
         kbuild.add_definitions(self.settings.define)
         kbuild.process_stmts(stmts, kbuild.T, ZSolver.T)
@@ -1623,12 +1627,14 @@ def contains_unexpanded(s):
         return False
 
 
+
 if __name__ == '__main__':
     aparser = argparse.ArgumentParser("find interactions from Kbuild Makefile")
     ag = aparser.add_argument
     ag('makefile',
+       nargs="*",
        type=str,
-       help="""the name of a Linux Makefile or subdir""")
+       help="""the name of a Linux Makefiles or subdirs""")
     
     ag("--logger_level", "-logger_level", "-log", "--log",
        help="set logger info",
@@ -1692,8 +1698,6 @@ if __name__ == '__main__':
     Get the top-level directories from the arch-specifier Makefile""")
     args = aparser.parse_args()
 
-    settings = Settings(args)
-
     logger_level = CM.getLogLevel(args.logger_level)
     mlog = CM.getLogger(__name__, logger_level)
 
@@ -1702,6 +1706,7 @@ if __name__ == '__main__':
     if __debug__:
         mlog.warn("DEBUG MODE ON. Can be slow! (Use python -O ... for optimization)")
 
-
-    m = Run(settings)
-    m.go(args.makefile)
+    settings = Settings(args)
+    run = Run(settings)
+    makefiledirs = set(args.makefile)
+    run.go(makefiledirs)
