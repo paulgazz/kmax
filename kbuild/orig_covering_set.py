@@ -125,8 +125,8 @@ args = argparser.parse_args()
 logger_level = CM.getLogLevel(args.logger_level)
 mlog = CM.getLogger(__name__, logger_level)
 
-if __debug__:
-    mlog.warn("DEBUG MODE ON. Can be slow! (Use python -O ... for optimization)")
+# if __debug__:
+#     mlog.warn("DEBUG MODE ON. Can be slow! (Use python -O ... for optimization)")
 
 debug_level = 1 # default to 1, can set to 0 for no debugging output
 if (args.verbose):

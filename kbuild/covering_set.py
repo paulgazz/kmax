@@ -293,44 +293,25 @@ class Kbuild:
             self.bvars[name] = bv
             return bv
     
-        
     def get_var_equiv(self, name):
         # get a new randomized variable name that is equivalent to the
         # given variable.  this also updates a structure that records
         # which variables are equivalent
-        found_set = False
-        for var in self.var_equiv_sets.keys():
-            eset = self.var_equiv_sets[var]
-            if name in eset:
-                existing_name = var
-                existing_set = eset
-                found_set = True
-        if not found_set:
-            new_set = set()
-            new_set.add(name)  # set contains the original variable name itself
-            self.var_equiv_sets[name] = new_set
-            return name
-        else:
-            new_name = "EQUIV_SET_{}_{}".format(len(existing_set), existing_name)
-            self.var_equiv_sets[existing_name].add(new_name)
-            return new_name
+        
+        assert isinstance(name, str), name
 
-    def get_var_equiv_set(self, name):
-        found_set = False
-        for var in self.var_equiv_sets.keys():
-            eset = self.var_equiv_sets[var]
-            if name in eset:
-                existing_name = var
-                existing_set = eset
-                found_set = True
-        if not found_set:
-            new_set = set()
-            new_set.add(name)  # set contains the original variable name itself
-            self.var_equiv_sets[name] = new_set
-            return self.var_equiv_sets[name]
+        if name in self.var_equiv_sets:
+            new_name = "EQUIV_SET{}{}".format(len(self.var_equiv_sets[name]), name)
+            self.var_equiv_sets[name].add(new_name)
+            return new_name
         else:
-            new_name = "EQUIV_SET" + str(len(existing_set)) + existing_name
-            return self.var_equiv_sets[existing_name]
+            self.var_equiv_sets[name] = set([name])
+            return name
+        
+    def get_var_equiv_set(self, name):
+        if name not in self.var_equiv_sets:
+            self.var_equiv_sets[name] = set([name])
+        return self.var_equiv_sets[name]            
 
     def printVar(self, name, printCond=None):
         assert isinstance(name, str) and name, name
@@ -996,104 +977,106 @@ class Kbuild:
             if self.settings.is_and_append: # efficient append by conjoining presence conditions
                 raise NotImplementedError
             
-                new_variables = []                
-                for entry in self.variables[name]:
-                    old_value, old_condition, old_flavor = entry
-                    new_condition = conj(old_condition, presence_condition)
+                # new_variables = []                
+                # for entry in self.variables[name]:
+                #     old_value, old_condition, old_flavor = entry
+                #     new_condition = conj(old_condition, presence_condition)
                 
                 
-                    if new_condition == self.F:                    
-                        # Make two separate definitions.  One updates the
-                        # existing definition's presence_condition.  The
-                        # other creates a new definition
-                        updated_condition = conj(old_condition,
-                                                 neg(presence_condition))
-                        new_variables.append(VarEntry(old_value,
-                                                      updated_condition,
-                                                      old_flavor))
-                        new_condition = conj(neg(old_condition),
-                                                    presence_condition)
-                        if old_flavor == VarEntry.SIMPLE:
-                            expanded = self.expand_and_flatten(value, new_condition)
-                            expanded = self.combine_expansions(expanded)
-                            for expanded_condition, expanded_value in expanded:
-                                expanded_entry = VarEntry(expanded_value,
-                                                               expanded_condition,
-                                                               old_flavor)
-                                new_variables.append(expanded_entry)
-                        else:
-                            assert old_flavor == VarEntry.RECURSIVE
-                            new_variables.append(VarEntry(value,
-                                                               new_condition,
-                                                               old_flavor))
-                    else:
-                        # Append directly to the existing definition.
-                        appended_value = self.append_values(old_value, value)
-                        if old_flavor == VarEntry.SIMPLE:
-                            expanded = self.expand_and_flatten(appended_value,
-                                                          new_condition)
-                            expanded = self.combine_expansions(expanded)
-                            for expanded_condition, expanded_value in expanded:
-                                expanded_entry = VarEntry(expanded_value,
-                                                               expanded_condition,
-                                                               old_flavor)
-                                new_variables.append(expanded_entry)
-                        else:
-                            assert old_flavor == VarEntry.RECURSIVE
-                            new_variables.append(VarEntry(appended_value,
-                                                               new_condition,
-                                                               old_flavor))
-                self.variables[name] = new_variables
+                #     if new_condition == self.F:                    
+                #         # Make two separate definitions.  One updates the
+                #         # existing definition's presence_condition.  The
+                #         # other creates a new definition
+                #         updated_condition = conj(old_condition,
+                #                                  neg(presence_condition))
+                #         new_variables.append(VarEntry(old_value,
+                #                                       updated_condition,
+                #                                       old_flavor))
+                #         new_condition = conj(neg(old_condition),
+                #                                     presence_condition)
+                #         if old_flavor == VarEntry.SIMPLE:
+                #             expanded = self.expand_and_flatten(value, new_condition)
+                #             expanded = self.combine_expansions(expanded)
+                #             for expanded_condition, expanded_value in expanded:
+                #                 expanded_entry = VarEntry(expanded_value,
+                #                                                expanded_condition,
+                #                                                old_flavor)
+                #                 new_variables.append(expanded_entry)
+                #         else:
+                #             assert old_flavor == VarEntry.RECURSIVE
+                #             new_variables.append(VarEntry(value,
+                #                                                new_condition,
+                #                                                old_flavor))
+                #     else:
+                #         # Append directly to the existing definition.
+                #         appended_value = self.append_values(old_value, value)
+                #         if old_flavor == VarEntry.SIMPLE:
+                #             expanded = self.expand_and_flatten(appended_value,
+                #                                           new_condition)
+                #             expanded = self.combine_expansions(expanded)
+                #             for expanded_condition, expanded_value in expanded:
+                #                 expanded_entry = VarEntry(expanded_value,
+                #                                                expanded_condition,
+                #                                                old_flavor)
+                #                 new_variables.append(expanded_entry)
+                #         else:
+                #             assert old_flavor == VarEntry.RECURSIVE
+                #             new_variables.append(VarEntry(appended_value,
+                #                                                new_condition,
+                #                                                old_flavor))
+                # self.variables[name] = new_variables
 
-                # self.variables[name] = \
-                #     map(lambda (old_value, old_condition, old_flavor):
-                #             VarEntry(self.append_values(old_value, value),
-                #                           conj(old_condition,
-                #                                       presence_condition),
-                #                           old_flavor),
-                #         self.variables[name])
+                # # self.variables[name] = \
+                # #     map(lambda (old_value, old_condition, old_flavor):
+                # #             VarEntry(self.append_values(old_value, value),
+                # #                           conj(old_condition,
+                # #                                       presence_condition),
+                # #                           old_flavor),
+                # #         self.variables[name])
             else:
                 if self.settings.is_naive_append:
-                    # naive append
-                    # Negate old definitions just like assignment, except create a
-                    # new entry for each old entry, appending the value to each.
+                    raise NotImplementedError
+                
+                    # # naive append
+                    # # Negate old definitions just like assignment, except create a
+                    # # new entry for each old entry, appending the value to each.
 
-                    old_definitions = \
-                        map(lambda (old_value, old_condition, old_flavor): \
-                                VarEntry(old_value, \
-                                             conj(old_condition, \
-                                                  neg(presence_condition)), \
-                                                 old_flavor), \
-                                self.variables[name])
+                    # old_definitions = \
+                    #     map(lambda (old_value, old_condition, old_flavor): \
+                    #             VarEntry(old_value, \
+                    #                          conj(old_condition, \
+                    #                               neg(presence_condition)), \
+                    #                              old_flavor), \
+                    #             self.variables[name])
 
-                    # TODO: support computed variable names used in the definition
+                    # # TODO: support computed variable names used in the definition
 
-                    # Append the value to each of the old definitions.
-                    appended_definitions = []
-                    for old_value, old_condition, flavor in self.variables[name]:
-                        nested_condition = conj(old_condition, presence_condition)
-                        if flavor == VarEntry.RECURSIVE:
-                            # If it's recursively-expanded (=), append the definition to
-                            # each existing def, and "and" the presence conditions
-                            c = VarEntry(self.append_values(old_value, value),
-                                                  nested_condition,
-                                                  flavor)
-                            appended_definitions.append(c)
-                        else:
-                            assert flavor == VarEntry.SIMPLE
-                            # If it's simply-expanded (:=), need to expand and
-                            # flatten the resulting appended definition
-                            expanded = self.expand_and_flatten(self.append_values(old_value,
-                                                                        value),
-                                                          nested_condition)
-                            expanded = self.combine_expansions(expanded)
+                    # # Append the value to each of the old definitions.
+                    # appended_definitions = []
+                    # for old_value, old_condition, flavor in self.variables[name]:
+                    #     nested_condition = conj(old_condition, presence_condition)
+                    #     if flavor == VarEntry.RECURSIVE:
+                    #         # If it's recursively-expanded (=), append the definition to
+                    #         # each existing def, and "and" the presence conditions
+                    #         c = VarEntry(self.append_values(old_value, value),
+                    #                               nested_condition,
+                    #                               flavor)
+                    #         appended_definitions.append(c)
+                    #     else:
+                    #         assert flavor == VarEntry.SIMPLE
+                    #         # If it's simply-expanded (:=), need to expand and
+                    #         # flatten the resulting appended definition
+                    #         expanded = self.expand_and_flatten(self.append_values(old_value,
+                    #                                                     value),
+                    #                                       nested_condition)
+                    #         expanded = self.combine_expansions(expanded)
 
-                            for new_condition, new_value in expanded:
-                                appended_definitions.append(VarEntry(new_value,
-                                                                     new_condition,
-                                                                     VarEntry.SIMPLE))
+                    #         for new_condition, new_value in expanded:
+                    #             appended_definitions.append(VarEntry(new_value,
+                    #                                                  new_condition,
+                    #                                                  VarEntry.SIMPLE))
                             
-                    self.variables[name] = Multiverse(old_definitions + appended_definitions)
+                    # self.variables[name] = Multiverse(old_definitions + appended_definitions)
                     
                 else:  
                     # optimize append for certain variables this
@@ -1119,8 +1102,9 @@ class Kbuild:
                             zrecurisvely = z3.Or(zrecursively, old_zcondition)
                             
                         
+                    #new_var_name = self.get_var_equiv(name)
                     new_var_name = self.get_var_equiv(name)
-
+                    
                     #tvn: TODO: add check for zrecursively
                     if recursively != self.F:
                         self.variables[new_var_name].append(
@@ -1224,19 +1208,19 @@ class Kbuild:
         mlog.warn("just pass on rule {} {} {}".format(rule, self.bdd_to_str(cond), zcond))
         pass
 
-    def process_include(self, s, cond, zcond):
-        raise NotImplementedError
-        expanded_include = self.repack_singleton(self.process_expansion(s.exp))
-        for include_cond, include_files in expanded_include:
-            if include_files != None:
-                for include_file in include_files.split():
-                    obj = os.path.dirname(include_file)
-                    if os.path.exists(include_file):
-                        include_makefile = open(include_file, "rU")
-                        s = include_makefile.read()
-                        include_makefile.close()
-                        include_stmts = parser.parsestring(s, include_makefile.name)
-                        self.process_stmts(include_stmts, include_cond)
+    # def process_include(self, s, cond, zcond):
+    #     raise NotImplementedError
+    #     expanded_include = self.repack_singleton(self.process_expansion(s.exp))
+    #     for include_cond, include_files in expanded_include:
+    #         if include_files != None:
+    #             for include_file in include_files.split():
+    #                 obj = os.path.dirname(include_file)
+    #                 if os.path.exists(include_file):
+    #                     include_makefile = open(include_file, "rU")
+    #                     s = include_makefile.read()
+    #                     include_makefile.close()
+    #                     include_stmts = parser.parsestring(s, include_makefile.name)
+    #                     self.process_stmts(include_stmts, include_cond)
 
     def process_stmts(self, stmts, cond, zcond):
         """Find configurations in the given list of stmts under the
@@ -1250,14 +1234,14 @@ class Kbuild:
                   isinstance(s, parserdata.StaticPatternRule)):
                 self.process_rule(s, cond, zcond)
             elif (isinstance(s, parserdata.Include)):
-                self.process_include(s, cond, zcond)
+                raise NotImplementedError
+                #self.process_include(s, cond, zcond)
 
 
     def split_definitions(self, pending_variable):
         """get every whitespace-delimited token in all definitions of the
         given variable name, expanding any variable invocations first"""
         values = []
-
         for idx, entry in enumerate(self.variables[pending_variable]):
             value, cond, zcond, flavor = entry
             # Expand any variables used in definitions
@@ -1363,27 +1347,33 @@ class Run:
         """fixed-point algorithm that adds composites and stops when no
         more variables to look at are available"""
 
-        assert isinstance(kbuild, Kbuild)
-        assert isinstance(obj, str)
-        assert isinstance(compilation_units, set)
-        assert isinstance(subdirectories, set)
-        assert isinstance(composites, set)
-        assert isinstance(store_pcs, bool)
+        assert isinstance(kbuild, Kbuild), kbuild
+        assert isinstance(obj, str) and (not obj or os.path.isdir(obj)), obj
+        assert isinstance(compilation_units, set), compilation_units
+        assert isinstance(subdirectories, set), subdirectories
+        assert isinstance(composites, set), composites
+        assert isinstance(store_pcs, bool), store_pcs
 
-        processed_variables = set()
+        processed_vars = set()
         equiv_vars = set()
+
         for var in pending_variables:
-            equiv_vars = equiv_vars.union(kbuild.get_var_equiv_set(var))
+            esets = kbuild.get_var_equiv_set(var)
+            equiv_vars = equiv_vars.union(esets)
+
         pending_variables = pending_variables.union(equiv_vars)
-        while len(pending_variables) > 0:
+        while pending_variables:
             pending_variable = pending_variables.pop()
-            processed_variables.add(pending_variable)
+            processed_vars.add(pending_variable)
 
             # Collect the list of definitions
             values = kbuild.split_definitions(pending_variable)
+            #print values
             for elem in values:
                 unit_name = os.path.normpath(os.path.join(obj, elem))
-
+                # print pending_variable, values, obj, elem, unit_name
+                # CM.pause()
+                
                 if elem.endswith(".o") and unit_name not in compilation_units:
                     # Expand composites
                     if (elem[:-2] + "-objs") in kbuild.variables or \
@@ -1396,8 +1386,8 @@ class Run:
                         composite_variable1 = elem[:-2] + "-objs"
                         composite_variable2 = elem[:-2] + "-y"
 
-                        if composite_variable1 not in processed_variables and \
-                                composite_variable2 not in processed_variables:
+                        if composite_variable1 not in processed_vars and \
+                                composite_variable2 not in processed_vars:
                             composites.add(unit_name)
                             pending_variables.update(kbuild.get_var_equiv_set(composite_variable1))
                             pending_variables.update(kbuild.get_var_equiv_set(composite_variable2))
@@ -1418,11 +1408,19 @@ class Run:
                         if store_pcs:
                             if (elem not in kbuild.token_pc): kbuild.token_pc[elem] = (kbuild.T, ZSolver.T)
                             kbuild.unit_pc[elem] = kbuild.token_pc[elem]
+
                 elif elem.endswith("/"):
                     # scripts/Makefile.lib takes anything that
                     # ends in a forward slash as a subdir
                     # $(patsubst %/,%,$(filter %/, $(obj-y)))
-                    subdirectories.add(unit_name)
+
+                    new_dir = elem
+                    if not new_dir.startswith('/'):
+                        new_dir = os.path.join(obj, new_dir)
+                        
+                    if os.path.isdir(new_dir):
+                        subdirectories.add(new_dir)
+                    
                     if store_pcs:
                         if (elem not in kbuild.token_pc):
                             raise NotImplementedError
@@ -1469,29 +1467,22 @@ class Run:
         subdir_pcs = self.units_d['subdir_pcs']
 
         if self.settings.is_boot_strap:
-            # collect_units(kbuild,
-            #               obj,
-            #               set(["core-y", "core-m", "drivers-y", "drivers-m", "net-y", "net-m", "libs-y", "libs-m"]),
-            #               compilation_units,
-            #               subdirectories,
-            #               composites)
-            # print " ".join(subdirectories)
+            raise NotImplementedError
+            # toplevel = set()
+            # for var in set(["core-y", "core-m", "drivers-y", "drivers-m",
+            #                 "net-y", "net-m", "libs-y", "libs-m"]):
+            #     toplevel.update(split_definitions(kbuild, var))
+            # print " ".join([t for t in toplevel if t.endswith("/") and not t.startswith("-")])
             # exit(0)
-            toplevel = set()
-            for var in set(["core-y", "core-m", "drivers-y", "drivers-m",
-                            "net-y", "net-m", "libs-y", "libs-m"]):
-                toplevel.update(split_definitions(kbuild, var))
-            print " ".join([t for t in toplevel if t.endswith("/") and not t.startswith("-")])
-            exit(0)
 
         pending_vars =  set(["core-y", "core-m", "drivers-y", "drivers-m",
                              "net-y", "net-m", "libs-y", "libs-m", "head-y", "head-m"])
         self.collect_units(kbuild,
-                      "",
-                      pending_vars,
-                      compilation_units,
-                      subdirectories,
-                      composites)
+                           obj,  #tvn:  why not pass obj here ?  will cause libarchive not being used
+                           pending_vars,
+                           compilation_units,
+                           subdirectories,
+                           composites)
 
         pending_vars = set([ "obj-y", "obj-m" ]) 
         self.collect_units(kbuild,
@@ -1525,6 +1516,7 @@ class Run:
                     hostprog_units.add(unit_name)
 
         if pending_hostprog_composites:
+            raise NotImplementedError
             self.collect_units(kbuild,
                                obj,
                                pending_hostprog_composites,
@@ -1536,14 +1528,18 @@ class Run:
             for u in kbuild.split_definitions(v):
                 unit_name = os.path.join(obj, u)
                 if unit_name.endswith(".o"):
-                    extra_targets.add(unit_name)
+                    raise NotImplementedError
+                    #extra_targets.add(unit_name)
 
         for u in kbuild.split_definitions("targets"):
             if u.endswith(".c"):
-                c_file_targets.add(os.path.join(obj, u))
+                raise NotImplementedError
+                #c_file_targets.add(os.path.join(obj, u))
 
         for u in kbuild.split_definitions("clean-files"):
-            clean_files.add(os.path.join(obj, u))
+            raise NotImplementedError
+            #clean_files.add(os.path.join(obj, u))
+            
 
         # look for variables starting with obj-, lib-, hostprogs-,
         # compositename-, or hostprog-compositename-.  doesn't account for
@@ -1621,11 +1617,7 @@ def contains_unexpanded(s):
     """
     assert s is None or isinstance(s, str), s
 
-    if s is not None and match_unexpanded_variables.match(s):
-        return True
-    else:
-        return False
-
+    return s is not None and match_unexpanded_variables.match(s)
 
 
 if __name__ == '__main__':
@@ -1708,5 +1700,7 @@ if __name__ == '__main__':
 
     settings = Settings(args)
     run = Run(settings)
-    makefiledirs = set(args.makefile)
+    makefiledirs = set([f for f in args.makefile
+                        if os.path.isfile(f) or os.path.isdir(f)])
+        
     run.go(makefiledirs)

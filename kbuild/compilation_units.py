@@ -27,6 +27,7 @@ import argparse
 import subprocess
 import cPickle as pickle
 import time
+import covering_set as CS
 
 import vcommon as CM
 
@@ -120,7 +121,8 @@ if len(args.makefile) == 0:
 toplevel_dirs = args.makefile
 
 excludes = set()
-if args.excludes_file != None:
+if args.excludes_file:
+  raise NotImplementedError
   if os.path.exists(args.excludes_file):
     with open(args.excludes_file, "r") as f:
       excludes = pickle.load(f)
@@ -145,6 +147,12 @@ def covering_set(kbuild_dir,        # src directory to process
     print "skipping", kbuild_dir
     return set()
 
+
+  settings = CS.Settings(args)
+
+  
+  print settings
+  
   covering_set_args = [ "covering_set.py",
                         #"-p",  #tvn why use this flag ? 
                         "-Dsrc=" + kbuild_dir,      # drivers/staging/wlags49_h25/, drivers/gpu/drm/nouveau/
@@ -234,7 +242,7 @@ broken = set()
 
 # find all compilation_units.  run covering_set.py until no more
 # Kbuild subdirectories are left.
-sys.stderr.write("running covering_set\n")
+sys.stderr.write("covering set: pending_subdir {}, makefile {}".format(pending_subdirectories, args.makefile))
 pending_subdirectories.update(args.makefile)
 while len(pending_subdirectories) > 0:
   subdirectories.update(pending_subdirectories)
