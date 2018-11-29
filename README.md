@@ -111,7 +111,7 @@ This will download and collect all compilation units and presence
 conditions from v4.0 of the Linux kernel source.
 
     # from the top-level kmax source directory
-    python analysis/collect_buildsystem.py 4.0 x86
+    python analysis/collect_buildsystem.py -B 4.0 x86
 
 ## Getting constraints on compilation units
 
