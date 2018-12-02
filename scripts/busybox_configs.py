@@ -179,7 +179,7 @@ buildsystemdata.config_vars = kconfigdata.config_vars
 buildsystemdata.bool_vars = kconfigdata.bool_vars
 buildsystemdata.nonbool_vars = kconfigdata.nonbool_vars
 
-compunit_command = 'orig_compilation_units1.py'
+compunit_command = 'compilation_units.py'
 # if get_running_time:
 #   compunit_command += ' --no-aggregation'
 # remaining_arguments = ' -C ' + kconfigdatafile + ' ' + " ".join([os.path.join(x, build_name) for x in buildsystemdata.alldirs])
@@ -189,7 +189,7 @@ if args.boolean_configs:
 
 command = compunit_command + remaining_arguments
 print command
-CM.pause()
+
 popen = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
 stdout_, stderr_ = popen.communicate()
 print stdout_
