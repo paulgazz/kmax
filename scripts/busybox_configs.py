@@ -101,7 +101,7 @@ alldirs = set([
   "coreutils/",
   "coreutils/libcoreutils/",
   "debianutils/",
-  "klibc-utils/" \
+  "klibc-utils/",
   "e2fsprogs/",
   "editors/",
   "findutils/",
