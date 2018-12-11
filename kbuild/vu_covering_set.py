@@ -1449,9 +1449,13 @@ class Analysis:
     def __init__(self, units_d):
         self.units_d = units_d
 
-        print self.units_d
+        #print self.units_d
 
-
+    @classmethod
+    def print_set(cls, s, name):
+        if s:
+            print "{} ({}): {}".format(name,len(s),', '.join(s))
+        
     @classmethod
     def chgext(cls, filename, f, t):
         if filename.endswith(f):
@@ -1460,26 +1464,45 @@ class Analysis:
     def otoc(cls, filename):
         return cls.chgext(filename, ".o", ".c")
     @classmethod
+    def hostprog_otoc(cls, filename):
+        """host programs don't have a .o extension, but their components
+        might if it's a composite"""
+        if not filename.endswith(".o"):
+            filename = filename + ".o"
+        return cls.chgext(filename, ".o", ".c")
+    @classmethod
     def otoS(cls, filename):
         return cls.chgext(filename, ".o", ".S")
     @classmethod
     def ctoo(cls, filename):
         return cls.chgext(filename, ".c", ".o")
 
-    def go(self):
-        
+    def cleanup(self):
 
+        import time
+        st = time.time()
+        
         compilation_units = self.units_d['compilation_units']
         composites = self.units_d['composites']
         library_units = self.units_d['library_units']
         hostprog_composites = self.units_d['hostprog_composites']
         hostprog_units = self.units_d['hostprog_units']
         unconfigurable_units = self.units_d['unconfigurable_units']
+        extra_targets = self.units_d['extra_targets']        
+        clean_files = self.units_d['clean_files']
+        c_file_targets = self.units_d['c_file_targets']
         unit_pcs = self.units_d['unit_pcs']
         subdir_pcs = self.units_d['subdir_pcs']
+
+        assert not hostprog_composites, hostprog_composites
+        assert not unconfigurable_units, unconfigurable_units
+        assert not extra_targets, extra_targets
+        assert not clean_files, clean_files
+        assert not c_file_targets, c_file_targets
+        assert not unit_pcs, unit_pcs
+        assert not subdir_pcs, subdir_pcs
         
         # find all subdirectories with source in them
-        #tvn: Paul check
         import glob
         
         unit_files = compilation_units | library_units | hostprog_units | unconfigurable_units
@@ -1489,69 +1512,28 @@ class Analysis:
             all_c_files.update([os.path.normpath(x) for x in glob.glob(os.path.join(d, "*.c"))])
 
         assert all(os.path.isfile(f) for f in all_c_files), all_c_files
-        # if all_c_files:
-        #   print "\ntvn, all_c_files", all_c_files
-        #   CM.pause()
 
         # find all compilation units without a corresponding .c file
         unmatched_units = set()
         asm_compilation_units = set()
-        for unit in compilation_units:
-            c_file = self.otoc(unit)
+        for unit in compilation_units:            
             S_file = self.otoS(unit)
-            if not os.path.isfile(c_file) and not os.path.isfile(S_file):
-                unmatched_units.add(c_file)
             if os.path.isfile(S_file):
                 asm_compilation_units.add(S_file)
+            else:
+                c_file = self.otoc(unit)
+                if not os.path.isfile(c_file):
+                    unmatched_units.add(c_file)
 
-        assert not unmatched_units
-        assert not asm_compilation_units
+        assert not unmatched_units, unmatched_units
+        assert not asm_compilation_units, asm_compilation_units
 
-        
-
-        # find all asm-offsets.c files, for these are compiled by the root
-        # Kbuild file into offsets
-        re_offsets_file = re.compile(r'arch/[^/]+/kernel/asm-offsets\.c')
-
-        offsets_files = [ x for x in all_c_files if re_offsets_file.match(x) ]
-
-        # find all .c files without a corresponding compilation unit, starting
-        # with all c files
-        unidentified_c_files = set(all_c_files)
-
-        # remove kernel compilation units
-        unidentified_c_files.difference_update([otoc(filename)
-                                             for filename in compilation_units])
-
-        # remove library compilation units
-        unidentified_c_files.difference_update([otoc(filename)
-                                             for filename in library_units])
-
-        # remove hostprog compilation units
-        unidentified_c_files.difference_update([hostprog_otoc(filename)
-                                             for filename in hostprog_units])
-
-        # remove unconfigurable compilation units
-        unidentified_c_files.difference_update([hostprog_otoc(filename)
-                                             for filename in unconfigurable_units])
-
-        # remove unconfigurable compilation units
-        unidentified_c_files.difference_update([hostprog_otoc(filename)
-                                             for filename in extra_targets])
-
-        # remove unconfigurable compilation units
-        unidentified_c_files.difference_update([filename
-                                             for filename in clean_files])
-
-        # remove asm-offsets.c files
-        unidentified_c_files.difference_update([filename
-                                                for filename in offsets_files])
 
         # get source files that include c files
         included_c_files = set()
-        p = subprocess.Popen(r'find . -name "*.[c|h]" | xargs grep -H "^#.*include.*\.c[\">]"',
-                             shell=True,
-                             stdout=subprocess.PIPE)
+        import subprocess as sp
+        p = sp.Popen(r'find . -name "*.[c|h]" | xargs grep -H "^#.*include.*\.c[\">]"',
+                     shell=True, stdout=sp.PIPE)
         out, _ = p.communicate()
         for line in out.split("\n"):
           parts = line.split(":", 1)
@@ -1568,23 +1550,45 @@ class Analysis:
         # only need the files in the current source subtree
         included_c_files.intersection_update(all_c_files)
 
-        # remove .c files that aren't compilation units, because they are
-        # included in other c files
-        unidentified_c_files.difference_update(included_c_files)
+        # filtering
+        # find all asm-offsets.c files, for these are compiled by the root
+        # Kbuild file into offsets
+        re_offsets_file = re.compile(r'arch/[^/]+/kernel/asm-offsets\.c')
+        offsets_files = [f for f in all_c_files if re_offsets_file.match(x)]
+        assert not offsets_files, offsets_files
 
-        # separate out .c files from the staging directory, which can be a
-        # mess
-        unidentified_staging_c_files = [ x for x in unidentified_c_files
-                                      if "drivers/staging" in os.path.dirname(x) ]
+        # find all .c files without a corresponding compilation unit, starting
+        # with all c files
+        unidentified_c_files = set(all_c_files)
+        
+        cu_c_files = [self.otoc(f) for f in compilation_units] #cu
+        lib_c_files = [self.otoc(filename) for filename in library_units] #lib cu
+        hostprog_c_files = [self.hostprog_otoc(f)  for f in hostprog_units]
+        unconfig_c_files = [self.hostprog_otoc(f) for f in unconfigurable_units]
+        extra_targets_c_files = [self.hostprog_otoc(f) for f in extra_targets]                            
 
-        unidentified_c_files.difference_update(unidentified_staging_c_files)
+        used_c_files = set(cu_c_files + lib_c_files + hostprog_c_files + unconfig_c_files +
+                           extra_targets_c_files + list(clean_files) + list(offsets_files))
+
+        unidentified_c_files -= used_c_files
+
+        # removing other c files
+        # separate out .c files from the staging directory
+        unidentified_staging_c_files = [f for f in unidentified_c_files 
+                                        if "drivers/staging" in os.path.dirname(x)]
+        unidentified_c_files -= set(unidentified_staging_c_files)
 
         # separate out .c files with "skeleton" in their name.  this is a
         # heuristic to find example drivers that aren't actually compiled.
-        unidentified_skeleton_c_files = [ x for x in unidentified_c_files
-                                       if "skeleton" in os.path.basename(x) ]
 
-        unidentified_c_files.difference_update(unidentified_skeleton_c_files)
+        unidentified_skeleton_c_files = [f for f in unidentified_c_files 
+                                         if "skeleton" in os.path.basename(x)]
+        unidentified_c_files -= set(unidentified_skeleton_c_files)
+
+
+        #remove .c files that aren't compilation units, because they are
+        #included in other c files
+        unidentified_c_files -= included_c_files
 
         # separate out generators heuristically.  look for "mk" or
         # "gen[^a-zA-Z]" in their name
@@ -1594,92 +1598,57 @@ class Analysis:
 
         # look for unexpanded variables or function calls
         re_unexpanded = re.compile(r'.*\$\(.*\).*')
-        unexpanded_compilation_units = [ x for x in compilation_units
-                                         if re_unexpanded.match(x) ]
-        unexpanded_library_units = [ x for x in library_units
-                                     if re_unexpanded.match(x) ]
-        unexpanded_hostprog_units = [ x for x in hostprog_units
-                                      if re_unexpanded.match(x) ]
-        unexpanded_unconfigurable_units = [ x for x in unconfigurable_units
-                                            if re_unexpanded.match(x) ]
-        unexpanded_extra_targets = [ x for x in extra_targets
-                                         if re_unexpanded.match(x) ]
-        unexpanded_clean_files = [ x for x in clean_files
-                                     if re_unexpanded.match(x) ]
-        unexpanded_subdirectories = [ x for x in subdirectories
-                                      if re_unexpanded.match(x) ]
-
-        # remove compilation units with unexpanded variable names
-        unmatched_units.difference_update([ otoc(x)
-                                            for x in unexpanded_compilation_units ])
-
-        # remove library units with unexpanded variable names
-        unmatched_units.difference_update([ otoc(x)
-                                            for x in unexpanded_library_units ])
-
-        # remove hostprog units with unexpanded variable names
-        unmatched_units.difference_update([ hostprog_otoc(x)
-                                            for x in unexpanded_hostprog_units ])
-
-        # remove unconfigurable units with unexpanded variable names
-        unmatched_units.difference_update([ hostprog_otoc(x)
-                                            for x in unexpanded_unconfigurable_units ])
-
-        # remove extra targets with unexpanded variable names
-        unmatched_units.difference_update([ hostprog_otoc(x)
-                                            for x in unexpanded_extra_targets ])
-
-        # remove clean targets with unexpanded variable names
-        unmatched_units.difference_update([ hostprog_otoc(x)
-                                            for x in unexpanded_clean_files ])
+        files = (compilation_units | library_units | hostprog_units |
+                 unconfigurable_units | extra_targets | clean_files)
+        unexpanded_units = set(self.otoc(f) for f in files if re_unexpanded.match(x))
+        #remove files with unexpanded var names
+        unmatched_units -= unexpanded_units
 
         # remove c files specified in the clean-files and in targets, since
         # these can be auto-generated c files
-        generated_c_files = set([])
+        generated_c_files = set()
         for c in (clean_files | c_file_targets):
-          pattern = re.compile(fnmatch.translate(c))
-          for filename in unmatched_units:
-            if pattern.match(filename):
-              generated_c_files.add(filename)
+            raise NotImplementedError
+            pattern = re.compile(fnmatch.translate(c))
+            for filename in unmatched_units:
+                if pattern.match(filename):
+                    generated_c_files.add(filename)
         unmatched_units.difference_update(generated_c_files)
 
-        # cache the list of working kbuild files
-        if args.excludes_file != None:
-          with open(args.excludes_file, "w") as f:
-            pickle.dump(excludes, f)
+        # # cache the list of working kbuild files
+        # if args.excludes_file != None:
+        #   with open(args.excludes_file, "w") as f:
+        #     pickle.dump(excludes, f)
 
-        print_set(toplevel_dirs, "toplevel_dirs")  # list of directories started from
-        print_set(all_c_files, "all_c_files")  # all .c files in used and visited subdirectories
-        print_set(asm_compilation_units, "asm_compilation_units")  # compilation units with a .S file
-        print_set(subdirectories, "subdirectory")  # subdirectory visited by kbuild
-        print_set(used_subdirectory, "used_subdirectory")  # subdirectories containing compilation units
-        print_set(compilation_units, "compilation_units")  # compilation units referenced by kbuild
-        print_set(composites, "composites")  # compilation units that are composites
-        print_set(library_units, "library_units")  # library units referenced by kbuild
-        print_set(hostprog_units, "hostprog_units")
-        print_set(unconfigurable_units, "unconfigurable_units")
-        print_set(extra_targets, "extra_targets")
-        print_set(clean_files, "clean_files")
-        print_set(c_file_targets, "c_file_targets")
-        print_set(generated_c_files, "generated_c_files")
-        print_set(unmatched_units, "unmatched_units")
-        print_set(included_c_files, "included_c_files")
-        print_set(offsets_files, "offsets_files")
-        print_set(unidentified_c_files, "unidentified_c_files")
-        print_set(unidentified_staging_c_files, "unidentified_staging_c_files")
-        print_set(unidentified_skeleton_c_files, "unidentified_skeleton_c_files")
-        print_set(unexpanded_compilation_units, "unexpanded_compilation_units")
-        print_set(unexpanded_library_units, "unexpanded_library_units")
-        print_set(unexpanded_hostprog_units, "unexpanded_hostprog_units")
-        print_set(unexpanded_unconfigurable_units, "unexpanded_unconfigurable_units")
-        print_set(unexpanded_extra_targets, "unexpanded_extra_targets")
-        print_set(unexpanded_subdirectories, "unexpanded_subdirectories")
-        print_set(broken, "broken")
-        print "running_time", time.time() - starting_time
+        #self.print_set(toplevel_dirs, "toplevel_dirs")  # list of directories started from
+        self.print_set(all_c_files, "all_c_files")  # all .c files in used and visited subdirectories
+        self.print_set(asm_compilation_units, "asm_compilation_units")  # compilation units with a .S file
+        #self.print_set(subdirectories, "subdirectory")  # subdirectory visited by kbuild
+        #self.print_set(used_subdirectory, "used_subdirectory")  # subdirectories containing compilation units
+        self.print_set(compilation_units, "compilation_units")  # compilation units referenced by kbuild
+        self.print_set(composites, "composites")  # compilation units that are composites
+        self.print_set(library_units, "library_units")  # library units referenced by kbuild
+        self.print_set(hostprog_units, "hostprog_units")
+        self.print_set(unconfigurable_units, "unconfigurable_units")
+        self.print_set(extra_targets, "extra_targets")
+        self.print_set(clean_files, "clean_files")
+        self.print_set(c_file_targets, "c_file_targets")
+        self.print_set(generated_c_files, "generated_c_files")
+        self.print_set(unmatched_units, "unmatched_units")
+        self.print_set(included_c_files, "included_c_files")
+        self.print_set(offsets_files, "offsets_files")
+        self.print_set(unidentified_c_files, "unidentified_c_files")
+        #self.print_set(unidentified_staging_c_files, "unidentified_staging_c_files")
+        #self.print_set(unidentified_skeleton_c_files, "unidentified_skeleton_c_files")
+        #self.print_set(unexpanded_compilation_units, "unexpanded_compilation_units")
+        #self.print_set(unexpanded_library_units, "unexpanded_library_units")
+        #self.print_set(unexpanded_hostprog_units, "unexpanded_hostprog_units")
+        #self.print_set(unexpanded_unconfigurable_units, "unexpanded_unconfigurable_units")
+        #self.print_set(unexpanded_extra_targets, "unexpanded_extra_targets")
+        #self.print_set(unexpanded_subdirectories, "unexpanded_subdirectories")
+        #self.print_set(broken, "broken")
+        print "running_time", time.time() - st
         
-    
-
-
 match_unexpanded_variables = re.compile(r'.*\$\(.*\).*')
 def contains_unexpanded(s):
     """
@@ -1776,7 +1745,7 @@ if __name__ == '__main__':
         
     run.go(makefiledirs)
     analysis = Analysis(run.units_d)
-    analysis.go()
+    analysis.cleanup()
     
 
     

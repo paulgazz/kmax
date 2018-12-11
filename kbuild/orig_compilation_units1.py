@@ -150,7 +150,7 @@ def covering_set(kbuild_dir,        # src directory to process
 
   print 'kdir' , kbuild_dir
 
-  covering_set_args = [ "vu_covering_set.py",
+  covering_set_args = [ "covering_set.py",
                         "-p",  #tvn why use this flag ? 
                         "-Dsrc=" + kbuild_dir,      # drivers/staging/wlags49_h25/, drivers/gpu/drm/nouveau/
                         # TODO default to empty variable
@@ -294,7 +294,7 @@ if used_subdirectory:
 all_c_files = set([])
 
 sys.stderr.write('analyzing dirs {}'.format(str(subdirectories | used_subdirectory)))
-CM.pause()
+#CM.pause()
 
 for subdir in (subdirectories | used_subdirectory):
   all_c_files.update([os.path.normpath(x) for x in glob.glob(os.path.join(subdir, "*.c"))])
