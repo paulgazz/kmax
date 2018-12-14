@@ -4,6 +4,7 @@ import sys
 import os
 import re
 import argparse
+import subprocess as sp
 import pycudd
 import _pycudd
 import tempfile
@@ -17,6 +18,20 @@ import vcommon as CM
 trace = pdb.set_trace
 
 mlog = None
+
+def vcmd(cmd, inp=None, shell=True):
+    proc = sp.Popen(cmd,shell=shell,stdin=sp.PIPE,stdout=sp.PIPE,stderr=sp.PIPE)
+    return proc.communicate(input=inp)
+
+match_unexpanded_variables = re.compile(r'.*\$\(.*\).*')
+def contains_unexpanded(s):
+    """
+    return for strings such as $(test)
+    """
+    assert s is None or isinstance(s, str), s
+
+    return s is not None and match_unexpanded_variables.match(s)
+
 
 class Settings:
     do_table = False
@@ -1122,7 +1137,7 @@ class  Kbuild:
 
 class Run:
     def __init__(self):
-        self.units_d = {
+        self.results = {
             'subdirectories' : set(),
             'compilation_units' : set(),
             'library_units' : set(),
@@ -1137,7 +1152,7 @@ class Run:
             'subdir_pcs' : set()
         }
 
-    def go(self, makefiledirs):
+    def analyze(self, makefiledirs):
         assert isinstance(makefiledirs, set) and makefiledirs, makefiledirs
         assert all(os.path.isfile(f) or os.path.isdir(f)
                    for f in makefiledirs), makefiledirs
@@ -1156,7 +1171,7 @@ class Run:
 
         """Find a covering set of configurations for the given Makefile(s)."""
         
-        subdirectories = self.units_d['subdirectories']
+        subdirectories = self.results['subdirectories']
         subdirectories.update(makefiledirs)
 
         sdirs = []
@@ -1165,7 +1180,7 @@ class Run:
             if Settings.do_recursive:
                 subdirectories.update(sdirs)
 
-        for k, s in self.units_d.iteritems():
+        for k, s in self.results.iteritems():
             if not s: continue
             ss = []
             try:
@@ -1174,7 +1189,7 @@ class Run:
             except ValueError:
                 ss.append(', '.join(map(str,s)))
 
-            print "{} {}: {}".format(len(s), k, '\n'.join(ss))
+            mlog.debug("{} {}: {}".format(len(s), k, '\n'.join(ss)))
 
         
 
@@ -1299,14 +1314,14 @@ class Run:
         # TODO: merge equivalence between CONFIG= and !defined(CONFIG)
 
         subdirectories = set()
-        compilation_units = self.units_d['compilation_units']
-        composites = self.units_d['composites']
-        library_units = self.units_d['library_units']
-        hostprog_composites = self.units_d['hostprog_composites']
-        hostprog_units = self.units_d['hostprog_units']
-        unconfigurable_units = self.units_d['unconfigurable_units']
-        unit_pcs = self.units_d['unit_pcs']
-        subdir_pcs = self.units_d['subdir_pcs']
+        compilation_units = self.results['compilation_units']
+        composites = self.results['composites']
+        library_units = self.results['library_units']
+        hostprog_composites = self.results['hostprog_composites']
+        hostprog_units = self.results['hostprog_units']
+        unconfigurable_units = self.results['unconfigurable_units']
+        unit_pcs = self.results['unit_pcs']
+        subdir_pcs = self.results['subdir_pcs']
 
         pending_vars =  set(["core-y", "core-m", "drivers-y", "drivers-m",
                              "net-y", "net-m", "libs-y", "libs-m", "head-y", "head-m"])
@@ -1442,57 +1457,38 @@ class Run:
             if contains_unexpanded(x):
                 mlog.warn("A {} contains an unexpanded variable or call {}".format(desc, x))
 
-
-
                 
 class Analysis:
-    def __init__(self, units_d):
-        self.units_d = units_d
+    def __init__(self, path):
+        makefiledirs = set([f for f in args.makefile
+                            if os.path.isfile(f) or os.path.isdir(f)])
+        self.makefiledirs = makefiledirs
+        mlog.info("analyzing {} files/dirs".format(len(self.makefiledirs)))
 
-        #print self.units_d
+    def run(self):
+        myrun = Run()
+        myrun.analyze(self.makefiledirs)
+        self.results = myrun.results
 
-    @classmethod
-    def print_set(cls, s, name):
-        if s:
-            print "{} ({}): {}".format(name,len(s),', '.join(s))
-        
-    @classmethod
-    def chgext(cls, filename, f, t):
-        if filename.endswith(f):
-            return filename[:-2] + t
-    @classmethod
-    def otoc(cls, filename):
-        return cls.chgext(filename, ".o", ".c")
-    @classmethod
-    def hostprog_otoc(cls, filename):
-        """host programs don't have a .o extension, but their components
-        might if it's a composite"""
-        if not filename.endswith(".o"):
-            filename = filename + ".o"
-        return cls.chgext(filename, ".o", ".c")
-    @classmethod
-    def otoS(cls, filename):
-        return cls.chgext(filename, ".o", ".S")
-    @classmethod
-    def ctoo(cls, filename):
-        return cls.chgext(filename, ".c", ".o")
-
-    def cleanup(self):
+    def analyze(self):
+        def print_set(s, name):
+            if s:
+                mlog.info("{} {}: {}".format(len(s), name, ', '.join(s)))        
 
         import time
         st = time.time()
         
-        compilation_units = self.units_d['compilation_units']
-        composites = self.units_d['composites']
-        library_units = self.units_d['library_units']
-        hostprog_composites = self.units_d['hostprog_composites']
-        hostprog_units = self.units_d['hostprog_units']
-        unconfigurable_units = self.units_d['unconfigurable_units']
-        extra_targets = self.units_d['extra_targets']        
-        clean_files = self.units_d['clean_files']
-        c_file_targets = self.units_d['c_file_targets']
-        unit_pcs = self.units_d['unit_pcs']
-        subdir_pcs = self.units_d['subdir_pcs']
+        compilation_units = frozenset(self.results['compilation_units'])
+        composites = frozenset(self.results['composites'])
+        library_units = frozenset(self.results['library_units'])
+        hostprog_composites = frozenset(self.results['hostprog_composites'])
+        hostprog_units = frozenset(self.results['hostprog_units'])
+        unconfigurable_units = frozenset(self.results['unconfigurable_units'])
+        extra_targets = frozenset(self.results['extra_targets'])
+        clean_files = self.results['clean_files']
+        c_file_targets = frozenset(self.results['c_file_targets'])
+        unit_pcs = frozenset(self.results['unit_pcs'])
+        subdir_pcs = frozenset(self.results['subdir_pcs'])
 
         assert not hostprog_composites, hostprog_composites
         assert not unconfigurable_units, unconfigurable_units
@@ -1531,7 +1527,6 @@ class Analysis:
 
         # get source files that include c files
         included_c_files = set()
-        import subprocess as sp
         p = sp.Popen(r'find . -name "*.[c|h]" | xargs grep -H "^#.*include.*\.c[\">]"',
                      shell=True, stdout=sp.PIPE)
         out, _ = p.communicate()
@@ -1600,7 +1595,7 @@ class Analysis:
         re_unexpanded = re.compile(r'.*\$\(.*\).*')
         files = (compilation_units | library_units | hostprog_units |
                  unconfigurable_units | extra_targets | clean_files)
-        unexpanded_units = set(self.otoc(f) for f in files if re_unexpanded.match(x))
+        unexpanded_units = set(otoc(f) for f in files if re_unexpanded.match(x))
         #remove files with unexpanded var names
         unmatched_units -= unexpanded_units
 
@@ -1620,46 +1615,376 @@ class Analysis:
         #   with open(args.excludes_file, "w") as f:
         #     pickle.dump(excludes, f)
 
-        #self.print_set(toplevel_dirs, "toplevel_dirs")  # list of directories started from
-        self.print_set(all_c_files, "all_c_files")  # all .c files in used and visited subdirectories
-        self.print_set(asm_compilation_units, "asm_compilation_units")  # compilation units with a .S file
-        #self.print_set(subdirectories, "subdirectory")  # subdirectory visited by kbuild
-        #self.print_set(used_subdirectory, "used_subdirectory")  # subdirectories containing compilation units
-        self.print_set(compilation_units, "compilation_units")  # compilation units referenced by kbuild
-        self.print_set(composites, "composites")  # compilation units that are composites
-        self.print_set(library_units, "library_units")  # library units referenced by kbuild
-        self.print_set(hostprog_units, "hostprog_units")
-        self.print_set(unconfigurable_units, "unconfigurable_units")
-        self.print_set(extra_targets, "extra_targets")
-        self.print_set(clean_files, "clean_files")
-        self.print_set(c_file_targets, "c_file_targets")
-        self.print_set(generated_c_files, "generated_c_files")
-        self.print_set(unmatched_units, "unmatched_units")
-        self.print_set(included_c_files, "included_c_files")
-        self.print_set(offsets_files, "offsets_files")
-        self.print_set(unidentified_c_files, "unidentified_c_files")
-        #self.print_set(unidentified_staging_c_files, "unidentified_staging_c_files")
-        #self.print_set(unidentified_skeleton_c_files, "unidentified_skeleton_c_files")
-        #self.print_set(unexpanded_compilation_units, "unexpanded_compilation_units")
-        #self.print_set(unexpanded_library_units, "unexpanded_library_units")
-        #self.print_set(unexpanded_hostprog_units, "unexpanded_hostprog_units")
-        #self.print_set(unexpanded_unconfigurable_units, "unexpanded_unconfigurable_units")
-        #self.print_set(unexpanded_extra_targets, "unexpanded_extra_targets")
-        #self.print_set(unexpanded_subdirectories, "unexpanded_subdirectories")
-        #self.print_set(broken, "broken")
-        print "running_time", time.time() - st
+        #print_set(toplevel_dirs, "toplevel_dirs")  # list of directories started from
+        print_set(all_c_files, "all_c_files")  # all .c files in used and visited subdirectories
+        print_set(asm_compilation_units, "asm_compilation_units")  # compilation units with a .S file
+        #print_set(subdirectories, "subdirectory")  # subdirectory visited by kbuild
+        #print_set(used_subdirectory, "used_subdirectory")  # subdirectories containing compilation units
+        print_set(compilation_units, "compilation_units")  # compilation units referenced by kbuild
+        print_set(composites, "composites")  # compilation units that are composites
+        print_set(library_units, "library_units")  # library units referenced by kbuild
+        print_set(hostprog_units, "hostprog_units")
+        print_set(unconfigurable_units, "unconfigurable_units")
+        print_set(extra_targets, "extra_targets")
+        print_set(clean_files, "clean_files")
+        print_set(c_file_targets, "c_file_targets")
+        print_set(generated_c_files, "generated_c_files")
+        print_set(unmatched_units, "unmatched_units")
+        print_set(included_c_files, "included_c_files")
+        print_set(offsets_files, "offsets_files")
+        print_set(unidentified_c_files, "unidentified_c_files")
+        #print_set(unidentified_staging_c_files, "unidentified_staging_c_files")
+        #print_set(unidentified_skeleton_c_files, "unidentified_skeleton_c_files")
+        #print_set(unexpanded_compilation_units, "unexpanded_compilation_units")
+        #print_set(unexpanded_library_units, "unexpanded_library_units")
+        #print_set(unexpanded_hostprog_units, "unexpanded_hostprog_units")
+        #print_set(unexpanded_unconfigurable_units, "unexpanded_unconfigurable_units")
+        #print_set(unexpanded_extra_targets, "unexpanded_extra_targets")
+        #print_set(unexpanded_subdirectories, "unexpanded_subdirectories")
+        #print_set(broken, "broken")
+        mlog.info("time: {}".format(time.time() - st))
+
+    @classmethod
+    def chgext(cls, filename, f, t):
+        if f is None or filename.endswith(f):
+            return filename[:-2] + t
         
-match_unexpanded_variables = re.compile(r'.*\$\(.*\).*')
-def contains_unexpanded(s):
-    """
-    return for strings such as $(test)
-    """
-    assert s is None or isinstance(s, str), s
+    @classmethod
+    def hostprog_otoc(cls, filename):
+        """host programs don't have a .o extension, but their components
+        might if it's a composite"""
+        if not filename.endswith('.o'):
+            filename = filename + '.o'
+        return cls.chgext(filename, '.o', '.c')
 
-    return s is not None and match_unexpanded_variables.match(s)
+    @classmethod
+    def otoc(cls, filename):
+        return cls.chgext(filename, '.o', '.c')
 
+    @classmethod
+    def otoS(cls, filename):
+        return cls.chgext(filename, '.o', '.S')
+
+    @classmethod
+    def ctoo(cls, filename):
+        return chgext(filename, '.c', '.o')
+    
+    @classmethod
+    def mkc(cls, filename):
+        return cls.chgext(filename, None, '.c')
+    
+class Busybox(Analysis):
+    def __init__(self, topdir):
+        assert os.path.isdir(topdir)
+        
+        subdirs = set([
+          "applets/",
+          "archival/",
+          "archival/libarchive/",
+          "console-tools/",
+          "coreutils/",
+          "coreutils/libcoreutils/",
+          "debianutils/",
+          "klibc-utils/",
+          "e2fsprogs/",
+          "editors/",
+          "findutils/",
+          "init/",
+          "libbb/",
+          "libpwdgrp/",
+          "loginutils/",
+          "mailutils/",
+          "miscutils/",
+          "modutils/",
+          "networking/",
+          "networking/libiproute/",
+          "networking/udhcp/",
+          "printutils/",
+          "procps/",
+          "runit/",
+          "selinux/",
+          "shell/",
+          "sysklogd/",
+          "util-linux/",
+          "util-linux/volume_id/"
+        ])
+
+        topdir = os.path.abspath(topdir)
+        subdirs = set(os.path.join(topdir,d) for d in subdirs)
+        assert all(os.path.isdir(d) for d in subdirs), subdirs
+        self.makefiledirs = subdirs
+        self.topdir = topdir
+
+    def analyze(self):
+        # # busybox_path = args.busybox_path
+
+        # # os.chdir(busybox_path)
+        # # command = "make gen_build_files"
+        # # popen = vcmd(cmd)
+
+        # # kconfigdatafile = "./kconfig"
+        # # datafile = "./buildsystem"
+        # # everycfiledatafile = "./everycfile"
+
+        # # config_name = "Config.in"
+        # # config_path = config_name
+
+        # # These are taken from the top-level Makefile's core-y and libs-y
+        # # variables.  This is correct at least for Kmax ESEC/FSE '17 paper
+        # # version 1.25.0 and branch 1_22_stable (for iGen journal).
+        # # added klibc-utils for version 1.28.1
+        
+
+        # # buildsystemdata = kmaxdata.BuildSystemData("", "")
+        # # buildsystemdata = kmaxdata.BuildSystemData("", "")
+
+        # # buildsystemdata.alldirs = list(alldirs)
+
+        # # buildsystemdata.kconfig_files = []
+        # # for dir in buildsystemdata.alldirs:
+        # #   if os.path.exists(dir):
+        # #     for path, subdirs, filenames in os.walk(dir):
+        # #       buildsystemdata.kconfig_files += \
+        # #         [ os.path.join(path, fn)
+        # #           for fn in filenames
+        # #           if fn.startswith(config_name) ]
+        # # kconfigdata = kmaxdata.KConfigData()
+
+        # # check_dep_command = "check_dep"
+
+        # # command = check_dep_command + ' --kconfigs ' + config_path
+        # # print command
+        # # popen = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
+        # # stdout_, stderr_ = popen.communicate()
+        # # kconfigdata.config_vars = stdout_.strip().split()
+
+        # # command = check_dep_command + ' --bools ' + config_path
+        # # print command
+        # # popen = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
+        # # stdout_, stderr_ = popen.communicate()
+        # # kconfigdata.bool_vars = stdout_.strip().split()
+
+        # # command = check_dep_command + ' --tristate ' + config_path
+        # # print command
+        # # popen = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
+        # # stdout_, stderr_ = popen.communicate()
+        # # kconfigdata.bool_vars += stdout_.strip().split()
+
+        # # command = check_dep_command + ' --nonbools ' + config_path
+        # # print command
+        # # popen = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
+        # # stdout_, stderr_ = popen.communicate()
+        # # kconfigdata.nonbool_vars = stdout_.strip().split()
+
+        # # with lockfile.LockFile(kconfigdatafile):
+        # #   # if os.path.exists(kconfigdatafile):
+        # #   #   with tempfile.NamedTemporaryFile(dir=os.path.dirname(kconfigdatafile),
+        # #   #                                    prefix=os.path.basename(kconfigdatafile) + ".back",
+        # #   #                                    delete=False) as tmp:
+        # #   #     os.rename(kconfigdatafile, tmp.name)
+        # #   with open(kconfigdatafile, "wb") as f:
+        # #     pickle.dump(kconfigdata, f)
+
+        # # buildsystemdata.config_vars = kconfigdata.config_vars
+        # # buildsystemdata.bool_vars = kconfigdata.bool_vars
+        # # buildsystemdata.nonbool_vars = kconfigdata.nonbool_vars
+
+
+        # # compunit_command = 'compilation_units.py'
+        # # # if get_running_time:
+        # # #   compunit_command += ' --no-aggregation'
+        # # # remaining_arguments = ' -C ' + kconfigdatafile + ' ' + " ".join([os.path.join(x, build_name) for x in buildsystemdata.alldirs])
+        # # remaining_arguments = ' -C ' + kconfigdatafile + ' ' + " ".join(buildsystemdata.alldirs)
+        # # if args.boolean_configs:
+        # #   remaining_arguments += ' -B'
+
+        # # command = compunit_command + remaining_arguments
+        # # print command
+
+        # # popen = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
+        # # stdout_, stderr_ = popen.communicate()
+        # # print stdout_
+        # # for line in stdout_.strip().split("\n"):
+        # #   splitline = line.split(" ", 1)
+        # #   if len(splitline) >= 2:
+        # #     buildsystemdata.compilation_units[splitline[0]].append(splitline[1])
+        # #   else:
+        # #     print "no usable data from compilation_units.py: " + line
+
+        # # with lockfile.LockFile(datafile):
+        # #   # if os.path.exists(datafile):
+        # #   #   with tempfile.NamedTemporaryFile(dir=os.path.dirname(datafile),
+        # #   #                                    prefix=os.path.basename(datafile) + ".back",
+        # #   #                                    delete=False) as tmp:
+        # #   #     os.rename(datafile, tmp.name)
+        # #   with open(datafile, "wb") as f:
+        # #     pickle.dump(buildsystemdata, f)
+
+        # # get presence conditions
+        # unit_pc_datafile = './unit_pc'
+        # kmaxdata.backup_existing_file(unit_pc_datafile)
+        # with tempfile.NamedTemporaryFile(dir=kmaxdata.kmax_scratch) as tmp:
+        #   pc_command = compunit_command + ' --get-presence-conditions' + remaining_arguments
+        #   print pc_command
+        #   popen = subprocess.call(pc_command, shell=True, stdout=tmp)
+        #   tmp.seek(0, os.SEEK_SET)
+        #   with lockfile.LockFile(unit_pc_datafile):
+        #     with open(unit_pc_datafile, 'ab') as dataf:
+        #       for line in tmp:
+        #         dataf.write(line)
+
+
+        # get every c file
+        # with open(everycfiledatafile, "wb") as f:  # TODO: use this to write to file
+        cmd = 'find {} -type f | grep "\.c$" | sort | uniq'.format(self.topdir)
+        
+        all_c_files,_ = vcmd(cmd)
+        all_c_files = set([os.path.normpath(x.strip('\n'))
+                           for x in all_c_files.split()])
+        mlog.info("{} c files".format(len(all_c_files)))
+
+        compilation_units = frozenset(self.results['compilation_units'])
+        composites = frozenset(self.results['composites'])
+        library_units = frozenset(self.results['library_units'])
+        hostprog_composites = frozenset(self.results['hostprog_composites'])
+        hostprog_units = frozenset(self.results['hostprog_units'])
+        unconfigurable_units = frozenset(self.results['unconfigurable_units'])
+        extra_targets = frozenset(self.results['extra_targets'])
+        clean_files = self.results['clean_files']
+        c_file_targets = frozenset(self.results['c_file_targets'])
+        unit_pcs = frozenset(self.results['unit_pcs'])
+        subdir_pcs = frozenset(self.results['subdir_pcs'])
+        
+        
+        recon_compunits = set(self.mkc(f) for f in
+                              (compilation_units - library_units))
+        print "compilation units", len(recon_compunits)
+
+        recon_libunits = set(self.mkc(f) for f in library_units)
+        print "library units", len(recon_libunits)
+
+        recon_allunits = recon_compunits | recon_libunits
+        print "recon_allunits", len(recon_allunits)
+
+        all_c_files -= recon_allunits
+
+        additional_included = [
+          "archival/libarchive/unxz/xz_dec_bcj.c", # included in archival/libarchive/decompress_unxz.c
+          "archival/libarchive/unxz/xz_dec_lzma2.c",
+          "archival/libarchive/unxz/xz_dec_stream.c",
+
+          "archival/libarchive/bz/blocksort.c", # included in archival/bzip2.c
+          "archival/libarchive/bz/bzlib.c",
+          "archival/libarchive/bz/compress.c",
+          "archival/libarchive/bz/huffman.c",
+
+          "archival/libarchive/unxz/xz_dec_bcj.c", # included in archival/libarchive/decompress_unxz.c
+          "archival/libarchive/unxz/xz_dec_lzma2.c",
+          "archival/libarchive/unxz/xz_dec_stream.c",
+
+          "archival/libarchive/bz/blocksort.c", # included in archival/bzip2.c
+          "archival/libarchive/bz/bzlib.c",
+          "archival/libarchive/bz/compress.c",
+          "archival/libarchive/bz/huffman.c",
+
+          "archival/libarchive/unxz/xz_dec_bcj.c", # included in archival/libarchive/decompress_unxz.c
+          "archival/libarchive/unxz/xz_dec_lzma2.c",
+          "archival/libarchive/unxz/xz_dec_stream.c",
+
+          "archival/libarchive/bz/blocksort.c", # included in archival/bzip2.c
+          "archival/libarchive/bz/bzlib.c",
+          "archival/libarchive/bz/compress.c",
+          "archival/libarchive/bz/huffman.c",
+        ]
+        additional_included = set(os.path.join(self.topdir, f) for f in additional_included)
+
+        # TVN: TODO
+        # recon_included = set(compilation_units['included_c_files'])
+        # recon_included.update(additional_included)
+        # print "included c files", len(recon_included)
+        # everycfile.difference_update(recon_included)
+        # print len(everycfile)
+
+        prefix = os.path.join(self.topdir, "scripts/")
+        recon_scripts = set(f for f in all_c_files if f.startswith(prefix))
+        print "scripts", len(recon_scripts)        
+        all_c_files -= recon_scripts
+
+        recon_hostprogs = set(f + ".c" for f in hostprog_units)
+        additional_hostprogs = [
+            "networking/ssl_helper/ssl_helper.c", # built by networking/ssl_helper/ssl_helper.sh
+            "networking/ssl_helper-wolfssl/ssl_helper.c" # built by networking/ssl_helper-wolfssl/ssl_helper.sh
+        ]
+        additional_hostprogs = set(os.path.join(self.topdir, f) for f in additional_hostprogs)
+        recon_hostprogs |= additional_hostprogs
+        
+        print "hostprogs", len(recon_hostprogs)
+        all_c_files -= recon_hostprogs
+
+
+        # busy 1_22_stable has an unused directory of source files
+        prefix = os.path.join(self.topdir, "e2fsprogs/old_e2fsprogs")
+        old_e2fsprogs = set(f for f in all_c_files if f.startswith(prefix))
+        print "old e2fsprogs dir", len(old_e2fsprogs)
+        all_c_files -= old_e2fsprogs
+        
+        # explanations for busybox 1.25.0
+        explanations = {
+          "examples": [
+            "networking/httpd_ssi.c", # example program
+            "networking/httpd_indexcgi.c",
+
+            "shell/ash_test/printenv.c", # test program compiled and run in shell/ash_test/run-all
+            "shell/ash_test/recho.c",
+            "shell/ash_test/zecho.c",
+
+            "applets/individual.c", # example wrapper program
+
+            "networking/ntpd_simple.c", # for busybox 1_22_stable
+          ],
+
+          "unused": [
+            "util-linux/volume_id/unused_highpoint.c",  # unused source
+            "util-linux/volume_id/unused_hpfs.c",
+            "util-linux/volume_id/unused_isw_raid.c",
+            "util-linux/volume_id/unused_lsi_raid.c",
+            "util-linux/volume_id/unused_lvm.c",
+            "util-linux/volume_id/unused_mac.c",
+            "util-linux/volume_id/unused_minix.c",
+            "util-linux/volume_id/unused_msdos.c",
+            "util-linux/volume_id/unused_nvidia_raid.c",
+            "util-linux/volume_id/unused_promise_raid.c",
+            "util-linux/volume_id/unused_silicon_raid.c",
+            "util-linux/volume_id/unused_ufs.c",
+            "util-linux/volume_id/unused_via_raid.c",
+
+            "libbb/hash_md5prime.c", # commented out in libbb/Kbuild
+            "libbb/bb_strtod.c",
+
+            "networking/tc.c", # CONFIG_TC commented out of networking/Config.in
+          ],
+
+          "not built commented out": [
+            "editors/patch_bbox.c", # not built
+            "editors/patch_toybox.c",
+          ],
+        }
+
+        for k in explanations:
+          print k, len(explanations[k])
+          fs = set(os.path.join(self.topdir, f) for f in explanations[k])
+          all_c_files -= fs
+          print len(all_c_files)
+          
+
+        # This will be empty if kmax got all C files correctly.  The
+        # explanations needs to contain all C files guaranteed to not be part
+        # of the build.
+        print all_c_files
+        trace()                          
 
 if __name__ == '__main__':
+    
     aparser = argparse.ArgumentParser("find interactions from Kbuild Makefile")
     ag = aparser.add_argument
     ag('makefile',
@@ -1678,22 +2003,6 @@ if __name__ == '__main__':
        action="store_true",
        help="""show symbol table entries""")
     
-    ag('-v',
-       '--variable',
-       type=str,
-       help="""show symbol table entries for VARIABLE only""")
-    
-    # ag('-n',
-    #    '--naive-append',
-    #    action="store_true",
-    #    help="""\
-    # use naive append behavior, which has more exponential explosion""")
-
-    # ag('-A',
-    #    '--and-append',
-    #    action="store_true",
-    #    help="""\append by conjoining conds""")
-       
     ag('-g',
        '--get-presence-conds',
        action="store_true",
@@ -1706,12 +2015,6 @@ if __name__ == '__main__':
        help="""\
     recursively enter subdirectories""")
 
-    # ag('-D',
-    #    '--define',
-    #    action='append',
-    #    help="""\
-    # recursively enter subdirectories""")
-
     ag('-C',
        '--config-vars',
        type=str,
@@ -1723,11 +2026,14 @@ if __name__ == '__main__':
        help="""\
     Treat all configuration variables as Boolean variables""")
 
+    ag('--case-study',
+       type=str,
+       help="""avail options: busybox/linux""")
+
     args = aparser.parse_args()
 
     logger_level = CM.getLogLevel(args.logger_level)
     mlog = CM.getLogger(__name__, logger_level)
-
 
 
     if __debug__:
@@ -1737,15 +2043,41 @@ if __name__ == '__main__':
     Settings.get_presence_conds = args.get_presence_conds
     Settings.do_recursive = args.recursive
     Settings.do_boolean_configs = args.boolean_configs
-    
-    
-    run = Run()
-    makefiledirs = set([f for f in args.makefile
-                        if os.path.isfile(f) or os.path.isdir(f)])
-        
-    run.go(makefiledirs)
-    analysis = Analysis(run.units_d)
-    analysis.cleanup()
+
+    if args.case_study == "busybox":
+        inp = args.makefile[0]
+        Settings.do_boolean_configs = True
+        analysis = Busybox(inp)
+    else:
+        inp = args.makefile
+        analysis = Analysis(inp)
+
+    analysis.run()
+    analysis.analyze()
     
 
-    
+            
+
+
+# 663
+# compilation units 1
+# library units 587
+# recon_allunits 588
+# 75
+# scripts 24
+# 51
+# hostprogs 5
+# 46
+# old e2fsprogs dir 0
+# 46
+# unused 16
+# 31
+# not built commented out 2
+# 29
+# examples 7
+# 23
+# 14 set(['archival/libarchive/lzo1x_c.c', 'libbb/pw_encrypt_md5.c', 'libbb/xatonum_template.c', 'networking/nc_bloaty.c', 'sysklogd/logger.c', 'util-linux/fdisk_sgi.c', 'libbb/pw_encrypt_des.c', 'sysklogd/syslogd.c', 'util-linux/fdisk_aix.c', 'coreutils/od_bloaty.c', 'libbb/pw_encrypt_sha.c', 'util-linux/fdisk_sun.c', 'util-linux/fdisk_gpt.c', 'util-linux/fdisk_osf.c'])
+# included c files 21
+# 2
+# set(['klibc-utils/minips.c', 'klibc-utils/run-init.c'])
+
