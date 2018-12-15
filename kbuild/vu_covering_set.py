@@ -1470,6 +1470,22 @@ class Analysis:
         myrun.analyze(self.makefiledirs)
         self.results = myrun.results
 
+    @staticmethod
+    def get_included_c_files(path):
+        # get source files that include c files
+        
+        path = os.path.abspath(path)
+        cmd = r'find {} -name "*.[c|h]" | xargs grep -H "^#.*include.*\.c[\">]"'.format(path)
+        rs, _  = vcmd(cmd)
+        rs = [s.split(':', 1) for s in rs.split('\n') if s]
+        #search for string #include "file.c"
+        msearch = lambda s: re.search(r"\".*\.c\"", s)
+        
+        assert all(len(s) == 2 and msearch(s[1]) for s in rs), rs
+        rs = [(os.path.dirname(s[0]), msearch(s[1]).group(0)[1:-1]) for s in rs]
+        rs = set(os.path.join(fdir, fname) for fdir, fname in rs)
+        return rs
+
     def analyze(self):
         def print_set(s, name):
             if s:
@@ -1897,11 +1913,15 @@ class Busybox(Analysis):
           "archival/libarchive/bz/huffman.c",
         ]
         additional_included = set(os.path.join(self.topdir, f) for f in additional_included)
-
+        recon_included = self.get_included_c_files(self.topdir)
+        included_c_files = recon_included | additional_included
+        print "included c files", len(included_c_files)
+        all_c_files -= included_c_files
+        
         # TVN: TODO
         # recon_included = set(compilation_units['included_c_files'])
         # recon_included.update(additional_included)
-        # print "included c files", len(recon_included)
+        # 
         # everycfile.difference_update(recon_included)
         # print len(everycfile)
 
@@ -2052,6 +2072,8 @@ if __name__ == '__main__':
         inp = args.makefile
         analysis = Analysis(inp)
 
+    #_ = Analysis.get_included_c_files(args.makefile[0])
+    
     analysis.run()
     analysis.analyze()
     
