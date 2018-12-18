@@ -15,11 +15,10 @@ trace = pdb.set_trace
 import z3
 import vcommon as CM
 
+from datastructures import CondDef, Multiverse, VarEntry, BoolVar, Results
+
 import settings
 mlog = CM.getLogger(__name__, settings.logger_level)
-
-
-from datastructures import CondDef, Multiverse, VarEntry, BoolVar, Results
 
 match_unexpanded_variables = re.compile(r'.*\$\(.*\).*')
 def contains_unexpanded(s):
@@ -1205,7 +1204,6 @@ class Run:
             for name, (cond, zcond) in d.iteritems():
                 s.add((os.path.normpath(os.path.join(obj, name)), kbuild.bdd_to_str(cond), zcond))
 
-
         _f(kbuild.unit_pc, unit_pcs)
         _f(kbuild.subdir_pc, subdir_pcs)
 
@@ -1286,7 +1284,9 @@ class Run:
                     else:
                         compilation_units.add(unit_name)
                         if store_pcs:
-                            if (elem not in kbuild.token_pc): kbuild.token_pc[elem] = (kbuild.T, ZSolver.T)
+                            if (elem not in kbuild.token_pc):
+                                kbuild.token_pc[elem] = (kbuild.T, ZSolver.T)
+                                
                             kbuild.unit_pc[elem] = kbuild.token_pc[elem]
 
                 elif elem.endswith("/"):

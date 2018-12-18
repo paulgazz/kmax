@@ -1,11 +1,15 @@
+import re
 import os
-import vcommon as CM
+import pdb
+trace = pdb.set_trace
+import z3
 
-import settings
-mlog = CM.getLogger(__name__, settings.logger_level)
+import vcommon as CM
 
 from alg import Run
 
+import settings
+mlog = CM.getLogger(__name__, settings.logger_level)
 
 class GeneralAnalysis:
     def __init__(self, path):
@@ -38,13 +42,62 @@ class GeneralAnalysis:
         rs, _  = CM.vcmd(cmd)
         rs = [s.split(':', 1) for s in rs.split('\n') if s]
         #search for string #include "file.c"
-        import re
         msearch = lambda s: re.search(r"\".*\.c\"", s)
         
         assert all(len(s) == 2 and msearch(s[1]) for s in rs), rs
         rs = [(os.path.dirname(s[0]), msearch(s[1]).group(0)[1:-1]) for s in rs]
         rs = set(os.path.join(fdir, fname) for fdir, fname in rs)
         return rs
+
+
+    @property
+    def compilation_units(self):
+        return frozenset(self.results.compilation_units)
+    @property
+    def composites(self):
+        return frozenset(self.results.composites)
+    
+    @property
+    def library_units(self):
+        return frozenset(self.results.library_units)
+
+    @property
+    def hostprog_composites(self):
+        assert not self.results.hostprog_composites, self.results.hostprog_composites        
+        return frozenset(self.results.hostprog_composites)
+    @property
+    def hostprog_units(self):
+        return frozenset(self.results.hostprog_units)
+
+    @property    
+    def unconfigurable_units(self):
+        assert not self.results.unconfigurable_units, results.unconfigurable_units
+        return frozenset(self.results.unconfigurable_units)
+    
+    @property
+    def extra_targets(self):
+        assert not self.results.extra_targets, self.results.extra_targets
+        return frozenset(self.results.extra_targets)
+
+    @property
+    def clean_files(self):
+        assert not self.results.clean_files, self.results.clean_files        
+        return frozenset(self.results.clean_files)
+
+    @property
+    def c_file_targets(self):
+        assert not self.results.c_file_targets, self.results.c_file_targets
+        return frozenset(self.results.c_file_targets)
+
+    @property
+    def unit_pcs(self):
+        return self.results.unit_pcs
+
+    @property
+    def subdir_pcs(self):
+        assert not self.results.subdir_pcs
+        return self.results.subdir_pcs
+        
 
     def analyze(self):
         def print_set(s, name):
@@ -54,30 +107,12 @@ class GeneralAnalysis:
         import time
         st = time.time()
         
-        compilation_units = frozenset(self.results['compilation_units'])
-        composites = frozenset(self.results['composites'])
-        library_units = frozenset(self.results['library_units'])
-        hostprog_composites = frozenset(self.results['hostprog_composites'])
-        hostprog_units = frozenset(self.results['hostprog_units'])
-        unconfigurable_units = frozenset(self.results['unconfigurable_units'])
-        extra_targets = frozenset(self.results['extra_targets'])
-        clean_files = self.results['clean_files']
-        c_file_targets = frozenset(self.results['c_file_targets'])
-        unit_pcs = frozenset(self.results['unit_pcs'])
-        subdir_pcs = frozenset(self.results['subdir_pcs'])
-
-        assert not hostprog_composites, hostprog_composites
-        assert not unconfigurable_units, unconfigurable_units
-        assert not extra_targets, extra_targets
-        assert not clean_files, clean_files
-        assert not c_file_targets, c_file_targets
-        assert not unit_pcs, unit_pcs
-        assert not subdir_pcs, subdir_pcs
-        
         # find all subdirectories with source in them
         import glob
         
-        unit_files = compilation_units | library_units | hostprog_units | unconfigurable_units
+        unit_files = (self.compilation_units | self.library_units |
+                      self.hostprog_units | self.unconfigurable_units)
+        
         subdirs = set(os.path.dirname(f) for f in unit_files)
         all_c_files = set()
         for d in subdirs:
@@ -88,7 +123,7 @@ class GeneralAnalysis:
         # find all compilation units without a corresponding .c file
         unmatched_units = set()
         asm_compilation_units = set()
-        for unit in compilation_units:            
+        for unit in self.compilation_units:            
             S_file = self.otoS(unit)
             if os.path.isfile(S_file):
                 asm_compilation_units.add(S_file)
@@ -97,15 +132,13 @@ class GeneralAnalysis:
                 if not os.path.isfile(c_file):
                     unmatched_units.add(c_file)
 
-        assert not unmatched_units, unmatched_units
+        #assert not unmatched_units, unmatched_units
         assert not asm_compilation_units, asm_compilation_units
 
 
         # get source files that include c files
         included_c_files = set()
-        p = sp.Popen(r'find . -name "*.[c|h]" | xargs grep -H "^#.*include.*\.c[\">]"',
-                     shell=True, stdout=sp.PIPE)
-        out, _ = p.communicate()
+        out, _ = CM.vcmd(r'find . -name "*.[c|h]" | xargs grep -H "^#.*include.*\.c[\">]"')
         for line in out.split("\n"):
           parts = line.split(":", 1)
           if parts is not None:
@@ -132,14 +165,13 @@ class GeneralAnalysis:
         # with all c files
         unidentified_c_files = set(all_c_files)
         
-        cu_c_files = [self.otoc(f) for f in compilation_units] #cu
-        lib_c_files = [self.otoc(filename) for filename in library_units] #lib cu
-        hostprog_c_files = [self.hostprog_otoc(f)  for f in hostprog_units]
-        unconfig_c_files = [self.hostprog_otoc(f) for f in unconfigurable_units]
-        extra_targets_c_files = [self.hostprog_otoc(f) for f in extra_targets]                            
-
+        cu_c_files = [self.otoc(f) for f in self.compilation_units] #cu
+        lib_c_files = [self.otoc(filename) for filename in self.library_units] #lib cu
+        hostprog_c_files = [self.hostprog_otoc(f)  for f in self.hostprog_units]
+        unconfig_c_files = [self.hostprog_otoc(f) for f in self.unconfigurable_units]
+        extra_targets_c_files = [self.hostprog_otoc(f) for f in self.extra_targets]   
         used_c_files = set(cu_c_files + lib_c_files + hostprog_c_files + unconfig_c_files +
-                           extra_targets_c_files + list(clean_files) + list(offsets_files))
+                           extra_targets_c_files + list(self.clean_files) + list(offsets_files))
 
         unidentified_c_files -= used_c_files
 
@@ -169,16 +201,16 @@ class GeneralAnalysis:
 
         # look for unexpanded variables or function calls
         re_unexpanded = re.compile(r'.*\$\(.*\).*')
-        files = (compilation_units | library_units | hostprog_units |
-                 unconfigurable_units | extra_targets | clean_files)
-        unexpanded_units = set(otoc(f) for f in files if re_unexpanded.match(x))
+        files = (self.compilation_units | self.library_units | self.hostprog_units |
+                 self.unconfigurable_units | self.extra_targets | self.clean_files)
+        unexpanded_units = set(otoc(f) for f in files if re_unexpanded.match(f))
         #remove files with unexpanded var names
         unmatched_units -= unexpanded_units
 
         # remove c files specified in the clean-files and in targets, since
         # these can be auto-generated c files
         generated_c_files = set()
-        for c in (clean_files | c_file_targets):
+        for c in (self.clean_files | self.c_file_targets):
             raise NotImplementedError
             pattern = re.compile(fnmatch.translate(c))
             for filename in unmatched_units:
@@ -191,19 +223,23 @@ class GeneralAnalysis:
         #   with open(args.excludes_file, "w") as f:
         #     pickle.dump(excludes, f)
 
+        mlog.info("results:\n{}".format(self.results))
+                                           
+            
+        
         #print_set(toplevel_dirs, "toplevel_dirs")  # list of directories started from
         print_set(all_c_files, "all_c_files")  # all .c files in used and visited subdirectories
         print_set(asm_compilation_units, "asm_compilation_units")  # compilation units with a .S file
         #print_set(subdirectories, "subdirectory")  # subdirectory visited by kbuild
         #print_set(used_subdirectory, "used_subdirectory")  # subdirectories containing compilation units
-        print_set(compilation_units, "compilation_units")  # compilation units referenced by kbuild
-        print_set(composites, "composites")  # compilation units that are composites
-        print_set(library_units, "library_units")  # library units referenced by kbuild
-        print_set(hostprog_units, "hostprog_units")
-        print_set(unconfigurable_units, "unconfigurable_units")
-        print_set(extra_targets, "extra_targets")
-        print_set(clean_files, "clean_files")
-        print_set(c_file_targets, "c_file_targets")
+        print_set(self.compilation_units, "compilation_units")  # compilation units referenced by kbuild
+        print_set(self.composites, "composites")  # compilation units that are composites
+        print_set(self.library_units, "library_units")  # library units referenced by kbuild
+        print_set(self.hostprog_units, "hostprog_units")
+        print_set(self.unconfigurable_units, "unconfigurable_units")
+        print_set(self.extra_targets, "extra_targets")
+        print_set(self.clean_files, "clean_files")
+        print_set(self.c_file_targets, "c_file_targets")
         print_set(generated_c_files, "generated_c_files")
         print_set(unmatched_units, "unmatched_units")
         print_set(included_c_files, "included_c_files")
@@ -219,6 +255,7 @@ class GeneralAnalysis:
         #print_set(unexpanded_subdirectories, "unexpanded_subdirectories")
         #print_set(broken, "broken")
         mlog.info("time: {}".format(time.time() - st))
+        
 
     @classmethod
     def chgext(cls, filename, f, t):
@@ -370,7 +407,7 @@ class BusyboxAnalysis(GeneralAnalysis):
         all_c_files = self.get_all_c_files(self.topdir)
         len_all_c_files = len(all_c_files)
 
-        unit_files = self.results.compilation_units | self.results.library_units
+        unit_files = self.compilation_units | self.library_units
         unit_files = set(self.mkc(f) for f in unit_files)
         all_c_files -= unit_files
         
@@ -386,7 +423,7 @@ class BusyboxAnalysis(GeneralAnalysis):
         #print "scripts", len(script_files)        
         all_c_files -= script_files
 
-        hostprog_files = set(f + ".c" for f in self.results.hostprog_units)
+        hostprog_files = set(f + ".c" for f in self.hostprog_units)
         additional_hostprogs = set(os.path.join(self.topdir, f)
                                    for f in self.additional_hostprogs)
         hostprog_files |= additional_hostprogs
@@ -410,6 +447,8 @@ class BusyboxAnalysis(GeneralAnalysis):
         # of the build.
 
         #print some info
+        mlog.info("results:\n{}".format(self.results))
+        
         d = [("all c files", len_all_c_files),
              ("units", len(unit_files)),
              ("included c files", len(all_included)),

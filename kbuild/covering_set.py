@@ -1078,6 +1078,7 @@ class Kbuild:
                                 if (expanded_name in ["obj-y", "obj-m", "lib-y", "lib-m"]):
                                     # save final BDD for the token
                                     if v.endswith(".o"):
+                                        raise NotImplementedError
                                         if v not in self.unit_pc:
                                             self.unit_pc[v] = self.token_pc[v]
                                         else:
@@ -1193,12 +1194,15 @@ def collect_units(kbuild,            # current kbuild instance
                     if os.path.isfile(unit_name[:-2] + ".c") or os.path.isfile(unit_name[:-2] + ".S"): 
                         compilation_units.add(unit_name)
                         if store_pcs:
+                            raise NotImplementedError
                             if (elem not in kbuild.token_pc): kbuild.token_pc[elem] = kbuild.T
                             kbuild.unit_pc[elem] = kbuild.token_pc[elem]
                 else:
                     compilation_units.add(unit_name)
                     if store_pcs:
                         if (elem not in kbuild.token_pc): kbuild.token_pc[elem] = kbuild.T
+
+                        raise NotImplementedError
                         kbuild.unit_pc[elem] = kbuild.token_pc[elem]
             elif elem.endswith("/"):
                 # scripts/Makefile.lib takes anything that
@@ -1207,6 +1211,8 @@ def collect_units(kbuild,            # current kbuild instance
                 subdirectories.add(unit_name)
                 if store_pcs:
                     if (elem not in kbuild.token_pc): kbuild.token_pc[elem] = kbuild.T
+
+                    raise NotImplementedError
                     kbuild.subdir_pc[elem] = kbuild.token_pc[elem]
 
 def extract(makefile_path,

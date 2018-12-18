@@ -1,30 +1,7 @@
 #!/usr/bin/env python
-
-import sys
-import os
-import re
-import argparse
-import subprocess as sp
-import pycudd
-import _pycudd
-import tempfile
-
-from pymake import parser, parserdata, data, functions
-from collections import defaultdict
-
-import z3
-import pdb
-import vcommon as CM
-trace = pdb.set_trace
-
-mlog = None
-
-import settings
-
-
-
 if __name__ == '__main__':
     
+    import argparse    
     aparser = argparse.ArgumentParser("find interactions from Kbuild Makefile")
     ag = aparser.add_argument
     ag('makefile',
@@ -72,35 +49,34 @@ if __name__ == '__main__':
 
     args = aparser.parse_args()
 
-    # logger_level = CM.getLogLevel(args.logger_level)
-    # mlog = CM.getLogger(__name__, logger_level)
 
+    from vcommon import getLogLevel , getLogger
+    import settings
     if args.log_level != settings.logger_level and 0 <= args.log_level <= 4:
         settings.logger_level = args.log_level
-    settings.logger_level = CM.getLogLevel(settings.logger_level)
 
-    mlog = CM.getLogger(__name__, settings.logger_level)    
+    settings.logger_level = getLogLevel(settings.logger_level)
+    mlog = getLogger(__name__, settings.logger_level)    
     if __debug__:
         mlog.warn("DEBUG MODE ON. Can be slow! (Use python -O ... for optimization)")
 
     settings.do_table = args.table
-    settings.get_presence_conds = args.get_presence_conds
+    settings.do_get_presence_conds = args.get_presence_conds
     settings.do_recursive = args.recursive
     settings.do_boolean_configs = args.boolean_configs
 
-
-    from analysis import GeneralAnalysis, BusyboxAnalysis
+    import analysis
     if args.case_study == "busybox":
         inp = args.makefile[0]
         settings.do_boolean_configs = True
-        analysis = BusyboxAnalysis(inp)
+        myanalysis = analysis.BusyboxAnalysis(inp)
 
     else:
         inp = args.makefile
-        analysis = GeneralAnalysis(inp)
+        myanalysis = analysis.GeneralAnalysis(inp)
 
-    analysis.run()
-    analysis.analyze()
+    myanalysis.run()
+    myanalysis.analyze()
     
 
             

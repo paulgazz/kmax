@@ -1,4 +1,3 @@
-
 import pdb
 trace = pdb.set_trace
 import z3
@@ -128,10 +127,8 @@ class BoolVar(tuple):
         return ", ".join(map(str,ss))
 
 
-
 class Results:
     def __init__(self):
-        self.subdirectories = set()
         self.subdirectories = set()
         self.compilation_units = set()
         self.library_units = set()
@@ -145,4 +142,19 @@ class Results:
         self.unit_pcs = set()
         self.subdir_pcs = set()
 
+    def __str__(self, details=False):
+        f = lambda k, s: "{}: {}".format(k, ', '.join(s) if details else len(s))
+        delim = '\n' if details else ', '
+        ss = delim.join(f(k, s) for k, s in self.__dict__.iteritems() if s)
+        if self.unit_pcs:
+            ss += '\n{} unit pcs: \n{}'.format(len(self.unit_pcs), self.pc_str(self.unit_pcs))
+        if self.subdir_pcs:
+            ss += '\n{} subdir pcs: \n{}'.format(len(self.subdir_pcs), self.pc_str(self.subdir_pcs))
+        return ss
     
+    def pc_str(self, s):
+        return '\n'.join("{}. {}: {}, {}".format(i, v, f, z3.simplify(g))
+                         for i, (v, f, g) in enumerate(s))
+
+        
+        
