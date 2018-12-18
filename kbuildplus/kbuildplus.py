@@ -66,17 +66,21 @@ if __name__ == '__main__':
     settings.do_boolean_configs = args.boolean_configs
 
     import analysis
-    if args.case_study == "busybox":
+    case_study = args.case_study.lower()
+    if case_study == "busybox":
         inp = args.makefile[0]
         settings.do_boolean_configs = True
-        myanalysis = analysis.BusyboxAnalysis(inp)
-
+        myAnalysis = analysis.BusyboxCaseStudy(inp)
+    elif case_study == "linux":
+        inp = args.makefile[0]
+        settings.do_boolean_configs = True
+        myAnalysis = analysis.LinuxCaseStudy(inp)
     else:
         inp = args.makefile
-        myanalysis = analysis.GeneralAnalysis(inp)
+        myAnalysis = analysis.GeneralAnalysis(inp)
 
-    myanalysis.run()
-    myanalysis.analyze()
+    myAnalysis.run()
+    myAnalysis.analyze()
     
 
             

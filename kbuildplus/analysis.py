@@ -13,7 +13,6 @@ mlog = CM.getLogger(__name__, settings.logger_level)
 
 class GeneralAnalysis:
     def __init__(self, path):
-
         self.makefiledirs = set([f for f in path
                                  if os.path.isfile(f) or os.path.isdir(f)])
         mlog.info("analyzing {} files/dirs".format(len(self.makefiledirs)))
@@ -285,8 +284,21 @@ class GeneralAnalysis:
     @classmethod
     def mkc(cls, filename):
         return cls.chgext(filename, None, '.c')
-    
-class BusyboxAnalysis(GeneralAnalysis):
+
+
+
+class CaseStudy(GeneralAnalysis):
+    def __init__(self, topdir):
+        assert os.path.isdir(topdir)
+        
+        self.topdir = os.path.abspath(topdir)
+        self.makefiledirs = set(os.path.join(self.topdir,d) for d in self.subdirs)
+        for d in list(self.makefiledirs):
+            if not (os.path.isdir(d) or os.path.isfile(d)):  #dir or makefile
+                mlog.warn('{} not found .. removing'.format(d))
+                self.makefiledirs.remove(d)
+
+class BusyboxCaseStudy(CaseStudy):
     subdirs = set([
       "applets/",
       "archival/",
@@ -395,14 +407,6 @@ class BusyboxAnalysis(GeneralAnalysis):
     }
     
     
-    def __init__(self, topdir):
-        assert os.path.isdir(topdir)
-        
-        self.topdir = os.path.abspath(topdir)
-        self.makefiledirs = set(os.path.join(self.topdir,d) for d in self.subdirs)
-        assert all(os.path.isdir(d) for d in self.makefiledirs), self.makefiledirs
-
-
     def analyze(self):
         all_c_files = self.get_all_c_files(self.topdir)
         len_all_c_files = len(all_c_files)
@@ -461,4 +465,34 @@ class BusyboxAnalysis(GeneralAnalysis):
         mlog.info(s)
         
 
+        
+class LinuxCaseStudy(CaseStudy):
+    subdirs = set([
+        'arch/x86/Makefile',
+        'ipc',
+        'arch/x86/pci',
+        'fs',
+        'kernel',
+        'arch/x86/video',
+        'arch/x86/power',
+        'security',
+        'sound',
+        'arch/x86',
+        'lib',
+        'mm',
+        'drivers',
+        'firmware',
+        'crypto',
+        'arch/x86/oprofile',
+        'init',
+        'usr',
+        'net',
+        'arch/x86/lib'
+        'block',
+        'arch/x86/math-emu'
+    ])
+
+    
+    def analyze(self):
+        pass
         

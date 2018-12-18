@@ -26,6 +26,9 @@ import kmaxdata
 import lockfile # pip install lockfile
 import tempfile
 import csv
+import pdb
+trace = pdb.set_trace
+
 
 # Collect stats on archs, kconfig files, kbuild files, and config vars
 # and pickle the data to stdout
@@ -69,6 +72,7 @@ if len(args) > 2:
     arch = linuxinstance.get_x86_archname(versions[0])
   archs = [ arch ]
 
+#trace()
 instance = linuxinstance.LinuxInstance()
 
 if versions == None:
@@ -91,6 +95,7 @@ for version in versions:
 
       alldirs = set()
       command = 'make CC=cc ARCH=' + arch + ' -f ' + kmaxdata.makefile_override + ' alldirs'
+      print command
       popen = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
       stdout_, stderr_ = popen.communicate()
       alldirs.update(set(stdout_.strip().split()))
@@ -156,9 +161,13 @@ for version in versions:
           compunit_command += ' -D SUBARCH=x86'
         remaining_arguments =  ' -D srctree=. -D OS=Linux -D ARCH=' + arch + ' -C ' + kconfigdatafile + ' arch/' + arch + '/Makefile ' + " ".join(buildsystemdata.alldirs)
 
+
+        
+
         if (not presence_conditions_only):
           command = compunit_command + remaining_arguments
           print command
+          trace()
           popen = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
           stdout_, stderr_ = popen.communicate()
           for line in stdout_.strip().split("\n"):
