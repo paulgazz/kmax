@@ -70,7 +70,7 @@ class GeneralAnalysis:
 
     @property    
     def unconfigurable_units(self):
-        assert not self.results.unconfigurable_units, results.unconfigurable_units
+        #/home/tnguyen/Dropbox/git/kmax-dev/tests/kbuild/missing_computed_variable
         return frozenset(self.results.unconfigurable_units)
     
     @property
@@ -132,7 +132,7 @@ class GeneralAnalysis:
                     unmatched_units.add(c_file)
 
         #assert not unmatched_units, unmatched_units
-        assert not asm_compilation_units, asm_compilation_units
+        #assert not asm_compilation_units, asm_compilation_units
 
 
         # get source files that include c files
@@ -286,6 +286,12 @@ class GeneralAnalysis:
         return cls.chgext(filename, None, '.c')
 
 
+
+class Tests(GeneralAnalysis):
+    def __init__(self, testdir):
+        assert os.path.isdir(testdir)
+        #for i in ~/Dropbox/git/kmax-dev/tests/kbuild/*; do echo "testing" $i &>> out ; kbuildplus.py -g $i &>> out ; done
+    
 
 class CaseStudy(GeneralAnalysis):
     def __init__(self, topdir):

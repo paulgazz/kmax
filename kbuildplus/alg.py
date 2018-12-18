@@ -353,54 +353,65 @@ class  Kbuild:
                     hoisted_results.append((instance_condition, instance_result))
 
             return Multiverse(hoisted_results)
+        
         elif isinstance(function, functions.IfFunction):
-            condition_part = self.repack_singleton(self.process_expansion(function._arguments[0]))
+            cond_part = self.repack_singleton(self.process_expansion(function._arguments[0]))
             then_part = self.repack_singleton(self.process_expansion(function._arguments[1]))
-            then_condition = self.F
-            else_condition = self.F
-            for condition, value in condition_part:
-                if value == None:
-                    value = ""
-                if (len(str(value)) > 0):
-                    then_condition = disj(then_condition, condition)
+            then_cond = self.F
+            then_zcond = ZSolver.F
+            else_cond = self.F
+            else_zcond = ZSolver.F
+            for cond, zcond, value in cond_part:
+                if value:
+                    then_cond = disj(then_cond, cond)
+                    then_zcond = z3.Or(then_zcond, zcond)
                 else:
-                    else_condition = disj(then_condition, condition)
+                    else_cond = disj(then_cond, cond)
+                    else_zcond = z3.Or(then_zcond, zcond)
+                    
             expansions = []
-            for condition, value in then_part:
-                condition = conj(then_condition, condition)
-                if condition != self.F:
-                    expansions.append((condition, value))
+
+            for cond, zcond, value in then_part:
+                cond = conj(then_cond, cond)
+                zcond = z3.And(then_zcond, zcond)
+                if cond != self.F:
+                    expansions.append(CondDef(cond, zcond, value))
+                    
             if len(function._arguments) > 2:
                 else_part = self.repack_singleton(self.process_expansion(function._arguments[2]))
-                for condition, value in else_part:
-                    condition = conj(else_condition, condition)
-                    if condition != self.F:
-                        expansions.append((condition, value))
+                for cond, zcond, value in else_part:
+                    cond = conj(else_cond, cond)
+                    zcond = z3.And(else_zcond, zcond)
+                    
+                    if cond != self.F:
+                        expansions.append(CondDef(cond, zcond, value))
+                        
             return Multiverse(expansions)
         # elif isinstance(function, functions.WildcardFunction):
         #     # TODO: implement and test on usr/
         #     fatal("Unsupported function", function)
         #     return None
         elif isinstance(function, functions.FilteroutFunction):
-            from_values = self.repack_singleton(self.process_expansion(function._arguments[0]))
-            in_values = self.repack_singleton(self.process_expansion(function._arguments[1]))
+            from_vals = self.repack_singleton(self.process_expansion(function._arguments[0]))
+            in_vals = self.repack_singleton(self.process_expansion(function._arguments[1]))
 
             # Hoist conditionals around the function by getting all
             # combinations of arguments
-            hoisted_arguments = tuple((s, d)
-                                      for s in from_values
-                                      for d in in_values)
-
+            hoisted_args = tuple((s, d) for s in from_vals for d in in_vals)
             hoisted_results = []
             # Compute the function for each combination of arguments
-            for (c1, s), (c2, d) in hoisted_arguments:
-                instance_condition = conj(c1, c2)
-                if instance_condition != self.F:
-                    if d != None:
-                        instance_result = " ".join([d_token for d_token in d.split() if d_token != s])
-                    else:
+            for (c1, zc1, s), (c2, zc2, d) in hoisted_args:
+                instance_cond = conj(c1, c2)
+                instance_zcond = z3.And(zc1, zc2)
+                
+                if instance_cond != self.F:
+                    if d is None:
                         instance_result = None
-                    hoisted_results.append((instance_condition, instance_result))
+                    else:
+                        instance_result = " ".join(d_token for d_token in d.split() if d_token != s)
+
+                    cd = CondDef(instance_cond, instance_zcond, instance_result)
+                    hoisted_results.append(cd)
 
             return Multiverse(hoisted_results)
         # elif isinstance(function, functions.ForEachFunction):
@@ -940,19 +951,18 @@ class  Kbuild:
         mlog.warn("just pass on rule {} {} {}".format(rule, self.bdd_to_str(cond), zcond))
         pass
 
-    # def process_include(self, s, cond, zcond):
-    #     raise NotImplementedError
-    #     expanded_include = self.repack_singleton(self.process_expansion(s.exp))
-    #     for include_cond, include_files in expanded_include:
-    #         if include_files != None:
-    #             for include_file in include_files.split():
-    #                 obj = os.path.dirname(include_file)
-    #                 if os.path.exists(include_file):
-    #                     include_makefile = open(include_file, "rU")
-    #                     s = include_makefile.read()
-    #                     include_makefile.close()
-    #                     include_stmts = parser.parsestring(s, include_makefile.name)
-    #                     self.process_stmts(include_stmts, include_cond)
+    def process_include(self, s, cond, zcond):
+        expanded_include = self.repack_singleton(self.process_expansion(s.exp))
+        for include_cond, include_zcond, include_files in expanded_include:
+            if include_files != None:
+                for include_file in include_files.split():
+                    obj = os.path.dirname(include_file)
+                    if os.path.exists(include_file):
+                        include_makefile = open(include_file, "rU")
+                        s = include_makefile.read()
+                        include_makefile.close()
+                        include_stmts = parser.parsestring(s, include_makefile.name)
+                        self.process_stmts(include_stmts, include_cond, include_zcond)
 
     def process_stmts(self, stmts, cond, zcond):
         """Find configurations in the given list of stmts under the
@@ -966,8 +976,7 @@ class  Kbuild:
                   isinstance(s, parserdata.StaticPatternRule)):
                 self.process_rule(s, cond, zcond)
             elif (isinstance(s, parserdata.Include)):
-                raise NotImplementedError
-                #self.process_include(s, cond, zcond)
+                self.process_include(s, cond, zcond)
 
 
     def split_definitions(self, pending_variable):
