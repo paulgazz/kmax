@@ -23,32 +23,6 @@ class GeneralAnalysis:
         myrun.run(self.makefiledirs)
         self.results = myrun.results
 
-    @staticmethod
-    def get_all_c_files(path):
-        assert os.path.isdir(path)
-        cmd = 'find {} -type f | grep "\.c$" | sort | uniq'.format(path)
-        files, _ = CM.vcmd(cmd)
-        files = set([os.path.normpath(x.strip('\n'))
-                     for x in files.split()])
-        return files
-        
-    @staticmethod
-    def get_included_c_files(path):
-        """get source files that include c files"""
-        
-        path = os.path.abspath(path)
-        cmd = r'find {} -name "*.[c|h]" | xargs grep -H "^#.*include.*\.c[\">]"'.format(path)
-        rs, _  = CM.vcmd(cmd)
-        rs = [s.split(':', 1) for s in rs.split('\n') if s]
-        #search for string #include "file.c"
-        msearch = lambda s: re.search(r"\".*\.c\"", s)
-        
-        assert all(len(s) == 2 and msearch(s[1]) for s in rs), rs
-        rs = [(os.path.dirname(s[0]), msearch(s[1]).group(0)[1:-1]) for s in rs]
-        rs = set(os.path.join(fdir, fname) for fdir, fname in rs)
-        return rs
-
-
     @property
     def compilation_units(self):
         return frozenset(self.results.compilation_units)
@@ -80,7 +54,6 @@ class GeneralAnalysis:
 
     @property
     def clean_files(self):
-        assert not self.results.clean_files, self.results.clean_files        
         return frozenset(self.results.clean_files)
 
     @property
@@ -208,9 +181,9 @@ class GeneralAnalysis:
 
         # remove c files specified in the clean-files and in targets, since
         # these can be auto-generated c files
+        import fnmatch        
         generated_c_files = set()
         for c in (self.clean_files | self.c_file_targets):
-            raise NotImplementedError
             pattern = re.compile(fnmatch.translate(c))
             for filename in unmatched_units:
                 if pattern.match(filename):
@@ -254,7 +227,6 @@ class GeneralAnalysis:
         #print_set(unexpanded_subdirectories, "unexpanded_subdirectories")
         #print_set(broken, "broken")
         mlog.info("time: {}".format(time.time() - st))
-        
 
     @classmethod
     def chgext(cls, filename, f, t):
@@ -285,6 +257,30 @@ class GeneralAnalysis:
     def mkc(cls, filename):
         return cls.chgext(filename, None, '.c')
 
+    @staticmethod
+    def get_all_c_files(path):
+        assert os.path.isdir(path)
+        cmd = 'find {} -type f | grep "\.c$" | sort | uniq'.format(path)
+        files, _ = CM.vcmd(cmd)
+        files = set([os.path.normpath(x.strip('\n'))
+                     for x in files.split()])
+        return files
+        
+    @staticmethod
+    def get_included_c_files(path):
+        """get source files that include c files"""
+        
+        path = os.path.abspath(path)
+        cmd = r'find {} -name "*.[c|h]" | xargs grep -H "^#.*include.*\.c[\">]"'.format(path)
+        rs, _  = CM.vcmd(cmd)
+        rs = [s.split(':', 1) for s in rs.split('\n') if s]
+        #search for string #include "file.c"
+        msearch = lambda s: re.search(r"\".*\.c\"", s)
+        
+        assert all(len(s) == 2 and msearch(s[1]) for s in rs), rs
+        rs = [(os.path.dirname(s[0]), msearch(s[1]).group(0)[1:-1]) for s in rs]
+        rs = set(os.path.join(fdir, fname) for fdir, fname in rs)
+        return rs
 
 
 class Tests(GeneralAnalysis):

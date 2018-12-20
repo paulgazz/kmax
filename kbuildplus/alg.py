@@ -44,7 +44,6 @@ def hasConfig():
     #return all_config_var_names is not None
     return False
 
-
 def isBooleanConfig(name):
     # if all_config_var_names is not None and not isNonbooleanConfig(name):
     #     return name in all_config_var_names
@@ -272,223 +271,207 @@ class  Kbuild:
         """Evaluate variable expansion or built-in function and return
         either a single string or a list of (condition, string) pairs."""
         if isinstance(function, functions.VariableRef):
-            name = self.repack_singleton(self.process_expansion(function.vname))
-            
-            expanded_names = []
-            for name_cond, name_zcond, name_value  in name:
-                expanded_name = self.process_variableref(name_value)
-                assert isinstance(expanded_name, Multiverse), expanded_name
-                
-                for v in expanded_name:
-                    expanded_names.append(
-                        CondDef(conj(name_cond, v.cond), z3.And(name_zcond, v.zcond), v.mdef)
-                    )
-                    
-            return Multiverse(expanded_names)
-        
+            return self.process_fun_VariableRef(function)
         elif isinstance(function, functions.SubstFunction):
-        
-            from_vals = self.repack_singleton(self.process_expansion(function._arguments[0]))
-            to_vals = self.repack_singleton(self.process_expansion(function._arguments[1]))
-            in_vals = self.repack_singleton(self.process_expansion(function._arguments[2]))
-
-            # Hoist conditionals around the function by getting all
-            # combinations of arguments
-            hoisted_results = []
-            for (sc, szc, s), (rc, rzc, r), (dc, dzc, d) in zip(from_vals, to_vals, in_vals):
-                instance_cond = conj(sc, conj(rc, dc))
-                instance_zcond = z3.And(szc, rzc, dzc)
-                if instance_cond != self.F:  #tvn: todo check
-                    if r is None: r = ""  # Fixes bug in net/l2tp/Makefile
-                    instance_result = None if d is None else d.replace(s, r)
-                    hoisted_results.append(CondDef(instance_cond, instance_zcond, instance_result))
-
-            return Multiverse(hoisted_results)
-        
-        # elif isinstance(function, functions.CallFunction):
-        #     # TODO: implement and test on drivers/xen/
-        #     # fatal("Unsupported function", function)
-        #     warn("Skipped function call", function)
-        #     return None
-        # elif isinstance(function, functions.FindstringFunction):
-        #     # TODO: implement and test on drivers/staging/wlags49_h25/
-        #     fatal("Unsupported function", function)
-        #     return None
+            return self.process_fun_SubstFunction(function)
         elif isinstance(function, functions.SubstitutionRef):
-            raise NotImplementedError
-        
-            from_values = self.repack_singleton(self.process_expansion(function.substfrom))
-            to_values = self.repack_singleton(self.process_expansion(function.substto))
-            name = self.repack_singleton(self.process_expansion(function.vname))
-
-            # first expand the variable
-            in_values = []
-            for name_cond, name_value in name:
-                expanded_name = self.process_variableref(name_value)
-                for (expanded_cond, expanded_value) in expanded_name:
-                    in_values.append( (conj(name_cond, expanded_cond), expanded_value) )
-
-            # then do patsubst
-            hoisted_arguments = tuple((s, r, d)
-                                      for s in from_values
-                                      for r in to_values
-                                      for d in in_values)
-
-            hoisted_results = []
-            for (c1, s), (c2, r), (c3, d) in hoisted_arguments:
-                instance_condition = conj(c1, conj(c2, c3))
-                if instance_condition != self.F:
-                    if r == None: r = ""  # Fixes bug in net/l2tp/Makefile
-                    if r"%" not in s:
-                        # without a %, use a % to implement replacing
-                        # the end of the string
-                        s = r"%" + s
-                        r = r"%" + r
-                    pattern = "^" + s.replace(r"%", r"(.*)", 1) + "$"
-                    replacement = r.replace(r"%", r"\1", 1)
-                    if d != None:
-                        instance_result = " ".join([re.sub(pattern, replacement, d_token) for d_token in d.split()])
-                    else:
-                        instance_result = None
-                    hoisted_results.append((instance_condition, instance_result))
-
-            return Multiverse(hoisted_results)
-        
+            return self.process_fun_SubstitutionRef(function)
         elif isinstance(function, functions.IfFunction):
-            cond_part = self.repack_singleton(self.process_expansion(function._arguments[0]))
-            then_part = self.repack_singleton(self.process_expansion(function._arguments[1]))
-            then_cond = self.F
-            then_zcond = ZSolver.F
-            else_cond = self.F
-            else_zcond = ZSolver.F
-            for cond, zcond, value in cond_part:
-                if value:
-                    then_cond = disj(then_cond, cond)
-                    then_zcond = z3.Or(then_zcond, zcond)
-                else:
-                    else_cond = disj(then_cond, cond)
-                    else_zcond = z3.Or(then_zcond, zcond)
-                    
-            expansions = []
-
-            for cond, zcond, value in then_part:
-                cond = conj(then_cond, cond)
-                zcond = z3.And(then_zcond, zcond)
-                if cond != self.F:
-                    expansions.append(CondDef(cond, zcond, value))
-                    
-            if len(function._arguments) > 2:
-                else_part = self.repack_singleton(self.process_expansion(function._arguments[2]))
-                for cond, zcond, value in else_part:
-                    cond = conj(else_cond, cond)
-                    zcond = z3.And(else_zcond, zcond)
-                    
-                    if cond != self.F:
-                        expansions.append(CondDef(cond, zcond, value))
-                        
-            return Multiverse(expansions)
-        # elif isinstance(function, functions.WildcardFunction):
-        #     # TODO: implement and test on usr/
-        #     fatal("Unsupported function", function)
-        #     return None
+            return self.process_fun_IfFunction(function)
         elif isinstance(function, functions.FilteroutFunction):
-            from_vals = self.repack_singleton(self.process_expansion(function._arguments[0]))
-            in_vals = self.repack_singleton(self.process_expansion(function._arguments[1]))
-
-            # Hoist conditionals around the function by getting all
-            # combinations of arguments
-            hoisted_args = tuple((s, d) for s in from_vals for d in in_vals)
-            hoisted_results = []
-            # Compute the function for each combination of arguments
-            for (c1, zc1, s), (c2, zc2, d) in hoisted_args:
-                instance_cond = conj(c1, c2)
-                instance_zcond = z3.And(zc1, zc2)
-                
-                if instance_cond != self.F:
-                    if d is None:
-                        instance_result = None
-                    else:
-                        instance_result = " ".join(d_token for d_token in d.split() if d_token != s)
-
-                    cd = CondDef(instance_cond, instance_zcond, instance_result)
-                    hoisted_results.append(cd)
-
-            return Multiverse(hoisted_results)
-        # elif isinstance(function, functions.ForEachFunction):
-        #     # TODO: implement and test on arch/x86/vdso/
-        #     fatal("Unsupported function", function)
-        #     return None
-        # elif isinstance(function, functions.OriginFunction):
-        #     # TODO: implement and test on ./Makefile
-        #     fatal("Unsupported function", function)
-        #     return None
-        # elif isinstance(function, functions.FilterFunction):
-        #     # TODO: implement and test on ./Makefile
-        #     fatal("Unsupported function", function)
-        #     return None
+            return self.process_fun_FilteroutFunction(function)
         elif isinstance(function, functions.PatSubstFunction):
-            from_values = self.repack_singleton(self.process_expansion(function._arguments[0]))
-            to_values = self.repack_singleton(self.process_expansion(function._arguments[1]))
-            in_values = self.repack_singleton(self.process_expansion(function._arguments[2]))
-
-            # Hoist conditionals around the function by getting all
-            # combinations of arguments
-            hoisted_arguments = tuple((s, r, d)
-                                      for s in from_values
-                                      for r in to_values
-                                      for d in in_values)
-
-            hoisted_results = []
-            # Compute the function for each combination of arguments
-            for (c1, s), (c2, r), (c3, d) in hoisted_arguments:
-                instance_condition = conj(c1, conj(c2, c3))
-                if instance_condition != self.F:
-                    if r == None: r = ""  # Fixes bug in net/l2tp/Makefile
-                    pattern = "^" + s.replace(r"%", r"(.*)", 1) + "$"
-                    replacement = r.replace(r"%", r"\1", 1)
-                    if d != None:
-                        instance_result = " ".join([re.sub(pattern, replacement, d_token) for d_token in d.split()])
-                    else:
-                        instance_result = None
-                    hoisted_results.append((instance_condition, instance_result))
-
-            return Multiverse(hoisted_results)
+            return self.process_fun_PatSubstFunction(function)
         elif isinstance(function, functions.SortFunction):
-            # no sorting for now
             return Multiverse(self.repack_singleton(self.process_expansion(function._arguments[0])))
         elif isinstance(function, functions.AddPrefixFunction):
-            prefixes = self.repack_singleton(self.process_expansion(function._arguments[0]))
-            token_strings = self.repack_singleton(self.process_expansion(function._arguments[1]))
-
-            hoisted_results = []
-            for (prefix_cond, prefix) in prefixes:
-                for (tokens_cond, token_string) in token_strings:
-                    resulting_cond = conj(prefix_cond, tokens_cond)
-                    if resulting_cond != self.F:
-                        # append prefix to each token in the token_string
-                        if token_string != None:
-                            prefixed_tokens = " ".join([ prefix + token
-                                                         for token
-                                                         in token_string.split() ])
-                        else:
-                            prefixed_tokens = ""
-                        hoisted_results.append((resulting_cond, prefixed_tokens))
-
-            return Multiverse(hoisted_results)
-        # elif isinstance(function, functions.NotDirFunction):
-        #     # TODO: implement and test on ./Makefile
-        #     fatal("Unsupported function", function)
-        #     return None
-        # elif isinstance(function, functions.DirFunction):
-        #     # TODO: implement and test on ./Makefile
-        #     fatal("Unsupported function", function)
-        #     return None
-        # elif isinstance(function, functions.ShellFunction):
-        #     warn("skipping shell function")
-        #     return None
-        # else: fatal("Unsupported function", function)
+            return self.process_fun_AddPrefixFunction(function)
         else:
+            mlog.warn("default on function: {}".format(function))
             return self.repack_singleton(function.to_source())
+
+    def process_fun_VariableRef(self, function):
+        name = self.repack_singleton(self.process_expansion(function.vname))
+
+        expanded_names = []
+        for name_cond, name_zcond, name_value  in name:
+            expanded_name = self.process_variableref(name_value)
+            assert isinstance(expanded_name, Multiverse), expanded_name
+
+            for v in expanded_name:
+                expanded_names.append(
+                    CondDef(conj(name_cond, v.cond), z3.And(name_zcond, v.zcond), v.mdef)
+                )
+        return Multiverse(expanded_names)
+
+    def process_fun_SubstFunction(self, function):
+        from_vals = self.repack_singleton(self.process_expansion(function._arguments[0]))
+        to_vals = self.repack_singleton(self.process_expansion(function._arguments[1]))
+        in_vals = self.repack_singleton(self.process_expansion(function._arguments[2]))
+
+        # Hoist conditionals around the function by getting all
+        # combinations of arguments
+        hoisted_results = []
+        for (sc, szc, s), (rc, rzc, r), (dc, dzc, d) in zip(from_vals, to_vals, in_vals):
+            instance_cond = conj(sc, conj(rc, dc))
+            instance_zcond = z3.And(szc, rzc, dzc)
+            if instance_cond != self.F:  #tvn: todo check
+                if r is None: r = ""  # Fixes bug in net/l2tp/Makefile
+                instance_result = None if d is None else d.replace(s, r)
+                hoisted_results.append(CondDef(instance_cond, instance_zcond, instance_result))
+
+        return Multiverse(hoisted_results)
+        
+    def process_fun_IfFunction(self, function):
+        cond_part = self.repack_singleton(self.process_expansion(function._arguments[0]))
+        then_part = self.repack_singleton(self.process_expansion(function._arguments[1]))
+        then_cond = self.F
+        then_zcond = ZSolver.F
+        else_cond = self.F
+        else_zcond = ZSolver.F
+        for cond, zcond, value in cond_part:
+            if value:
+                then_cond = disj(then_cond, cond)
+                then_zcond = z3.Or(then_zcond, zcond)
+            else:
+                else_cond = disj(then_cond, cond)
+                else_zcond = z3.Or(then_zcond, zcond)
+
+        expansions = []
+
+        for cond, zcond, value in then_part:
+            cond = conj(then_cond, cond)
+            zcond = z3.And(then_zcond, zcond)
+            if cond != self.F:
+                expansions.append(CondDef(cond, zcond, value))
+
+        if len(function._arguments) > 2:
+            else_part = self.repack_singleton(self.process_expansion(function._arguments[2]))
+            for cond, zcond, value in else_part:
+                cond = conj(else_cond, cond)
+                zcond = z3.And(else_zcond, zcond)
+
+                if cond != self.F:
+                    expansions.append(CondDef(cond, zcond, value))
+
+        return Multiverse(expansions)
+
+    def process_fun_FilteroutFunction(self, function):
+        from_vals = self.repack_singleton(self.process_expansion(function._arguments[0]))
+        in_vals = self.repack_singleton(self.process_expansion(function._arguments[1]))
+
+        # Hoist conditionals around the function by getting all
+        # combinations of arguments
+        hoisted_args = tuple((s, d) for s in from_vals for d in in_vals)
+        hoisted_results = []
+        # Compute the function for each combination of arguments
+        for (c1, zc1, s), (c2, zc2, d) in hoisted_args:
+            instance_cond = conj(c1, c2)
+            instance_zcond = z3.And(zc1, zc2)
+
+            if instance_cond != self.F:
+                if d is None:
+                    instance_result = None
+                else:
+                    instance_result = " ".join(d_token for d_token in d.split() if d_token != s)
+
+                cd = CondDef(instance_cond, instance_zcond, instance_result)
+                hoisted_results.append(cd)
+
+        return Multiverse(hoisted_results)
+
+    def process_fun_PatSubstFunction(self, function):
+        from_vals = self.repack_singleton(self.process_expansion(function._arguments[0]))
+        to_vals = self.repack_singleton(self.process_expansion(function._arguments[1]))
+        in_vals = self.repack_singleton(self.process_expansion(function._arguments[2]))
+
+        # Hoist conditionals around the function by getting all
+        # combinations of arguments
+        hoisted_args = tuple((s, r, d)
+                             for s in from_vals
+                             for r in to_vals
+                             for d in in_vals)
+        hoisted_results = []
+        # Compute the function for each combination of arguments
+        for (c1, zc1, s), (c2, zc2, r), (c3, zc3, d) in hoisted_args:
+            instance_cond = conj(c1, conj(c2, c3))
+            instance_zcond = z3.And(zc1, zc2, zc3)
+            
+            if instance_cond != self.F:
+                if r == None: r = ""  # Fixes bug in net/l2tp/Makefile
+                pattern = "^" + s.replace(r"%", r"(.*)", 1) + "$"
+                replacement = r.replace(r"%", r"\1", 1)
+                if d is None:
+                    instance_result = None
+                else:
+                    instance_result = " ".join(re.sub(pattern, replacement, d_token)
+                                               for d_token in d.split())
+                cd = CondDef(instance_cond, instance_zcond, instance_result)
+                hoisted_results.append(cd)
+                
+        return Multiverse(hoisted_results)
+
+    def process_fun_AddPrefixFunction(self, function):
+        prefixes = self.repack_singleton(self.process_expansion(function._arguments[0]))
+        token_strings = self.repack_singleton(self.process_expansion(function._arguments[1]))
+
+        hoisted_results = []
+        for (prefix_cond, prefix_zcond, prefix) in prefixes:
+            for (tokens_cond, tokens_zcond, token_string) in token_strings:
+                resulting_cond = conj(prefix_cond, tokens_cond)
+                resulting_zcond = z3.And(prefix_zcond, tokens_zcond)
+
+                if resulting_cond != self.F:
+                    # append prefix to each token in the token_string
+                    if token_string is None:
+                        prefixed_tokens = ""                            
+                    else:
+                        prefixed_tokens = " ".join(prefix + token
+                                                   for token in token_string.split())
+                    hoisted_results.append(CondDef(resulting_cond, resulting_zcond, prefixed_tokens))
+
+        return Multiverse(hoisted_results)
+        
+    def process_fun_SubstitutionRef(self, function):
+        raise NotImplementedError
+
+        from_values = self.repack_singleton(self.process_expansion(function.substfrom))
+        to_values = self.repack_singleton(self.process_expansion(function.substto))
+        name = self.repack_singleton(self.process_expansion(function.vname))
+
+        # first expand the variable
+        in_values = []
+        for name_cond, name_value in name:
+            expanded_name = self.process_variableref(name_value)
+            for (expanded_cond, expanded_value) in expanded_name:
+                in_values.append( (conj(name_cond, expanded_cond), expanded_value) )
+
+        # then do patsubst
+        hoisted_arguments = tuple((s, r, d)
+                                  for s in from_values
+                                  for r in to_values
+                                  for d in in_values)
+
+        hoisted_results = []
+        for (c1, s), (c2, r), (c3, d) in hoisted_arguments:
+            instance_condition = conj(c1, conj(c2, c3))
+            if instance_condition != self.F:
+                if r == None: r = ""  # Fixes bug in net/l2tp/Makefile
+                if r"%" not in s:
+                    # without a %, use a % to implement replacing
+                    # the end of the string
+                    s = r"%" + s
+                    r = r"%" + r
+                pattern = "^" + s.replace(r"%", r"(.*)", 1) + "$"
+                replacement = r.replace(r"%", r"\1", 1)
+                if d is None:
+                    instance_result = None
+                else:
+                    instance_result = " ".join([re.sub(pattern, replacement, d_token) for d_token in d.split()])
+                hoisted_results.append((instance_condition, instance_result))
+
+        return Multiverse(hoisted_results)
+        
 
     def repack_singleton(self, expansion):
         assert isinstance(expansion, (str, Multiverse)), expansion
@@ -568,12 +551,10 @@ class  Kbuild:
             mlog.warn("unsupported conditional block: {}".format(block))
             return
 
-        mlog.debug("conditionalblock")
         # Process first branch
         cond, stmts = block[0]  # condition is a Condition object
         first_branch_cond = None
         if isinstance(cond, parserdata.IfdefCondition):  # ifdef
-            mlog.debug("Ifdef")
             # TODO only care if condition.exp.variable_references contains
             # multiply-defined macros
             expansion = self.process_expansion(cond.exp)
@@ -592,7 +573,6 @@ class  Kbuild:
             else_branch_zcond = z3.Not(first_branch_zcond)
 
         elif isinstance(cond, parserdata.EqCondition):  # ifeq
-            mlog.debug("EqCond: {}".format(cond))
             exp1 = self.repack_singleton(self.process_expansion(cond.exp1))
             exp2 = self.repack_singleton(self.process_expansion(cond.exp2))
 
@@ -681,10 +661,8 @@ class  Kbuild:
 
         @param value_list a list of strings or Nones
         @returns A string or a None"""
-
-        filtered = filter(lambda s: s != None, value_list)
-        return None if len(filtered) == 0 else delim.join(filtered)
-
+        return delim.join(v for v in value_list if v)
+    
     def append_values(self, *args):
         return self.join_values(args, " ")
 
@@ -925,26 +903,14 @@ class  Kbuild:
 
         if isinstance(name, str):
             assert isinstance(cond, pycudd.DdNode), cond
-            mlog.debug("setvariable {} {} {} under presence cond  {}; {}".format(
-                name, token, value, self.bdd_to_str(cond),  z3.simplify(zcond)))
-            
-            if settings.do_get_presence_conds:
-                f(name, cond, zcond)
-                
+            f(name, cond, zcond)
             self.add_variable_entry(name, cond, zcond, token, value)
             
         else:
             for local_cond, local_zcond, expanded_name in name:
-                mlog.debug("setvariable under presence cond {} {} {} {}"
-                           .format(expanded_name, token,
-                                   self.bdd_to_str(local_cond), local_zcond))
-                           
                 nested_cond = conj(local_cond, cond)
                 nested_zcond = z3.And(local_zcond, zcond)
-                
-                if settings.do_get_presence_conds:
-                    f(expanded_name, nested_cond, nested_zcond)
-                    
+                f(expanded_name, nested_cond, nested_zcond)
                 self.add_variable_entry(expanded_name, nested_cond, nested_zcond, token, value)
 
     def process_rule(self, rule, cond, zcond):
@@ -995,25 +961,23 @@ class  Kbuild:
                         split_expanded_values = expanded_value.split()
                         values.extend(split_expanded_values)
 
-                        if settings.do_get_presence_conds:
-                            composite_unit = "-".join(pending_variable.split('-')[:-1]) + ".o"
-                            if composite_unit in self.token_pc:
-                                for v in split_expanded_values:
-                                    tc, tzc = self.token_pc[composite_unit]
-                                    composite_cond = conj(expanded_cond, tc)
-                                    composite_zcond = z3.And(expanded_zcond, tzc)
+                        composite_unit = "-".join(pending_variable.split('-')[:-1]) + ".o"
+                        if composite_unit in self.token_pc:
+                            for v in split_expanded_values:
+                                tc, tzc = self.token_pc[composite_unit]
+                                composite_cond = conj(expanded_cond, tc)
+                                composite_zcond = z3.And(expanded_zcond, tzc)
 
-                                    if not v in self.token_pc.keys():
-                                        self.token_pc[v] = self.T, ZSolver.T
+                                if not v in self.token_pc.keys():
+                                    self.token_pc[v] = self.T, ZSolver.T
 
-                                    # update nested_cond
-                                    tc, tzc = self.token_pc[v]
-                                    self.token_pc[v] = (conj(tc, composite_cond),
-                                                          z3.And(tzc, composite_zcond))
+                                # update nested_cond
+                                tc, tzc = self.token_pc[v]
+                                self.token_pc[v] = (conj(tc, composite_cond),
+                                                      z3.And(tzc, composite_zcond))
 
         return values
                 
-
 
 class Run:
     def run(self, makefiledirs):
@@ -1050,14 +1014,11 @@ class Run:
             if not s: continue
             ss = []
             try:
-                ss.extend(("{}. {}: {}, {} ".format(i,v,c, z3.simplify(zc))
+                ss.extend(("{}. {}: {}, {} ".format(i+1, v,c, z3.simplify(zc))
                                    for i,(v, c, zc) in enumerate(s)))
             except ValueError:
                 ss.append(', '.join(map(str,s)))
 
-            mlog.debug("{} {}: {}".format(len(s), k, '\n'.join(ss)))
-
-        
     def extract(self, makefile_path):
         mlog.info("processing makefile: {}".format(makefile_path))
         if os.path.isdir(makefile_path):
@@ -1093,7 +1054,8 @@ class Run:
         unconfigurable_units = self.results.unconfigurable_units
         unit_pcs = self.results.unit_pcs
         subdir_pcs = self.results.subdir_pcs
-
+        clean_files = self.results.clean_files
+        
         pending_vars =  set(["core-y", "core-m", "drivers-y", "drivers-m",
                              "net-y", "net-m", "libs-y", "libs-m", "head-y", "head-m"])
         self.collect_units(kbuild,
@@ -1109,8 +1071,7 @@ class Run:
                            pending_vars,
                            compilation_units,
                            subdirectories,
-                           composites,
-                           settings.do_get_presence_conds)
+                           composites)
 
         for v in set([ "subdir-y", "subdir-m" ]):
             for u in kbuild.split_definitions(v):
@@ -1156,8 +1117,7 @@ class Run:
                 #c_file_targets.add(os.path.join(obj, u))
 
         for u in kbuild.split_definitions("clean-files"):
-            raise NotImplementedError
-            #clean_files.add(os.path.join(obj, u))
+            clean_files.add(os.path.join(obj, u))
             
 
         # look for variables starting with obj-, lib-, hostprogs-,
@@ -1228,8 +1188,7 @@ class Run:
                       pending_variables, # variables to extract from, gets emptied
                       compilation_units, # adds units to this set
                       subdirectories,    # adds subdir to this set
-                      composites,        # adds composites to this set
-                      store_pcs=False):  # save pcs from these variables
+                      composites):  # save pcs from these variables
 
         """fixed-point algorithm that adds composites and stops when no
         more variables to look at are available"""
@@ -1239,7 +1198,6 @@ class Run:
         assert isinstance(compilation_units, set), compilation_units
         assert isinstance(subdirectories, set), subdirectories
         assert isinstance(composites, set), composites
-        assert isinstance(store_pcs, bool), store_pcs
 
         processed_vars = set()
         equiv_vars = set()
@@ -1278,25 +1236,21 @@ class Run:
                             composites.add(unit_name)
                             pending_variables.update(kbuild.get_var_equiv_set(composite_variable1))
                             pending_variables.update(kbuild.get_var_equiv_set(composite_variable2))
-                            if store_pcs:
-                                if (elem not in kbuild.token_pc):
-                                    raise NotImplementedError
-                                    kbuild.token_pc[elem] = (kbuild.T, ZSolver.T)
-                                kbuild.composite_pc[elem] = kbuild.token_pc[elem]
+                            if (elem not in kbuild.token_pc):
+                                raise NotImplementedError
+                                kbuild.token_pc[elem] = (kbuild.T, ZSolver.T)
+                            kbuild.composite_pc[elem] = kbuild.token_pc[elem]
 
                         if os.path.isfile(unit_name[:-2] + ".c") or os.path.isfile(unit_name[:-2] + ".S"): 
                             compilation_units.add(unit_name)
-                            if store_pcs:
-                                raise NotImplementedError
-                                if (elem not in kbuild.token_pc): kbuild.token_pc[elem] = (kbuild.T, ZSolver.T)
-                                kbuild.unit_pc[elem] = kbuild.token_pc[elem]
+                            if (elem not in kbuild.token_pc): kbuild.token_pc[elem] = (kbuild.T, ZSolver.T)
+                            kbuild.unit_pc[elem] = kbuild.token_pc[elem]
                     else:
                         compilation_units.add(unit_name)
-                        if store_pcs:
-                            if (elem not in kbuild.token_pc):
-                                kbuild.token_pc[elem] = (kbuild.T, ZSolver.T)
-                                
-                            kbuild.unit_pc[elem] = kbuild.token_pc[elem]
+                        if (elem not in kbuild.token_pc):
+                            kbuild.token_pc[elem] = (kbuild.T, ZSolver.T)
+
+                        kbuild.unit_pc[elem] = kbuild.token_pc[elem]
 
                 elif elem.endswith("/"):
                     # scripts/Makefile.lib takes anything that
@@ -1310,11 +1264,10 @@ class Run:
                     if os.path.isdir(new_dir):
                         subdirectories.add(new_dir)
                     
-                    if store_pcs:
-                        if (elem not in kbuild.token_pc):
-                            raise NotImplementedError
-                            kbuild.token_pc[elem] = kbuild.T
-                        kbuild.subdir_pc[elem] = kbuild.token_pc[elem]
+                    if (elem not in kbuild.token_pc):
+                        raise NotImplementedError
+                        kbuild.token_pc[elem] = kbuild.T
+                    kbuild.subdir_pc[elem] = kbuild.token_pc[elem]
 
 
 

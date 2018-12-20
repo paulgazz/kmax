@@ -20,12 +20,6 @@ if __name__ == '__main__':
        action="store_true",
        help="""show symbol table entries""")
     
-    ag('-g',
-       '--get-presence-conds',
-       action="store_true",
-       help="""\
-    get presence conds for each compilation units""")
-    
     ag('-r',
        '--recursive',
        action="store_true",
@@ -61,7 +55,6 @@ if __name__ == '__main__':
         mlog.warn("DEBUG MODE ON. Can be slow! (Use python -O ... for optimization)")
 
     settings.do_table = args.table
-    settings.do_get_presence_conds = args.get_presence_conds
     settings.do_recursive = args.recursive
     settings.do_boolean_configs = args.boolean_configs
 
