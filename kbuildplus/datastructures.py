@@ -97,7 +97,7 @@ class VarEntry(tuple):
             
         ss.append(self.zcond)
             
-        return ", ".join(map(str,ss))
+        return " -- ".join(map(str,ss))
 
     @property
     def condDef(self):

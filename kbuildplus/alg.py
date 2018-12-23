@@ -74,7 +74,6 @@ class  ZSolver:
     
 class  Kbuild:
     def __init__(self):
-        # BDD engine
         self.mgr = pycudd.DdManager()
         self.mgr.SetDefault()
 
@@ -84,13 +83,14 @@ class  Kbuild:
         self.T = self.mgr.One()
         self.F = self.mgr.Zero()
 
-        # Conditional symbol table for variables
-        self.variables = defaultdict(
-            lambda: [VarEntry(
-                None,
-                self.T,
-                ZSolver.T,
-                VarEntry.RECURSIVE)])
+        # condal symbol table for variables
+        self.variables = {}
+        # defaultdict(
+        #    lambda: [VarEntry(
+        #        None,
+        #        self.T,
+        #        ZSolver.T,
+        #        VarEntry.RECURSIVE)])
         # None means the variable is undefined. Variables are
         # recursively-expanded by default, e.g., when += is used on an
         # undefined variable.
@@ -99,13 +99,13 @@ class  Kbuild:
             
         self.undefined_variables = set()
 
-        # token presence conditions
+        # token presence conds
         self.token_pc = {}
 
-        # compilation unit presence conditions
+        # compilation unit presence conds
         self.unit_pc = {}
 
-        # subdir presence conditions
+        # subdir presence conds
         self.subdir_pc = {}
 
         # composite presence conditions
@@ -147,20 +147,20 @@ class  Kbuild:
     def get_var_equiv_set(self, name):
         if name not in self.var_equiv_sets:
             self.var_equiv_sets[name] = set([name])
-        return self.var_equiv_sets[name]            
+        return self.var_equiv_sets[name]
 
-    def printVar(self, name, printCond=None):
-        assert isinstance(name, str) and name, name
+    def getSymbTable(self, printCond=None):
 
-        s = '\n'.join("{}. {}".format(i, v.__str__(printCond))
-                      for i,v in enumerate(self.variables[name]))
-        s = "var: {}:\n{}\n---------".format(name, s)
-        mlog.info(s)
-        
-    def printSymbTable(self, printCond=None):
-        for name in self.variables:
-            self.printVar(name, printCond)
-            
+        f = lambda vs: '\n'.join("{}. {}".format(i + 1, v.__str__(printCond))
+                                 for i, v in enumerate(vs))
+
+        ss = [(name, [v for v in self.variables[name] if v.val])
+              for name in self.variables]
+        ss = ["var: {}:\n{}\n---------".format(name, f(vs))
+              for name, vs in ss if vs]
+        return '\n'.join(ss)
+    
+
     def add_definitions(self, defines):
         if not defines:
             return
@@ -541,7 +541,7 @@ class  Kbuild:
             mlog.error("Unsupported BaseExpansion subtype: {}".format(expansion))
             exit(1)
 
-    def process_conditionalblock(self, block, presence_cond, presence_zcond):
+    def process_conditionblock(self, block, presence_cond, presence_zcond):
         """Find a satisfying configuration for each branch of the
         conditional block."""
         # See if the block has an else branch.  Assumes no "else if".
@@ -726,73 +726,66 @@ class  Kbuild:
             expression="1"
         return expression
 
-    def combine_expansions(self, expansions):
-        before = len(expansions)
-        combined = expansions
-        after = len(combined)
-        return combined
 
-    def add_variable_entry(self, name, presence_condition, presence_zcondition, token, value):
-        """Given a presence condition, the variable's name, its assignment
+    def add_variable_entry(self, name, presence_cond, presence_zcond, token, value):
+        """Given a presence cond, the variable's name, its assignment
         operator, and the definition, update the variable's list of
         configurations to reflect the dry-runs needed to cover all its
         definition."""
+
+        assert value is not None, value
+
+        update_vars = lambda name: \
+                    map(lambda (old_value, old_cond, old_zcond, old_flavor): 
+                            VarEntry(old_value, 
+                                    conj(old_cond, neg(presence_cond)),
+                                    z3.And(old_zcond, z3.Not(presence_zcond)),
+                                    old_flavor), 
+                        self.variables[name])
+
         if token == "=":
             # Recursively-expanded variable defs are expanded at use-time
 
             equivs = self.get_var_equiv_set(name)
             for equiv_name in equivs:
-                # Update all existing definitions' presence conditions
-                self.variables[equiv_name] = \
-                    map(lambda (old_value, old_condition, old_zcondition, old_flavor): 
-                            VarEntry(old_value, 
-                                    conj(old_condition, 
-                                                neg(presence_condition)),
-                                    z3.And(old_zcondition,
-                                           z3.Not(presence_zcondition)),
-                                    old_flavor), 
-                        self.variables[equiv_name])
+                # Update all existing definitions' presence conds
+                if equiv_name in self.variables:
+                    self.variables[equiv_name] = update_vars(equiv_name)
+                else:
+                    self.variables[equiv_name] = []
 
                 # Add complete definition to variable (needed to find variable
                 # expansions at use-time)
                 self.variables[equiv_name].append(
-                    VarEntry(value,
-                             presence_condition, presence_zcondition, VarEntry.RECURSIVE))
-                             
+                    VarEntry(value, presence_cond, presence_zcond, VarEntry.RECURSIVE))
 
-            # TODO: handle reassignment, but does it really matter?  Use
-            # reassignment example from kbuild_examples.tex as a test
-
-            # TODO: if reassignment doesn't matter, trim any definitions
-            # that have a presence condition of FALSE
         elif token == ":=":
             # Simply-expanded self.variables are expanded at define-time
 
             equivs = self.get_var_equiv_set(name)
             for equiv_name in equivs:
-                # Update all existing definitions' presence conditions
+                # Update all existing definitions' presence conds
                 # AFTER getting the new definition, since the new
                 # definition might refer to itself as in
                 # linux-3.0.0/crypto/Makefile
-                old_variables = \
-                    map(lambda (old_value, old_condition, old_zcondition, old_flavor): 
-                            VarEntry(old_value, 
-                                    conj(old_condition, 
-                                                neg(presence_condition)),
-                                    z3.And(old_zcondition,
-                                           z3.Not(presence_zcondition)),
-                                          old_flavor), 
-                        self.variables[equiv_name])
+
+                if equiv_name in self.variables:
+                    old_variables = update_vars(equiv_name)
+                else:
+                    # old_variables= [VarEntry(None, 
+                    #     neg(presence_cond), 
+                    #     z3.Not(presence_zcond), 
+                    #     VarEntry.RECURSIVE)]
+                    old_variables = []
 
                 # Expand and flatten self.variables in the definition and add the
                 # resulting definitions.
-                new_definitions = self.expand_and_flatten(value, presence_condition, presence_zcondition)
-                new_definitions = self.combine_expansions(new_definitions)
+                new_definitions = self.expand_and_flatten(value, presence_cond, presence_zcond)
                 new_variables = []
-                for new_condition, new_zcondition, new_value in new_definitions:
+                for new_cond, new_zcond, new_value in new_definitions:
                     new_variables.append(VarEntry(new_value,
-                                                 new_condition,
-                                                 new_zcondition,
+                                                 new_cond,
+                                                 new_zcond,
                                                  VarEntry.SIMPLE))
 
                 self.variables[equiv_name] = old_variables + new_variables
@@ -809,45 +802,46 @@ class  Kbuild:
             recursively = self.F
             zrecursively = ZSolver.F
 
-            # find conditions for recursively- and simply-expanded variables
-            for entry in self.variables[name]:
-                old_value, old_condition, old_zcondition, old_flavor = entry
-                # TODO: optimization, memoize these
-                if old_flavor == VarEntry.SIMPLE:
-                    simply = disj(simply, old_condition)
-                    zsimply = z3.Or(zsimply, old_zcondition)
-
-                else:
-                    assert old_flavor == VarEntry.RECURSIVE
-                    recursively = disj(recursively, old_condition)
-                    zrecurisvely = z3.Or(zrecursively, old_zcondition)
-
-
-            #new_var_name = self.get_var_equiv(name)
             new_var_name = self.get_var_equiv(name)
 
-            #tvn: TODO: add check for zrecursively
-            if recursively != self.F:
-                self.variables[new_var_name].append(
-                    VarEntry(value,
-                             presence_condition,
-                             presence_zcondition,
-                             VarEntry.RECURSIVE))
+            # find conds for recursively- and simply-expanded variables
+            if name in self.variables:
+                for entry in self.variables[name]:
+                    _, old_cond, old_zcond, old_flavor = entry
+                    # TODO: optimization, memoize these
+                    if old_flavor == VarEntry.SIMPLE:
+                        simply = disj(simply, old_cond)
+                        zsimply = z3.Or(zsimply, old_zcond)
+                    else:
+                        assert old_flavor == VarEntry.RECURSIVE
+                        recursively = disj(recursively, old_cond)
+                        zrecursively = z3.Or(zrecursively, old_zcond)
 
-            #tvn: TODO: add check for zsimply
-            if simply != self.F:
-                new_definitions = self.expand_and_flatten(value, presence_condition,presence_zcondition)
+                #tvn: TODO: add check for zrecursively
+                if recursively != self.F:
+                    if new_var_name not in self.variables:
+                        self.variables[new_var_name] = []
+                    self.variables[new_var_name].append(
+                        VarEntry(value,
+                                presence_cond,
+                                presence_zcond,
+                                VarEntry.RECURSIVE))
+
+                #tvn: TODO: add check for zsimply
+                if simply != self.F:
+                    new_definitions = self.expand_and_flatten(value, presence_cond,presence_zcond)
+                    new_variables = []
+                    for new_cond, new_zcond, new_value in new_definitions:
+                        new_variables.append(VarEntry(
+                            new_value, new_cond, new_zcond, VarEntry.SIMPLE))
+
+                    self.variables[new_var_name] = new_variables
+
+            else:
+                self.variables[new_var_name] = [VarEntry(
+                    value, presence_cond, presence_zcond, VarEntry.RECURSIVE)]       
 
 
-                new_definitions = self.combine_expansions(new_definitions)
-                new_variables = []
-                for new_condition, new_zcondition, new_value in new_definitions:
-                    new_variables.append(VarEntry(
-                        new_value, new_condition, new_zcondition, VarEntry.SIMPLE))
-
-
-
-                self.variables[new_var_name] = new_variables
                     
         elif token == "?=":
             # TODO: if ?= is used on an undefined variable, it's
@@ -860,9 +854,10 @@ class  Kbuild:
 
         equivs = self.get_var_equiv_set(name)
         for equiv_name in equivs:
-            # Trim definitions with a presence condition of FALSE
-            self.variables[equiv_name] = \
-                [ entry for entry in self.variables[equiv_name] if entry.cond != self.F ]
+            # Trim definitions with a presence cond of FALSE
+            if equiv_name in self.variables:
+                self.variables[equiv_name] = \
+                    [v for v in self.variables[equiv_name] if v.cond != self.F]
 
     def process_setvariable(self, setvar, cond, zcond):
         """Find a satisfying set of configurations for variable."""
@@ -935,7 +930,7 @@ class  Kbuild:
         given presence cond."""
         for s in stmts:
             if isinstance(s, parserdata.ConditionBlock):
-                self.process_conditionalblock(s, cond, zcond)
+                self.process_conditionblock(s, cond, zcond)
             elif isinstance(s, parserdata.SetVariable):
                 self.process_setvariable(s, cond, zcond)
             elif (isinstance(s, parserdata.Rule) or
@@ -945,64 +940,58 @@ class  Kbuild:
                 self.process_include(s, cond, zcond)
 
 
-    def split_definitions(self, pending_variable):
+    def split_definitions(self, pending_var):
         """get every whitespace-delimited token in all definitions of the
-        given variable name, expanding any variable invocations first"""
+        given var name, expanding any var invocations first"""
+
+        if pending_var not in self.variables:
+            return []
+
         values = []
-        for idx, entry in enumerate(self.variables[pending_variable]):
-            value, cond, zcond, flavor = entry
-            # Expand any variables used in definitions
-            if value != None:
-                expanded_values = self.repack_singleton(
-                    self.expand_and_flatten(value, cond, zcond))
+        for entry in self.variables[pending_var]:
+            value, cond, zcond, _ = entry
+            # Expand any vars used in definitions
+            assert value is not None, value
 
-                for expanded_cond, expanded_zcond, expanded_value in expanded_values:
-                    if expanded_value != None:
-                        split_expanded_values = expanded_value.split()
-                        values.extend(split_expanded_values)
+            expanded_values = self.repack_singleton(
+                self.expand_and_flatten(value, cond, zcond))
 
-                        composite_unit = "-".join(pending_variable.split('-')[:-1]) + ".o"
-                        if composite_unit in self.token_pc:
-                            for v in split_expanded_values:
-                                tc, tzc = self.token_pc[composite_unit]
-                                composite_cond = conj(expanded_cond, tc)
-                                composite_zcond = z3.And(expanded_zcond, tzc)
+            for expanded_cond, expanded_zcond, expanded_value in expanded_values:
+                if expanded_value != None:
+                    split_expanded_values = expanded_value.split()
+                    values.extend(split_expanded_values)
 
-                                if not v in self.token_pc.keys():
-                                    self.token_pc[v] = self.T, ZSolver.T
+                    composite_unit = "-".join(pending_var.split('-')[:-1]) + ".o"
+                    if composite_unit in self.token_pc:
+                        for v in split_expanded_values:
+                            tc, tzc = self.token_pc[composite_unit]
+                            composite_cond = conj(expanded_cond, tc)
+                            composite_zcond = z3.And(expanded_zcond, tzc)
 
-                                # update nested_cond
-                                tc, tzc = self.token_pc[v]
-                                self.token_pc[v] = (conj(tc, composite_cond),
-                                                      z3.And(tzc, composite_zcond))
+                            if not v in self.token_pc.keys():
+                                self.token_pc[v] = self.T, ZSolver.T
+
+                            # update nested_cond
+                            tc, tzc = self.token_pc[v]
+                            self.token_pc[v] = (conj(tc, composite_cond),
+                                                    z3.And(tzc, composite_zcond))
 
         return values
                 
 
-class Run:
+class Run:    
+
     def run(self, makefiledirs):
-        assert isinstance(makefiledirs, set) and makefiledirs, makefiledirs
+        assert isinstance(makefiledirs, (set, list)) and makefiledirs, makefiledirs
         assert all(os.path.isfile(f) or os.path.isdir(f)
                    for f in makefiledirs), makefiledirs
 
         self.results = Results()
-        
-        kconfigdata = None
-        all_config_var_names = None
-        boolean_config_var_names = None
-        nonboolean_config_var_names = None
-        
-        # if args.config_vars:
-        #     with open(args.config_vars, 'rb') as f:
-        #         kconfigdata = pickle.load(f)
-        #         boolean_config_var_names = [ "CONFIG_" + c for c in kconfigdata.bool_vars ]
-        #         nonboolean_config_var_names = [ "CONFIG_" + c for c in kconfigdata.nonbool_vars ]
-        #         all_config_var_names = [ "CONFIG_" + c for c in kconfigdata.config_vars ]
 
         """Find a covering set of configurations for the given Makefile(s)."""
         
         subdirectories = self.results.subdirectories
-        subdirectories |= makefiledirs
+        subdirectories |= set(makefiledirs)
 
         sdirs = []
         while subdirectories:
@@ -1010,14 +999,14 @@ class Run:
             if settings.do_recursive:
                 subdirectories += sdirs
 
-        for k, s in self.results.__dict__.iteritems():
+        for s in self.results.__dict__.itervalues():
             if not s: continue
             ss = []
             try:
                 ss.extend(("{}. {}: {}, {} ".format(i+1, v,c, z3.simplify(zc))
                                    for i,(v, c, zc) in enumerate(s)))
             except ValueError:
-                ss.append(', '.join(map(str,s)))
+                ss.append(', '.join(map(str, s)))
 
     def extract(self, makefile_path):
         mlog.info("processing makefile: {}".format(makefile_path))
@@ -1162,12 +1151,9 @@ class Run:
         self.check_unexpanded_vars(compilation_units, "compilation unit")
         self.check_unexpanded_vars(subdirectories, "subdirectory")
         self.check_unexpanded_vars(kbuild.variables.keys(), "variable name")
-        # if settings.variable:
-        #     kbuild.printVar(settings.variable, printCond=kbuild.bdd_to_str)
 
         if settings.do_table:
-            kbuild.printSymbTable(printCond=kbuild.bdd_to_str)
-
+            mlog.info(kbuild.getSymbTable(printCond=kbuild.bdd_to_str))
 
         def _f(d, s):
             for name, (cond, zcond) in d.iteritems():

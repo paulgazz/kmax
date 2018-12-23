@@ -956,15 +956,32 @@ class Kbuild:
                     simply = self.F
                     recursively = self.F
                     # find conditions for recursively- and simply-expanded variables
+                    wasin = name in self.variables
+                    
                     for entry in self.variables[name]:
                         old_value, old_condition, old_flavor = entry
+                        print old_value, old_condition, old_flavor
                         # TODO: optimization, memoize these
                         if old_flavor == Flavor.SIMPLE:
+                            print 'gh0', len(self.variables[name])
                             simply = disjunction(simply, old_condition)
                         elif old_flavor == Flavor.RECURSIVE:
+                            print 'gh1', len(self.variables[name])
                             recursively = disjunction(recursively, old_condition)
                         else: fatal("Variable flavor is not defined", flavor)
+
+                    assert not (recursively == self.F and simply == self.F)
+                    assert not (recursively != self.F and simply != self.F)
+                    assert recursively == self.F or simply == self.F
+                    # if len(self.variables[name]) == 1:
+                    #     print recursively, recursively == self.F
+                    if wasin == False:
+                        assert len(self.variables[name]) != 1 or recursively != self.F
+
+                        
                     new_var_name = self.get_var_equiv(name)
+                    
+                    
                     if recursively != self.F:
                         self.variables[new_var_name].append(VariableEntry(value,
                                                                                       presence_condition,

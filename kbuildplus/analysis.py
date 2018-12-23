@@ -13,14 +13,14 @@ mlog = CM.getLogger(__name__, settings.logger_level)
 
 class GeneralAnalysis:
     def __init__(self, path):
-        self.makefiledirs = set([f for f in path
-                                 if os.path.isfile(f) or os.path.isdir(f)])
-        mlog.info("analyzing {} files/dirs".format(len(self.makefiledirs)))
+        self.makefiles = set([f for f in path
+                            if os.path.isfile(f) or os.path.isdir(f)])
+        mlog.info("analyzing {} files/dirs".format(len(self.makefiles)))
 
     def run(self):
         
         myrun = Run()
-        myrun.run(self.makefiledirs)
+        myrun.run(self.makefiles)
         self.results = myrun.results
 
     @property
@@ -175,7 +175,7 @@ class GeneralAnalysis:
         re_unexpanded = re.compile(r'.*\$\(.*\).*')
         files = (self.compilation_units | self.library_units | self.hostprog_units |
                  self.unconfigurable_units | self.extra_targets | self.clean_files)
-        unexpanded_units = set(otoc(f) for f in files if re_unexpanded.match(f))
+        unexpanded_units = set(self.otoc(f) for f in files if re_unexpanded.match(f))
         #remove files with unexpanded var names
         unmatched_units -= unexpanded_units
 
@@ -284,9 +284,13 @@ class GeneralAnalysis:
 
 
 class Tests(GeneralAnalysis):
-    def __init__(self, testdir):
-        assert os.path.isdir(testdir)
-        #for i in ~/Dropbox/git/kmax-dev/tests/kbuild/*; do echo "testing" $i &>> out ; kbuildplus.py -g $i &>> out ; done
+    def __init__(self, topdir):
+        assert os.path.isdir(topdir), topdir
+        self.topdir = os.path.abspath(topdir)
+
+        files =[os.path.join(self.topdir, f) for f in os.listdir(self.topdir)]
+        self.makefiles = sorted(f for f in files if os.path.isfile(f))
+                #for i in ~/Dropbox/git/kmax-dev/tests/kbuild/*; do echo "testing" $i &>> out ; kbuildplus.py -g $i &>> out ; done
     
 
 class CaseStudy(GeneralAnalysis):
@@ -294,11 +298,11 @@ class CaseStudy(GeneralAnalysis):
         assert os.path.isdir(topdir)
         
         self.topdir = os.path.abspath(topdir)
-        self.makefiledirs = set(os.path.join(self.topdir,d) for d in self.subdirs)
-        for d in list(self.makefiledirs):
+        self.makefiles = set(os.path.join(self.topdir,d) for d in self.subdirs)
+        for d in list(self.makefiles):
             if not (os.path.isdir(d) or os.path.isfile(d)):  #dir or makefile
                 mlog.warn('{} not found .. removing'.format(d))
-                self.makefiledirs.remove(d)
+                self.makefiles.remove(d)
 
 class BusyboxCaseStudy(CaseStudy):
     subdirs = set([

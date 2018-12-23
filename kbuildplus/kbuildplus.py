@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-if __name__ == '__main__':
-    
+if __name__ == '__main__':    
+
     import argparse    
     aparser = argparse.ArgumentParser("find interactions from Kbuild Makefile")
     ag = aparser.add_argument
@@ -43,7 +43,6 @@ if __name__ == '__main__':
 
     args = aparser.parse_args()
 
-
     from vcommon import getLogLevel , getLogger
     import settings
     if args.log_level != settings.logger_level and 0 <= args.log_level <= 4:
@@ -73,33 +72,9 @@ if __name__ == '__main__':
         elif case_study == "linux":
             settings.do_boolean_configs = True
             myAnalysis = analysis.LinuxCaseStudy(inp)
+        elif case_study == "tests":
+            myAnalysis = analysis.Tests(inp)
 
     myAnalysis.run()
-    myAnalysis.analyze()
+    #myAnalysis.analyze()
     
-
-            
-
-
-# 663
-# compilation units 1
-# library units 587
-# recon_allunits 588
-# 75
-# scripts 24
-# 51
-# hostprogs 5
-# 46
-# old e2fsprogs dir 0
-# 46
-# unused 16
-# 31
-# not built commented out 2
-# 29
-# examples 7
-# 23
-# 14 set(['archival/libarchive/lzo1x_c.c', 'libbb/pw_encrypt_md5.c', 'libbb/xatonum_template.c', 'networking/nc_bloaty.c', 'sysklogd/logger.c', 'util-linux/fdisk_sgi.c', 'libbb/pw_encrypt_des.c', 'sysklogd/syslogd.c', 'util-linux/fdisk_aix.c', 'coreutils/od_bloaty.c', 'libbb/pw_encrypt_sha.c', 'util-linux/fdisk_sun.c', 'util-linux/fdisk_gpt.c', 'util-linux/fdisk_osf.c'])
-# included c files 21
-# 2
-# set(['klibc-utils/minips.c', 'klibc-utils/run-init.c'])
-
