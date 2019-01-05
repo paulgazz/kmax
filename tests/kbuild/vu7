@@ -1,0 +1,5 @@
+#fs/ext2/Makefile
+obj-$(CONFIG_EXT2_FS) += ext2.o
+
+ext2-y := balloc.o bitmap.o dir.o
+ext2-$(CONFIG_EXT2_FS_XATTR) += xattr.o

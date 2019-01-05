@@ -1,0 +1,6 @@
+obj-m := complex.o
+complex-y := src/complex_main.o
+complex-y += src/hal/hardwareif.o
+
+ccflags-y := -I$(src)/include
+ccflags-y += -I$(src)/src/hal/include
