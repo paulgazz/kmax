@@ -2,7 +2,7 @@
 if __name__ == '__main__':    
 
     import argparse    
-    aparser = argparse.ArgumentParser("find interactions from Kbuild Makefile")
+    aparser = argparse.ArgumentParser("find interactions from Kbuild Makefiles")
     ag = aparser.add_argument
     ag('makefile',
        nargs="*",
@@ -76,5 +76,5 @@ if __name__ == '__main__':
             myAnalysis = analysis.Tests(inp)
 
     myAnalysis.run()
-    #myAnalysis.analyze()
+    myAnalysis.analyze()
     

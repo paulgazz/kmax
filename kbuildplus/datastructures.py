@@ -26,13 +26,6 @@ class CondDef(tuple):
         else:
             return "({}, {}, {})".format(printCond(self.cond), self.zcond, self.mdef)
 
-    @classmethod
-    def mkOne(cls, name, cond, zcond):
-        assert isinstance(name, str) and name, name
-        assert isinstance(cond, pycudd.DdNode), cond
-        assert z3.is_expr(zcond)
-        
-        return cls(cond, zcond, name)
 
 class Multiverse(list):
     def __init__(self, ls=[]):
@@ -43,8 +36,7 @@ class Multiverse(list):
     def __str__(self, printCond=None):
         return "CondDefs([{}])".format(
             ', '.join([p.__str__(printCond) for p in self]))
-
-
+    
     def dedup(self):
         uniqs = set(cd.mdef for cd in self)
         if len(uniqs) == len(self):
@@ -62,15 +54,6 @@ class Multiverse(list):
                          for v, (c, zc)  in cache.iteritems()])
         assert mv
         return mv
-
-    @classmethod
-    def mkOne(cls, name, cond, zcond):
-        assert isinstance(name, str) and name, name
-        assert isinstance(cond, pycudd.DdNode), cond
-        assert z3.is_expr(zcond)
-
-        return cls([CondDef.mkOne(name, cond, zcond)])
-    
 
 class VarEntry(tuple):
     RECURSIVE = "RECURSIVE"
@@ -97,7 +80,7 @@ class VarEntry(tuple):
             
         ss.append(self.zcond)
             
-        return " -- ".join(map(str,ss))
+        return "; ".join(map(str,ss))
 
     @property
     def condDef(self):
@@ -129,7 +112,7 @@ class BoolVar(tuple):
 
 class Results:
     def __init__(self):
-        self.subdirectories = set()
+        self.subdirs = set()
         self.compilation_units = set()
         self.library_units = set()
         self.composites = set()

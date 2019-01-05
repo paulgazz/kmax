@@ -13,7 +13,7 @@ mlog = CM.getLogger(__name__, settings.logger_level)
 
 class GeneralAnalysis:
     def __init__(self, path):
-        self.makefiles = set([f for f in path
+        self.makefiles = set([os.path.abspath(f) for f in path
                             if os.path.isfile(f) or os.path.isdir(f)])
         mlog.info("analyzing {} files/dirs".format(len(self.makefiles)))
 
@@ -67,19 +67,20 @@ class GeneralAnalysis:
 
     @property
     def subdir_pcs(self):
-        assert not self.results.subdir_pcs
         return self.results.subdir_pcs
         
 
     def analyze(self):
+        #print 'world', self.results.subdir_pcs, self.subdir_pcs
+        
         def print_set(s, name):
             if s:
-                mlog.info("{} {}: {}".format(len(s), name, ', '.join(s)))        
+                mlog.info("{} {}: {}".format(len(s), name, ', '.join(s))) 
 
         import time
         st = time.time()
         
-        # find all subdirectories with source in them
+        # find all subdirs with source in them
         import glob
         
         unit_files = (self.compilation_units | self.library_units |
@@ -195,15 +196,15 @@ class GeneralAnalysis:
         #   with open(args.excludes_file, "w") as f:
         #     pickle.dump(excludes, f)
 
-        mlog.info("results:\n{}".format(self.results))
-                                           
-            
+        mlog.info("results01:\n{}".format(self.results))
+
+
         
         #print_set(toplevel_dirs, "toplevel_dirs")  # list of directories started from
-        print_set(all_c_files, "all_c_files")  # all .c files in used and visited subdirectories
+        print_set(all_c_files, "all_c_files")  # all .c files in used and visited subdirs
         print_set(asm_compilation_units, "asm_compilation_units")  # compilation units with a .S file
-        #print_set(subdirectories, "subdirectory")  # subdirectory visited by kbuild
-        #print_set(used_subdirectory, "used_subdirectory")  # subdirectories containing compilation units
+        #print_set(subdirs, "subdirectory")  # subdirectory visited by kbuild
+        #print_set(used_subdirectory, "used_subdirectory")  # subdirs containing compilation units
         print_set(self.compilation_units, "compilation_units")  # compilation units referenced by kbuild
         print_set(self.composites, "composites")  # compilation units that are composites
         print_set(self.library_units, "library_units")  # library units referenced by kbuild
@@ -224,7 +225,7 @@ class GeneralAnalysis:
         #print_set(unexpanded_hostprog_units, "unexpanded_hostprog_units")
         #print_set(unexpanded_unconfigurable_units, "unexpanded_unconfigurable_units")
         #print_set(unexpanded_extra_targets, "unexpanded_extra_targets")
-        #print_set(unexpanded_subdirectories, "unexpanded_subdirectories")
+        #print_set(unexpanded_subdirs, "unexpanded_subdirs")
         #print_set(broken, "broken")
         mlog.info("time: {}".format(time.time() - st))
 
@@ -457,7 +458,7 @@ class BusyboxCaseStudy(CaseStudy):
         # of the build.
 
         #print some info
-        mlog.info("results:\n{}".format(self.results))
+        mlog.info("results00:\n{}".format(self.results))
         
         d = [("all c files", len_all_c_files),
              ("units", len(unit_files)),

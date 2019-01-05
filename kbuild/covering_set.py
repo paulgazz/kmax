@@ -34,13 +34,6 @@ from pymake import parser, parserdata, data, functions
 from collections import defaultdict, namedtuple
 from cStringIO import StringIO
 
-import z3
-import pdb
-import vcommon as CM
-trace = pdb.set_trace
-
-mlog = None
-
 argparser = argparse.ArgumentParser(
     formatter_class=argparse.RawDescriptionHelpFormatter,
     description="""\
@@ -53,13 +46,6 @@ given Kbuild Makefile.
 argparser.add_argument('makefile',
                        type=str,
                        help="""the name of a Linux Makefile or subdir""")
-
-argparser.add_argument("--logger_level", "-logger_level", "-log", "--log",
-                       help="set logger info",
-                       type=int, 
-                       choices=range(5),
-                       default = 3)    
-
 argparser.add_argument('-t',
                        '--table',
                        action="store_true",
@@ -120,13 +106,6 @@ argparser.add_argument('-V',
                        help="""\
 Increase the debugging output""")
 args = argparser.parse_args()
-
-
-logger_level = CM.getLogLevel(args.logger_level)
-mlog = CM.getLogger(__name__, logger_level)
-
-# if __debug__:
-#     mlog.warn("DEBUG MODE ON. Can be slow! (Use python -O ... for optimization)")
 
 debug_level = 1 # default to 1, can set to 0 for no debugging output
 if (args.verbose):
@@ -655,10 +634,8 @@ class Kbuild:
         if isinstance(expansion, data.StringExpansion):
             return expansion.s
         elif isinstance(expansion, data.Expansion):
-            mv = self.hoist([ self.process_element(element, isfunc)
-                                for element, isfunc in expansion ])
-            return mv
-        
+            return self.hoist([ self.process_element(element, isfunc)
+                           for element, isfunc in expansion ])
         else: fatal("Unsupported BaseExpansion subtype.", expansion)
 
     def process_conditionalblock(self, block, presence_condition):
@@ -690,7 +667,6 @@ class Kbuild:
         elif isinstance(condition, parserdata.EqCondition):  # ifeq
             exp1 = self.repack_singleton(self.process_expansion(condition.exp1))
             exp2 = self.repack_singleton(self.process_expansion(condition.exp2))
-
 
             # Hoist multiple expansions around equality operation
             hoisted_condition = self.F
@@ -956,32 +932,15 @@ class Kbuild:
                     simply = self.F
                     recursively = self.F
                     # find conditions for recursively- and simply-expanded variables
-                    wasin = name in self.variables
-                    
                     for entry in self.variables[name]:
                         old_value, old_condition, old_flavor = entry
-                        print old_value, old_condition, old_flavor
                         # TODO: optimization, memoize these
                         if old_flavor == Flavor.SIMPLE:
-                            print 'gh0', len(self.variables[name])
                             simply = disjunction(simply, old_condition)
                         elif old_flavor == Flavor.RECURSIVE:
-                            print 'gh1', len(self.variables[name])
                             recursively = disjunction(recursively, old_condition)
                         else: fatal("Variable flavor is not defined", flavor)
-
-                    assert not (recursively == self.F and simply == self.F)
-                    assert not (recursively != self.F and simply != self.F)
-                    assert recursively == self.F or simply == self.F
-                    # if len(self.variables[name]) == 1:
-                    #     print recursively, recursively == self.F
-                    if wasin == False:
-                        assert len(self.variables[name]) != 1 or recursively != self.F
-
-                        
                     new_var_name = self.get_var_equiv(name)
-                    
-                    
                     if recursively != self.F:
                         self.variables[new_var_name].append(VariableEntry(value,
                                                                                       presence_condition,
@@ -1216,7 +1175,6 @@ def collect_units(kbuild,            # current kbuild instance
                     compilation_units.add(unit_name)
                     if store_pcs:
                         if (elem not in kbuild.token_pc): kbuild.token_pc[elem] = kbuild.T
-
                         kbuild.unit_pc[elem] = kbuild.token_pc[elem]
             elif elem.endswith("/"):
                 # scripts/Makefile.lib takes anything that
@@ -1225,7 +1183,6 @@ def collect_units(kbuild,            # current kbuild instance
                 subdirectories.add(unit_name)
                 if store_pcs:
                     if (elem not in kbuild.token_pc): kbuild.token_pc[elem] = kbuild.T
-
                     kbuild.subdir_pc[elem] = kbuild.token_pc[elem]
 
 def extract(makefile_path,
