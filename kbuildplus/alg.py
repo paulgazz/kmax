@@ -148,10 +148,13 @@ class Kbuild:
               for name, vs in ss if vs]
         return '\n'.join(ss)
     
-    def get_presence_conditions(self):
-        names = self.get_var_equiv_set("obj-y")
-        pcs = {}
-        for name in names:
+    def get_presence_conditions(self, vars, pcs, cond, zcond):
+        names = set()
+        for var in vars:
+            if var in self.variables.keys():
+                names = names.union(self.get_var_equiv_set(var))
+        while len(names) > 0:
+            name = names.pop()
             # print name
             # print self.variables[name]
             for value, bdd_condition, z3_condition, flavor in self.variables[name]:
@@ -162,11 +165,22 @@ class Kbuild:
                 # print "  FLAVOR:", flavor
                 tokens = value.split()
                 for token in tokens:
+                    and_cond = conj(cond, bdd_condition)
+                    and_zcond = z3.And(zcond, z3_condition)
                     if token not in pcs.keys():
-                        pcs[token] = z3_condition
+                        pcs[token] = and_zcond
                     else:
-                        pcs[token] = z3.Or(pcs[token], z3_condition)
-        return pcs
+                        pcs[token] = z3.Or(pcs[token], and_zcond)
+                    if token.endswith(".o"): # and unit_name not in compilation_units:
+                        if (token[:-2] + "-objs") in self.variables or \
+                            (token[:-2] + "-y") in self.variables:
+                            # scripts/Makefile.build use the -objs and -y
+                            # suffix to define composites $($(subst
+                            # $(obj)/,,$(@:.o=-objs))) $($(subst
+                            # $(obj)/,,$(@:.o=-y)))), $^)
+                            composite_variable1 = token[:-2] + "-objs"
+                            composite_variable2 = token[:-2] + "-y"
+                            self.get_presence_conditions([ composite_variable1, composite_variable2 ], pcs, and_cond, and_zcond)
 
     def add_definitions(self, defines):
         if not defines:
@@ -1135,7 +1149,8 @@ class Run:
         if settings.do_table:
             mlog.info(kbuild.getSymbTable(printCond=kbuild.bdd_to_str))
 
-        self.results.presence_conditions = kbuild.get_presence_conditions()
+        self.results.presence_conditions = {}
+        kbuild.get_presence_conditions([ "obj-y", "obj-m", "lib-y", "lib-m" ], self.results.presence_conditions, kbuild.T, ZSolver.T)
 
         def _f(d, s):
             for name, (cond, zcond) in d.iteritems():
