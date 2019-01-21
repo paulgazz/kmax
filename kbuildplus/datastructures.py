@@ -124,11 +124,14 @@ class Results:
         self.c_file_targets = set()
         self.unit_pcs = set()
         self.subdir_pcs = set()
+        self.presence_conditions = set()
 
     def __str__(self, details=False):
         f = lambda k, s: "{}: {}".format(k, ', '.join(s) if details else len(s))
         delim = '\n' if details else ', '
         ss = delim.join(f(k, s) for k, s in self.__dict__.iteritems() if s)
+        if self.presence_conditions:
+            ss += '\n{} presence conditions: \n{}'.format(len(self.presence_conditions), self.z3_str(self.presence_conditions))
         if self.unit_pcs:
             ss += '\n{} unit pcs: \n{}'.format(len(self.unit_pcs), self.pc_str(self.unit_pcs))
         if self.subdir_pcs:
@@ -138,6 +141,10 @@ class Results:
     def pc_str(self, s):
         return '\n'.join("{}. {}: {}, {}".format(i, v, f, z3.simplify(g))
                          for i, (v, f, g) in enumerate(s))
+    
+    def z3_str(self, s):
+        return '\n'.join("{}: {}".format(i, z3.simplify(s[i]))
+                         for i in s.keys())
 
         
         

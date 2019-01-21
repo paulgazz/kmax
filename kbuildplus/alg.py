@@ -148,6 +148,25 @@ class Kbuild:
               for name, vs in ss if vs]
         return '\n'.join(ss)
     
+    def get_presence_conditions(self):
+        names = self.get_var_equiv_set("obj-y")
+        pcs = {}
+        for name in names:
+            # print name
+            # print self.variables[name]
+            for value, bdd_condition, z3_condition, flavor in self.variables[name]:
+                # print "  ---"
+                # print "  VALUE:", value
+                # print "  BDD:", self.bdd_to_str(bdd_condition)
+                # print "  Z3:", z3_condition
+                # print "  FLAVOR:", flavor
+                tokens = value.split()
+                for token in tokens:
+                    if token not in pcs.keys():
+                        pcs[token] = z3_condition
+                    else:
+                        pcs[token] = z3.Or(pcs[token], z3_condition)
+        return pcs
 
     def add_definitions(self, defines):
         if not defines:
@@ -168,7 +187,7 @@ class Kbuild:
             return neg(bdd), zneg(zbdd)
 
     def process_variableref(self, name):
-        if name == 'BITS':
+        if name not in self.variables and name == 'BITS':
             # TODO get real entry from top-level makefiles
             bv32 = self.get_bvars("BITS=32")
             bv64 = self.get_bvars("BITS=64")
@@ -523,6 +542,7 @@ class Kbuild:
                   for element, isfunc in expansion]
             mv = self.hoist(rs)
             assert isinstance(mv, Multiverse), mv
+            # print("process_expansion", mv)
             return mv
         else:
             mlog.error("Unsupported BaseExpansion subtype: {}".format(expansion))
@@ -635,9 +655,10 @@ class Kbuild:
             pass
 
         expanded = self.process_expansion(e)
+        # print("expanded", expanded)
         if isinstance(expanded, str):
             return Multiverse([CondDef(cond, zcond, expanded)])
-        else:
+        else: # must be a multiverse
             return expanded
 
     def join_values(self, value_list, delim=""):
@@ -718,6 +739,8 @@ class Kbuild:
         operator, and the definition, update the variable's list of
         configurations to reflect the dry-runs needed to cover all its
         definition."""
+
+        # print("add_var", name, z3.simplify(presence_zcond), token, value)
 
         assert value is not None, value
 
@@ -803,6 +826,8 @@ class Kbuild:
                         recursively = disj(recursively, old_cond)
                         zrecursively = z3.Or(zrecursively, old_zcond)
 
+                # print("+=", name, z3.simplify(zsimply), z3.simplify(zrecursively))
+
                 #tvn: TODO: add check for zrecursively
                 if recursively != self.F:
                     if new_var_name not in self.variables:
@@ -816,12 +841,17 @@ class Kbuild:
                 #tvn: TODO: add check for zsimply
                 if simply != self.F:
                     new_definitions = self.expand_and_flatten(value, presence_cond,presence_zcond)
+                    # print("simply", new_definitions)
                     new_variables = []
                     for new_cond, new_zcond, new_value in new_definitions:
-                        new_variables.append(VarEntry(
-                            new_value, new_cond, new_zcond, VarEntry.SIMPLE))
+                        and_zcond = z3.simplify(z3.And(new_zcond, presence_zcond))
+                        if not z3.is_false(and_zcond):
+                            new_variables.append(VarEntry(
+                                new_value, conj(new_cond, presence_cond), and_zcond, VarEntry.SIMPLE))
 
                     self.variables[new_var_name] = new_variables
+                    # print("simply_done", new_variables)
+
 
             else:
                 self.variables[new_var_name] = [VarEntry(
@@ -1104,6 +1134,8 @@ class Run:
 
         if settings.do_table:
             mlog.info(kbuild.getSymbTable(printCond=kbuild.bdd_to_str))
+
+        self.results.presence_conditions = kbuild.get_presence_conditions()
 
         def _f(d, s):
             for name, (cond, zcond) in d.iteritems():
