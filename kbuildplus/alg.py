@@ -587,9 +587,12 @@ class Kbuild:
                 hoisted_cond = reduce(disj, [cd.cond for cd in cds])
                 hoisted_zcond = z3.Or([cd.zcond for cd in cds])
 
-                first_branch_cond = conj(presence_cond, hoisted_cond)
-                first_branch_zcond = z3.And(presence_zcond, hoisted_zcond)
-                                              
+                first_branch_cond = hoisted_cond
+                first_branch_zcond = hoisted_zcond
+
+            first_branch_cond = conj(presence_cond, first_branch_cond)
+            first_branch_zcond = z3.And(presence_zcond, first_branch_zcond)
+
             else_branch_cond = neg(first_branch_cond)
             else_branch_zcond = z3.Not(first_branch_zcond)
 
@@ -647,6 +650,7 @@ class Kbuild:
         
         # Enter first branch
         # trace()
+        # print("process_conditionblock", z3.simplify(first_branch_zcond))
         self.process_stmts(stmts, first_branch_cond, first_branch_zcond)
 
         if not has_else:
