@@ -122,8 +122,8 @@ class Results:
         self.extra_targets = set()
         self.clean_files = set()
         self.c_file_targets = set()
-        self.unit_pcs = set()
-        self.subdir_pcs = set()
+        # self.unit_pcs = set()
+        # self.subdir_pcs = set()
         self.presence_conditions = set()
 
     def __str__(self, details=False):
@@ -132,10 +132,10 @@ class Results:
         ss = delim.join(f(k, s) for k, s in self.__dict__.iteritems() if s)
         if self.presence_conditions:
             ss += '\n{} presence conditions: \n{}'.format(len(self.presence_conditions), self.z3_str(self.presence_conditions))
-        if self.unit_pcs:
-            ss += '\n{} unit pcs: \n{}'.format(len(self.unit_pcs), self.pc_str(self.unit_pcs))
-        if self.subdir_pcs:
-            ss += '\n{} subdir pcs: \n{}'.format(len(self.subdir_pcs), self.pc_str(self.subdir_pcs))
+        # if self.unit_pcs:
+        #     ss += '\n{} unit pcs: \n{}'.format(len(self.unit_pcs), self.pc_str(self.unit_pcs))
+        # if self.subdir_pcs:
+        #     ss += '\n{} subdir pcs: \n{}'.format(len(self.subdir_pcs), self.pc_str(self.subdir_pcs))
         return ss
     
     def pc_str(self, s):

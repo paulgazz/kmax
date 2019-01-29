@@ -79,10 +79,10 @@ class Kbuild:
         self.variables = {}
         self.bvars = {}
         self.undefined_variables = set()
-        self.token_pc = {} # token presence conds, e.g., 'fork.o': True
-        self.unit_pc = {} # compilation unit presence conds
-        self.subdir_pc = {} # subdir presence conds
-        self.composite_pc = {} # composite presence conditions
+        # self.token_pc = {} # token presence conds, e.g., 'fork.o': True
+        # self.unit_pc = {} # compilation unit presence conds
+        # self.subdir_pc = {} # subdir presence conds
+        # self.composite_pc = {} # composite presence conditions
         # variable equivalence classes for optimized append
         self.var_equiv_sets = {}
 
@@ -904,34 +904,34 @@ class Kbuild:
         token = setvar.token
         value = setvar.value
 
-        def f(s, cond, zcond):
-            if not (s.endswith("-y") or s.endswith("-m")):
-                return
+        # def f(s, cond, zcond):
+        #     if not (s.endswith("-y") or s.endswith("-m")):
+        #         return
 
-            vs = [v for v in value.split()
-                  if v.endswith(".o") or v.endswith("/")]
+        #     vs = [v for v in value.split()
+        #           if v.endswith(".o") or v.endswith("/")]
 
-            for v in vs:
-                if v not in self.token_pc:
-                    self.token_pc[v] = (self.T, ZSolver.T)
+        #     for v in vs:
+        #         if v not in self.token_pc:
+        #             self.token_pc[v] = (self.T, ZSolver.T)
 
-                # update nested_cond
-                tc, tzc = self.token_pc[v]
-                self.token_pc[v] = (conj(tc, cond), zconj(tzc, zcond))
+        #         # update nested_cond
+        #         tc, tzc = self.token_pc[v]
+        #         self.token_pc[v] = (conj(tc, cond), zconj(tzc, zcond))
                 
-                if s not in set(["obj-y", "obj-m", "lib-y", "lib-m"]):
-                    continue
+        #         if s not in set(["obj-y", "obj-m", "lib-y", "lib-m"]):
+        #             continue
                 
-                if v.endswith(".o"):
-                    if v in self.unit_pc:
-                        uc, uzc = self.unit_pc[v]
-                        tc, tzc = self.token_pc[v]
-                        self.unit_pc[v] = (disj(uc, tc), zdisj(uzc, tzc))
-                    else:
-                        self.unit_pc[v] = self.token_pc[v]
-                elif v.endswith("/"):
-                    assert v not in self.subdir_pc, (v, self.subdir_pc)
-                    self.subdir_pc[v] = self.token_pc[v]
+        #         if v.endswith(".o"):
+        #             if v in self.unit_pc:
+        #                 uc, uzc = self.unit_pc[v]
+        #                 tc, tzc = self.token_pc[v]
+        #                 self.unit_pc[v] = (disj(uc, tc), zdisj(uzc, tzc))
+        #             else:
+        #                 self.unit_pc[v] = self.token_pc[v]
+        #         elif v.endswith("/"):
+        #             assert v not in self.subdir_pc, (v, self.subdir_pc)
+        #             self.subdir_pc[v] = self.token_pc[v]
                 
 
         if isinstance(name, str):
@@ -983,22 +983,22 @@ class Kbuild:
                 split_expanded_values = expanded_value.split()
                 values.extend(split_expanded_values)
 
-                composite_unit = "-".join(var.split('-')[:-1]) + ".o"
-                if composite_unit not in self.token_pc:
-                    continue
+                # composite_unit = "-".join(var.split('-')[:-1]) + ".o"
+                # if composite_unit not in self.token_pc:
+                #     continue
                 
-                for v in split_expanded_values:
-                    tc, tzc = self.token_pc[composite_unit]
-                    composite_cond = conj(expanded_cond, tc)
-                    composite_zcond = zconj(expanded_zcond, tzc)
+                # for v in split_expanded_values:
+                #     tc, tzc = self.token_pc[composite_unit]
+                #     composite_cond = conj(expanded_cond, tc)
+                #     composite_zcond = zconj(expanded_zcond, tzc)
 
-                    if not v in self.token_pc.keys():
-                        self.token_pc[v] = self.T, ZSolver.T
+                #     if not v in self.token_pc.keys():
+                #         self.token_pc[v] = self.T, ZSolver.T
 
-                    # update nested_cond
-                    tc, tzc = self.token_pc[v]
-                    self.token_pc[v] = (conj(tc, composite_cond),
-                                        zconj(tzc, composite_zcond))
+                #     # update nested_cond
+                #     tc, tzc = self.token_pc[v]
+                #     self.token_pc[v] = (conj(tc, composite_cond),
+                #                         zconj(tzc, composite_zcond))
 
         return values
                 
@@ -1043,8 +1043,8 @@ class Run:
         hostprog_composites = self.results.hostprog_composites
         hostprog_units = self.results.hostprog_units
         unconfigurable_units = self.results.unconfigurable_units
-        unit_pcs = self.results.unit_pcs
-        subdir_pcs = self.results.subdir_pcs
+        # unit_pcs = self.results.unit_pcs
+        # subdir_pcs = self.results.subdir_pcs
         clean_files = self.results.clean_files
 
         pending_vars = set(
@@ -1247,21 +1247,21 @@ class Run:
                     composites.add(unit_name)
                     pending_vars.update(kbuild.get_var_equiv_set(composite_variable1))
                     pending_vars.update(kbuild.get_var_equiv_set(composite_variable2))
-                    if (elem not in kbuild.token_pc):
-                        raise NotImplementedError
-                        kbuild.token_pc[elem] = (kbuild.T, ZSolver.T)
-                    kbuild.composite_pc[elem] = kbuild.token_pc[elem]
+                    # if (elem not in kbuild.token_pc):
+                    #     raise NotImplementedError
+                    #     kbuild.token_pc[elem] = (kbuild.T, ZSolver.T)
+                    # kbuild.composite_pc[elem] = kbuild.token_pc[elem]
 
                 if os.path.isfile(unit_name[:-2] + ".c") or os.path.isfile(unit_name[:-2] + ".S"): 
                     compilation_units.add(unit_name)
-                    if (elem not in kbuild.token_pc): 
-                        kbuild.token_pc[elem] = (kbuild.T, ZSolver.T)
-                    kbuild.unit_pc[elem] = kbuild.token_pc[elem]
+                    # if (elem not in kbuild.token_pc): 
+                    #     kbuild.token_pc[elem] = (kbuild.T, ZSolver.T)
+                    # kbuild.unit_pc[elem] = kbuild.token_pc[elem]
             else:
                 compilation_units.add(unit_name)
-                if (elem not in kbuild.token_pc):
-                    kbuild.token_pc[elem] = (kbuild.T, ZSolver.T)
-                kbuild.unit_pc[elem] = kbuild.token_pc[elem]
+                # if (elem not in kbuild.token_pc):
+                #     kbuild.token_pc[elem] = (kbuild.T, ZSolver.T)
+                # kbuild.unit_pc[elem] = kbuild.token_pc[elem]
 
         elif elem.endswith("/"):
             # scripts/Makefile.lib takes anything that
@@ -1274,9 +1274,9 @@ class Run:
             if os.path.isdir(new_dir):
                 subdirs.add(new_dir)
 
-            if elem not in kbuild.token_pc:
-                kbuild.token_pc[elem] = kbuild.T
-            kbuild.subdir_pc[elem] = kbuild.token_pc[elem]
+            # if elem not in kbuild.token_pc:
+            #     kbuild.token_pc[elem] = kbuild.T
+            # kbuild.subdir_pc[elem] = kbuild.token_pc[elem]
     
     @classmethod
     def check_unexpanded_vars(cls, l, desc):

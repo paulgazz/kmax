@@ -61,13 +61,13 @@ class GeneralAnalysis:
         assert not self.results.c_file_targets, self.results.c_file_targets
         return frozenset(self.results.c_file_targets)
 
-    @property
-    def unit_pcs(self):
-        return self.results.unit_pcs
+    # @property
+    # def unit_pcs(self):
+    #     return self.results.unit_pcs
 
-    @property
-    def subdir_pcs(self):
-        return self.results.subdir_pcs
+    # @property
+    # def subdir_pcs(self):
+    #     return self.results.subdir_pcs
         
 
     def analyze(self):
