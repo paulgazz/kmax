@@ -935,13 +935,13 @@ class Kbuild:
                 
 
         if isinstance(name, str):
-            f(name, cond, zcond)            
+            # f(name, cond, zcond)  # remove because this method for presence conditions is obsolete
             self.add_var(name, cond, zcond, token, value)
         else:
             for local_cond, local_zcond, expanded_name in name:
                 nested_cond = conj(local_cond, cond)
                 nested_zcond = z3.And(local_zcond, zcond)
-                f(expanded_name, nested_cond, nested_zcond)
+                # f(expanded_name, nested_cond, nested_zcond)  # remove because this method for presence conditions is obsolete
                 self.add_var(expanded_name, nested_cond, nested_zcond, token, value)
 
     def process_rule(self, rule, cond, zcond):
@@ -1156,12 +1156,13 @@ class Run:
         self.results.presence_conditions = {}
         kbuild.get_presence_conditions([ "obj-y", "obj-m", "lib-y", "lib-m" ], self.results.presence_conditions, kbuild.T, ZSolver.T)
 
-        def _f(d, s):
-            for name, (cond, zcond) in d.iteritems():
-                s.add((os.path.normpath(os.path.join(path, name)), kbuild.bdd_to_str(cond), zcond))
+        # removed because this method for getting presence conditions is obsolete
+        # def _f(d, s):
+        #     for name, (cond, zcond) in d.iteritems():
+        #         s.add((os.path.normpath(os.path.join(path, name)), kbuild.bdd_to_str(cond), zcond))
 
-        _f(kbuild.unit_pc, unit_pcs)
-        _f(kbuild.subdir_pc, subdir_pcs)
+        # _f(kbuild.unit_pc, unit_pcs)
+        # _f(kbuild.subdir_pc, subdir_pcs)
 
         #clean up  
         _pycudd.delete_DdManager(kbuild.mgr)
