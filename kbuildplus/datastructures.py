@@ -124,7 +124,7 @@ class Results:
         self.c_file_targets = set()
         # self.unit_pcs = set()
         # self.subdir_pcs = set()
-        self.presence_conditions = set()
+        self.presence_conditions = {}
 
     def __str__(self, details=False):
         f = lambda k, s: "{}: {}".format(k, ', '.join(s) if details else len(s))

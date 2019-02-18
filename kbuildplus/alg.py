@@ -1153,8 +1153,17 @@ class Run:
         if settings.do_table:
             mlog.info(kbuild.getSymbTable(printCond=kbuild.bdd_to_str))
 
-        self.results.presence_conditions = {}
-        kbuild.get_presence_conditions([ "obj-y", "obj-m", "lib-y", "lib-m" ], self.results.presence_conditions, kbuild.T, ZSolver.T)
+        presence_conditions = {}
+        kbuild.get_presence_conditions([ "obj-y", "obj-m", "lib-y", "lib-m" ], presence_conditions, kbuild.T, ZSolver.T)
+        for token in presence_conditions:
+            filename = os.path.join(path, token)
+            # print "FILENAME", filename
+            if filename not in self.results.presence_conditions.keys():
+                self.results.presence_conditions[filename] = presence_conditions[token]
+            else:
+                self.results.presence_conditions[filename] = z3.Or(self.results.presence_conditions[filename], presence_conditions[token])
+
+        # print self.results.presence_conditions
 
         # removed because this method for getting presence conditions is obsolete
         # def _f(d, s):
