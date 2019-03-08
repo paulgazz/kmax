@@ -799,15 +799,17 @@ class Kbuild:
                 if equiv_name in self.variables:
                     old_variables = update_vars(equiv_name)
                 else:
-                    # old_variables= [VarEntry(None, 
-                    #     neg(presence_cond), 
-                    #     z3.Not(presence_zcond), 
-                    #     VarEntry.RECURSIVE)]
-                    old_variables = []
+                    old_variables= [VarEntry("", 
+                        neg(presence_cond), 
+                        z3.Not(presence_zcond), 
+                        VarEntry.RECURSIVE)]
+                    # old_variables = []
 
                 # Expand and flatten self.variables in the definition and add the
                 # resulting definitions.
                 new_definitions = self.expand_and_flatten(value, presence_cond, presence_zcond)
+                # print equiv_name
+                # print new_definitions
                 new_variables = []
                 for new_cond, new_zcond, new_value in new_definitions:
                     new_variables.append(VarEntry(new_value, 
