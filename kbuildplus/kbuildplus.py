@@ -69,12 +69,14 @@ if __name__ == '__main__':
         if case_study == "busybox":
             settings.do_boolean_configs = True
             myAnalysis = analysis.BusyboxCaseStudy(inp)
+            settings.do_recursive = True
         elif case_study == "linux":
             settings.do_boolean_configs = True
+            inp = args.makefile
             myAnalysis = analysis.LinuxCaseStudy(inp)
+            settings.do_recursive = False
         elif case_study == "tests":
             myAnalysis = analysis.Tests(inp)
 
     myAnalysis.run()
     myAnalysis.analyze()
-    
