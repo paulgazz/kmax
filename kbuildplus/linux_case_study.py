@@ -72,11 +72,11 @@ argparser.add_argument('makefile',
                        nargs="*",
                        type=str,
                        help="""the name of a Linux Makefile or subdir""")
-# argparser.add_argument('-D',
-#                        '--define',
-#                        action='append',
-#                        help="""\
-# define a make variable""")
+argparser.add_argument('-D',
+                       '--define',
+                       action='append',
+                       help="""\
+define a make variable""")
 argparser.add_argument('-x',
                        '--excludes-file',
                        help="""\
@@ -87,11 +87,11 @@ argparser.add_argument('-c',
                        action="store_true",
                        help="""\
 find corresponding .c files for the compilation units""")
-# argparser.add_argument('-C',
-#                        '--config-vars',
-#                        type=str,
-#                        help="""the name of a KConfigData file containing \
-# configuration variable data""")
+argparser.add_argument('-C',
+                       '--config-vars',
+                       type=str,
+                       help="""the name of a KConfigData file containing \
+configuration variable data""")
 argparser.add_argument('--no-aggregation',
                        action="store_true",
                        help="""\
@@ -354,6 +354,7 @@ for line in out.split("\n"):
         included = m.group(0)[1:-1]
         included = os.path.join(os.path.dirname(infile), included)
         included = os.path.relpath(os.path.realpath(included))
+        included = os.path.abspath(included)  # added to do abs paths
         included_c_files.add(included)
 
 # only need the files in the current source subtree
@@ -445,6 +446,7 @@ print_set(asm_compilation_units, "asm_compilation_units")  # compilation units w
 print_set(subdirectories, "subdirectory")  # subdirectory visited by kbuild
 print_set(used_subdirectory, "used_subdirectory")  # subdirectories containing compilation units
 print_set(compilation_units, "compilation_units")  # compilation units referenced by kbuild
+print_set(["{} {}".format(x, y.replace('\n', '').replace(' ', '')) for x, y in presence_conditions], "presence_conditions") # presence conditions for the compilation units and subdirectories
 print_set(composites, "composites")  # compilation units that are composites
 print_set(library_units, "library_units")  # library units referenced by kbuild
 print_set(hostprog_units, "hostprog_units")
