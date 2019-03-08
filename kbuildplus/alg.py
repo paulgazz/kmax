@@ -1019,7 +1019,7 @@ class Run:
             mlog.info("processing makefile: {}".format(makefile))            
             subdirs_ = self.extract(makefile)
             if settings.do_recursive:
-                subdirs += subdirs_
+                subdirs = subdirs.union(subdirs_)
 
     def extract(self, path):
         makefile = self.get_makefile(path)
@@ -1036,7 +1036,7 @@ class Run:
 
         kbuild.process_stmts(stmts, kbuild.T, ZSolver.T)
 
-        subdirs = set()
+        subdirs = self.results.subdirs
         compilation_units = self.results.compilation_units
         composites = self.results.composites
         library_units = self.results.library_units
