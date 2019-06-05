@@ -71,10 +71,12 @@ class GeneralAnalysis:
     @property
     def presence_conditions(self):
         t = z3.Tactic('ctx-solver-simplify')
+        tseitin = z3.Tactic('tseitin-cnf')
         presence_conditions = []
         for path in self.results.presence_conditions.keys():
             # presence_conditions.append((path, "{}".format(z3.simplify(self.results.presence_conditions[path]))))
             presence_conditions.append((path, "{}".format(t(z3.simplify(self.results.presence_conditions[path])).as_expr())))
+            # presence_conditions.append((path, "{}".format(tseitin(t(z3.simplify(self.results.presence_conditions[path]))).as_expr())))
         return frozenset(presence_conditions)
 
     # @property

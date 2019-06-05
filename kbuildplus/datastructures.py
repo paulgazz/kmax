@@ -141,10 +141,65 @@ class Results:
     def pc_str(self, s):
         return '\n'.join("{}. {}: {}, {}".format(i, v, f, z3.simplify(g))
                          for i, (v, f, g) in enumerate(s))
+
+    def split_nested(self, s):
+        # assume we've come in with "CONFIG_A)", i.e., no beginning
+        # top-level lparen, but the matching rparen for it, because we
+        # split on it in to_exp_step
+        depth = 1
+        operands = []
+        operand = ""
+        for c in s:
+            if c=='(':
+                depth += 1
+                
+            if c==')':
+                depth -= 1
+
+            if c==',' and depth==1 or c==')' and depth==0:
+                operands.append(operand)
+                # print operand
+                operand = ""
+            else:
+                operand += c
+        assert depth == 0  # we started without the top-level lparen, but with the top-level rparen, so we started on depth 1 and should exit on depth 0
+        return operands
+    
+    def to_exp_step(self, s):
+        # print s
+        if s.startswith("And") or s.startswith("Or") or s.startswith("Not"):
+            (opname, operands) = s.split('(', 1)
+            operands = self.split_nested(operands)
+            operands = [ self.to_exp_step(operand) for operand in operands ]
+            # print opname, operands
+            new_s = ""
+            if opname=="And":
+                new_s = "(" + " && ".join(operands) + ")"
+            elif opname=="Or":
+                new_s = "(" + " || ".join(operands) + ")"
+            elif opname=="Not":
+                assert len(operands) == 1
+                new_s = "(! " + operands[0] + ")"
+            print "new_s", new_s
+            return new_s
+        if s=="True":
+            return "1"
+        else:
+            return s
+    
+    def to_exp(self, s):
+        s = str(s).replace('\n', '').replace(' ', '')
+        
+        return self.to_exp_step(s)
     
     def z3_str(self, s):
-        return '\n'.join("{}: {}".format(i, z3.simplify(s[i]))
+        # print self.to_exp("And(CONFIG_RMMOD, Not(CONFIG_MODPROBE_SMALL))")
+        # exit(1)
+        # result = '\n'.join("unit_pc {} {}".format(i, self.to_exp(z3.simplify(s[i]))) + "\nunit_pc {} {}".format(i, z3.simplify(s[i]))
+        #                  for i in s.keys())
+        result = '\n'.join("unit_pc {} {}".format(i, self.to_exp(z3.simplify(s[i])))
                          for i in s.keys())
+        return result
 
         
         
