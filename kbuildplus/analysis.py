@@ -15,8 +15,9 @@ mlog = CM.getLogger(__name__, settings.logger_level)
 
 class GeneralAnalysis:
     def __init__(self, path):
-        self.makefiles = set([os.path.abspath(f) for f in path
-                            if os.path.isfile(f) or os.path.isdir(f)])
+        self.makefiles = path
+        # self.makefiles = set([os.path.abspath(f) for f in path
+        #                     if os.path.isfile(f) or os.path.isdir(f)])
         mlog.info("analyzing {} files/dirs".format(len(self.makefiles)))
 
     def run(self):
