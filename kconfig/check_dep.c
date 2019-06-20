@@ -99,7 +99,7 @@ bool idepsym(struct symbol *);
 bool idepsym_expr(struct expr *);
 bool is_symbol(struct symbol *);
 
-extern void bconf_parse(char *file);
+/* extern void bconf_parse(char *file); */
 extern int expr_compare_type(enum expr_type t1, enum expr_type t2);
 
 /*
@@ -429,6 +429,26 @@ void print_python_expr(struct expr *e, FILE *out, enum expr_type prevtoken)
     fprintf(out, " and ");
     print_python_expr(e->right.expr, out, E_AND);
 		break;
+	case E_LTH:
+    print_python_symbol(out, e->left.sym);
+    fprintf(out, " < ");
+    print_python_symbol(out, e->right.sym);
+		break;
+	case E_LEQ:
+    print_python_symbol(out, e->left.sym);
+    fprintf(out, " <= ");
+    print_python_symbol(out, e->right.sym);
+		break;
+	case E_GTH:
+    print_python_symbol(out, e->left.sym);
+    fprintf(out, " > ");
+    print_python_symbol(out, e->right.sym);
+		break;
+	case E_GEQ:
+    print_python_symbol(out, e->left.sym);
+    fprintf(out, " >= ");
+    print_python_symbol(out, e->right.sym);
+		break;
 	case E_LIST:
     // TODO: this will break python parser
     //E_LIST is created in menu_finalize and is related to <choice>
@@ -448,9 +468,8 @@ void print_python_expr(struct expr *e, FILE *out, enum expr_type prevtoken)
 		break;
 	/* default: */
 	/*   { */
-	/* 	char buf[32]; */
-	/* 	sprintf(buf, "<unknown type %d>", e->type); */
-	/* 	fn(data, NULL, buf); */
+	/* 	fprintf(stderr, "fatal: unknown expression type", e->type); */
+  /*   exit(1); */
 	/* 	break; */
 	/*   } */
 	}
@@ -1202,6 +1221,7 @@ int main(int argc, char **argv)
     print_usage();
 
 	setlocale(LC_ALL, "");
+#define LOCALEDIR "/usr/share/locale"
 	bindtextdomain(PACKAGE, LOCALEDIR);
 	textdomain(PACKAGE);
 
@@ -1345,11 +1365,11 @@ int main(int argc, char **argv)
   else
     kconfig = "Kconfig";
 
-  if (bconf_parser) {
-    bconf_parse(kconfig);
-  } else {
+  /* if (bconf_parser) { */
+  /*   bconf_parse(kconfig); */
+  /* } else { */
     conf_parse(kconfig);
-  }
+  /* } */
 
   switch (action) {
   case A_SEARCH:
@@ -1398,7 +1418,7 @@ int main(int argc, char **argv)
     for_all_symbols(i, sym)
       idepsym(sym);
     write_config(idepsym);
-    if (!bconf_parser) file_write_dep("include/config/auto.conf.cmd");
+    /* if (!bconf_parser) file_write_dep("include/config/auto.conf.cmd"); */
     break;
   case A_EVERYNO:
     write_config(never);
@@ -1851,10 +1871,10 @@ int main(int argc, char **argv)
           }
           has_prompt = true;
         }
-        has_env = sym_get_env_prop(sym) != NULL;
-        if (has_env) {
-          printf("env %s%s\n", config_prefix, sym->name);
-        }
+        /* has_env = sym_get_env_prop(sym) != NULL; */
+        /* if (has_env) { */
+        /*   printf("env %s%s\n", config_prefix, sym->name); */
+        /* } */
         // print default values
         prop = NULL;
         for_all_defaults(sym, prop) {
@@ -1917,10 +1937,10 @@ int main(int argc, char **argv)
           }
           has_prompt = true;
         }
-        has_env = sym_get_env_prop(sym) != NULL;
-        if (has_env) {
-          printf("env %s%s\n", config_prefix, sym->name);
-        }
+        /* has_env = sym_get_env_prop(sym) != NULL; */
+        /* if (has_env) { */
+        /*   printf("env %s%s\n", config_prefix, sym->name); */
+        /* } */
         // print default values
         prop = NULL;
         bool has_default = false;
