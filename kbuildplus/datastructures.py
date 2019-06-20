@@ -180,7 +180,7 @@ class Results:
             elif opname=="Not":
                 assert len(operands) == 1
                 new_s = "(! " + operands[0] + ")"
-            print "new_s", new_s
+            # print "new_s", new_s
             return new_s
         if s=="True":
             return "1"
@@ -191,15 +191,37 @@ class Results:
         s = str(s).replace('\n', '').replace(' ', '')
         
         return self.to_exp_step(s)
+
+    def get_line_format(self, filename):
+        if filename.endswith("/"):
+            line_format = "subdir_pc {} {}"
+        else:
+            line_format = "unit_pc {} {}"
+
+        return line_format
     
-    def z3_str(self, s):
+    def z3_str(self, path_conds):
         # print self.to_exp("And(CONFIG_RMMOD, Not(CONFIG_MODPROBE_SMALL))")
         # exit(1)
         # result = '\n'.join("unit_pc {} {}".format(i, self.to_exp(z3.simplify(s[i]))) + "\nunit_pc {} {}".format(i, z3.simplify(s[i]))
         #                  for i in s.keys())
-        result = '\n'.join("unit_pc {} {}".format(i, self.to_exp(z3.simplify(s[i])))
-                         for i in s.keys())
-        return result
 
+        # # separate paths into files and subdirs, which end in forward slash
+        # file_pcs = { path : cond for path, cond in path_conds.iteritems() if not path.endswith("/") }
+        # subdir_pcs = { path : cond for path, cond in path_conds.iteritems() if path.endswith("/") }
+
+        # # find full presence conditions for each file and conjoining the presence conditions for each path
+        # full_pcs = {}
+
+        # for path, cond in file_pcs.iteritems():
+        #     subpath, basename = path.rsplit('/', 1)
+        #     elems = subpath.rsplit('/')
+        #     for i in reversed(range(0, 7)):
+        #         subsubpath = '/'.join(elems[:-i])
+        #         if len(subsubpath) == 0: subsubpath = "/"
+        #         print subsubpath, subsubpath in subdir_pcs
+        #         if subsubpath in subdir_pcs: print subsubpath, subdir_pcs[subsubpath]
         
-        
+        result = '\n'.join(self.get_line_format(filename).format(filename, self.to_exp(z3.simplify(path_conds[filename])))
+                         for filename in path_conds.keys())
+        return result

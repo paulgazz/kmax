@@ -37,6 +37,11 @@ if __name__ == '__main__':
        help="""\
     Treat all configuration variables as Boolean variables""")
 
+    ag('--unit-pc-format',
+       action="store_true",
+       help="""\
+    Output presence conditions in the original Kmax unit_pc format""")
+
     ag('--case-study',
        type=str,
        help="""avail options: busybox/linux""")
@@ -56,11 +61,13 @@ if __name__ == '__main__':
     settings.do_table = args.table
     settings.do_recursive = args.recursive
     settings.do_boolean_configs = args.boolean_configs
+    settings.unit_pc_format = args.unit_pc_format
 
     import analysis
     case_study = args.case_study
     if not case_study:
         inp = args.makefile
+        print inp
         myAnalysis = analysis.GeneralAnalysis(inp)
     else:
         case_study = case_study.lower()
