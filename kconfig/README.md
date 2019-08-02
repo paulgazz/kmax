@@ -1,3 +1,7 @@
+This directory now contains the new tool called Kclause, which translates Kconfig specifications to Boolean logic using either BDDs or Z3.  More details about this work can be found in our [tech report](https://apps.cs.utexas.edu/apps/tech-reports/171355).
+
+## Kconfig parser
+
 The Kconfig parser in this directory has been copied from the
 linux-4.19.50/scripts/kconfig directory.  (We used to have to copy
 `zconf.hash.c_shipped` to `zconf.hash.c`.)  The following minor
