@@ -8,6 +8,7 @@ from collections import defaultdict
 import time
 import regex  # pip install regex
 import z3
+import z3.z3printer
 
 # this script takes the check_dep --dimacs output and converts it into
 # a dimacs-compatible format
@@ -469,7 +470,12 @@ def convert_to_z3(expr):
     #   # print t_tseitin(g)
     #   # print "next"
     #   exit(1)
-    clauses = [ t_tseitin(z3.simplify(clause, elim_and=True)) if z3.is_expr(clause) else clause for clause in clauses ]
+
+    # use tseitin
+    # clauses = [ t_tseitin(z3.simplify(clause, elim_and=True)) if z3.is_expr(clause) else clause for clause in clauses ]
+
+    # without tseitin and no CNF
+    clauses = [ t_simplify(clause) if z3.is_expr(clause) else clause for clause in clauses ]
     print clauses
   if (isinstance(clauses, list)):
     return clauses
@@ -1283,9 +1289,19 @@ if use_z3:
   # print clauses for now
   # for clause in z3_clauses:
   #   print clause
-  final_z3 = z3.And([ x for x in z3_clauses if z3.is_expr(x) ])
-  print final_z3
+  # print len(z3_clauses)
 
+  # filtered_clauses = [ x for x in z3_clauses if z3.is_expr(x) ]
+  # final_z3 = z3.And(filtered_clauses)
+
+  unpacked_clauses = [ x[0][0] for x in z3_clauses ]
+  print unpacked_clauses
+  final_z3 = z3.And(unpacked_clauses)
+
+  # print len(filtered_clauses)
+  # final_z3 = z3.And(z3_clauses)
+  # print z3.z3printer.obj_to_string(final_z3)
+  
   s = z3.Solver()
   # s.add(z3.Not(final_z3))
   s.add(final_z3)
