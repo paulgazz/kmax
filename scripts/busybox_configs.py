@@ -15,31 +15,56 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+import pdb
+trace = pdb.set_trace
 
 import os
 import sys
 import fnmatch
 import subprocess
 import cPickle as pickle
-import linuxinstance
+#import linuxinstance
 import kmaxdata
 import lockfile # pip install lockfile
 import tempfile
 import csv
+import argparse
 from collections import defaultdict
+import vcommon as CM
 
 # Collect stats on archs, kconfig files, kbuild files, and config vars
 # and pickle the data to stdout
 
 # USAGE: collect_buildsystem.py
 
-args = sys.argv
 
-if len(args) == 1:
-  print "USAGE: " + os.path.basename(args[0]) + " busybox_path"
-  exit(1)
 
-busybox_path = args[1]
+
+argparser = argparse.ArgumentParser(
+    formatter_class=argparse.RawDescriptionHelpFormatter,
+    description="""\
+Collect stats on archs, kconfig files, kbuild files, and config vars
+and pickle the data to stdout.
+    """,
+    epilog="""\
+    """
+    )
+argparser.add_argument('busybox_path',
+                       type=str,
+                       help="""the Busybox distribution directory to analyze""")
+argparser.add_argument('-B',
+                       '--boolean-configs',
+                       action="store_true",
+                       help="""\
+Treat all configuration variables as Boolean variables""")
+
+args = argparser.parse_args()
+
+if len(args.busybox_path) == 0:
+  argparser.print_help()
+  sys.exit(1)
+
+busybox_path = args.busybox_path
 
 os.chdir(busybox_path)
 command = 'make gen_build_files'
@@ -66,6 +91,10 @@ everycfiledatafile = "./everycfile"
 config_name = "Config.in"
 config_path = config_name
 
+# These are taken from the top-level Makefile's core-y and libs-y
+# variables.  This is correct at least for Kmax ESEC/FSE '17 paper
+# version 1.25.0 and branch 1_22_stable (for iGen journal).
+# added klibc-utils for version 1.28.1
 alldirs = set([
   "applets/",
   "archival/",
@@ -74,6 +103,7 @@ alldirs = set([
   "coreutils/",
   "coreutils/libcoreutils/",
   "debianutils/",
+  "klibc-utils/",
   "e2fsprogs/",
   "editors/",
   "findutils/",
@@ -104,11 +134,12 @@ buildsystemdata.alldirs = list(alldirs)
 
 buildsystemdata.kconfig_files = []
 for dir in buildsystemdata.alldirs:
-  for path, subdirs, filenames in os.walk(dir):
-    buildsystemdata.kconfig_files += \
-      [ os.path.join(path, fn)
-        for fn in filenames
-        if fn.startswith(config_name) ]
+  if os.path.exists(dir):
+    for path, subdirs, filenames in os.walk(dir):
+      buildsystemdata.kconfig_files += \
+        [ os.path.join(path, fn)
+          for fn in filenames
+          if fn.startswith(config_name) ]
 kconfigdata = kmaxdata.KConfigData()
 
 check_dep_command = "check_dep"
@@ -155,15 +186,18 @@ compunit_command = 'compilation_units.py'
 #   compunit_command += ' --no-aggregation'
 # remaining_arguments = ' -C ' + kconfigdatafile + ' ' + " ".join([os.path.join(x, build_name) for x in buildsystemdata.alldirs])
 remaining_arguments = ' -C ' + kconfigdatafile + ' ' + " ".join(buildsystemdata.alldirs)
+if args.boolean_configs:
+  remaining_arguments += ' -B'
 
 command = compunit_command + remaining_arguments
-print command
+
 popen = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
 stdout_, stderr_ = popen.communicate()
 print stdout_
 for line in stdout_.strip().split("\n"):
   splitline = line.split(" ", 1)
   if len(splitline) >= 2:
+    print 'reading in', splitline[0]
     buildsystemdata.compilation_units[splitline[0]].append(splitline[1])
   else:
     print "no usable data from compilation_units.py: " + line
@@ -176,6 +210,24 @@ with lockfile.LockFile(datafile):
   #     os.rename(datafile, tmp.name)
   with open(datafile, "wb") as f:
     pickle.dump(buildsystemdata, f)
+
+
+print buildsystemdata.compilation_units
+print buildsystemdata.compilation_units.keys()
+
+
+# get presence conditions
+unit_pc_datafile = './unit_pc'
+kmaxdata.backup_existing_file(unit_pc_datafile)
+with tempfile.NamedTemporaryFile(dir=kmaxdata.kmax_scratch) as tmp:
+  pc_command = compunit_command + ' --get-presence-conditions' + remaining_arguments
+  print pc_command
+  popen = subprocess.call(pc_command, shell=True, stdout=tmp)
+  tmp.seek(0, os.SEEK_SET)
+  with lockfile.LockFile(unit_pc_datafile):
+    with open(unit_pc_datafile, 'ab') as dataf:
+      for line in tmp:
+        dataf.write(line)
 
 def chgext(filename, f, t):
   if filename.endswith(f):
@@ -193,20 +245,21 @@ def otoS(filename):
 def ctoo(filename):
   return chgext(filename, ".c", ".o")
 
-# get every c files
-with open(everycfiledatafile, "wb") as f:
-  command = 'find -type f | grep "\.c$" | sort | uniq | cut -c3-'
-  popen = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
-  stdout_, stderr_ = popen.communicate()
-  everycfile = set([os.path.normpath(x.strip('\n')) for x in stdout_.split()])
+# get every c file
+# with open(everycfiledatafile, "wb") as f:  # TODO: use this to write to file
+command = 'find -type f | grep "\.c$" | sort | uniq | cut -c3-'
+popen = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
+stdout_, stderr_ = popen.communicate()
+everycfile = set([os.path.normpath(x.strip('\n')) for x in stdout_.split()])
+
+print len(everycfile)
+
 
 compilation_units = defaultdict(set)
 
 for k in buildsystemdata.compilation_units.keys():
   compilation_units[k].update(buildsystemdata.compilation_units[k])
 
-print "all c files", len(everycfile)
-  
 recon_compunits = set([mkc(x) for x in (compilation_units['compilation_units'] - compilation_units['library_units'])])
 print "compilation units", len(recon_compunits)
 
@@ -250,12 +303,6 @@ additional_included = [
   "archival/libarchive/bz/huffman.c",
 ]
 
-recon_included = set(compilation_units['included_c_files'])
-recon_included.update(additional_included)
-print "included c files", len(recon_included)
-everycfile.difference_update(recon_included)
-print len(everycfile)
-
 recon_scripts = set([c for c in everycfile if c.startswith("scripts/")])
 print "scripts", len(recon_scripts)
 everycfile.difference_update(recon_scripts)
@@ -281,6 +328,8 @@ explanations = {
     "shell/ash_test/zecho.c",
     
     "applets/individual.c", # example wrapper program
+
+    "networking/ntpd_simple.c", # for busybox 1_22_stable
   ],
   
   "unused": [
@@ -310,12 +359,31 @@ explanations = {
   ],
 }
 
+# busy 1_22_stable has an unused directory of source files
+old_e2fsprogs = [x for x in everycfile if x.startswith("e2fsprogs/old_e2fsprogs")]
+print "old e2fsprogs dir", len(old_e2fsprogs)
+everycfile.difference_update(old_e2fsprogs)
+print len(everycfile)
+
 for explanation in explanations.keys():
   print explanation,len(explanations[explanation])
   everycfile.difference_update(explanations[explanation])
   print len(everycfile)
 
+
+recon_included = set(compilation_units['included_c_files'])
+print len(recon_included), recon_included
+recon_included.update(additional_included)
+print "included c files", len(recon_included)
+everycfile.difference_update(recon_included)
+print len(everycfile)
+  
+
+# This will be empty if kmax got all C files correctly.  The
+# explanations needs to contain all C files guaranteed to not be part
+# of the build.
 print everycfile
+trace()
 
 # if get_running_time == True:
 #   print "running_time", buildsystemdata.compilation_units["running_time"][0]
@@ -339,18 +407,3 @@ print everycfile
 #           f.write(c_file + '\n')
 #       else:
 #         f.write(compilation_unit + '\n')
-
-# # get presence conditions
-# unit_pc_datafile = kmaxdata.unit_pc_datafile(version, arch)
-# kmaxdata.backup_existing_file(unit_pc_datafile)
-# with tempfile.NamedTemporaryFile(dir=kmaxdata.kmax_scratch) as tmp:
-#   pc_command = compunit_command + ' --get-presence-conditions' + remaining_arguments
-#   print pc_command
-#   popen = subprocess.call(pc_command, shell=True, stdout=tmp)
-#   tmp.seek(0, os.SEEK_SET)
-#   with lockfile.LockFile(unit_pc_datafile):
-#     with open(unit_pc_datafile, 'ab') as dataf:
-#       for line in tmp:
-#         dataf.write(line)
-
-# instance.exit()

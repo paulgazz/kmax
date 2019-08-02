@@ -26,6 +26,9 @@ import kmaxdata
 import lockfile # pip install lockfile
 import tempfile
 import csv
+import pdb
+trace = pdb.set_trace
+
 
 # Collect stats on archs, kconfig files, kbuild files, and config vars
 # and pickle the data to stdout
@@ -38,12 +41,14 @@ archs = None
 do_kbuild = True
 presence_conditions_only = False
 get_running_time = False
+boolean_configs = False
 
 if len(args) > 1 and args[1] == "-h":
-  print "USAGE: " + os.path.basename(args[0]) + " [ [-q] [-t] [-g] version [arch] ]"
+  print "USAGE: " + os.path.basename(args[0]) + " [ [-q] [-t] [-g] [-B] version [arch] ]"
   print "  setting -q will only run kconfig, not kbuild"
   print "  setting -t will only time kconfig and kbuild, but no analysis"
   print "  setting -g will only get presence conditions, not the set of units"
+  print "  setting -B will treat every configuration variable as Boolean"
   exit(1)
 
 if len(args) > 1 and args[1] == "-q":
@@ -55,6 +60,9 @@ if len(args) > 1 and args[1] == "-t":
 if len(args) > 1 and args[1] == "-g":
   presence_conditions_only = True
   args = args[1:]
+if len(args) > 1 and args[1] == "-B":
+  boolean_configs = True
+  args = args[1:]
 
 if len(args) > 1:
   versions = [ args[1] ]
@@ -64,6 +72,7 @@ if len(args) > 2:
     arch = linuxinstance.get_x86_archname(versions[0])
   archs = [ arch ]
 
+#trace()
 instance = linuxinstance.LinuxInstance()
 
 if versions == None:
@@ -86,6 +95,7 @@ for version in versions:
 
       alldirs = set()
       command = 'make CC=cc ARCH=' + arch + ' -f ' + kmaxdata.makefile_override + ' alldirs'
+      print command
       popen = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
       stdout_, stderr_ = popen.communicate()
       alldirs.update(set(stdout_.strip().split()))
@@ -145,13 +155,19 @@ for version in versions:
         compunit_command = 'compilation_units.py'
         if get_running_time:
           compunit_command += ' --no-aggregation'
+        if boolean_configs:
+          compunit_command += ' -B'
         if arch == "um":
           compunit_command += ' -D SUBARCH=x86'
         remaining_arguments =  ' -D srctree=. -D OS=Linux -D ARCH=' + arch + ' -C ' + kconfigdatafile + ' arch/' + arch + '/Makefile ' + " ".join(buildsystemdata.alldirs)
 
+
+        
+
         if (not presence_conditions_only):
           command = compunit_command + remaining_arguments
           print command
+          trace()
           popen = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
           stdout_, stderr_ = popen.communicate()
           for line in stdout_.strip().split("\n"):

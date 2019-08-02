@@ -1,0 +1,33 @@
+
+
+menu "Synchronization"
+
+config Synchronization
+	boolean
+	
+config einseitig
+  boolean "einseitig"
+	select Synchronization
+	select unterdrueckend
+
+config unterdrueckend
+  boolean "unterdrueckend"
+	depends on einseitig
+
+menu "mehrseitig"
+
+config mehrseitig
+  boolean 
+	select Synchronization
+
+config blockierend
+  boolean "blockierend"
+	select mehrseitig
+
+config nichtblockierend
+  boolean "nichblockierend"
+	select mehrseitig
+
+endmenu
+
+endmenu

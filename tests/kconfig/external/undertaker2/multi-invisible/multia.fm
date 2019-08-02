@@ -1,0 +1,8 @@
+
+config A
+	bool "A.1"
+
+config A
+	bool "A.2"
+
+

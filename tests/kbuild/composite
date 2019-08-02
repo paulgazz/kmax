@@ -1,0 +1,2 @@
+obj-$(CONFIG_JFFS2_FS) += jffs2.o
+jffs2-$(CONFIG_JFFS2_FS_WRITEBUFFER) += wbuf.o

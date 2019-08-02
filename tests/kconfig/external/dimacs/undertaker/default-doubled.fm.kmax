@@ -1,0 +1,5 @@
+bool CONFIG_SPI selectable
+bool CONFIG_SPI_MASTER nonselectable
+def_bool CONFIG_SPI_MASTER CONFIG_HAS_IOMEM (CONFIG_SPI)
+bool CONFIG_HAS_IOMEM selectable
+dep CONFIG_SPI_MASTER (CONFIG_SPI)

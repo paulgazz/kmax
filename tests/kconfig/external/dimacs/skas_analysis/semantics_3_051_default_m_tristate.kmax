@@ -1,0 +1,4 @@
+bool CONFIG_MODULES nonselectable
+def_bool CONFIG_MODULES 0 (1)
+bool CONFIG_VAR nonselectable
+def_bool CONFIG_VAR 1 (1)

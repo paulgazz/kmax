@@ -1,0 +1,3 @@
+bool CONFIG_A selectable
+bool CONFIG_X86_EXTENDED_PLATFORM selectable
+dep CONFIG_X86_EXTENDED_PLATFORM (CONFIG_A or  not CONFIG_A)

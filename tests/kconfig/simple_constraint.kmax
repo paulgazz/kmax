@@ -1,0 +1,5 @@
+config A bool
+config B bool
+config C bool
+constraint (A or B) and C
+constraint C and B or A

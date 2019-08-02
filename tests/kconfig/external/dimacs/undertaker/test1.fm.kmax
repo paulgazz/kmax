@@ -1,0 +1,4 @@
+bool CONFIG_B selectable
+bool CONFIG_A selectable
+bool CONFIG_C selectable
+dep CONFIG_C (CONFIG_A and CONFIG_B)

@@ -1,0 +1,4 @@
+c 1 CONFIG_VAR1 bool
+c 2 CONFIG_VAR2 bool
+c 3 CONFIG_MODULES bool
+p cnf 3 0

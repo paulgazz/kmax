@@ -1,0 +1,44 @@
+# ignoring due to redefinitions
+config MODULES
+	bool 
+	option modules
+
+
+#booleans
+
+config F1
+	bool
+	prompt "P1"
+
+
+config F2
+	bool
+	prompt "P2"
+
+
+config F3
+	bool
+	prompt "P3"
+
+config F4
+	bool
+	prompt "P4.A"
+
+
+config F4
+	bool
+	prompt "P4.B"
+	depends on (F3 && F1) || (!F2 && F3) || (F2 && ! (F3 && y))
+
+
+config F5
+	bool 
+	prompt "P5.12"
+	depends on F1
+	depends on F2
+
+config F5
+	bool 
+	prompt "P5.3" if F4
+	depends on F3
+

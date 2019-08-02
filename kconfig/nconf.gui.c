@@ -6,6 +6,7 @@
  *
  */
 #include "nconf.h"
+#include "lkc.h"
 
 /* a list of all the different widgets we use */
 attributes_t attributes[ATTR_MAX+1] = {0};
@@ -374,7 +375,7 @@ int dialog_inputbox(WINDOW *main_window,
 
 	if (strlen(init)+1 > *result_len) {
 		*result_len = strlen(init)+1;
-		*resultp = result = realloc(result, *result_len);
+		*resultp = result = xrealloc(result, *result_len);
 	}
 
 	/* find the widest line of msg: */
@@ -439,7 +440,8 @@ int dialog_inputbox(WINDOW *main_window,
 		case KEY_F(F_EXIT):
 		case KEY_F(F_BACK):
 			break;
-		case 127:
+		case 8:   /* ^H */
+		case 127: /* ^? */
 		case KEY_BACKSPACE:
 			if (cursor_position > 0) {
 				memmove(&result[cursor_position-1],

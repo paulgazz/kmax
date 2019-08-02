@@ -28,6 +28,8 @@ import subprocess
 import cPickle as pickle
 import time
 
+import vcommon as CM
+
 starting_time = time.time()
 
 def chgext(filename, f, t):
@@ -97,6 +99,16 @@ argparser.add_argument('-g',
                        action="store_true",
                        help="""\
 get presence conditions for each compilation units""")
+argparser.add_argument('-B',
+                       '--boolean-configs',
+                       action="store_true",
+                       help="""\
+Treat all configuration variables as Boolean variables""")
+argparser.add_argument('-n',
+                       '--naive-append',
+                       action="store_true",
+                       help="""\
+use naive append behavior, which has more exponential explosion""")
 
 
 args = argparser.parse_args()
@@ -134,7 +146,7 @@ def covering_set(kbuild_dir,        # src directory to process
     return set()
 
   covering_set_args = [ "covering_set.py",
-                        "-p",
+                        "-p",  #tvn why use this flag ? 
                         "-Dsrc=" + kbuild_dir,      # drivers/staging/wlags49_h25/, drivers/gpu/drm/nouveau/
                         # TODO default to empty variable
                         # "-Dobj=" + kbuild_dir,    # drivers/scsi/aic7xxx/
@@ -156,8 +168,16 @@ def covering_set(kbuild_dir,        # src directory to process
   if args.get_presence_conditions:
     covering_set_args.append("-g")
 
+  if args.boolean_configs:
+    covering_set_args.append("-B")
+
+  if args.naive_append:
+    covering_set_args.append("-n")
   covering_set_args.append(kbuild_dir)
 
+
+  sys.stderr.write("running covering_set: {}\n".format(' '.join(covering_set_args)))
+  #CM.pause()
   p = subprocess.Popen(covering_set_args,
                        stdout=subprocess.PIPE,
                        # stderr=subprocess.PIPE

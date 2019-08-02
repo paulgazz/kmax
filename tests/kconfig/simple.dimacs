@@ -1,0 +1,7 @@
+c 1 A hidden_bool
+c 2 B hidden_bool
+c 3 C hidden_bool
+c 4 D hidden_bool
+p cnf 4 2
+-1 -2 3 0
+-1 -2 3 4 0

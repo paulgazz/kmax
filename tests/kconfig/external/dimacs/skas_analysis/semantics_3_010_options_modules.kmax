@@ -1,0 +1,3 @@
+bool CONFIG_UNNAMED_VAR selectable
+bool CONFIG_MODULES selectable
+bool CONFIG_TRISTATE_VAR selectable

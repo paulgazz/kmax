@@ -1,0 +1,3 @@
+obj-m := foo.o bar.o
+foo-y := foo1.o foo2.o foo3.o
+bar-y := bar1.o bar2.o

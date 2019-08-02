@@ -1,0 +1,9 @@
+config MODULES
+	bool
+	default y
+
+config FOO
+	tristate FOO
+config BAR
+	tristate BAR
+	depends on FOO

@@ -1,0 +1,9 @@
+c 1 CONFIG_STRING_VAR1 nonbool ""
+c 2 CONFIG_STRING_VAR2 nonbool ""
+c 3 CONFIG_SUB_VAR_1 bool
+c 4 CONFIG_SUB_VAR_2 bool
+p cnf 4 4
+2 0
+-4 2 0
+1 0
+-3 -1 0

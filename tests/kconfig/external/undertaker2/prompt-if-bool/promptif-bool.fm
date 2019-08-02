@@ -1,0 +1,20 @@
+config FOO
+	bool "foo"
+
+config BAR
+	bool "bar"
+
+config FOOBAR
+	prompt "foobar" if FOO
+	default y
+	bool
+
+config BARFOO
+	prompt "barfoo" if FOO
+	default n
+	bool
+
+config BAZ
+	prompt "baz" if FOO
+	default BAR
+	bool

@@ -70,6 +70,9 @@ def buildsystem_datafile(version, arch=""):
 def unit_pc_datafile(version, arch=""):
   return os.path.join(kmax_data, "unit_pc_" + version + arch + ".txt")
 
+def presence_conditions_datafile(version, arch=""):
+  return os.path.join(kmax_data, "presence_conditions_" + version + arch + ".txt")
+
 def kconfig_datafile(version, arch=""):
   return os.path.join(kmax_data, "kconfig_" + version + arch)
 
