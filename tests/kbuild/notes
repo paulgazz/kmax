@@ -1,0 +1,220 @@
+alg:INFO:var: obj-m:
+1. complex.o -- SIMPLE -- 1 -- True
+---------
+var: src:
+1. $(src) -- RECURSIVE -- 1 -- True
+---------
+var: complex-y:
+1. src/complex_main.o -- SIMPLE -- 1 -- True
+---------
+var: ccflags-y:
+1. -I$(src)/include -- SIMPLE -- 1 -- True
+---------
+var: EQUIV_SET1ccflags-y:
+1. -I$(src)/src/hal/include -- SIMPLE -- 1 -- True
+---------
+var: EQUIV_SET1complex-y:
+1. src/hal/hardwareif.o -- SIMPLE -- 1 -- True
+
+====
+
+VARIABLE: obj-m
+  ---
+  VALUE: complex.o
+  BDD: 1
+  FLAVOR: SIMPLE
+
+VARIABLE: src
+  ---
+  VALUE: $(src)
+  BDD: 1
+  FLAVOR: RECURSIVE
+
+VARIABLE: complex-y
+  ---
+  VALUE: src/complex_main.o
+  BDD: 1
+  FLAVOR: SIMPLE
+
+VARIABLE: ccflags-y
+  ---
+  VALUE: -I$(src)/include
+  BDD: 1
+  FLAVOR: SIMPLE
+
+VARIABLE: EQUIV_SET1ccflags-y
+  ---
+  VALUE: -I$(src)/src/hal/include
+  BDD: 1
+  FLAVOR: SIMPLE
+
+VARIABLE: EQUIV_SET1complex-y
+  ---
+  VALUE: src/hal/hardwareif.o
+  BDD: 1
+  FLAVOR: SIMPLE
+
+
+processing makefile ../tests/kbuild/vu5
+WARN: Undefined variable expansion src
+2 compilation unit(s)
+0 library unit(s)
+src/complex_main.o <pycudd.DdNode; proxy of <Swig Object of type 'DdNode *' at 0x7f8100233240> > 2
+gh0 1
+-I$(src)/include <pycudd.DdNode; proxy of <Swig Object of type 'DdNode *' at 0x7f81002333f0> > 2
+gh0 1
+VARIABLE: libs-m
+  ---
+  VALUE: None
+  BDD: 1
+  FLAVOR: RECURSIVE
+
+VARIABLE: core-m
+  ---
+  VALUE: None
+  BDD: 1
+  FLAVOR: RECURSIVE
+
+VARIABLE: libs-y
+  ---
+  VALUE: None
+  BDD: 1
+  FLAVOR: RECURSIVE
+
+
+VARIABLE: core-y
+  ---
+  VALUE: None
+  BDD: 1
+  FLAVOR: RECURSIVE
+
+VARIABLE: targets
+  ---
+  VALUE: None
+  BDD: 1
+  FLAVOR: RECURSIVE
+
+
+VARIABLE: host-progs
+  ---
+  VALUE: None
+  BDD: 1
+  FLAVOR: RECURSIVE
+
+VARIABLE: subdir-y
+  ---
+  VALUE: None
+  BDD: 1
+  FLAVOR: RECURSIVE
+
+VARIABLE: net-y
+  ---
+  VALUE: None
+  BDD: 1
+  FLAVOR: RECURSIVE
+
+
+VARIABLE: subdir-m
+  ---
+  VALUE: None
+  BDD: 1
+  FLAVOR: RECURSIVE
+
+VARIABLE: net-m
+  ---
+  VALUE: None
+  BDD: 1
+  FLAVOR: RECURSIVE
+
+VARIABLE: extra-y
+  ---
+  VALUE: None
+  BDD: 1
+  FLAVOR: RECURSIVE
+
+VARIABLE: hostprogs-y
+  ---
+  VALUE: None
+  BDD: 1
+  FLAVOR: RECURSIVE
+
+VARIABLE: head-y
+  ---
+  VALUE: None
+  BDD: 1
+  FLAVOR: RECURSIVE
+
+VARIABLE: complex-objs
+  ---
+  VALUE: None
+  BDD: 1
+  FLAVOR: RECURSIVE
+
+VARIABLE: hostprogs-m
+  ---
+  VALUE: None
+  BDD: 1
+  FLAVOR: RECURSIVE
+
+
+VARIABLE: drivers-y
+  ---
+  VALUE: None
+  BDD: 1
+  FLAVOR: RECURSIVE
+
+VARIABLE: clean-files
+  ---
+  VALUE: None
+  BDD: 1
+  FLAVOR: RECURSIVE
+
+VARIABLE: head-m
+  ---
+  VALUE: None
+  BDD: 1
+  FLAVOR: RECURSIVE
+
+VARIABLE: drivers-m
+  ---
+  VALUE: None
+  BDD: 1
+  FLAVOR: RECURSIVE
+
+
+
+VARIABLE: always
+  ---
+  VALUE: None
+  BDD: 1
+  FLAVOR: RECURSIVE
+
+VARIABLE: lib-m
+  ---
+  VALUE: None
+  BDD: 1
+  FLAVOR: RECURSIVE
+
+VARIABLE: obj-y
+  ---
+  VALUE: None
+  BDD: 1
+  FLAVOR: RECURSIVE
+
+VARIABLE: lib-y
+  ---
+  VALUE: None
+  BDD: 1
+  FLAVOR: RECURSIVE
+
+set(['../tests/kbuild/src/hal/hardwareif.o', '../tests/kbuild/src/complex_main.o'])
+set([])
+set([])
+set([])
+set([])
+set([])
+set([])
+set([])
+../tests/kbuild/complex.o 1
+../tests/kbuild/src/complex_main.o 1
+../tests/kbuild/src/hal/hardwareif.o 1

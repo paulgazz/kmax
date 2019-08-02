@@ -1,6 +1,3 @@
-#line 2 "zconf.lex.c"
-
-#line 4 "zconf.lex.c"
 
 #define  YY_INT_ALIGNED short int
 
@@ -9,7 +6,7 @@
 #define FLEX_SCANNER
 #define YY_FLEX_MAJOR_VERSION 2
 #define YY_FLEX_MINOR_VERSION 6
-#define YY_FLEX_SUBMINOR_VERSION 1
+#define YY_FLEX_SUBMINOR_VERSION 4
 #if YY_FLEX_SUBMINOR_VERSION > 0
 #define FLEX_BETA
 #endif
@@ -84,9 +81,15 @@ typedef unsigned int flex_uint32_t;
 #define UINT32_MAX             (4294967295U)
 #endif
 
+#ifndef SIZE_MAX
+#define SIZE_MAX               (~(size_t)0)
+#endif
+
 #endif /* ! C99 */
 
 #endif /* ! FLEXINT_H */
+
+/* begin standard C++ headers. */
 
 /* TODO: this is always defined, so inline it */
 #define yyconst const
@@ -100,32 +103,26 @@ typedef unsigned int flex_uint32_t;
 /* Returned upon end-of-file. */
 #define YY_NULL 0
 
-/* Promotes a possibly negative, possibly signed char to an unsigned
- * integer for use as an array index.  If the signed char is negative,
- * we want to instead treat it as an 8-bit unsigned char, hence the
- * double cast.
+/* Promotes a possibly negative, possibly signed char to an
+ *   integer in range [0..255] for use as an array index.
  */
-#define YY_SC_TO_UI(c) ((unsigned int) (unsigned char) c)
+#define YY_SC_TO_UI(c) ((YY_CHAR) (c))
 
 /* Enter a start condition.  This macro really ought to take a parameter,
  * but we do it the disgusting crufty way forced on us by the ()-less
  * definition of BEGIN.
  */
 #define BEGIN (yy_start) = 1 + 2 *
-
 /* Translate the current start state into a value that can be later handed
  * to BEGIN to return to the state.  The YYSTATE alias is for lex
  * compatibility.
  */
 #define YY_START (((yy_start) - 1) / 2)
 #define YYSTATE YY_START
-
 /* Action number for EOF rule of a given start state. */
 #define YY_STATE_EOF(state) (YY_END_OF_BUFFER + state + 1)
-
 /* Special action meaning "start processing a new file". */
-#define YY_NEW_FILE yyrestart(yyin  )
-
+#define YY_NEW_FILE yyrestart( yyin  )
 #define YY_END_OF_BUFFER_CHAR 0
 
 /* Size of default input buffer. */
@@ -162,9 +159,28 @@ extern FILE *yyin, *yyout;
 #define EOB_ACT_CONTINUE_SCAN 0
 #define EOB_ACT_END_OF_FILE 1
 #define EOB_ACT_LAST_MATCH 2
-
-    #define YY_LESS_LINENO(n)
-    #define YY_LINENO_REWIND_TO(ptr)
+    
+    /* Note: We specifically omit the test for yy_rule_can_match_eol because it requires
+     *       access to the local variable yy_act. Since yyless() is a macro, it would break
+     *       existing scanners that call yyless() from OUTSIDE yylex.
+     *       One obvious solution it to make yy_act a global. I tried that, and saw
+     *       a 5% performance hit in a non-yylineno scanner, because yy_act is
+     *       normally declared as a register variable-- so it is not worth it.
+     */
+    #define  YY_LESS_LINENO(n) \
+            do { \
+                int yyl;\
+                for ( yyl = n; yyl < yyleng; ++yyl )\
+                    if ( yytext[yyl] == '\n' )\
+                        --yylineno;\
+            }while(0)
+    #define YY_LINENO_REWIND_TO(dst) \
+            do {\
+                const char *p;\
+                for ( p = yy_cp-1; p >= (dst); --p)\
+                    if ( *p == '\n' )\
+                        --yylineno;\
+            }while(0)
     
 /* Return all but the first "n" matched characters back to the input stream. */
 #define yyless(n) \
@@ -179,7 +195,6 @@ extern FILE *yyin, *yyout;
 		YY_DO_BEFORE_ACTION; /* set up yytext again */ \
 		} \
 	while ( 0 )
-
 #define unput(c) yyunput( c, (yytext_ptr)  )
 
 #ifndef YY_STRUCT_YY_BUFFER_STATE
@@ -261,7 +276,6 @@ static YY_BUFFER_STATE * yy_buffer_stack = NULL; /**< Stack as an array. */
 #define YY_CURRENT_BUFFER ( (yy_buffer_stack) \
                           ? (yy_buffer_stack)[(yy_buffer_stack_top)] \
                           : NULL)
-
 /* Same as previous macro, but useful when we know that the buffer stack is not
  * NULL or when we need an lvalue. For internal use only.
  */
@@ -282,65 +296,59 @@ static int yy_start = 0;	/* start state number */
  */
 static int yy_did_buffer_switch_on_eof;
 
-void yyrestart (FILE *input_file  );
-void yy_switch_to_buffer (YY_BUFFER_STATE new_buffer  );
-YY_BUFFER_STATE yy_create_buffer (FILE *file,int size  );
-void yy_delete_buffer (YY_BUFFER_STATE b  );
-void yy_flush_buffer (YY_BUFFER_STATE b  );
-void yypush_buffer_state (YY_BUFFER_STATE new_buffer  );
-void yypop_buffer_state (void );
+void yyrestart ( FILE *input_file  );
+void yy_switch_to_buffer ( YY_BUFFER_STATE new_buffer  );
+YY_BUFFER_STATE yy_create_buffer ( FILE *file, int size  );
+void yy_delete_buffer ( YY_BUFFER_STATE b  );
+void yy_flush_buffer ( YY_BUFFER_STATE b  );
+void yypush_buffer_state ( YY_BUFFER_STATE new_buffer  );
+void yypop_buffer_state ( void );
 
-static void yyensure_buffer_stack (void );
-static void yy_load_buffer_state (void );
-static void yy_init_buffer (YY_BUFFER_STATE b,FILE *file  );
+static void yyensure_buffer_stack ( void );
+static void yy_load_buffer_state ( void );
+static void yy_init_buffer ( YY_BUFFER_STATE b, FILE *file  );
+#define YY_FLUSH_BUFFER yy_flush_buffer( YY_CURRENT_BUFFER )
 
-#define YY_FLUSH_BUFFER yy_flush_buffer(YY_CURRENT_BUFFER )
+YY_BUFFER_STATE yy_scan_buffer ( char *base, yy_size_t size  );
+YY_BUFFER_STATE yy_scan_string ( const char *yy_str  );
+YY_BUFFER_STATE yy_scan_bytes ( const char *bytes, int len  );
 
-YY_BUFFER_STATE yy_scan_buffer (char *base,yy_size_t size  );
-YY_BUFFER_STATE yy_scan_string (yyconst char *yy_str  );
-YY_BUFFER_STATE yy_scan_bytes (yyconst char *bytes,int len  );
-
-void *yyalloc (yy_size_t  );
-void *yyrealloc (void *,yy_size_t  );
-void yyfree (void *  );
+void *yyalloc ( yy_size_t  );
+void *yyrealloc ( void *, yy_size_t  );
+void yyfree ( void *  );
 
 #define yy_new_buffer yy_create_buffer
-
 #define yy_set_interactive(is_interactive) \
 	{ \
 	if ( ! YY_CURRENT_BUFFER ){ \
         yyensure_buffer_stack (); \
 		YY_CURRENT_BUFFER_LVALUE =    \
-            yy_create_buffer(yyin,YY_BUF_SIZE ); \
+            yy_create_buffer( yyin, YY_BUF_SIZE ); \
 	} \
 	YY_CURRENT_BUFFER_LVALUE->yy_is_interactive = is_interactive; \
 	}
-
 #define yy_set_bol(at_bol) \
 	{ \
 	if ( ! YY_CURRENT_BUFFER ){\
         yyensure_buffer_stack (); \
 		YY_CURRENT_BUFFER_LVALUE =    \
-            yy_create_buffer(yyin,YY_BUF_SIZE ); \
+            yy_create_buffer( yyin, YY_BUF_SIZE ); \
 	} \
 	YY_CURRENT_BUFFER_LVALUE->yy_at_bol = at_bol; \
 	}
-
 #define YY_AT_BOL() (YY_CURRENT_BUFFER_LVALUE->yy_at_bol)
 
 /* Begin user sect3 */
 
 #define yywrap() (/*CONSTCOND*/1)
 #define YY_SKIP_YYWRAP
-
-typedef unsigned char YY_CHAR;
+typedef flex_uint8_t YY_CHAR;
 
 FILE *yyin = NULL, *yyout = NULL;
 
 typedef int yy_state_type;
 
 extern int yylineno;
-
 int yylineno = 1;
 
 extern char *yytext;
@@ -349,346 +357,543 @@ extern char *yytext;
 #endif
 #define yytext_ptr yytext
 
-static yyconst flex_int16_t yy_nxt[][18] =
+static const flex_int16_t yy_nxt[][21] =
     {
     {
         0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-        0,    0,    0,    0,    0,    0,    0,    0
+        0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+        0
     },
 
     {
-       11,   12,   13,   14,   12,   12,   15,   12,   12,   12,
-       12,   12,   12,   12,   12,   12,   12,   12
+       13,   14,   15,   16,   14,   14,   17,   14,   14,   14,
+       14,   14,   14,   14,   14,   14,   14,   14,   14,   14,
+       14
     },
 
     {
-       11,   12,   13,   14,   12,   12,   15,   12,   12,   12,
-       12,   12,   12,   12,   12,   12,   12,   12
+       13,   14,   15,   16,   14,   14,   17,   14,   14,   14,
+       14,   14,   14,   14,   14,   14,   14,   14,   14,   14,
+       14
     },
 
     {
-       11,   16,   16,   17,   16,   16,   16,   16,   16,   16,
-       16,   18,   16,   16,   16,   16,   16,   16
+       13,   18,   19,   20,   18,   18,   18,   21,   18,   18,
+
+       18,   18,   22,   23,   18,   24,   18,   25,   18,   18,
+       18
     },
 
     {
-       11,   16,   16,   17,   16,   16,   16,   16,   16,   16,
-       16,   18,   16,   16,   16,   16,   16,   16
-
+       13,   18,   19,   20,   18,   18,   18,   21,   18,   18,
+       18,   18,   22,   23,   18,   24,   18,   25,   18,   18,
+       18
     },
 
     {
-       11,   19,   20,   21,   19,   19,   19,   19,   19,   19,
-       19,   19,   19,   19,   19,   19,   19,   19
+       13,   26,   27,   28,   26,   26,   26,   26,   26,   26,
+       26,   26,   26,   26,   26,   26,   26,   26,   26,   26,
+       26
     },
 
     {
-       11,   19,   20,   21,   19,   19,   19,   19,   19,   19,
-       19,   19,   19,   19,   19,   19,   19,   19
+       13,   26,   27,   28,   26,   26,   26,   26,   26,   26,
+       26,   26,   26,   26,   26,   26,   26,   26,   26,   26,
+
+       26
     },
 
     {
-       11,   22,   22,   23,   22,   24,   22,   22,   24,   22,
-       22,   22,   22,   22,   22,   22,   25,   22
+       13,   29,   29,   30,   29,   31,   29,   32,   29,   31,
+       29,   29,   29,   29,   29,   29,   29,   29,   29,   33,
+       29
     },
 
     {
-       11,   22,   22,   23,   22,   24,   22,   22,   24,   22,
-       22,   22,   22,   22,   22,   22,   25,   22
+       13,   29,   29,   30,   29,   31,   29,   32,   29,   31,
+       29,   29,   29,   29,   29,   29,   29,   29,   29,   33,
+       29
     },
 
     {
-       11,   26,   27,   28,   29,   30,   31,   32,   30,   33,
-       34,   35,   35,   36,   37,   38,   39,   40
-
-    },
-
-    {
-       11,   26,   27,   28,   29,   30,   31,   32,   30,   33,
-       34,   35,   35,   36,   37,   38,   39,   40
-    },
-
-    {
-      -11,  -11,  -11,  -11,  -11,  -11,  -11,  -11,  -11,  -11,
-      -11,  -11,  -11,  -11,  -11,  -11,  -11,  -11
-    },
-
-    {
-       11,  -12,  -12,  -12,  -12,  -12,  -12,  -12,  -12,  -12,
-      -12,  -12,  -12,  -12,  -12,  -12,  -12,  -12
-    },
-
-    {
-       11,  -13,   41,   42,  -13,  -13,   43,  -13,  -13,  -13,
-      -13,  -13,  -13,  -13,  -13,  -13,  -13,  -13
-    },
-
-    {
-       11,  -14,  -14,  -14,  -14,  -14,  -14,  -14,  -14,  -14,
-      -14,  -14,  -14,  -14,  -14,  -14,  -14,  -14
+       13,   34,   35,   36,   37,   38,   39,   40,   41,   38,
+       42,   43,   34,   44,   44,   34,   45,   46,   47,   48,
+       49
 
     },
 
     {
-       11,   44,   44,   45,   44,   44,   44,   44,   44,   44,
-       44,   44,   44,   44,   44,   44,   44,   44
+       13,   34,   35,   36,   37,   38,   39,   40,   41,   38,
+       42,   43,   34,   44,   44,   34,   45,   46,   47,   48,
+       49
     },
 
     {
-       11,  -16,  -16,  -16,  -16,  -16,  -16,  -16,  -16,  -16,
-      -16,  -16,  -16,  -16,  -16,  -16,  -16,  -16
+       13,   50,   51,   52,   50,   50,   50,   50,   50,   50,
+       50,   50,   50,   50,   50,   50,   50,   50,   50,   50,
+       50
     },
 
     {
-       11,  -17,  -17,  -17,  -17,  -17,  -17,  -17,  -17,  -17,
-      -17,  -17,  -17,  -17,  -17,  -17,  -17,  -17
+       13,   50,   51,   52,   50,   50,   50,   50,   50,   50,
+       50,   50,   50,   50,   50,   50,   50,   50,   50,   50,
+       50
     },
 
     {
-       11,  -18,  -18,  -18,  -18,  -18,  -18,  -18,  -18,  -18,
-      -18,   46,  -18,  -18,  -18,  -18,  -18,  -18
+      -13,  -13,  -13,  -13,  -13,  -13,  -13,  -13,  -13,  -13,
+
+      -13,  -13,  -13,  -13,  -13,  -13,  -13,  -13,  -13,  -13,
+      -13
     },
 
     {
-       11,   47,   47,  -19,   47,   47,   47,   47,   47,   47,
-       47,   47,   47,   47,   47,   47,   47,   47
-
+       13,  -14,  -14,  -14,  -14,  -14,  -14,  -14,  -14,  -14,
+      -14,  -14,  -14,  -14,  -14,  -14,  -14,  -14,  -14,  -14,
+      -14
     },
 
     {
-       11,  -20,   48,   49,  -20,  -20,  -20,  -20,  -20,  -20,
-      -20,  -20,  -20,  -20,  -20,  -20,  -20,  -20
+       13,  -15,   53,   54,  -15,  -15,   55,  -15,  -15,  -15,
+      -15,  -15,  -15,  -15,  -15,  -15,  -15,  -15,  -15,  -15,
+      -15
     },
 
     {
-       11,   50,  -21,  -21,   50,   50,   50,   50,   50,   50,
-       50,   50,   50,   50,   50,   50,   50,   50
+       13,  -16,  -16,  -16,  -16,  -16,  -16,  -16,  -16,  -16,
+      -16,  -16,  -16,  -16,  -16,  -16,  -16,  -16,  -16,  -16,
+
+      -16
     },
 
     {
-       11,   51,   51,   52,   51,  -22,   51,   51,  -22,   51,
-       51,   51,   51,   51,   51,   51,  -22,   51
+       13,   56,   56,   57,   56,   56,   56,   56,   56,   56,
+       56,   56,   56,   56,   56,   56,   56,   56,   56,   56,
+       56
     },
 
     {
-       11,  -23,  -23,  -23,  -23,  -23,  -23,  -23,  -23,  -23,
-      -23,  -23,  -23,  -23,  -23,  -23,  -23,  -23
+       13,  -18,  -18,  -18,  -18,  -18,  -18,  -18,  -18,  -18,
+      -18,  -18,  -18,  -18,  -18,  -18,  -18,  -18,  -18,  -18,
+      -18
     },
 
     {
-       11,  -24,  -24,  -24,  -24,  -24,  -24,  -24,  -24,  -24,
-      -24,  -24,  -24,  -24,  -24,  -24,  -24,  -24
-
-    },
-
-    {
-       11,   53,   53,   54,   53,   53,   53,   53,   53,   53,
-       53,   53,   53,   53,   53,   53,   53,   53
-    },
-
-    {
-       11,  -26,  -26,  -26,  -26,  -26,  -26,  -26,  -26,  -26,
-      -26,  -26,  -26,  -26,  -26,  -26,  -26,  -26
-    },
-
-    {
-       11,  -27,   55,  -27,  -27,  -27,  -27,  -27,  -27,  -27,
-      -27,  -27,  -27,  -27,  -27,  -27,  -27,  -27
-    },
-
-    {
-       11,  -28,  -28,  -28,  -28,  -28,  -28,  -28,  -28,  -28,
-      -28,  -28,  -28,  -28,  -28,  -28,  -28,  -28
-    },
-
-    {
-       11,  -29,  -29,  -29,  -29,  -29,  -29,  -29,  -29,  -29,
-      -29,  -29,  -29,  -29,   56,  -29,  -29,  -29
+       13,  -19,   58,  -19,  -19,  -19,  -19,  -19,  -19,  -19,
+      -19,  -19,  -19,  -19,  -19,  -19,  -19,  -19,  -19,  -19,
+      -19
 
     },
 
     {
-       11,  -30,  -30,  -30,  -30,  -30,  -30,  -30,  -30,  -30,
-      -30,  -30,  -30,  -30,  -30,  -30,  -30,  -30
+       13,  -20,  -20,  -20,  -20,  -20,  -20,  -20,  -20,  -20,
+      -20,  -20,  -20,  -20,  -20,  -20,  -20,  -20,  -20,  -20,
+      -20
     },
 
     {
-       11,   57,   57,  -31,   57,   57,   57,   57,   57,   57,
-       57,   57,   57,   57,   57,   57,   57,   57
+       13,  -21,  -21,  -21,  -21,  -21,  -21,   59,  -21,  -21,
+      -21,  -21,  -21,   59,  -21,  -21,  -21,  -21,  -21,  -21,
+      -21
     },
 
     {
-       11,  -32,  -32,  -32,  -32,  -32,  -32,   58,  -32,  -32,
-      -32,  -32,  -32,  -32,  -32,  -32,  -32,  -32
+       13,  -22,  -22,  -22,  -22,  -22,  -22,  -22,  -22,  -22,
+      -22,  -22,  -22,  -22,  -22,  -22,  -22,   60,  -22,  -22,
+      -22
     },
 
     {
-       11,  -33,  -33,  -33,  -33,  -33,  -33,  -33,  -33,  -33,
-      -33,  -33,  -33,  -33,  -33,  -33,  -33,  -33
+       13,  -23,  -23,  -23,  -23,  -23,  -23,   59,  -23,  -23,
+
+      -23,  -23,  -23,   61,  -23,  -23,  -23,  -23,  -23,  -23,
+      -23
     },
 
     {
-       11,  -34,  -34,  -34,  -34,  -34,  -34,  -34,  -34,  -34,
-      -34,  -34,  -34,  -34,  -34,  -34,  -34,  -34
-
+       13,  -24,  -24,  -24,  -24,  -24,  -24,  -24,  -24,  -24,
+      -24,  -24,  -24,  -24,  -24,  -24,  -24,   62,  -24,  -24,
+      -24
     },
 
     {
-       11,  -35,  -35,  -35,  -35,  -35,  -35,  -35,  -35,  -35,
-      -35,   59,   59,  -35,  -35,  -35,  -35,  -35
+       13,  -25,  -25,  -25,  -25,  -25,  -25,  -25,  -25,  -25,
+      -25,  -25,  -25,  -25,  -25,  -25,  -25,  -25,  -25,  -25,
+      -25
     },
 
     {
-       11,  -36,  -36,  -36,  -36,  -36,  -36,  -36,  -36,  -36,
-      -36,  -36,  -36,  -36,   60,  -36,  -36,  -36
+       13,   63,   63,  -26,   63,   63,   63,   63,   63,   63,
+       63,   63,   63,   63,   63,   63,   63,   63,   63,   63,
+
+       63
     },
 
     {
-       11,  -37,  -37,  -37,  -37,  -37,  -37,  -37,  -37,  -37,
-      -37,  -37,  -37,  -37,  -37,  -37,  -37,  -37
+       13,  -27,   64,   65,  -27,  -27,  -27,  -27,  -27,  -27,
+      -27,  -27,  -27,  -27,  -27,  -27,  -27,  -27,  -27,  -27,
+      -27
     },
 
     {
-       11,  -38,  -38,  -38,  -38,  -38,  -38,  -38,  -38,  -38,
-      -38,  -38,  -38,  -38,   61,  -38,  -38,  -38
+       13,   66,  -28,  -28,   66,   66,   66,   66,   66,   66,
+       66,   66,   66,   66,   66,   66,   66,   66,   66,   66,
+       66
     },
 
     {
-       11,  -39,  -39,   62,  -39,  -39,  -39,  -39,  -39,  -39,
-      -39,  -39,  -39,  -39,  -39,  -39,  -39,  -39
-
-    },
-
-    {
-       11,  -40,  -40,  -40,  -40,  -40,  -40,  -40,  -40,  -40,
-      -40,  -40,  -40,  -40,  -40,  -40,  -40,   63
-    },
-
-    {
-       11,  -41,   41,   42,  -41,  -41,   43,  -41,  -41,  -41,
-      -41,  -41,  -41,  -41,  -41,  -41,  -41,  -41
-    },
-
-    {
-       11,  -42,  -42,  -42,  -42,  -42,  -42,  -42,  -42,  -42,
-      -42,  -42,  -42,  -42,  -42,  -42,  -42,  -42
-    },
-
-    {
-       11,   44,   44,   45,   44,   44,   44,   44,   44,   44,
-       44,   44,   44,   44,   44,   44,   44,   44
-    },
-
-    {
-       11,   44,   44,   45,   44,   44,   44,   44,   44,   44,
-       44,   44,   44,   44,   44,   44,   44,   44
+       13,   67,   67,   68,   67,  -29,   67,  -29,   67,  -29,
+       67,   67,   67,   67,   67,   67,   67,   67,   67,  -29,
+       67
 
     },
 
     {
-       11,  -45,  -45,  -45,  -45,  -45,  -45,  -45,  -45,  -45,
-      -45,  -45,  -45,  -45,  -45,  -45,  -45,  -45
+       13,  -30,  -30,  -30,  -30,  -30,  -30,  -30,  -30,  -30,
+      -30,  -30,  -30,  -30,  -30,  -30,  -30,  -30,  -30,  -30,
+      -30
     },
 
     {
-       11,  -46,  -46,  -46,  -46,  -46,  -46,  -46,  -46,  -46,
-      -46,   46,  -46,  -46,  -46,  -46,  -46,  -46
+       13,  -31,  -31,  -31,  -31,  -31,  -31,  -31,  -31,  -31,
+      -31,  -31,  -31,  -31,  -31,  -31,  -31,  -31,  -31,  -31,
+      -31
     },
 
     {
-       11,   47,   47,  -47,   47,   47,   47,   47,   47,   47,
-       47,   47,   47,   47,   47,   47,   47,   47
+       13,   69,   69,  -32,   69,   69,   69,   69,   69,   69,
+       69,   69,   69,   69,   69,   69,   69,   69,   69,   69,
+       69
     },
 
     {
-       11,  -48,   48,   49,  -48,  -48,  -48,  -48,  -48,  -48,
-      -48,  -48,  -48,  -48,  -48,  -48,  -48,  -48
+       13,   70,   70,   71,   70,   70,   70,   70,   70,   70,
+
+       70,   70,   70,   70,   70,   70,   70,   70,   70,   70,
+       70
     },
 
     {
-       11,   50,  -49,  -49,   50,   50,   50,   50,   50,   50,
-       50,   50,   50,   50,   50,   50,   50,   50
-
+       13,  -34,  -34,  -34,  -34,  -34,  -34,  -34,  -34,  -34,
+      -34,  -34,  -34,  -34,  -34,  -34,  -34,  -34,  -34,  -34,
+      -34
     },
 
     {
-       11,  -50,  -50,  -50,  -50,  -50,  -50,  -50,  -50,  -50,
-      -50,  -50,  -50,  -50,  -50,  -50,  -50,  -50
+       13,  -35,   72,  -35,  -35,  -35,  -35,  -35,  -35,  -35,
+      -35,  -35,  -35,  -35,  -35,  -35,  -35,  -35,  -35,  -35,
+      -35
     },
 
     {
-       11,   51,   51,   52,   51,  -51,   51,   51,  -51,   51,
-       51,   51,   51,   51,   51,   51,  -51,   51
+       13,  -36,  -36,  -36,  -36,  -36,  -36,  -36,  -36,  -36,
+      -36,  -36,  -36,  -36,  -36,  -36,  -36,  -36,  -36,  -36,
+
+      -36
     },
 
     {
-       11,  -52,  -52,  -52,  -52,  -52,  -52,  -52,  -52,  -52,
-      -52,  -52,  -52,  -52,  -52,  -52,  -52,  -52
+       13,  -37,  -37,  -37,  -37,  -37,  -37,  -37,  -37,  -37,
+      -37,  -37,  -37,  -37,  -37,  -37,  -37,   73,  -37,  -37,
+      -37
     },
 
     {
-       11,  -53,  -53,   54,  -53,  -53,  -53,  -53,  -53,  -53,
-      -53,  -53,  -53,  -53,  -53,  -53,  -53,  -53
+       13,  -38,  -38,  -38,  -38,  -38,  -38,  -38,  -38,  -38,
+      -38,  -38,  -38,  -38,  -38,  -38,  -38,  -38,  -38,  -38,
+      -38
     },
 
     {
-       11,  -54,  -54,  -54,  -54,  -54,  -54,  -54,  -54,  -54,
-      -54,  -54,  -54,  -54,  -54,  -54,  -54,  -54
-
-    },
-
-    {
-       11,  -55,   55,  -55,  -55,  -55,  -55,  -55,  -55,  -55,
-      -55,  -55,  -55,  -55,  -55,  -55,  -55,  -55
-    },
-
-    {
-       11,  -56,  -56,  -56,  -56,  -56,  -56,  -56,  -56,  -56,
-      -56,  -56,  -56,  -56,  -56,  -56,  -56,  -56
-    },
-
-    {
-       11,   57,   57,  -57,   57,   57,   57,   57,   57,   57,
-       57,   57,   57,   57,   57,   57,   57,   57
-    },
-
-    {
-       11,  -58,  -58,  -58,  -58,  -58,  -58,  -58,  -58,  -58,
-      -58,  -58,  -58,  -58,  -58,  -58,  -58,  -58
-    },
-
-    {
-       11,  -59,  -59,  -59,  -59,  -59,  -59,  -59,  -59,  -59,
-      -59,   59,   59,  -59,  -59,  -59,  -59,  -59
+       13,   74,   74,  -39,   74,   74,   74,   74,   74,   74,
+       74,   74,   74,   74,   74,   74,   74,   74,   74,   74,
+       74
 
     },
 
     {
-       11,  -60,  -60,  -60,  -60,  -60,  -60,  -60,  -60,  -60,
-      -60,  -60,  -60,  -60,  -60,  -60,  -60,  -60
+       13,  -40,  -40,  -40,  -40,  -40,  -40,   75,  -40,  -40,
+      -40,  -40,  -40,   75,   75,  -40,  -40,  -40,  -40,  -40,
+      -40
     },
 
     {
-       11,  -61,  -61,  -61,  -61,  -61,  -61,  -61,  -61,  -61,
-      -61,  -61,  -61,  -61,  -61,  -61,  -61,  -61
+       13,  -41,  -41,  -41,  -41,  -41,  -41,  -41,   76,  -41,
+      -41,  -41,  -41,  -41,  -41,  -41,  -41,  -41,  -41,  -41,
+      -41
     },
 
     {
-       11,  -62,  -62,  -62,  -62,  -62,  -62,  -62,  -62,  -62,
-      -62,  -62,  -62,  -62,  -62,  -62,  -62,  -62
+       13,  -42,  -42,  -42,  -42,  -42,  -42,  -42,  -42,  -42,
+      -42,  -42,  -42,  -42,  -42,  -42,  -42,  -42,  -42,  -42,
+      -42
     },
 
     {
-       11,  -63,  -63,  -63,  -63,  -63,  -63,  -63,  -63,  -63,
-      -63,  -63,  -63,  -63,  -63,  -63,  -63,  -63
+       13,  -43,  -43,  -43,  -43,  -43,  -43,  -43,  -43,  -43,
+
+      -43,  -43,  -43,  -43,  -43,  -43,  -43,  -43,  -43,  -43,
+      -43
+    },
+
+    {
+       13,  -44,  -44,  -44,  -44,  -44,  -44,   75,  -44,  -44,
+      -44,  -44,  -44,   77,   77,  -44,  -44,  -44,  -44,  -44,
+      -44
+    },
+
+    {
+       13,  -45,  -45,  -45,  -45,  -45,  -45,  -45,  -45,  -45,
+      -45,  -45,  -45,  -45,  -45,  -45,  -45,   78,  -45,  -45,
+      -45
+    },
+
+    {
+       13,  -46,  -46,  -46,  -46,  -46,  -46,  -46,  -46,  -46,
+      -46,  -46,  -46,  -46,  -46,  -46,  -46,  -46,  -46,  -46,
+
+      -46
+    },
+
+    {
+       13,  -47,  -47,  -47,  -47,  -47,  -47,  -47,  -47,  -47,
+      -47,  -47,  -47,  -47,  -47,  -47,  -47,   79,  -47,  -47,
+      -47
+    },
+
+    {
+       13,  -48,  -48,   80,  -48,  -48,  -48,  -48,  -48,  -48,
+      -48,  -48,  -48,  -48,  -48,  -48,  -48,  -48,  -48,  -48,
+      -48
+    },
+
+    {
+       13,  -49,  -49,  -49,  -49,  -49,  -49,  -49,  -49,  -49,
+      -49,  -49,  -49,  -49,  -49,  -49,  -49,  -49,  -49,  -49,
+       81
+
+    },
+
+    {
+       13,   82,   83,  -50,   82,   82,   82,   82,   82,   82,
+       82,   82,   82,   82,   82,   82,   82,   82,   82,   82,
+       82
+    },
+
+    {
+       13,  -51,  -51,  -51,  -51,  -51,  -51,  -51,  -51,  -51,
+      -51,  -51,  -51,  -51,  -51,  -51,  -51,  -51,  -51,  -51,
+      -51
+    },
+
+    {
+       13,  -52,  -52,  -52,  -52,  -52,  -52,  -52,  -52,  -52,
+      -52,  -52,  -52,  -52,  -52,  -52,  -52,  -52,  -52,  -52,
+      -52
+    },
+
+    {
+       13,  -53,   53,   54,  -53,  -53,   55,  -53,  -53,  -53,
+
+      -53,  -53,  -53,  -53,  -53,  -53,  -53,  -53,  -53,  -53,
+      -53
+    },
+
+    {
+       13,  -54,  -54,  -54,  -54,  -54,  -54,  -54,  -54,  -54,
+      -54,  -54,  -54,  -54,  -54,  -54,  -54,  -54,  -54,  -54,
+      -54
+    },
+
+    {
+       13,   56,   56,   57,   56,   56,   56,   56,   56,   56,
+       56,   56,   56,   56,   56,   56,   56,   56,   56,   56,
+       56
+    },
+
+    {
+       13,   56,   56,   57,   56,   56,   56,   56,   56,   56,
+       56,   56,   56,   56,   56,   56,   56,   56,   56,   56,
+
+       56
+    },
+
+    {
+       13,  -57,  -57,  -57,  -57,  -57,  -57,  -57,  -57,  -57,
+      -57,  -57,  -57,  -57,  -57,  -57,  -57,  -57,  -57,  -57,
+      -57
+    },
+
+    {
+       13,  -58,   58,  -58,  -58,  -58,  -58,  -58,  -58,  -58,
+      -58,  -58,  -58,  -58,  -58,  -58,  -58,  -58,  -58,  -58,
+      -58
+    },
+
+    {
+       13,  -59,  -59,  -59,  -59,  -59,  -59,   59,  -59,  -59,
+      -59,  -59,  -59,   59,  -59,  -59,  -59,  -59,  -59,  -59,
+      -59
+
+    },
+
+    {
+       13,  -60,  -60,  -60,  -60,  -60,  -60,  -60,  -60,  -60,
+      -60,  -60,  -60,  -60,  -60,  -60,  -60,  -60,  -60,  -60,
+      -60
+    },
+
+    {
+       13,  -61,  -61,  -61,  -61,  -61,  -61,   59,  -61,  -61,
+      -61,  -61,  -61,   61,  -61,  -61,  -61,  -61,  -61,  -61,
+      -61
+    },
+
+    {
+       13,  -62,  -62,  -62,  -62,  -62,  -62,  -62,  -62,  -62,
+      -62,  -62,  -62,  -62,  -62,  -62,  -62,  -62,  -62,  -62,
+      -62
+    },
+
+    {
+       13,   63,   63,  -63,   63,   63,   63,   63,   63,   63,
+
+       63,   63,   63,   63,   63,   63,   63,   63,   63,   63,
+       63
+    },
+
+    {
+       13,  -64,   64,   65,  -64,  -64,  -64,  -64,  -64,  -64,
+      -64,  -64,  -64,  -64,  -64,  -64,  -64,  -64,  -64,  -64,
+      -64
+    },
+
+    {
+       13,   66,  -65,  -65,   66,   66,   66,   66,   66,   66,
+       66,   66,   66,   66,   66,   66,   66,   66,   66,   66,
+       66
+    },
+
+    {
+       13,  -66,  -66,  -66,  -66,  -66,  -66,  -66,  -66,  -66,
+      -66,  -66,  -66,  -66,  -66,  -66,  -66,  -66,  -66,  -66,
+
+      -66
+    },
+
+    {
+       13,   67,   67,   68,   67,  -67,   67,  -67,   67,  -67,
+       67,   67,   67,   67,   67,   67,   67,   67,   67,  -67,
+       67
+    },
+
+    {
+       13,  -68,  -68,  -68,  -68,  -68,  -68,  -68,  -68,  -68,
+      -68,  -68,  -68,  -68,  -68,  -68,  -68,  -68,  -68,  -68,
+      -68
+    },
+
+    {
+       13,   69,   69,  -69,   69,   69,   69,   69,   69,   69,
+       69,   69,   69,   69,   69,   69,   69,   69,   69,   69,
+       69
+
+    },
+
+    {
+       13,  -70,  -70,   71,  -70,  -70,  -70,  -70,  -70,  -70,
+      -70,  -70,  -70,  -70,  -70,  -70,  -70,  -70,  -70,  -70,
+      -70
+    },
+
+    {
+       13,  -71,  -71,  -71,  -71,  -71,  -71,  -71,  -71,  -71,
+      -71,  -71,  -71,  -71,  -71,  -71,  -71,  -71,  -71,  -71,
+      -71
+    },
+
+    {
+       13,  -72,   72,  -72,  -72,  -72,  -72,  -72,  -72,  -72,
+      -72,  -72,  -72,  -72,  -72,  -72,  -72,  -72,  -72,  -72,
+      -72
+    },
+
+    {
+       13,  -73,  -73,  -73,  -73,  -73,  -73,  -73,  -73,  -73,
+
+      -73,  -73,  -73,  -73,  -73,  -73,  -73,  -73,  -73,  -73,
+      -73
+    },
+
+    {
+       13,   74,   74,  -74,   74,   74,   74,   74,   74,   74,
+       74,   74,   74,   74,   74,   74,   74,   74,   74,   74,
+       74
+    },
+
+    {
+       13,  -75,  -75,  -75,  -75,  -75,  -75,   75,  -75,  -75,
+      -75,  -75,  -75,   75,   75,  -75,  -75,  -75,  -75,  -75,
+      -75
+    },
+
+    {
+       13,  -76,  -76,  -76,  -76,  -76,  -76,  -76,  -76,  -76,
+      -76,  -76,  -76,  -76,  -76,  -76,  -76,  -76,  -76,  -76,
+
+      -76
+    },
+
+    {
+       13,  -77,  -77,  -77,  -77,  -77,  -77,   75,  -77,  -77,
+      -77,  -77,  -77,   77,   77,  -77,  -77,  -77,  -77,  -77,
+      -77
+    },
+
+    {
+       13,  -78,  -78,  -78,  -78,  -78,  -78,  -78,  -78,  -78,
+      -78,  -78,  -78,  -78,  -78,  -78,  -78,  -78,  -78,  -78,
+      -78
+    },
+
+    {
+       13,  -79,  -79,  -79,  -79,  -79,  -79,  -79,  -79,  -79,
+      -79,  -79,  -79,  -79,  -79,  -79,  -79,  -79,  -79,  -79,
+      -79
+
+    },
+
+    {
+       13,  -80,  -80,  -80,  -80,  -80,  -80,  -80,  -80,  -80,
+      -80,  -80,  -80,  -80,  -80,  -80,  -80,  -80,  -80,  -80,
+      -80
+    },
+
+    {
+       13,  -81,  -81,  -81,  -81,  -81,  -81,  -81,  -81,  -81,
+      -81,  -81,  -81,  -81,  -81,  -81,  -81,  -81,  -81,  -81,
+      -81
+    },
+
+    {
+       13,   82,   83,  -82,   82,   82,   82,   82,   82,   82,
+       82,   82,   82,   82,   82,   82,   82,   82,   82,   82,
+       82
+    },
+
+    {
+       13,   83,   83,  -83,   83,   83,   83,   83,   83,   83,
+
+       83,   83,   83,   83,   83,   83,   83,   83,   83,   83,
+       83
     },
 
     } ;
 
-static yy_state_type yy_get_previous_state (void );
-static yy_state_type yy_try_NUL_trans (yy_state_type current_state  );
-static int yy_get_next_buffer (void );
-static void yynoreturn yy_fatal_error (yyconst char* msg  );
+static yy_state_type yy_get_previous_state ( void );
+static yy_state_type yy_try_NUL_trans ( yy_state_type current_state  );
+static int yy_get_next_buffer ( void );
+static void yynoreturn yy_fatal_error ( const char* msg  );
 
 /* Done after the current pattern has been matched and before the
  * corresponding action - sets up yytext.
@@ -699,9 +904,8 @@ static void yynoreturn yy_fatal_error (yyconst char* msg  );
 	(yy_hold_char) = *yy_cp; \
 	*yy_cp = '\0'; \
 	(yy_c_buf_p) = yy_cp;
-
-#define YY_NUM_RULES 37
-#define YY_END_OF_BUFFER 38
+#define YY_NUM_RULES 47
+#define YY_END_OF_BUFFER 48
 /* This struct is not used in this scanner,
    but its presence is necessary. */
 struct yy_trans_info
@@ -709,33 +913,35 @@ struct yy_trans_info
 	flex_int32_t yy_verify;
 	flex_int32_t yy_nxt;
 	};
-static yyconst flex_int16_t yy_accept[64] =
+static const flex_int16_t yy_accept[84] =
     {   0,
         0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-       38,    5,    4,    2,    3,    7,    8,    6,   36,   33,
-       35,   28,   32,   31,   30,   26,   25,   21,   13,   20,
-       23,   26,   11,   12,   22,   18,   14,   19,   26,   26,
-        4,    2,    3,    3,    1,    6,   36,   33,   35,   34,
-       28,   27,   30,   29,   25,   15,   23,    9,   22,   16,
-       17,   24,   10
+        0,    0,   48,    5,    4,    2,    3,   12,   11,   13,
+        7,   12,    6,   12,    8,   46,   43,   45,   38,   42,
+       41,   36,   40,   35,   34,   29,   21,   28,   32,   31,
+       35,   19,   20,   30,   26,   22,   27,   35,   35,   14,
+       16,   15,    4,    2,    3,    3,    1,   11,    7,   10,
+        6,    9,   46,   43,   45,   44,   38,   37,   36,   40,
+       39,   34,   23,   32,   31,   17,   30,   24,   25,   33,
+       18,   14,   14
     } ;
 
-static yyconst YY_CHAR yy_ec[256] =
+static const YY_CHAR yy_ec[256] =
     {   0,
         1,    1,    1,    1,    1,    1,    1,    1,    2,    3,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
-        1,    2,    4,    5,    6,    1,    1,    7,    8,    9,
-       10,    1,    1,    1,   11,   12,   12,   11,   11,   11,
-       11,   11,   11,   11,   11,   11,   11,    1,    1,   13,
-       14,   15,    1,    1,   11,   11,   11,   11,   11,   11,
-       11,   11,   11,   11,   11,   11,   11,   11,   11,   11,
-       11,   11,   11,   11,   11,   11,   11,   11,   11,   11,
-        1,   16,    1,    1,   11,    1,   11,   11,   11,   11,
+        1,    2,    4,    5,    6,    7,    1,    8,    9,   10,
+       11,    1,   12,    1,   13,   14,   14,   13,   13,   13,
+       13,   13,   13,   13,   13,   13,   13,   15,    1,   16,
+       17,   18,    1,    1,   13,   13,   13,   13,   13,   13,
+       13,   13,   13,   13,   13,   13,   13,   13,   13,   13,
+       13,   13,   13,   13,   13,   13,   13,   13,   13,   13,
+        1,   19,    1,    1,   13,    1,   13,   13,   13,   13,
 
-       11,   11,   11,   11,   11,   11,   11,   11,   11,   11,
-       11,   11,   11,   11,   11,   11,   11,   11,   11,   11,
-       11,   11,    1,   17,    1,    1,    1,    1,    1,    1,
+       13,   13,   13,   13,   13,   13,   13,   13,   13,   13,
+       13,   13,   13,   13,   13,   13,   13,   13,   13,   13,
+       13,   13,    1,   20,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
@@ -752,6 +958,13 @@ static yyconst YY_CHAR yy_ec[256] =
         1,    1,    1,    1,    1
     } ;
 
+/* Table of booleans, true if rule could match eol. */
+static const flex_int32_t yy_rule_can_match_eol[48] =
+    {   0,
+1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 
+    0, 0, 1, 0, 1, 1, 0, 0,     };
+
 extern int yy_flex_debug;
 int yy_flex_debug = 0;
 
@@ -763,15 +976,13 @@ int yy_flex_debug = 0;
 #define YY_MORE_ADJ 0
 #define YY_RESTORE_YY_MORE_OFFSET
 char *yytext;
-#line 1 "zconf.l"
-#define YY_NO_INPUT 1
 
-#line 6 "zconf.l"
 /*
  * Copyright (C) 2002 Roman Zippel <zippel@linux-m68k.org>
  * Released under the terms of the GNU GPL v2.0.
  */
 
+#include <assert.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -799,6 +1010,8 @@ struct buffer *current_buf;
 
 static int last_ts, first_ts;
 
+static char *expand_token(const char *in, size_t n);
+static void append_expanded_string(const char *in);
 static void zconf_endhelp(void);
 static void zconf_endfile(void);
 
@@ -816,7 +1029,7 @@ static void append_string(const char *str, int size)
 	if (new_size > text_asize) {
 		new_size += START_STRSIZE - 1;
 		new_size &= -START_STRSIZE;
-		text = realloc(text, new_size);
+		text = xrealloc(text, new_size);
 		text_asize = new_size;
 	}
 	memcpy(text + text_size, str, size);
@@ -835,15 +1048,15 @@ static void warn_ignored_character(char chr)
 {
 	fprintf(stderr,
 	        "%s:%d:warning: ignoring unsupported character '%c'\n",
-	        zconf_curname(), zconf_lineno(), chr);
+	        current_file->name, yylineno, chr);
 }
-#line 841 "zconf.lex.c"
 
 #define INITIAL 0
 #define COMMAND 1
 #define HELP 2
 #define STRING 3
 #define PARAM 4
+#define ASSIGN_VAL 5
 
 #ifndef YY_NO_UNISTD_H
 /* Special case for "unistd.h", since it is non-ANSI. We include it way
@@ -857,36 +1070,36 @@ static void warn_ignored_character(char chr)
 #define YY_EXTRA_TYPE void *
 #endif
 
-static int yy_init_globals (void );
+static int yy_init_globals ( void );
 
 /* Accessor methods to globals.
    These are made visible to non-reentrant scanners for convenience. */
 
-int yylex_destroy (void );
+int yylex_destroy ( void );
 
-int yyget_debug (void );
+int yyget_debug ( void );
 
-void yyset_debug (int debug_flag  );
+void yyset_debug ( int debug_flag  );
 
-YY_EXTRA_TYPE yyget_extra (void );
+YY_EXTRA_TYPE yyget_extra ( void );
 
-void yyset_extra (YY_EXTRA_TYPE user_defined  );
+void yyset_extra ( YY_EXTRA_TYPE user_defined  );
 
-FILE *yyget_in (void );
+FILE *yyget_in ( void );
 
-void yyset_in  (FILE * _in_str  );
+void yyset_in  ( FILE * _in_str  );
 
-FILE *yyget_out (void );
+FILE *yyget_out ( void );
 
-void yyset_out  (FILE * _out_str  );
+void yyset_out  ( FILE * _out_str  );
 
-			int yyget_leng (void );
+			int yyget_leng ( void );
 
-char *yyget_text (void );
+char *yyget_text ( void );
 
-int yyget_lineno (void );
+int yyget_lineno ( void );
 
-void yyset_lineno (int _line_number  );
+void yyset_lineno ( int _line_number  );
 
 /* Macros after this point can all be overridden by user definitions in
  * section 1.
@@ -894,32 +1107,31 @@ void yyset_lineno (int _line_number  );
 
 #ifndef YY_SKIP_YYWRAP
 #ifdef __cplusplus
-extern "C" int yywrap (void );
+extern "C" int yywrap ( void );
 #else
-extern int yywrap (void );
+extern int yywrap ( void );
 #endif
 #endif
 
 #ifndef YY_NO_UNPUT
     
-    static void yyunput (int c,char *buf_ptr  );
+    static void yyunput ( int c, char *buf_ptr  );
     
 #endif
 
 #ifndef yytext_ptr
-static void yy_flex_strncpy (char *,yyconst char *,int );
+static void yy_flex_strncpy ( char *, const char *, int );
 #endif
 
 #ifdef YY_NEED_STRLEN
-static int yy_flex_strlen (yyconst char * );
+static int yy_flex_strlen ( const char * );
 #endif
 
 #ifndef YY_NO_INPUT
-
 #ifdef __cplusplus
-static int yyinput (void );
+static int yyinput ( void );
 #else
-static int input (void );
+static int input ( void );
 #endif
 
 #endif
@@ -948,7 +1160,7 @@ static int input (void );
 #ifndef YY_INPUT
 #define YY_INPUT(buf,result,max_size) \
 	errno=0; \
-	while ( (result = (int) read( fileno(yyin), buf, max_size )) < 0 ) \
+	while ( (result = (int) read( fileno(yyin), buf, (yy_size_t) max_size )) < 0 ) \
 	{ \
 		if( errno != EINTR) \
 		{ \
@@ -1036,19 +1248,16 @@ YY_DECL
 		if ( ! YY_CURRENT_BUFFER ) {
 			yyensure_buffer_stack ();
 			YY_CURRENT_BUFFER_LVALUE =
-				yy_create_buffer(yyin,YY_BUF_SIZE );
+				yy_create_buffer( yyin, YY_BUF_SIZE );
 		}
 
-		yy_load_buffer_state( );
+		yy_load_buffer_state(  );
 		}
 
 	{
-#line 80 "zconf.l"
 
 	int str = 0;
 	int ts, i;
-
-#line 1052 "zconf.lex.c"
 
 	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
 		{
@@ -1074,37 +1283,41 @@ yy_find_action:
 
 		YY_DO_BEFORE_ACTION;
 
+		if ( yy_act != YY_END_OF_BUFFER && yy_rule_can_match_eol[yy_act] )
+			{
+			int yyl;
+			for ( yyl = 0; yyl < yyleng; ++yyl )
+				if ( yytext[yyl] == '\n' )
+					
+    yylineno++;
+;
+			}
+
 do_action:	/* This label is used only to access EOF actions. */
 
 		switch ( yy_act )
 	{ /* beginning of action switch */
 case 1:
 /* rule 1 can match eol */
-#line 85 "zconf.l"
 case 2:
 /* rule 2 can match eol */
 YY_RULE_SETUP
-#line 85 "zconf.l"
 {
-	current_file->lineno++;
 	return T_EOL;
 }
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 89 "zconf.l"
 
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 92 "zconf.l"
 {
 	BEGIN(COMMAND);
 }
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 96 "zconf.l"
 {
 	unput(yytext[0]);
 	BEGIN(COMMAND);
@@ -1113,227 +1326,254 @@ YY_RULE_SETUP
 
 case 6:
 YY_RULE_SETUP
-#line 103 "zconf.l"
 {
 		const struct kconf_id *id = kconf_id_lookup(yytext, yyleng);
-		BEGIN(PARAM);
 		current_pos.file = current_file;
-		current_pos.lineno = current_file->lineno;
+		current_pos.lineno = yylineno;
 		if (id && id->flags & TF_COMMAND) {
-			zconflval.id = id;
+			BEGIN(PARAM);
+			yylval.id = id;
 			return id->token;
 		}
 		alloc_string(yytext, yyleng);
-		zconflval.string = text;
-		return T_WORD;
+		yylval.string = text;
+		return T_VARIABLE;
 	}
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 116 "zconf.l"
-warn_ignored_character(*yytext);
+{
+		/* this token includes at least one '$' */
+		yylval.string = expand_token(yytext, yyleng);
+		if (strlen(yylval.string))
+			return T_VARIABLE;
+		free(yylval.string);
+	}
 	YY_BREAK
 case 8:
-/* rule 8 can match eol */
 YY_RULE_SETUP
-#line 117 "zconf.l"
+{ BEGIN(ASSIGN_VAL); yylval.flavor = VAR_RECURSIVE; return T_ASSIGN; }
+	YY_BREAK
+case 9:
+YY_RULE_SETUP
+{ BEGIN(ASSIGN_VAL); yylval.flavor = VAR_SIMPLE; return T_ASSIGN; }
+	YY_BREAK
+case 10:
+YY_RULE_SETUP
+{ BEGIN(ASSIGN_VAL); yylval.flavor = VAR_APPEND; return T_ASSIGN; }
+	YY_BREAK
+case 11:
+YY_RULE_SETUP
+
+	YY_BREAK
+case 12:
+YY_RULE_SETUP
+warn_ignored_character(*yytext);
+	YY_BREAK
+case 13:
+/* rule 13 can match eol */
+YY_RULE_SETUP
 {
 		BEGIN(INITIAL);
-		current_file->lineno++;
 		return T_EOL;
 	}
 	YY_BREAK
 
-
-case 9:
-YY_RULE_SETUP
-#line 125 "zconf.l"
-return T_AND;
-	YY_BREAK
-case 10:
-YY_RULE_SETUP
-#line 126 "zconf.l"
-return T_OR;
-	YY_BREAK
-case 11:
-YY_RULE_SETUP
-#line 127 "zconf.l"
-return T_OPEN_PAREN;
-	YY_BREAK
-case 12:
-YY_RULE_SETUP
-#line 128 "zconf.l"
-return T_CLOSE_PAREN;
-	YY_BREAK
-case 13:
-YY_RULE_SETUP
-#line 129 "zconf.l"
-return T_NOT;
-	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 130 "zconf.l"
-return T_EQUAL;
+{
+		alloc_string(yytext, yyleng);
+		yylval.string = text;
+		return T_ASSIGN_VAL;
+	}
 	YY_BREAK
 case 15:
+/* rule 15 can match eol */
 YY_RULE_SETUP
-#line 131 "zconf.l"
-return T_UNEQUAL;
+{ BEGIN(INITIAL); return T_EOL; }
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 132 "zconf.l"
-return T_LESS_EQUAL;
+
 	YY_BREAK
+
 case 17:
 YY_RULE_SETUP
-#line 133 "zconf.l"
-return T_GREATER_EQUAL;
+return T_AND;
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 134 "zconf.l"
-return T_LESS;
+return T_OR;
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 135 "zconf.l"
-return T_GREATER;
+return T_OPEN_PAREN;
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 136 "zconf.l"
+return T_CLOSE_PAREN;
+	YY_BREAK
+case 21:
+YY_RULE_SETUP
+return T_NOT;
+	YY_BREAK
+case 22:
+YY_RULE_SETUP
+return T_EQUAL;
+	YY_BREAK
+case 23:
+YY_RULE_SETUP
+return T_UNEQUAL;
+	YY_BREAK
+case 24:
+YY_RULE_SETUP
+return T_LESS_EQUAL;
+	YY_BREAK
+case 25:
+YY_RULE_SETUP
+return T_GREATER_EQUAL;
+	YY_BREAK
+case 26:
+YY_RULE_SETUP
+return T_LESS;
+	YY_BREAK
+case 27:
+YY_RULE_SETUP
+return T_GREATER;
+	YY_BREAK
+case 28:
+YY_RULE_SETUP
 {
 		str = yytext[0];
 		new_string();
 		BEGIN(STRING);
 	}
 	YY_BREAK
-case 21:
-/* rule 21 can match eol */
+case 29:
+/* rule 29 can match eol */
 YY_RULE_SETUP
-#line 141 "zconf.l"
-BEGIN(INITIAL); current_file->lineno++; return T_EOL;
+BEGIN(INITIAL); return T_EOL;
 	YY_BREAK
-case 22:
+case 30:
 YY_RULE_SETUP
-#line 142 "zconf.l"
 {
 		const struct kconf_id *id = kconf_id_lookup(yytext, yyleng);
 		if (id && id->flags & TF_PARAM) {
-			zconflval.id = id;
+			yylval.id = id;
 			return id->token;
 		}
 		alloc_string(yytext, yyleng);
-		zconflval.string = text;
+		yylval.string = text;
 		return T_WORD;
 	}
 	YY_BREAK
-case 23:
+case 31:
 YY_RULE_SETUP
-#line 152 "zconf.l"
+{
+		/* this token includes at least one '$' */
+		yylval.string = expand_token(yytext, yyleng);
+		if (strlen(yylval.string))
+			return T_WORD;
+		free(yylval.string);
+	}
+	YY_BREAK
+case 32:
+YY_RULE_SETUP
 /* comment */
 	YY_BREAK
-case 24:
-/* rule 24 can match eol */
+case 33:
+/* rule 33 can match eol */
 YY_RULE_SETUP
-#line 153 "zconf.l"
-current_file->lineno++;
+;
 	YY_BREAK
-case 25:
+case 34:
 YY_RULE_SETUP
-#line 154 "zconf.l"
 
 	YY_BREAK
-case 26:
+case 35:
 YY_RULE_SETUP
-#line 155 "zconf.l"
 warn_ignored_character(*yytext);
 	YY_BREAK
 case YY_STATE_EOF(PARAM):
-#line 156 "zconf.l"
 {
 		BEGIN(INITIAL);
 	}
 	YY_BREAK
 
-
-case 27:
-/* rule 27 can match eol */
+case 36:
+YY_RULE_SETUP
+append_expanded_string(yytext);
+	YY_BREAK
+case 37:
+/* rule 37 can match eol */
 *yy_cp = (yy_hold_char); /* undo effects of setting up yytext */
 YY_LINENO_REWIND_TO(yy_cp - 1);
 (yy_c_buf_p) = yy_cp -= 1;
 YY_DO_BEFORE_ACTION; /* set up yytext again */
 YY_RULE_SETUP
-#line 162 "zconf.l"
 {
 		append_string(yytext, yyleng);
-		zconflval.string = text;
+		yylval.string = text;
 		return T_WORD_QUOTE;
 	}
 	YY_BREAK
-case 28:
+case 38:
 YY_RULE_SETUP
-#line 167 "zconf.l"
 {
 		append_string(yytext, yyleng);
 	}
 	YY_BREAK
-case 29:
-/* rule 29 can match eol */
+case 39:
+/* rule 39 can match eol */
 *yy_cp = (yy_hold_char); /* undo effects of setting up yytext */
 YY_LINENO_REWIND_TO(yy_cp - 1);
 (yy_c_buf_p) = yy_cp -= 1;
 YY_DO_BEFORE_ACTION; /* set up yytext again */
 YY_RULE_SETUP
-#line 170 "zconf.l"
 {
 		append_string(yytext + 1, yyleng - 1);
-		zconflval.string = text;
+		yylval.string = text;
 		return T_WORD_QUOTE;
 	}
 	YY_BREAK
-case 30:
+case 40:
 YY_RULE_SETUP
-#line 175 "zconf.l"
 {
 		append_string(yytext + 1, yyleng - 1);
 	}
 	YY_BREAK
-case 31:
+case 41:
 YY_RULE_SETUP
-#line 178 "zconf.l"
 {
 		if (str == yytext[0]) {
 			BEGIN(PARAM);
-			zconflval.string = text;
+			yylval.string = text;
 			return T_WORD_QUOTE;
 		} else
 			append_string(yytext, 1);
 	}
 	YY_BREAK
-case 32:
-/* rule 32 can match eol */
+case 42:
+/* rule 42 can match eol */
 YY_RULE_SETUP
-#line 186 "zconf.l"
 {
-		printf("%s:%d:warning: multi-line strings not supported\n", zconf_curname(), zconf_lineno());
-		current_file->lineno++;
+		fprintf(stderr,
+			"%s:%d:warning: multi-line strings not supported\n",
+			zconf_curname(), zconf_lineno());
 		BEGIN(INITIAL);
 		return T_EOL;
 	}
 	YY_BREAK
 case YY_STATE_EOF(STRING):
-#line 192 "zconf.l"
 {
 		BEGIN(INITIAL);
+		yylval.string = text;
+		return T_WORD_QUOTE;
 	}
 	YY_BREAK
 
-
-case 33:
+case 43:
 YY_RULE_SETUP
-#line 198 "zconf.l"
 {
 		ts = 0;
 		for (i = 0; i < yyleng; i++) {
@@ -1357,32 +1597,27 @@ YY_RULE_SETUP
 		}
 	}
 	YY_BREAK
-case 34:
-/* rule 34 can match eol */
+case 44:
+/* rule 44 can match eol */
 *yy_cp = (yy_hold_char); /* undo effects of setting up yytext */
 YY_LINENO_REWIND_TO(yy_cp - 1);
 (yy_c_buf_p) = yy_cp -= 1;
 YY_DO_BEFORE_ACTION; /* set up yytext again */
 YY_RULE_SETUP
-#line 220 "zconf.l"
 {
-		current_file->lineno++;
 		zconf_endhelp();
 		return T_HELPTEXT;
 	}
 	YY_BREAK
-case 35:
-/* rule 35 can match eol */
+case 45:
+/* rule 45 can match eol */
 YY_RULE_SETUP
-#line 225 "zconf.l"
 {
-		current_file->lineno++;
 		append_string("\n", 1);
 	}
 	YY_BREAK
-case 36:
+case 46:
 YY_RULE_SETUP
-#line 229 "zconf.l"
 {
 		while (yyleng) {
 			if ((yytext[yyleng-1] != ' ') && (yytext[yyleng-1] != '\t'))
@@ -1395,7 +1630,6 @@ YY_RULE_SETUP
 	}
 	YY_BREAK
 case YY_STATE_EOF(HELP):
-#line 239 "zconf.l"
 {
 		zconf_endhelp();
 		return T_HELPTEXT;
@@ -1404,7 +1638,7 @@ case YY_STATE_EOF(HELP):
 
 case YY_STATE_EOF(INITIAL):
 case YY_STATE_EOF(COMMAND):
-#line 245 "zconf.l"
+case YY_STATE_EOF(ASSIGN_VAL):
 {
 	if (current_file) {
 		zconf_endfile();
@@ -1414,12 +1648,10 @@ case YY_STATE_EOF(COMMAND):
 	yyterminate();
 }
 	YY_BREAK
-case 37:
+case 47:
 YY_RULE_SETUP
-#line 254 "zconf.l"
 YY_FATAL_ERROR( "flex scanner jammed" );
 	YY_BREAK
-#line 1423 "zconf.lex.c"
 
 	case YY_END_OF_BUFFER:
 		{
@@ -1495,7 +1727,7 @@ YY_FATAL_ERROR( "flex scanner jammed" );
 				{
 				(yy_did_buffer_switch_on_eof) = 0;
 
-				if ( yywrap( ) )
+				if ( yywrap(  ) )
 					{
 					/* Note: because we've taken care in
 					 * yy_get_next_buffer() to have set up
@@ -1627,7 +1859,8 @@ static int yy_get_next_buffer (void)
 
 				b->yy_ch_buf = (char *)
 					/* Include room in for 2 EOB chars. */
-					yyrealloc((void *) b->yy_ch_buf,b->yy_buf_size + 2  );
+					yyrealloc( (void *) b->yy_ch_buf,
+							 (yy_size_t) (b->yy_buf_size + 2)  );
 				}
 			else
 				/* Can't grow it, we don't own it. */
@@ -1659,7 +1892,7 @@ static int yy_get_next_buffer (void)
 		if ( number_to_move == YY_MORE_ADJ )
 			{
 			ret_val = EOB_ACT_END_OF_FILE;
-			yyrestart(yyin  );
+			yyrestart( yyin  );
 			}
 
 		else
@@ -1676,9 +1909,12 @@ static int yy_get_next_buffer (void)
 	if (((yy_n_chars) + number_to_move) > YY_CURRENT_BUFFER_LVALUE->yy_buf_size) {
 		/* Extend the array by 50%, plus the number we really need. */
 		int new_size = (yy_n_chars) + number_to_move + ((yy_n_chars) >> 1);
-		YY_CURRENT_BUFFER_LVALUE->yy_ch_buf = (char *) yyrealloc((void *) YY_CURRENT_BUFFER_LVALUE->yy_ch_buf,new_size  );
+		YY_CURRENT_BUFFER_LVALUE->yy_ch_buf = (char *) yyrealloc(
+			(void *) YY_CURRENT_BUFFER_LVALUE->yy_ch_buf, (yy_size_t) new_size  );
 		if ( ! YY_CURRENT_BUFFER_LVALUE->yy_ch_buf )
 			YY_FATAL_ERROR( "out of dynamic memory in yy_get_next_buffer()" );
+		/* "- 2" to take care of EOB's */
+		YY_CURRENT_BUFFER_LVALUE->yy_buf_size = (int) (new_size - 2);
 	}
 
 	(yy_n_chars) += number_to_move;
@@ -1756,6 +1992,10 @@ static int yy_get_next_buffer (void)
 
 	*--yy_cp = (char) c;
 
+    if ( c == '\n' ){
+        --yylineno;
+    }
+
 	(yytext_ptr) = yy_bp;
 	(yy_hold_char) = *yy_cp;
 	(yy_c_buf_p) = yy_cp;
@@ -1787,7 +2027,7 @@ static int yy_get_next_buffer (void)
 
 		else
 			{ /* need more input */
-			int offset = (yy_c_buf_p) - (yytext_ptr);
+			int offset = (int) ((yy_c_buf_p) - (yytext_ptr));
 			++(yy_c_buf_p);
 
 			switch ( yy_get_next_buffer(  ) )
@@ -1804,13 +2044,13 @@ static int yy_get_next_buffer (void)
 					 */
 
 					/* Reset buffer status. */
-					yyrestart(yyin );
+					yyrestart( yyin );
 
 					/*FALLTHROUGH*/
 
 				case EOB_ACT_END_OF_FILE:
 					{
-					if ( yywrap( ) )
+					if ( yywrap(  ) )
 						return 0;
 
 					if ( ! (yy_did_buffer_switch_on_eof) )
@@ -1833,6 +2073,11 @@ static int yy_get_next_buffer (void)
 	*(yy_c_buf_p) = '\0';	/* preserve yytext */
 	(yy_hold_char) = *++(yy_c_buf_p);
 
+	if ( c == '\n' )
+		
+    yylineno++;
+;
+
 	return c;
 }
 #endif	/* ifndef YY_NO_INPUT */
@@ -1848,11 +2093,11 @@ static int yy_get_next_buffer (void)
 	if ( ! YY_CURRENT_BUFFER ){
         yyensure_buffer_stack ();
 		YY_CURRENT_BUFFER_LVALUE =
-            yy_create_buffer(yyin,YY_BUF_SIZE );
+            yy_create_buffer( yyin, YY_BUF_SIZE );
 	}
 
-	yy_init_buffer(YY_CURRENT_BUFFER,input_file );
-	yy_load_buffer_state( );
+	yy_init_buffer( YY_CURRENT_BUFFER, input_file );
+	yy_load_buffer_state(  );
 }
 
 /** Switch to a different input buffer.
@@ -1880,7 +2125,7 @@ static int yy_get_next_buffer (void)
 		}
 
 	YY_CURRENT_BUFFER_LVALUE = new_buffer;
-	yy_load_buffer_state( );
+	yy_load_buffer_state(  );
 
 	/* We don't actually know whether we did this switch during
 	 * EOF (yywrap()) processing, but the only time this flag
@@ -1908,22 +2153,22 @@ static void yy_load_buffer_state  (void)
 {
 	YY_BUFFER_STATE b;
     
-	b = (YY_BUFFER_STATE) yyalloc(sizeof( struct yy_buffer_state )  );
+	b = (YY_BUFFER_STATE) yyalloc( sizeof( struct yy_buffer_state )  );
 	if ( ! b )
 		YY_FATAL_ERROR( "out of dynamic memory in yy_create_buffer()" );
 
-	b->yy_buf_size = (yy_size_t)size;
+	b->yy_buf_size = size;
 
 	/* yy_ch_buf has to be 2 characters longer than the size given because
 	 * we need to put in 2 end-of-buffer characters.
 	 */
-	b->yy_ch_buf = (char *) yyalloc(b->yy_buf_size + 2  );
+	b->yy_ch_buf = (char *) yyalloc( (yy_size_t) (b->yy_buf_size + 2)  );
 	if ( ! b->yy_ch_buf )
 		YY_FATAL_ERROR( "out of dynamic memory in yy_create_buffer()" );
 
 	b->yy_is_our_buffer = 1;
 
-	yy_init_buffer(b,file );
+	yy_init_buffer( b, file );
 
 	return b;
 }
@@ -1942,9 +2187,9 @@ static void yy_load_buffer_state  (void)
 		YY_CURRENT_BUFFER_LVALUE = (YY_BUFFER_STATE) 0;
 
 	if ( b->yy_is_our_buffer )
-		yyfree((void *) b->yy_ch_buf  );
+		yyfree( (void *) b->yy_ch_buf  );
 
-	yyfree((void *) b  );
+	yyfree( (void *) b  );
 }
 
 /* Initializes or reinitializes a buffer.
@@ -1956,7 +2201,7 @@ static void yy_load_buffer_state  (void)
 {
 	int oerrno = errno;
     
-	yy_flush_buffer(b );
+	yy_flush_buffer( b );
 
 	b->yy_input_file = file;
 	b->yy_fill_buffer = 1;
@@ -1999,7 +2244,7 @@ static void yy_load_buffer_state  (void)
 	b->yy_buffer_status = YY_BUFFER_NEW;
 
 	if ( b == YY_CURRENT_BUFFER )
-		yy_load_buffer_state( );
+		yy_load_buffer_state(  );
 }
 
 /** Pushes the new state onto the stack. The new state becomes
@@ -2030,7 +2275,7 @@ void yypush_buffer_state (YY_BUFFER_STATE new_buffer )
 	YY_CURRENT_BUFFER_LVALUE = new_buffer;
 
 	/* copied from yy_switch_to_buffer. */
-	yy_load_buffer_state( );
+	yy_load_buffer_state(  );
 	(yy_did_buffer_switch_on_eof) = 1;
 }
 
@@ -2049,7 +2294,7 @@ void yypop_buffer_state (void)
 		--(yy_buffer_stack_top);
 
 	if (YY_CURRENT_BUFFER) {
-		yy_load_buffer_state( );
+		yy_load_buffer_state(  );
 		(yy_did_buffer_switch_on_eof) = 1;
 	}
 }
@@ -2059,7 +2304,7 @@ void yypop_buffer_state (void)
  */
 static void yyensure_buffer_stack (void)
 {
-	int num_to_alloc;
+	yy_size_t num_to_alloc;
     
 	if (!(yy_buffer_stack)) {
 
@@ -2116,11 +2361,11 @@ YY_BUFFER_STATE yy_scan_buffer  (char * base, yy_size_t  size )
 		/* They forgot to leave room for the EOB's. */
 		return NULL;
 
-	b = (YY_BUFFER_STATE) yyalloc(sizeof( struct yy_buffer_state )  );
+	b = (YY_BUFFER_STATE) yyalloc( sizeof( struct yy_buffer_state )  );
 	if ( ! b )
 		YY_FATAL_ERROR( "out of dynamic memory in yy_scan_buffer()" );
 
-	b->yy_buf_size = size - 2;	/* "- 2" to take care of EOB's */
+	b->yy_buf_size = (int) (size - 2);	/* "- 2" to take care of EOB's */
 	b->yy_buf_pos = b->yy_ch_buf = base;
 	b->yy_is_our_buffer = 0;
 	b->yy_input_file = NULL;
@@ -2130,7 +2375,7 @@ YY_BUFFER_STATE yy_scan_buffer  (char * base, yy_size_t  size )
 	b->yy_fill_buffer = 0;
 	b->yy_buffer_status = YY_BUFFER_NEW;
 
-	yy_switch_to_buffer(b  );
+	yy_switch_to_buffer( b  );
 
 	return b;
 }
@@ -2143,10 +2388,10 @@ YY_BUFFER_STATE yy_scan_buffer  (char * base, yy_size_t  size )
  * @note If you want to scan bytes that may contain NUL values, then use
  *       yy_scan_bytes() instead.
  */
-YY_BUFFER_STATE yy_scan_string (yyconst char * yystr )
+YY_BUFFER_STATE yy_scan_string (const char * yystr )
 {
     
-	return yy_scan_bytes(yystr,(int) strlen(yystr) );
+	return yy_scan_bytes( yystr, (int) strlen(yystr) );
 }
 
 /** Setup the input buffer state to scan the given bytes. The next call to yylex() will
@@ -2156,7 +2401,7 @@ YY_BUFFER_STATE yy_scan_string (yyconst char * yystr )
  * 
  * @return the newly allocated buffer state object.
  */
-YY_BUFFER_STATE yy_scan_bytes  (yyconst char * yybytes, int  _yybytes_len )
+YY_BUFFER_STATE yy_scan_bytes  (const char * yybytes, int  _yybytes_len )
 {
 	YY_BUFFER_STATE b;
 	char *buf;
@@ -2165,7 +2410,7 @@ YY_BUFFER_STATE yy_scan_bytes  (yyconst char * yybytes, int  _yybytes_len )
     
 	/* Get memory for full buffer, including space for trailing EOB's. */
 	n = (yy_size_t) (_yybytes_len + 2);
-	buf = (char *) yyalloc(n  );
+	buf = (char *) yyalloc( n  );
 	if ( ! buf )
 		YY_FATAL_ERROR( "out of dynamic memory in yy_scan_bytes()" );
 
@@ -2174,7 +2419,7 @@ YY_BUFFER_STATE yy_scan_bytes  (yyconst char * yybytes, int  _yybytes_len )
 
 	buf[_yybytes_len] = buf[_yybytes_len+1] = YY_END_OF_BUFFER_CHAR;
 
-	b = yy_scan_buffer(buf,n );
+	b = yy_scan_buffer( buf, n );
 	if ( ! b )
 		YY_FATAL_ERROR( "bad buffer in yy_scan_bytes()" );
 
@@ -2190,9 +2435,9 @@ YY_BUFFER_STATE yy_scan_bytes  (yyconst char * yybytes, int  _yybytes_len )
 #define YY_EXIT_FAILURE 2
 #endif
 
-static void yynoreturn yy_fatal_error (yyconst char* msg )
+static void yynoreturn yy_fatal_error (const char* msg )
 {
-			(void) fprintf( stderr, "%s\n", msg );
+			fprintf( stderr, "%s\n", msg );
 	exit( YY_EXIT_FAILURE );
 }
 
@@ -2299,6 +2544,9 @@ static int yy_init_globals (void)
      * This function is called from yylex_destroy(), so don't allocate here.
      */
 
+    /* We do not touch yylineno unless the option is enabled. */
+    yylineno =  1;
+    
     (yy_buffer_stack) = NULL;
     (yy_buffer_stack_top) = 0;
     (yy_buffer_stack_max) = 0;
@@ -2327,7 +2575,7 @@ int yylex_destroy  (void)
     
     /* Pop the buffer stack, destroying each element. */
 	while(YY_CURRENT_BUFFER){
-		yy_delete_buffer(YY_CURRENT_BUFFER  );
+		yy_delete_buffer( YY_CURRENT_BUFFER  );
 		YY_CURRENT_BUFFER_LVALUE = NULL;
 		yypop_buffer_state();
 	}
@@ -2348,7 +2596,7 @@ int yylex_destroy  (void)
  */
 
 #ifndef yytext_ptr
-static void yy_flex_strncpy (char* s1, yyconst char * s2, int n )
+static void yy_flex_strncpy (char* s1, const char * s2, int n )
 {
 		
 	int i;
@@ -2358,7 +2606,7 @@ static void yy_flex_strncpy (char* s1, yyconst char * s2, int n )
 #endif
 
 #ifdef YY_NEED_STRLEN
-static int yy_flex_strlen (yyconst char * s )
+static int yy_flex_strlen (const char * s )
 {
 	int n;
 	for ( n = 0; s[n]; ++n )
@@ -2393,8 +2641,57 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 254 "zconf.l"
+static char *expand_token(const char *in, size_t n)
+{
+	char *out;
+	int c;
+	char c2;
+	const char *rest, *end;
 
+	new_string();
+	append_string(in, n);
+
+	/* get the whole line because we do not know the end of token. */
+	while ((c = input()) != EOF) {
+		if (c == '\n') {
+			unput(c);
+			break;
+		}
+		c2 = c;
+		append_string(&c2, 1);
+	}
+
+	rest = text;
+	out = expand_one_token(&rest);
+
+	/* push back unused characters to the input stream */
+	end = rest + strlen(rest);
+	while (end > rest)
+		unput(*--end);
+
+	free(text);
+
+	return out;
+}
+
+static void append_expanded_string(const char *str)
+{
+	const char *end;
+	char *res;
+
+	str++;
+
+	res = expand_dollar(&str);
+
+	/* push back unused characters to the input stream */
+	end = str + strlen(str);
+	while (end > str)
+		unput(*--end);
+
+	append_string(res, strlen(res));
+
+	free(res);
+}
 
 void zconf_starthelp(void)
 {
@@ -2405,10 +2702,9 @@ void zconf_starthelp(void)
 
 static void zconf_endhelp(void)
 {
-	zconflval.string = text;
+	yylval.string = text;
 	BEGIN(INITIAL);
 }
-
 
 /*
  * Try to open specified file with following names:
@@ -2438,7 +2734,7 @@ void zconf_initscan(const char *name)
 {
 	yyin = zconf_fopen(name);
 	if (!yyin) {
-		printf("can't find file %s\n", name);
+		fprintf(stderr, "can't find file %s\n", name);
 		exit(1);
 	}
 
@@ -2446,7 +2742,7 @@ void zconf_initscan(const char *name)
 	memset(current_buf, 0, sizeof(*current_buf));
 
 	current_file = file_lookup(name);
-	current_file->lineno = 1;
+	yylineno = 1;
 }
 
 void zconf_nextfile(const char *name)
@@ -2459,35 +2755,34 @@ void zconf_nextfile(const char *name)
 	current_buf->state = YY_CURRENT_BUFFER;
 	yyin = zconf_fopen(file->name);
 	if (!yyin) {
-		printf("%s:%d: can't open file \"%s\"\n",
-		    zconf_curname(), zconf_lineno(), file->name);
+		fprintf(stderr, "%s:%d: can't open file \"%s\"\n",
+			zconf_curname(), zconf_lineno(), file->name);
 		exit(1);
 	}
-	yy_switch_to_buffer(yy_create_buffer(yyin,YY_BUF_SIZE));
+	yy_switch_to_buffer(yy_create_buffer(yyin, YY_BUF_SIZE));
 	buf->parent = current_buf;
 	current_buf = buf;
 
-	for (iter = current_file->parent; iter; iter = iter->parent ) {
-		if (!strcmp(current_file->name,iter->name) ) {
-			printf("%s:%d: recursive inclusion detected. "
-			       "Inclusion path:\n  current file : '%s'\n",
-			       zconf_curname(), zconf_lineno(),
-			       zconf_curname());
-			iter = current_file->parent;
-			while (iter && \
-			       strcmp(iter->name,current_file->name)) {
-				printf("  included from: '%s:%d'\n",
-				       iter->name, iter->lineno-1);
+	current_file->lineno = yylineno;
+	file->parent = current_file;
+
+	for (iter = current_file; iter; iter = iter->parent) {
+		if (!strcmp(iter->name, file->name)) {
+			fprintf(stderr,
+				"Recursive inclusion detected.\n"
+				"Inclusion path:\n"
+				"  current file : %s\n", file->name);
+			iter = file;
+			do {
 				iter = iter->parent;
-			}
-			if (iter)
-				printf("  included from: '%s:%d'\n",
-				       iter->name, iter->lineno+1);
+				fprintf(stderr, "  included from: %s:%d\n",
+					iter->name, iter->lineno - 1);
+			} while (strcmp(iter->name, file->name));
 			exit(1);
 		}
 	}
-	file->lineno = 1;
-	file->parent = current_file;
+
+	yylineno = 1;
 	current_file = file;
 }
 
@@ -2496,6 +2791,8 @@ static void zconf_endfile(void)
 	struct buffer *parent;
 
 	current_file = current_file->parent;
+	if (current_file)
+		yylineno = current_file->lineno;
 
 	parent = current_buf->parent;
 	if (parent) {

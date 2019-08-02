@@ -1,0 +1,5 @@
+obj-bob-$(CONFIG_A) := file1.o
+obj-bob-$(CONFIG_B) := file2.o
+obj-bob-$(CONFIG_C) := file3.o
+composite-objs := yo.o $(obj-bob-y)
+obj-$(CONFIG_OBJ) += composite.o

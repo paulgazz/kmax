@@ -1,0 +1,9 @@
+config CC_IS_GCC
+        bool
+config GCC_VERSION
+        int
+config GCOV_FORMAT_3_4
+        bool "GCC 3.4 format"
+        depends on CC_IS_GCC && GCC_VERSION < 40700
+        ---help---
+        Select this option to use the format defined by GCC 3.4.

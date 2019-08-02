@@ -1,7 +1,11 @@
+This directory now contains the new tool called Kclause, which translates Kconfig specifications to Boolean logic using either BDDs or Z3.  More details about this work can be found in our [tech report](https://apps.cs.utexas.edu/apps/tech-reports/171355).
+
+## Kconfig parser
+
 The Kconfig parser in this directory has been copied from the
-linux-4.12.8/scripts/kconfig directory.  `zconf.hash.c_shipped` has
-been copied to `zconf.hash.c`.  The following minor changes have been
-made:
+linux-4.19.50/scripts/kconfig directory (GPL-2.0).  (We used to have
+to copy `zconf.hash.c_shipped` to `zconf.hash.c`.)  The following
+minor changes have been made:
 
 1. In `expr.c`, the `static` keyword has been removed from
    `expr_compare_type` so it can be used by `check_dep.c`.
@@ -10,7 +14,7 @@ made:
 
         bool searched;
         bool depends;
-3. 	In `expr.h`, `struct_property` is given an extra field in order to
+3. 	In `expr.h`, `struct property` is given an extra field in order to
        save a select's original dependency `if` dependency, if any.
 
         struct expr *original_expr;
@@ -27,3 +31,7 @@ made:
     a config's entire dependencies between conjoined with select's
     `if` dependencies.  Our Boolean formulae already account for
     dependencies and don't need them on the select.
+
+## Running on Linux
+
+    check_dep --dimacs -e SRCARCH=x86 -e srctree=./ Kconfig | tee kconfig.kmax

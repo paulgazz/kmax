@@ -24,9 +24,9 @@ all: $(GENERATED) $(CPROGS)
 
 zconf.tab.o: zconf.tab.c zconf.hash.c zconf.lex.c util.c confdata.c expr.c symbol.c menu.c lkc.h
 
-bconf.tab.o: bconf.tab.c bconf.lex.c
+# bconf.tab.o: bconf.tab.c bconf.lex.c
 
-check_dep: check_dep.o zconf.tab.o bconf.tab.o
+check_dep: check_dep.o zconf.tab.o # bconf.tab.o
 	$(CC) $(CFLAGS) -o $@ $^
 
 %.o: %.c

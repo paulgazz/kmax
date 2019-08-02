@@ -28,6 +28,8 @@ import subprocess
 import cPickle as pickle
 import time
 
+import vcommon as CM
+
 starting_time = time.time()
 
 def chgext(filename, f, t):
@@ -144,7 +146,7 @@ def covering_set(kbuild_dir,        # src directory to process
     return set()
 
   covering_set_args = [ "covering_set.py",
-                        "-p",
+                        "-p",  #tvn why use this flag ? 
                         "-Dsrc=" + kbuild_dir,      # drivers/staging/wlags49_h25/, drivers/gpu/drm/nouveau/
                         # TODO default to empty variable
                         # "-Dobj=" + kbuild_dir,    # drivers/scsi/aic7xxx/
@@ -173,6 +175,9 @@ def covering_set(kbuild_dir,        # src directory to process
     covering_set_args.append("-n")
   covering_set_args.append(kbuild_dir)
 
+
+  sys.stderr.write("running covering_set: {}\n".format(' '.join(covering_set_args)))
+  #CM.pause()
   p = subprocess.Popen(covering_set_args,
                        stdout=subprocess.PIPE,
                        # stderr=subprocess.PIPE

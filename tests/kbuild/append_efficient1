@@ -13,7 +13,7 @@ obj-y	+= conflict1.o
 endif
 endif
 
-ifndef CONFIG_USB_UAS)
+ifndef CONFIG_USB_UAS
 ifdef CONFIG_USB_STORAGE
 obj-y	+= conflict2.o
 endif

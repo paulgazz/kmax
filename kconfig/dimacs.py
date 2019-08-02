@@ -8,6 +8,7 @@ from collections import defaultdict
 import time
 import regex  # pip install regex
 import z3
+import z3.z3printer
 
 # this script takes the check_dep --dimacs output and converts it into
 # a dimacs-compatible format
@@ -411,13 +412,18 @@ def convert_z3_ast(node):
   else:
     assert(False)
 
+t_simplify = z3.Tactic('ctx-solver-simplify')
+t_tseitin = z3.Tactic('tseitin-cnf-core')
 def convert_to_z3(expr):
   try:
     ast = compiler.parse(expr)
   except RuntimeError as e:
     sys.stderr.write("exception: %s\n" % (e))
     sys.stderr.write("could not convert expression to cnf\n%s\n" % (expr))
-    exit(1)
+    # exit(1)
+    return []
+  except:
+    # handle broken expressions
     return []
   # get Discard(ACTUAL_EXPR) from Module(None, Stmt([Discard(ACTUAL_EXPR)))
   actual_expr = ast.getChildNodes()[0].getChildNodes()[0]
@@ -427,9 +433,50 @@ def convert_to_z3(expr):
   tree = transformer.tree
   # print tree
   clauses = convert_z3_ast(tree)
-  print clauses
+  # print clauses
   if isinstance(clauses, list):
-    clauses = [ z3.simplify(clause) if z3.is_expr(clause) else clause for clause in clauses ]
+    # for clause in clauses:
+    #   print "hello"
+    #   print "really before", clause
+    #   clause = z3.simplify(clause, elim_and=True)
+    #   print "before", clause
+    #   clause = t_tseitin(clause)
+    #   print "after", clause
+    #   # print clause
+    #   # print "after"
+    #   # g = z3.Goal()
+    #   # # g.add(t_simplify(z3.simplify(clause)))
+    #   # # g.add(clause)
+    #   # test = z3.And(z3.Not(z3.Bool('CONFIG_CRC32')),
+    #   #               z3.Bool('CONFIG_CRC32_SLICEBY8'))
+    #   # # g.add(test)
+    #   # test = z3.And(z3.Or(z3.Not(z3.Bool('CONFIG_CRC32')),
+    #   #        z3.Bool('CONFIG_CRC32_SLICEBY8'),
+    #   #        z3.Bool('CONFIG_CRC32_SLICEBY4'),
+    #   #        z3.Bool('CONFIG_CRC32_SARWATE'),
+    #   #        z3.Bool('CONFIG_CRC32_BIT')),
+    #   #     z3.Or(z3.And(z3.Not(z3.Bool('CONFIG_CRC32_SLICEBY8')),
+    #   #            z3.Not(z3.Bool('CONFIG_CRC32_SLICEBY4')),
+    #   #            z3.Not(z3.Bool('CONFIG_CRC32_SARWATE')),
+    #   #            z3.Not(z3.Bool('CONFIG_CRC32_BIT'))),
+    #   #        z3.Bool('CONFIG_CRC32')))
+    #   # # test = z3.And(z3.Not(z3.Bool('CONFIG_CRC32')),
+    #   # #        z3.Bool('CONFIG_CRC32_SLICEBY8'))
+    #   # test = z3.simplify(test, elim_and=True)
+    #   # # test = t_simplify(test)
+    #   # print test
+    #   # g.add(test)
+    #   # print "yo"
+    #   # print t_tseitin(g)
+    #   # print "next"
+    #   exit(1)
+
+    # use tseitin
+    # clauses = [ t_tseitin(z3.simplify(clause, elim_and=True)) if z3.is_expr(clause) else clause for clause in clauses ]
+
+    # without tseitin and no CNF
+    clauses = [ t_simplify(clause) if z3.is_expr(clause) else clause for clause in clauses ]
+    print clauses
   if (isinstance(clauses, list)):
     return clauses
   else:
@@ -1242,9 +1289,19 @@ if use_z3:
   # print clauses for now
   # for clause in z3_clauses:
   #   print clause
-  final_z3 = z3.And([ x for x in z3_clauses if z3.is_expr(x) ])
-  print final_z3
+  # print len(z3_clauses)
 
+  # filtered_clauses = [ x for x in z3_clauses if z3.is_expr(x) ]
+  # final_z3 = z3.And(filtered_clauses)
+
+  unpacked_clauses = [ x[0][0] for x in z3_clauses ]
+  print unpacked_clauses
+  final_z3 = z3.And(unpacked_clauses)
+
+  # print len(filtered_clauses)
+  # final_z3 = z3.And(z3_clauses)
+  # print z3.z3printer.obj_to_string(final_z3)
+  
   s = z3.Solver()
   # s.add(z3.Not(final_z3))
   s.add(final_z3)
@@ -1396,3 +1453,4 @@ def print_dimacs(varnum_map, clause_list):
 
 if debug: sys.stderr.write("printing dimacs file\n")
 print_dimacs(varnums, string_clauses)
+sys.stderr.write("done\n")

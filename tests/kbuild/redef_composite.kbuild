@@ -1,0 +1,4 @@
+bob-objs-$(CONFIG_A) := file1.o
+bob-objs-$(CONFIG_B) := file2.o
+bob-objs-$(CONFIG_C) := file3.o
+obj-y += bob-objs.o

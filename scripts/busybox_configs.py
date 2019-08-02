@@ -15,19 +15,22 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+import pdb
+trace = pdb.set_trace
 
 import os
 import sys
 import fnmatch
 import subprocess
 import cPickle as pickle
-import linuxinstance
+#import linuxinstance
 import kmaxdata
 import lockfile # pip install lockfile
 import tempfile
 import csv
 import argparse
 from collections import defaultdict
+import vcommon as CM
 
 # Collect stats on archs, kconfig files, kbuild files, and config vars
 # and pickle the data to stdout
@@ -187,13 +190,14 @@ if args.boolean_configs:
   remaining_arguments += ' -B'
 
 command = compunit_command + remaining_arguments
-print command
+
 popen = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
 stdout_, stderr_ = popen.communicate()
 print stdout_
 for line in stdout_.strip().split("\n"):
   splitline = line.split(" ", 1)
   if len(splitline) >= 2:
+    print 'reading in', splitline[0]
     buildsystemdata.compilation_units[splitline[0]].append(splitline[1])
   else:
     print "no usable data from compilation_units.py: " + line
@@ -206,6 +210,11 @@ with lockfile.LockFile(datafile):
   #     os.rename(datafile, tmp.name)
   with open(datafile, "wb") as f:
     pickle.dump(buildsystemdata, f)
+
+
+print buildsystemdata.compilation_units
+print buildsystemdata.compilation_units.keys()
+
 
 # get presence conditions
 unit_pc_datafile = './unit_pc'
@@ -243,13 +252,14 @@ popen = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
 stdout_, stderr_ = popen.communicate()
 everycfile = set([os.path.normpath(x.strip('\n')) for x in stdout_.split()])
 
+print len(everycfile)
+
+
 compilation_units = defaultdict(set)
 
 for k in buildsystemdata.compilation_units.keys():
   compilation_units[k].update(buildsystemdata.compilation_units[k])
 
-print "all c files", len(everycfile)
-  
 recon_compunits = set([mkc(x) for x in (compilation_units['compilation_units'] - compilation_units['library_units'])])
 print "compilation units", len(recon_compunits)
 
@@ -292,12 +302,6 @@ additional_included = [
   "archival/libarchive/bz/compress.c",
   "archival/libarchive/bz/huffman.c",
 ]
-
-recon_included = set(compilation_units['included_c_files'])
-recon_included.update(additional_included)
-print "included c files", len(recon_included)
-everycfile.difference_update(recon_included)
-print len(everycfile)
 
 recon_scripts = set([c for c in everycfile if c.startswith("scripts/")])
 print "scripts", len(recon_scripts)
@@ -366,10 +370,20 @@ for explanation in explanations.keys():
   everycfile.difference_update(explanations[explanation])
   print len(everycfile)
 
+
+recon_included = set(compilation_units['included_c_files'])
+print len(recon_included), recon_included
+recon_included.update(additional_included)
+print "included c files", len(recon_included)
+everycfile.difference_update(recon_included)
+print len(everycfile)
+  
+
 # This will be empty if kmax got all C files correctly.  The
 # explanations needs to contain all C files guaranteed to not be part
 # of the build.
 print everycfile
+trace()
 
 # if get_running_time == True:
 #   print "running_time", buildsystemdata.compilation_units["running_time"][0]
