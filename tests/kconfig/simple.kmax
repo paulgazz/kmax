@@ -1,0 +1,5 @@
+config A bool
+config B bool
+config C bool
+config D bool
+constraint not (A and B) or (C or D and not B)
