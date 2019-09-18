@@ -69,7 +69,15 @@ Finally, go up to the parent directory, enter `pycudd/`, and build:
 The Kbuild portion of Kmax is written in python, and needs no compilation.  It depends on `pymake`, so install that with
 
     # inside the kbuild/ directory
-    make
+    make 
+    
+enter 'kbuildplus/'
+
+	# inside the kbuildplus/ directory
+    	make
+
+
+May need to install z3, python-z3.
 
 ## Environment
 
