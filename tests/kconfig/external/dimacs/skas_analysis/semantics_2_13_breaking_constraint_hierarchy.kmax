@@ -1,8 +1,0 @@
-bool CONFIG_NESTED_VAR_3 selectable
-bool CONFIG_VAR_2 selectable
-bool CONFIG_NESTED_VAR_2 selectable
-bool CONFIG_VAR_1 selectable
-bool CONFIG_NESTED_VAR_1 selectable
-dep CONFIG_NESTED_VAR_3 (CONFIG_VAR_2)
-dep CONFIG_NESTED_VAR_2 (CONFIG_VAR_1 and CONFIG_VAR_2)
-dep CONFIG_NESTED_VAR_1 (CONFIG_VAR_2)

@@ -1,7 +1,0 @@
-config MODULES
-  bool "En-/Disable Tristate Support"
-  option modules
-
-config TRISTATE_VAR
-  tristate "A Tristate Variable"
-  depends on m

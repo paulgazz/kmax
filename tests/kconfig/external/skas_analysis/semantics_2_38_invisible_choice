@@ -1,4 +1,0 @@
-config VAR
-  string "A String Variable"
-  default "Value 1"
-  default "Value 2"

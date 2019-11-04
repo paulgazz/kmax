@@ -1,4 +1,0 @@
-c 1 CONFIG_A bool
-c 2 CONFIG_X86_EXTENDED_PLATFORM bool
-p cnf 2 1
--2 1 -1 0

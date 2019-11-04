@@ -1,5 +1,0 @@
-c 1 CONFIG_SPI bool
-c 2 CONFIG_SPI_MASTER hidden_bool
-c 3 CONFIG_HAS_IOMEM bool
-p cnf 3 1
--2 0

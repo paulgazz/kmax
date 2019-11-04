@@ -1,8 +1,0 @@
-bool CONFIG_F5 selectable
-bool CONFIG_F4 selectable
-bool CONFIG_MODULES nonselectable
-bool CONFIG_F3 selectable
-bool CONFIG_F2 selectable
-bool CONFIG_F1 selectable
-dep CONFIG_F5 (CONFIG_F1 and CONFIG_F2 or CONFIG_F3)
-dep CONFIG_F4 (CONFIG_F3 and CONFIG_F1 or  not CONFIG_F2 and CONFIG_F3 or CONFIG_F2 and ( not CONFIG_F3 or 0))

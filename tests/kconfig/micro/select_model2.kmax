@@ -1,4 +1,0 @@
-bool A selectable
-bool E selectable
-bool W selectable
-bi ((A and E) or (A and (not E)) or (not ((not A) and (not E))) or (E and (not A) and W))|W

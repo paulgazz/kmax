@@ -1,7 +1,0 @@
-c 1 CONFIG_VM_2G bool
-c 2 CONFIG_VM_3G_OPT bool
-c 3 CONFIG_MODULES bool
-c 4 CONFIG_VM_2G_OPT bool
-c 5 CONFIG_VM_1G bool
-c 6 CONFIG_VM_3G bool
-p cnf 6 0

@@ -1,4 +1,0 @@
-config A
-	bool
-	depends on B
-	depends on C
