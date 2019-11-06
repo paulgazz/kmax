@@ -2,16 +2,6 @@
 
 ## Dependencies
 
-### lockfile
-
-    pip install lockfile
-
-Or
-
-https://github.com/openstack/pylockfile
-
-    python setup.py install --user
-
 ### enum34
 
     pip install lockfile
@@ -27,6 +17,10 @@ https://pypi.python.org/packages/source/e/enum34/enum34-1.0.tar.gz#md5=9d57f5454
 Improved regular expression library
 
     pip install regex
+
+### z3
+
+    pipt install z3-solver
 
 ### pycudd
 
@@ -61,21 +55,9 @@ Finally, go up to the parent directory, enter `pycudd/`, and build:
 
 ## Building Kmax
 
-`check_dep` gathers constraints and other information from Kconfig files
-
-    # inside the kconfig/ directory
-    make
-
 The Kbuild portion of Kmax is written in python, and needs no compilation.  It depends on `pymake`, so install that with
 
-    # inside the kbuild/ directory
-    make 
-    
-enter 'kbuildplus/'
-
-	# inside the kbuildplus/ directory
-    	make
-
+    TBD
 
 May need to install z3, python-z3.
 
@@ -107,7 +89,7 @@ With those variables configured, modify the `PATH`, `PYTHONPATH`, and
 This will run Kmax on the example from the
 [paper](https://paulgazzillo.com/papers/esecfse17.pdf) on Kmax.
 
-    python kbuildplus/kbuildplus.py -B tests/kbuild/paper_example
+    python kmax/kbuildplus.py -B tests/kbuild/paper_example
 
 This will output the list of configuration conditions for each compilation unit file in the example Kbuild file.  The `-B` tells Kmax to treat configuration options as Boolean options (as opposed to Kconfig tristate options).
 
