@@ -46,12 +46,6 @@ Kmax expects several environment variables to be set:
     export PYCUDD_ROOT=/path/to/pycudd/
     export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${PYCUDD_ROOT}/cudd-2.4.2/lib
 
-With those variables configured, modify the `PATH`, `PYTHONPATH`, and
-`LD_LIBRARY_PATH` variables to point to kmax and pycudd like so:
-
-    export PATH=$PATH:${KMAX_ROOT}/kconfig:${KMAX_ROOT}/kbuild:${KMAX_ROOT}/kbuildplus:${KMAX_ROOT}/analysis
-    export PYTHONPATH=$PYTHONPATH:${KMAX_ROOT}/lib
-
 ## Simple example
 
 This will run Kmax on the example from the
