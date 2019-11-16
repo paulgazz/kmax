@@ -1,5 +1,11 @@
 # Kmax
 
+Kmax collects configuration information from [Kbuild Makefiles](https://www.kernel.org/doc/html/latest/kbuild/makefiles.html).  It determines, for each compilation unit, a symbolic Boolean expression that represents the conditions under which the file gets compiled and linked into the final program.
+
+Kmax was created by [Paul Gazzillo](https://paulgazzillo.com).  Its algorithm is described in this [publication](https://paulgazzillo.com/papers/esecfse17.pdf).  The paper version of Kmax (v1.0) can be found [here](https://github.com/paulgazz/kmax/releases/tag/v1.0) along with other older [releases](https://github.com/paulgazz/kmax/releases).
+
+Special thanks to [ThanhVu Nguyen](https://cse.unl.edu/~tnguyen/) for helping to integrate z3 into Kmax.
+
 ## pycudd
 
 *pycudd usage is superseded by z3.  this dependency will be removed in later versions.*
