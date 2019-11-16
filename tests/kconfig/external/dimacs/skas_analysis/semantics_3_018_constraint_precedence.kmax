@@ -1,6 +1,0 @@
-bool CONFIG_VAR1 selectable
-bool CONFIG_VAR2 selectable
-bool CONFIG_CONST_FALSE nonselectable
-def_bool CONFIG_CONST_FALSE 0 (1)
-dep CONFIG_VAR2 (CONFIG_CONST_FALSE)
-rev_dep CONFIG_VAR2 (CONFIG_VAR1)

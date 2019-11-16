@@ -1,3 +1,0 @@
-bool CONFIG_B selectable
-bool CONFIG_A selectable
-rev_dep CONFIG_B (CONFIG_A)

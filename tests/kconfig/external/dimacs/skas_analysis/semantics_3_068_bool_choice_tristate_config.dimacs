@@ -1,8 +1,0 @@
-c 1 CONFIG_TRISTATE_VAL choice_bool
-c 2 CONFIG_MODULES hidden_bool
-c 3 CONFIG_BOOL_VAL choice_bool
-p cnf 3 4
--1 -3 0
--3 -1 0
-1 3 0
-2 0

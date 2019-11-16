@@ -1,3 +1,0 @@
-bool CONFIG_MODULES selectable
-bool CONFIG_TRI selectable
-dep CONFIG_TRI (1 and CONFIG_MODULES)

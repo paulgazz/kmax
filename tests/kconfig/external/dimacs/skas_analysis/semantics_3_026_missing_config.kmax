@@ -1,2 +1,0 @@
-bool CONFIG_VAR selectable
-dep CONFIG_VAR ("NOT_EXISTING")

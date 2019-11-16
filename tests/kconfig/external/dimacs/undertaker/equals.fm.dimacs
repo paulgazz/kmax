@@ -1,7 +1,0 @@
-c 1 CONFIG_MODULES bool
-c 2 CONFIG_TRISTATE bool
-c 3 CONFIG_TRISTATE_DEPEND bool
-c 4 CONFIG_TRISTATE_OTHER bool
-c 5 Compare(Name('CONFIG_TRISTATE_OTHER'), [('==', Name('CONFIG_TRISTATE'))]) hidden_bool
-p cnf 5 1
--3 5 0

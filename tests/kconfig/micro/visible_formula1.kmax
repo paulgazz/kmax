@@ -1,4 +1,0 @@
-bool I selectable
-bool A selectable
-bool B selectable
-constraint (A and I) or (not A and (not I or B))
