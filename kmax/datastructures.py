@@ -2,10 +2,10 @@ import pdb
 trace = pdb.set_trace
 import z3
 import pycudd
-import vcommon as CM
+import kmax.vcommon as CM
 
-import settings
-mlog = CM.getLogger(__name__, settings.logger_level)
+import kmax.settings
+mlog = CM.getLogger(__name__, kmax.settings.logger_level)
 
 class CondDef(tuple):
     def __new__(cls, cond, zcond, mdef):

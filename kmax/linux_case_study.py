@@ -28,7 +28,7 @@ import subprocess
 import cPickle as pickle
 import time
 
-import vcommon as CM
+import kmax.vcommon as CM
 
 scriptpath = os.path.dirname(os.path.realpath(__file__))
 

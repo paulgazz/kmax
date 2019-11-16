@@ -13,12 +13,12 @@ from collections import defaultdict
 import pdb
 trace = pdb.set_trace
 import z3
-import vcommon as CM
+import kmax.vcommon as CM
 
 from datastructures import CondDef, Multiverse, VarEntry, BoolVar, Results
 
-import settings
-mlog = CM.getLogger(__name__, settings.logger_level)
+import kmax.settings
+mlog = CM.getLogger(__name__, kmax.settings.logger_level)
 
 match_unexpanded_variables = re.compile(r'.*\$\(.*\).*')
 def contains_unexpanded(s):
@@ -229,7 +229,7 @@ class Kbuild:
                                 (not_defined, '-nommu') ])
 
         elif name.startswith("CONFIG_"):
-            if settings.do_boolean_configs:
+            if kmax.settings.do_boolean_configs:
                 #varbdd = self.bvars[name].bdd
                 v = self.get_bvars(name).bdd
                 zv = self.get_bvars(name).zbdd
@@ -1020,7 +1020,7 @@ class Run:
             makefile = subdirs.pop()
             mlog.info("processing makefile: {}".format(makefile))            
             subdirs_ = self.extract(makefile)
-            if settings.do_recursive:
+            if kmax.settings.do_recursive:
                 subdirs = subdirs.union(subdirs_)
 
     def extract(self, path):
@@ -1033,7 +1033,7 @@ class Run:
         makefile.close()
 
         kbuild = Kbuild()
-        #kbuild.add_definitions(settings.define)
+        #kbuild.add_definitions(kmax.settings.define)
         stmts = parser.parsestring(s, makefile.name)
 
         kbuild.process_stmts(stmts, kbuild.T, ZSolver.T)
@@ -1152,7 +1152,7 @@ class Run:
         self.check_unexpanded_vars(subdirs, "subdirectory")
         self.check_unexpanded_vars(kbuild.variables.keys(), "variable name")
 
-        if settings.do_table:
+        if kmax.settings.do_table:
             mlog.info(kbuild.getSymbTable(printCond=kbuild.bdd_to_str))
 
         presence_conditions = {}

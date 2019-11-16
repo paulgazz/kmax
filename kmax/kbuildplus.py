@@ -1,7 +1,11 @@
 #!/usr/bin/env python
-if __name__ == '__main__':    
 
+if __name__ == '__main__':    
     import argparse    
+    from kmax.vcommon import getLogLevel , getLogger
+    import kmax.settings
+    import kmax.analysis
+
     aparser = argparse.ArgumentParser("find interactions from Kbuild Makefiles")
     ag = aparser.add_argument
     ag('makefile',
@@ -48,42 +52,39 @@ if __name__ == '__main__':
 
     args = aparser.parse_args()
 
-    from vcommon import getLogLevel , getLogger
-    import settings
-    if args.log_level != settings.logger_level and 0 <= args.log_level <= 4:
-        settings.logger_level = args.log_level
+    if args.log_level != kmax.settings.logger_level and 0 <= args.log_level <= 4:
+        kmax.settings.logger_level = args.log_level
 
-    settings.logger_level = getLogLevel(settings.logger_level)
-    mlog = getLogger(__name__, settings.logger_level)    
+    kmax.settings.logger_level = getLogLevel(kmax.settings.logger_level)
+    mlog = getLogger(__name__, kmax.settings.logger_level)    
     if __debug__:
         mlog.warn("DEBUG MODE ON. Can be slow! (Use python -O ... for optimization)")
 
-    settings.do_table = args.table
-    settings.do_recursive = args.recursive
-    settings.do_boolean_configs = args.boolean_configs
-    settings.unit_pc_format = args.unit_pc_format
+    kmax.settings.do_table = args.table
+    kmax.settings.do_recursive = args.recursive
+    kmax.settings.do_boolean_configs = args.boolean_configs
+    kmax.settings.unit_pc_format = args.unit_pc_format
 
-    import analysis
     case_study = args.case_study
     if not case_study:
         inp = args.makefile
         print inp
-        myAnalysis = analysis.GeneralAnalysis(inp)
+        myAnalysis = kmax.analysis.GeneralAnalysis(inp)
     else:
         case_study = case_study.lower()
         inp = args.makefile[0]
 
         if case_study == "busybox":
-            settings.do_boolean_configs = True
-            myAnalysis = analysis.BusyboxCaseStudy(inp)
-            settings.do_recursive = True
+            kmax.settings.do_boolean_configs = True
+            myAnalysis = kmax.analysis.BusyboxCaseStudy(inp)
+            kmax.settings.do_recursive = True
         elif case_study == "linux":
-            settings.do_boolean_configs = True
+            kmax.settings.do_boolean_configs = True
             inp = args.makefile
-            myAnalysis = analysis.LinuxCaseStudy(inp)
-            settings.do_recursive = False
+            myAnalysis = kmax.analysis.LinuxCaseStudy(inp)
+            kmax.settings.do_recursive = False
         elif case_study == "tests":
-            myAnalysis = analysis.Tests(inp)
+            myAnalysis = kmax.analysis.Tests(inp)
 
     myAnalysis.run()
     myAnalysis.analyze()

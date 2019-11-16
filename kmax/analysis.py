@@ -6,12 +6,12 @@ import z3
 import cPickle as pickle
 import sys
 
-import vcommon as CM
+import kmax.vcommon as CM
 
-from alg import Run
+from kmax.alg import Run
 
-import settings
-mlog = CM.getLogger(__name__, settings.logger_level)
+import kmax.settings
+mlog = CM.getLogger(__name__, kmax.settings.logger_level)
 
 class GeneralAnalysis:
     def __init__(self, path):
