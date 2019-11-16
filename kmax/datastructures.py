@@ -1,7 +1,6 @@
 import pdb
 trace = pdb.set_trace
 import z3
-import pycudd
 import kmax.vcommon as CM
 
 import kmax.settings
@@ -12,11 +11,10 @@ class CondDef(tuple):
         return super(CondDef, cls).__new__(cls, (cond, zcond, mdef))
     
     def __init__(self, cond, zcond, mdef):
-        assert isinstance(cond, pycudd.DdNode), cond
         assert z3.is_expr(zcond)
         
         assert mdef is None or isinstance(mdef, str), mdef  #CONFIG_A, 'y', 'm'
-        self.cond = cond
+        self.cond = None
         self.zcond = zcond
         self.mdef = mdef
 
@@ -24,7 +22,7 @@ class CondDef(tuple):
         if not printCond:
             return "{}".format(self.mdef)
         else:
-            return "({}, {}, {})".format(printCond(self.cond), self.zcond, self.mdef)
+            return "({}, {})".format(self.zcond, self.mdef)
 
 
 class Multiverse(list):
@@ -46,9 +44,9 @@ class Multiverse(list):
         for cond, zcond, val in self:
             if val in cache:
                 c, zc = cache[val]
-                cache[val] = (c | cond, z3.Or(zc, zcond)) #disj
+                cache[val] = (None, z3.Or(zc, zcond)) #disj
             else:
-                cache[val] = (cond, zcond)
+                cache[val] = (None, zcond)
 
         mv = Multiverse([CondDef(c, zc, v)
                          for v, (c, zc)  in cache.iteritems()])
@@ -64,19 +62,16 @@ class VarEntry(tuple):
     
     def __init__(self, val, cond, zcond, flavor):
         assert val is None or isinstance(val, str), val
-        assert isinstance(cond, pycudd.DdNode), cond
-        assert z3.is_expr(zcond), cond
+        assert z3.is_expr(zcond), zcond
         assert flavor in set({VarEntry.RECURSIVE, VarEntry.SIMPLE}), flavor
 
         self.val = val.strip() if isinstance(val, str) else val
-        self.cond = cond
+        self.cond = None
         self.zcond = z3.simplify(zcond)
         self.flavor = flavor
 
     def __str__(self, printCond=None):
         ss = [self.val, self.flavor]
-        if printCond:
-            ss.append(printCond(self.cond))
             
         ss.append(self.zcond)
             
@@ -88,25 +83,20 @@ class VarEntry(tuple):
 
 class BoolVar(tuple):
     def __new__(cls, bdd, zbdd, idx):
-        assert isinstance(bdd, pycudd.DdNode), bdd
         assert idx >= 0, idx
         
         return super(BoolVar, cls).__new__(cls, (bdd, zbdd, idx))
     
     def __init__(self, bdd, zbdd, idx):
-        assert isinstance(bdd, pycudd.DdNode), bdd
         assert z3.is_expr(zbdd), zbdd
         assert idx >= 0, idx
         
-        self.bdd = bdd
+        self.bdd = None
         self.zbdd = zbdd
         self.idx = idx
 
     def __str__(self, printCond=None):
         ss = [self.idx, self.zbdd]
-        if printCond:
-            ss.append(printCond(self.bdd))
-
         return ", ".join(map(str,ss))
 
 
