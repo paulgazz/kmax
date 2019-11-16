@@ -72,7 +72,8 @@ The `unit_pc` lines have the [format](docs/unit_pc.md) of compilation unit name 
 There is a script that will run Kmax on all Kbuild Makefiles from a project, e.g., the Linux kernel source code.
 
     # from, e.g., the top-level directory of the linux-4.19.50 source code
-    kmaxdriver.py -B -g $(make CC=cc ARCH=x86 -f /path/to/kmax/kbuild/makefile_override alldirs) | tee unit_pc
+    cd linux-source/
+    kmaxdriver.py -B -g $(make CC=cc ARCH=x86 -f /path/to/kmax/scripts/makefile_override alldirs) | tee unit_pc
 
 The `-B` options means treat configuraion options as Boolean (as opposed to tristate) and `-g` means get the presence conditions in the `unit_pc` [format](docs/unit_pc.md).  The `makefile_override` file will extract all the top-level source directories, e.g., drivers, kernel, etc, from the Linux build system.  These are then each processed by Kmax, recursively entering any Kbuild subdirectories.
 
