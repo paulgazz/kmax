@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-if __name__ == '__main__':    
+if __name__ == '__main__':
     import argparse    
     from kmax.vcommon import getLogLevel , getLogger
     import kmax.settings
