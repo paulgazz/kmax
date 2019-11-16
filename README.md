@@ -6,45 +6,11 @@ Kmax was created by [Paul Gazzillo](https://paulgazzillo.com).  Its algorithm is
 
 Special thanks to [ThanhVu Nguyen](https://cse.unl.edu/~tnguyen/) for helping to integrate z3 into Kmax.
 
-## pycudd
+## Setup
 
-*pycudd usage is superseded by z3.  this dependency will be removed in later versions.*
+Clone the repository and run
 
-http://bears.ece.ucsb.edu/ftp/pub/pycudd2.0/pycudd2.0.2.tar.gz
-
-The package contains two directories, `cudd-2.4.2/` and `pycudd/`.
-First enter `cudd-2.4.2/`.
-
-If you are running a 64-bit machine, edit the Makefile by uncommenting
-the line shown here starting with `XCFLAGS`.  You may see a compiler
-error about `sys/cdefs.h` if you haven't edited the Makefile to build
-for 64-bit.
-
-    # Gcc 4.2.4 or higher on x86_64 (64-bit compilation)
-    XCFLAGS	= -mtune=native -DHAVE_IEEE_754 -DBSD -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8 -fPIC
-
-Now compile cudd-2.4.2 and create shared libraries for pycudd:
-
-    make
-    make libso
-
-`make libso` may fail on nanotrav, but as long as the `lib/` directory
-contains six shared object libraries, libcudd.so, libdddmp.so, etc,
-then pycudd should build.
-
-Install swig for the python to c interface.  In apt-based
-distributions `apt-get install swig`.
-
-Finally, go up to the parent directory, enter `pycudd/`, and build:
-
-    make FLAGS="-I /opt/python/include/python2.7/ -fPIC"
-
-## Environment
-
-Kmax expects several environment variables to be set:
-
-    export PYCUDD_ROOT=/path/to/pycudd/
-    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${PYCUDD_ROOT}/cudd-2.4.2/lib
+    python setup.py install
 
 ## Simple example
 
@@ -67,6 +33,7 @@ There is a script that will run Kmax on all Kbuild Makefiles from a project, e.g
 
     # from, e.g., the top-level directory of the linux-4.19.50 source code
     cd linux-source/
+    make defconfig # setup the build and config system
     kmaxdriver.py -B -g $(make CC=cc ARCH=x86 -f /path/to/kmax/scripts/makefile_override alldirs) | tee unit_pc
 
 The `-B` options means treat configuraion options as Boolean (as opposed to tristate) and `-g` means get the presence conditions in the `unit_pc` [format](docs/unit_pc.md).  The `makefile_override` file will extract all the top-level source directories, e.g., drivers, kernel, etc, from the Linux build system.  These are then each processed by Kmax, recursively entering any Kbuild subdirectories.
@@ -76,8 +43,3 @@ Finally, aggregate `unit_pc` to `full_pc`, i.e., combine the constraints for sub
     cat unit_pc | python /path/to/kmax/kbuildplus/aggregate.py > aggregate_pc
 
 The aggregated file has a [format](docs/unit_pc.md) describing the constraints of on the compilation unit.
-
-### Troubleshooting
-
-- Be sure the environment is set (see the Environment section above) so that the `KMAX_ROOT` is known, etc.
-- Try running `makefile_override` by itself to see that it is correctly extracting the top-level files.  The build may need to be configured first.
