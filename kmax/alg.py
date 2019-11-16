@@ -3,6 +3,8 @@ import os
 import re
 import argparse
 import subprocess as sp
+import pycudd
+import _pycudd
 import tempfile
 
 from pymake import parser, parserdata, data, functions
@@ -65,7 +67,14 @@ class  ZSolver:
 
 class Kbuild:
     def __init__(self):
+        self.mgr = pycudd.DdManager()
+        self.mgr.SetDefault()
+
         self.zsolver = ZSolver()        
+
+        # Boolean constants
+        self.T = self.mgr.One()
+        self.F = self.mgr.Zero()
 
         self.variables = {}
         self.bvars = {}
@@ -101,8 +110,9 @@ class Kbuild:
             return self.bvars[name]
         except KeyError:
             idx = len(self.bvars)
+            bdd = self.mgr.IthVar(idx)
             zbdd = z3.Bool(name.format(idx))
-            bv = BoolVar(zbdd, idx)
+            bv = BoolVar(bdd, zbdd, idx)
             self.bvars[name] = bv
             return bv
     
@@ -138,7 +148,7 @@ class Kbuild:
               for name, vs in ss if vs]
         return '\n'.join(ss)
     
-    def get_presence_conditions(self, vars, pcs, zcond):
+    def get_presence_conditions(self, vars, pcs, cond, zcond):
         names = set()
         for var in vars:
             if var in self.variables.keys():
@@ -147,7 +157,7 @@ class Kbuild:
             name = names.pop()
             # print name
             # print self.variables[name]
-            for value, z3_condition, flavor in self.variables[name]:
+            for value, bdd_condition, z3_condition, flavor in self.variables[name]:
                 # print "  ---"
                 # print "  VALUE:", value
                 # print "  BDD:", self.bdd_to_str(bdd_condition)
@@ -155,6 +165,7 @@ class Kbuild:
                 # print "  FLAVOR:", flavor
                 tokens = value.split()
                 for token in tokens:
+                    and_cond = conj(cond, bdd_condition)
                     and_zcond = z3.And(zcond, z3_condition)
                     if token not in pcs.keys():
                         pcs[token] = and_zcond
@@ -169,7 +180,7 @@ class Kbuild:
                             # $(obj)/,,$(@:.o=-y)))), $^)
                             composite_variable1 = token[:-2] + "-objs"
                             composite_variable2 = token[:-2] + "-y"
-                            self.get_presence_conditions([ composite_variable1, composite_variable2 ], pcs, and_zcond)
+                            self.get_presence_conditions([ composite_variable1, composite_variable2 ], pcs, and_cond, and_zcond)
 
     def add_definitions(self, defines):
         if not defines:
@@ -181,20 +192,21 @@ class Kbuild:
 
     def get_defined(self, variable, expected):
         variable_name = "defined(" + variable + ")"
+        bdd = self.get_bvars(variable_name).bdd
         zbdd = self.get_bvars(variable_name).zbdd
         
         if expected:
-            return zbdd
+            return bdd, zbdd
         else:
-            return zneg(zbdd)
+            return neg(bdd), zneg(zbdd)
 
     def process_variableref(self, name):
         if name not in self.variables and name == 'BITS':
             # TODO get real entry from top-level makefiles
             bv32 = self.get_bvars("BITS=32")
             bv64 = self.get_bvars("BITS=64")
-            return Multiverse([ CondDef(bv32.zbdd, "32"),
-                                CondDef(bv64.zbdd, "64") ])
+            return Multiverse([ CondDef(bv32.bdd, bv32.zbdd, "32"),
+                                CondDef(bv64.bdd, bv64.zbdd, "64") ])
         
         # elif name == 'ARCH':
         #     # TODO user-defined
@@ -219,27 +231,35 @@ class Kbuild:
         elif name.startswith("CONFIG_"):
             if kmax.settings.do_boolean_configs:
                 #varbdd = self.bvars[name].bdd
+                v = self.get_bvars(name).bdd
                 zv = self.get_bvars(name).zbdd
             
-                return Multiverse([ CondDef(zv, 'y'),
-                                    CondDef(z3.Not(zv), None) ])
+                return Multiverse([ CondDef(v, zv, 'y'),
+                                    CondDef(neg(v), z3.Not(zv), None) ])
             else:
                 # TODO don't use 'm' for truly boolean config vars
+                equals_y = self.get_bvars(name + "=y").bdd
                 zequals_y = self.get_bvars(name + "=y").zbdd
 
+                equals_m = self.get_bvars(name + "=m").bdd
                 zequals_m = self.get_bvars(name + "=m").zbdd
 
                 defined, zdefined = self.get_defined(name, True)
+                is_defined_y = conj(defined, conj(equals_y, neg(equals_m)))
                 zis_defined_y = z3.And(zdefined, z3.And(zequals_y, z3.Not(zequals_m)))
 
+
+                is_defined_m = conj(defined, conj(equals_m, neg(equals_y)))
                 zis_defined_m = z3.And(zdefined, z3.And(zequals_m, z3.Not(zequals_y)))
 
-                znotdefined = self.get_defined(name, False)
+                notdefined, znotdefined = self.get_defined(name, False)
+                not_defined = disj(notdefined, conj(neg(is_defined_y), neg(is_defined_m)))
                 znot_defined = z3.Or(znotdefined, z3.And(z3.Not(zis_defined_y), z3.Not(zis_defined_m)))   
 
-                return Multiverse([ CondDef(zis_defined_y, 'y'),
-                                    CondDef(zis_defined_m, 'm'),
-                                    CondDef(znot_defined, None) ])
+
+                return Multiverse([ CondDef(is_defined_y, zis_defined_y, 'y'),
+                                    CondDef(is_defined_m, zis_defined_m, 'm'),
+                                    CondDef(not_defined, znot_defined, None) ])
         # elif (name.startswith("CONFIG_")) and not isNonbooleanConfig(name):
         #     return Multiverse([ (self.T, '') ])
         else:
@@ -250,7 +270,7 @@ class Kbuild:
                 # Leave undefined variables unexpanded
                 self.undefined_variables.add(name)
                 self.variables[name] = [VarEntry("$(%s)" % (name),
-                                                 ZSolver.T,
+                                                 self.T, ZSolver.T,
                                                  VarEntry.RECURSIVE)]
 
                 mlog.warn("Undefined variable expansion: {}".format(name))
@@ -262,7 +282,7 @@ class Kbuild:
                 for equiv_name in equivs:
                     for v in self.variables[equiv_name]:
                         if v.val:
-                            expansions = expansions + self.expand_and_flatten(v.val, v.zcond)
+                            expansions = expansions + self.expand_and_flatten(v.val, v.cond, v.zcond)
                         else:
                             expansions.append(v.condDef)
 
@@ -294,13 +314,13 @@ class Kbuild:
     def process_fun_VariableRef(self, function):
         name = self.mk_Multiverse(self.process_expansion(function.vname))
         expanded_names = []
-        for name_zcond, name_value  in name:
+        for name_cond, name_zcond, name_value  in name:
             expanded_name = self.process_variableref(name_value)
             assert isinstance(expanded_name, Multiverse), expanded_name
 
             for v in expanded_name:
                 expanded_names.append(
-                    CondDef(z3.And(name_zcond, v.zcond), v.mdef)
+                    CondDef(conj(name_cond, v.cond), z3.And(name_zcond, v.zcond), v.mdef)
                 )
         return Multiverse(expanded_names)
 
@@ -1136,7 +1156,7 @@ class Run:
             mlog.info(kbuild.getSymbTable(printCond=kbuild.bdd_to_str))
 
         presence_conditions = {}
-        kbuild.get_presence_conditions([ "obj-y", "obj-m", "lib-y", "lib-m" ], presence_conditions, ZSolver.T)
+        kbuild.get_presence_conditions([ "obj-y", "obj-m", "lib-y", "lib-m" ], presence_conditions, kbuild.T, ZSolver.T)
         for token in presence_conditions:
             filename = os.path.join(path, token)
             # print "FILENAME", filename
@@ -1154,6 +1174,9 @@ class Run:
 
         # _f(kbuild.unit_pc, unit_pcs)
         # _f(kbuild.subdir_pc, subdir_pcs)
+
+        #clean up  
+        _pycudd.delete_DdManager(kbuild.mgr)
 
         return subdirs
 

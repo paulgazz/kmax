@@ -8,13 +8,15 @@ import kmax.settings
 mlog = CM.getLogger(__name__, kmax.settings.logger_level)
 
 class CondDef(tuple):
-    def __new__(cls, zcond, mdef):
-        return super(CondDef, cls).__new__(cls, (zcond, mdef))
+    def __new__(cls, cond, zcond, mdef):
+        return super(CondDef, cls).__new__(cls, (cond, zcond, mdef))
     
-    def __init__(self, zcond, mdef):
+    def __init__(self, cond, zcond, mdef):
+        assert isinstance(cond, pycudd.DdNode), cond
         assert z3.is_expr(zcond)
         
         assert mdef is None or isinstance(mdef, str), mdef  #CONFIG_A, 'y', 'm'
+        self.cond = cond
         self.zcond = zcond
         self.mdef = mdef
 
@@ -22,7 +24,7 @@ class CondDef(tuple):
         if not printCond:
             return "{}".format(self.mdef)
         else:
-            return "({}, {}, {})".format(printCond(self.zcond, self.mdef)
+            return "({}, {}, {})".format(printCond(self.cond), self.zcond, self.mdef)
 
 
 class Multiverse(list):
@@ -41,15 +43,15 @@ class Multiverse(list):
             return self
 
         cache = {}
-        for zcond, val in self:
+        for cond, zcond, val in self:
             if val in cache:
                 c, zc = cache[val]
-                cache[val] = (z3.Or(zc, zcond)) #disj
+                cache[val] = (c | cond, z3.Or(zc, zcond)) #disj
             else:
-                cache[val] = (zcond)
+                cache[val] = (cond, zcond)
 
-        mv = Multiverse([CondDef(zc, v)
-                         for v, (zc)  in cache.iteritems()])
+        mv = Multiverse([CondDef(c, zc, v)
+                         for v, (c, zc)  in cache.iteritems()])
         assert mv
         return mv
 
@@ -57,43 +59,54 @@ class VarEntry(tuple):
     RECURSIVE = "RECURSIVE"
     SIMPLE = "SIMPLE"
     
-    def __new__(cls, val, zcond, flavor):
-        return super(VarEntry, cls).__new__(cls, (val, zcond, flavor))
+    def __new__(cls, val, cond, zcond, flavor):
+        return super(VarEntry, cls).__new__(cls, (val, cond, zcond, flavor))
     
-    def __init__(self, val, zcond, flavor):
+    def __init__(self, val, cond, zcond, flavor):
         assert val is None or isinstance(val, str), val
-        assert z3.is_expr(zcond), zcond
+        assert isinstance(cond, pycudd.DdNode), cond
+        assert z3.is_expr(zcond), cond
         assert flavor in set({VarEntry.RECURSIVE, VarEntry.SIMPLE}), flavor
 
         self.val = val.strip() if isinstance(val, str) else val
+        self.cond = cond
         self.zcond = z3.simplify(zcond)
         self.flavor = flavor
 
     def __str__(self, printCond=None):
         ss = [self.val, self.flavor]
+        if printCond:
+            ss.append(printCond(self.cond))
+            
         ss.append(self.zcond)
             
         return "; ".join(map(str,ss))
 
     @property
     def condDef(self):
-        return CondDef(self.zcond, self.val)
+        return CondDef(self.cond, self.zcond, self.val)
 
 class BoolVar(tuple):
-    def __new__(cls, zbdd, idx):
+    def __new__(cls, bdd, zbdd, idx):
+        assert isinstance(bdd, pycudd.DdNode), bdd
         assert idx >= 0, idx
         
-        return super(BoolVar, cls).__new__(cls, (zbdd, idx))
+        return super(BoolVar, cls).__new__(cls, (bdd, zbdd, idx))
     
-    def __init__(self, zbdd, idx):
+    def __init__(self, bdd, zbdd, idx):
+        assert isinstance(bdd, pycudd.DdNode), bdd
         assert z3.is_expr(zbdd), zbdd
         assert idx >= 0, idx
         
+        self.bdd = bdd
         self.zbdd = zbdd
         self.idx = idx
 
     def __str__(self, printCond=None):
         ss = [self.idx, self.zbdd]
+        if printCond:
+            ss.append(printCond(self.bdd))
+
         return ", ".join(map(str,ss))
 
 
