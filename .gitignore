@@ -1,2 +1,6 @@
 *.pyc
+*.pyo
 *~
+build/
+kmax.egg-info/
+dist/

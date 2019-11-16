@@ -1,8 +1,0 @@
-
-config A
-	bool "A"
-        select B
-
-config B
-	bool "B"
-

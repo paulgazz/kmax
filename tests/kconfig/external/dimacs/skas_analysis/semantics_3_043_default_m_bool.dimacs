@@ -1,7 +1,0 @@
-c 1 CONFIG_VAR1 hidden_bool
-c 2 CONFIG_VAR2 hidden_bool
-c 3 CONFIG_MODULES hidden_bool
-p cnf 3 3
-2 0
-1 0
-3 0

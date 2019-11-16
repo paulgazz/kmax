@@ -1,34 +1,14 @@
 # Kmax
 
-## Dependencies
+Kmax collects configuration information from [Kbuild Makefiles](https://www.kernel.org/doc/html/latest/kbuild/makefiles.html).  It determines, for each compilation unit, a symbolic Boolean expression that represents the conditions under which the file gets compiled and linked into the final program.
 
-### lockfile
+Kmax was created by [Paul Gazzillo](https://paulgazzillo.com).  Its algorithm is described in this [publication](https://paulgazzillo.com/papers/esecfse17.pdf).  The paper version of Kmax (v1.0) can be found [here](https://github.com/paulgazz/kmax/releases/tag/v1.0) along with other older [releases](https://github.com/paulgazz/kmax/releases).
 
-    pip install lockfile
+Special thanks to [ThanhVu Nguyen](https://cse.unl.edu/~tnguyen/) for helping to integrate z3 into Kmax.
 
-Or
+## pycudd
 
-https://github.com/openstack/pylockfile
-
-    python setup.py install --user
-
-### enum34
-
-    pip install lockfile
-
-Or
-
-https://pypi.python.org/packages/source/e/enum34/enum34-1.0.tar.gz#md5=9d57f5454c70c11707998ea26c1b0a7c
-
-    python setup.py install --user
-    
-### regex
-
-Improved regular expression library
-
-    pip install regex
-
-### pycudd
+*pycudd usage is superseded by z3.  this dependency will be removed in later versions.*
 
 http://bears.ece.ucsb.edu/ftp/pub/pycudd2.0/pycudd2.0.2.tar.gz
 
@@ -59,55 +39,25 @@ Finally, go up to the parent directory, enter `pycudd/`, and build:
 
     make FLAGS="-I /opt/python/include/python2.7/ -fPIC"
 
-## Building Kmax
-
-`check_dep` gathers constraints and other information from Kconfig files
-
-    # inside the kconfig/ directory
-    make
-
-The Kbuild portion of Kmax is written in python, and needs no compilation.  It depends on `pymake`, so install that with
-
-    # inside the kbuild/ directory
-    make 
-    
-enter 'kbuildplus/'
-
-	# inside the kbuildplus/ directory
-    	make
-
-
-May need to install z3, python-z3.
-
 ## Environment
 
 Kmax expects several environment variables to be set:
 
-    KMAX_ROOT=/path/to/kmax/
-    PYCUDD_ROOT=/path/to/pycudd/
-    KMAX_SCRATCH=/path/to/kmax_scratch
-    KMAX_DATA=/path/to/kmax_data
-    export KMAX_ROOT PYCUDD_ROOT KMAX_SCRATCH KMAX_DATA
-
-- set `KMAX_ROOT` to the path to the Kmax source directory
-- set `PYCUDD_ROOT` to the path to the pycudd directory that
-  contains both pycudd itself and cudd-2.4.2
-- set `KMAX_SCRATCH` to a new directory for storing downloaded source code
-- set `KMAX_DATA` to a new directory to store kmax's output
+    export PYCUDD_ROOT=/path/to/pycudd/
+    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${PYCUDD_ROOT}/cudd-2.4.2/lib
 
 With those variables configured, modify the `PATH`, `PYTHONPATH`, and
 `LD_LIBRARY_PATH` variables to point to kmax and pycudd like so:
 
-    export PATH=$PATH:${KMAX_ROOT}/kconfig:${KMAX_ROOT}/kbuild:${KMAX_ROOT}/kbuildplus:$KMAX_ROOT/analysis
-    export PYTHONPATH=$PYTHONPATH:${PYCUDD_ROOT}/pycudd:${KMAX_ROOT}/lib
-    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${PYCUDD_ROOT}/cudd-2.4.2/lib
+    export PATH=$PATH:${KMAX_ROOT}/kconfig:${KMAX_ROOT}/kbuild:${KMAX_ROOT}/kbuildplus:${KMAX_ROOT}/analysis
+    export PYTHONPATH=$PYTHONPATH:${KMAX_ROOT}/lib
 
 ## Simple example
 
 This will run Kmax on the example from the
 [paper](https://paulgazzillo.com/papers/esecfse17.pdf) on Kmax.
 
-    python kbuildplus/kbuildplus.py -B tests/kbuild/paper_example
+    python kmax/kbuildplus.py -B tests/kbuild/paper_example
 
 This will output the list of configuration conditions for each compilation unit file in the example Kbuild file.  The `-B` tells Kmax to treat configuration options as Boolean options (as opposed to Kconfig tristate options).
 
@@ -122,7 +72,8 @@ The `unit_pc` lines have the [format](docs/unit_pc.md) of compilation unit name 
 There is a script that will run Kmax on all Kbuild Makefiles from a project, e.g., the Linux kernel source code.
 
     # from, e.g., the top-level directory of the linux-4.19.50 source code
-    python /path/to/kmax/kbuildplus/compilation_units.py -B -g $(make CC=cc ARCH=x86 -f /path/to/kmax/kbuild/makefile_override alldirs) | tee unit_pc
+    cd linux-source/
+    kmaxdriver.py -B -g $(make CC=cc ARCH=x86 -f /path/to/kmax/scripts/makefile_override alldirs) | tee unit_pc
 
 The `-B` options means treat configuraion options as Boolean (as opposed to tristate) and `-g` means get the presence conditions in the `unit_pc` [format](docs/unit_pc.md).  The `makefile_override` file will extract all the top-level source directories, e.g., drivers, kernel, etc, from the Linux build system.  These are then each processed by Kmax, recursively entering any Kbuild subdirectories.
 

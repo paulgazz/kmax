@@ -1,4 +1,0 @@
-nonbool CONFIG_VAR selectable string
-def_nonbool CONFIG_VAR "Value 1"|(1)
-def_nonbool CONFIG_VAR "Value 2"|(1)
-dep CONFIG_VAR (1)

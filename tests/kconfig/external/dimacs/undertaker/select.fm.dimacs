@@ -1,3 +1,0 @@
-c 1 CONFIG_B bool
-c 2 CONFIG_A bool
-p cnf 2 0

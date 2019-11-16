@@ -1,6 +1,0 @@
-nonbool CONFIG_HEX_VAR selectable nonstring
-def_nonbool CONFIG_HEX_VAR "Hello World"|(1)
-nonbool CONFIG_INT_VAR selectable nonstring
-def_nonbool CONFIG_INT_VAR "Hello World"|(1)
-dep CONFIG_HEX_VAR (1)
-dep CONFIG_INT_VAR (1)

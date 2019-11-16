@@ -1,8 +1,0 @@
-c 1 CONFIG_VAL_2 choice_bool
-c 2 CONFIG_VAL_1 choice_bool
-c 3 CONFIG_SUB_VAL bool
-p cnf 3 4
--2 -1 0
--1 -2 0
-2 1 0
--3 1 0

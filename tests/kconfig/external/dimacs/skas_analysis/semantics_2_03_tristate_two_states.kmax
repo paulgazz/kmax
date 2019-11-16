@@ -1,3 +1,0 @@
-bool CONFIG_MODULES selectable
-bool CONFIG_TRISTATE_VAR selectable
-dep CONFIG_TRISTATE_VAR (1 and CONFIG_MODULES)

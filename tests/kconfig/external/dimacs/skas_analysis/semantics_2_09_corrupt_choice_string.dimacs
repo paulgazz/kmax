@@ -1,7 +1,0 @@
-c 1 CONFIG_STR_VAL nonbool "Hello World"
-c 2 CONFIG_BOOL_VAL choice_bool
-p cnf 2 4
--1 -2 0
--2 -1 0
-1 2 0
-1 0
