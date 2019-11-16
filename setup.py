@@ -24,5 +24,10 @@ setup(
         "Topic :: Utilities",
         "License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)",
     ],
-    scripts=['kmax/kmaxdriver.py', 'kmax/kbuildplus.py']
+    scripts=['kmax/kmaxdriver.py', 'kmax/kbuildplus.py'],
+    install_requires=[
+        'enum34',
+        'regex',
+        'z3-solver',
+    ],
 )
