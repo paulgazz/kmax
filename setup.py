@@ -17,11 +17,12 @@ setup(
     license = "GPLv2+",
     keywords = "makefile kbuild kmax configurations",
     url = "https://github.com/paulgazz/kmax",
-    packages=['kmax', 'tests'],
+    packages=['kmax', 'pymake', 'tests'],
     long_description=read('README.md'),
     classifiers=[
         "Development Status :: 4 - Beta",
         "Topic :: Utilities",
         "License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)",
     ],
+    scripts=['kmax/kmaxdriver.py', 'kmax/kbuildplus.py']
 )
