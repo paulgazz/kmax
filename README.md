@@ -6,6 +6,14 @@ Kmax was created by [Paul Gazzillo](https://paulgazzillo.com).  Its algorithm is
 
 Special thanks to [ThanhVu Nguyen](https://cse.unl.edu/~tnguyen/) for helping to integrate z3 into Kmax.
 
+## Related projects
+
+Kclause extract logical models of Kconfig files, configuration specifications originally used in the Linux source code.  Kclause was originally part of the Kmax repository and is now under development here: <https://github.com/paulgazz/kclause>
+
+Prior version of Kmax can be found under releases, e.g., the original Kmax paper version from ESEC/FSE 2017 and the version used for the variability-aware bug-finding study in ESEC/FSE 2019: <https://github.com/paulgazz/kmax/releases>
+
+The SuperC project parses all configurations of unpreprocessed C code and and can be in the xtc codebase: <https://github.com/paulgazz/xtc>
+
 ## Setup
 
 Clone the repository and run
