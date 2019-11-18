@@ -38,17 +38,30 @@ if __name__ == '__main__':
     ag('-B',
        '--boolean-configs',
        action="store_true",
+       default=True,
        help="""\
     Treat all configuration variables as Boolean variables""")
+
+    ag('-T',
+       '--tristate-configs',
+       action="store_true",
+       help="""\
+    Treat all Boolean configuration variables as tri-state variables""")
+
+    ag('-F',
+       '--file-analysis',
+       action="store_true",
+       help="""\
+    Also perform C file analysis""")
 
     ag('--unit-pc-format',
        action="store_true",
        help="""\
     Output presence conditions in the original Kmax unit_pc format""")
 
-    ag('--case-study',
-       type=str,
-       help="""avail options: busybox/linux""")
+    # ag('--case-study',
+    #    type=str,
+    #    help="""avail options: busybox/linux""")
 
     args = aparser.parse_args()
 
@@ -62,29 +75,39 @@ if __name__ == '__main__':
 
     kmax.settings.do_table = args.table
     kmax.settings.do_recursive = args.recursive
-    kmax.settings.do_boolean_configs = args.boolean_configs
+    if not args.tristate_configs:
+        kmax.settings.do_boolean_configs = args.boolean_configs
     kmax.settings.unit_pc_format = args.unit_pc_format
 
-    case_study = args.case_study
-    if not case_study:
-        inp = args.makefile
-        print inp
-        myAnalysis = kmax.analysis.GeneralAnalysis(inp)
-    else:
-        case_study = case_study.lower()
-        inp = args.makefile[0]
+    # case_study = args.case_study
+    # if not case_study:
+    #     inp = args.makefile
+    #     print inp
+    #     myAnalysis = kmax.analysis.GeneralAnalysis(inp)
+    # else:
+    #     case_study = case_study.lower()
+    #     inp = args.makefile[0]
 
-        if case_study == "busybox":
-            kmax.settings.do_boolean_configs = True
-            myAnalysis = kmax.analysis.BusyboxCaseStudy(inp)
-            kmax.settings.do_recursive = True
-        elif case_study == "linux":
-            kmax.settings.do_boolean_configs = True
-            inp = args.makefile
-            myAnalysis = kmax.analysis.LinuxCaseStudy(inp)
-            kmax.settings.do_recursive = False
-        elif case_study == "tests":
-            myAnalysis = kmax.analysis.Tests(inp)
+    #     if case_study == "busybox":
+    #         kmax.settings.do_boolean_configs = True
+    #         myAnalysis = kmax.analysis.BusyboxCaseStudy(inp)
+    #         kmax.settings.do_recursive = True
+    #     elif case_study == "linux":
+    #         kmax.settings.do_boolean_configs = True
+    #         inp = args.makefile
+    #         myAnalysis = kmax.analysis.LinuxCaseStudy(inp)
+    #         kmax.settings.do_recursive = False
+    #     elif case_study == "tests":
+    #         myAnalysis = kmax.analysis.Tests(inp)
 
-    myAnalysis.run()
-    myAnalysis.analyze()
+    inp = args.makefile
+    print inp
+
+    from kmax.alg import Run
+    myrun = Run()
+    myrun.run(inp)
+    mlog.info("results01:\n{}".format(myrun.results))
+
+    if args.file_analysis:
+        from kmax.analysis import FileAnalysis
+        FileAnalysis.analyze(myrun.results)

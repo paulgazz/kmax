@@ -106,8 +106,14 @@ if __name__ == '__main__':
   argparser.add_argument('-B',
                          '--boolean-configs',
                          action="store_true",
+                         default=True,
                          help="""\
   Treat all configuration variables as Boolean variables""")
+  argparser.add_argument('-T',
+                         '--tristate-configs',
+                         action="store_true",
+                         help="""\
+  Treat all Boolean configuration variables as tristate variables""")
   argparser.add_argument('-n',
                          '--naive-append',
                          action="store_true",
@@ -212,10 +218,15 @@ if __name__ == '__main__':
     if args.config_vars:
       covering_set_args.append("-C" + args.config_vars)
 
+    # need to turn on file analysis to aggregate data about kmax coverage
+    covering_set_args.append("-F")
+    
     # if args.get_presence_conditions:
     #   covering_set_args.append("-g")
 
-    if args.boolean_configs:
+    if args.tristate_configs:
+      covering_set_args.append("-T")
+    else:
       covering_set_args.append("-B")
 
     if args.naive_append:
