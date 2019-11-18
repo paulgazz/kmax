@@ -17,7 +17,7 @@ Clone the repository and run
 This will run Kmax on the example from the
 [paper](https://paulgazzillo.com/papers/esecfse17.pdf) on Kmax.
 
-    python kmax/kbuildplus.py -B tests/kbuild/paper_example
+    kbuildplus.py -B tests/paper_example
 
 This will output the list of configuration conditions for each compilation unit file in the example Kbuild file.  The `-B` tells Kmax to treat configuration options as Boolean options (as opposed to Kconfig tristate options).
 
