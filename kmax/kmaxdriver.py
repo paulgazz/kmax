@@ -103,6 +103,11 @@ if __name__ == '__main__':
                          action="store_true",
                          help="""\
   get presence conditions for each compilation units""")
+  argparser.add_argument('-F',
+                         '--file-analysis',
+                         action="store_true",
+                         help="""\
+    Also perform C file analysis""")
   argparser.add_argument('-B',
                          '--boolean-configs',
                          action="store_true",
@@ -218,16 +223,15 @@ if __name__ == '__main__':
     if args.config_vars:
       covering_set_args.append("-C" + args.config_vars)
 
-    # need to turn on file analysis to aggregate data about kmax coverage
-    covering_set_args.append("-F")
-    
+    # turn on file analysis to aggregate data about kmax coverage
+    if args.file_analysis:
+      covering_set_args.append("-F")
+      
     # if args.get_presence_conditions:
     #   covering_set_args.append("-g")
 
     if args.tristate_configs:
       covering_set_args.append("-T")
-    else:
-      covering_set_args.append("-B")
 
     if args.naive_append:
       covering_set_args.append("-n")
@@ -327,7 +331,7 @@ if __name__ == '__main__':
     # already printed presence conditions.  don't do anything, so exit
     exit(1)
 
-  if args.no_aggregation:
+  if args.no_aggregation or not args.file_analysis:
     print_set(toplevel_dirs, "toplevel_dirs")  # list of directories started from
     print_set(subdirectories, "subdirectory")  # subdirectory visited by kbuild
     print_set(composites, "composites")  # compilation units that are composites
