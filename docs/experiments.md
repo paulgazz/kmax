@@ -7,6 +7,8 @@
     time kmaxdriver.py -g $(make CC=cc ARCH=x86 -f /path/to/kmax/scripts/makefile_override alldirs) 2>unit_pc.time | tee unit_pc
     time kmaxdriver.py --aggregate < unit_pc > full_pc 2> full_pc.time
 
+The `makefile_override` Makefile will extract the list of top-level directories from the top-leverl Linux Makefile.  This top-level Makefile is not a Kbuild Makefile, so Kmax is not used.
+
 ### Results 2019-11-18
 
 Commodity PC desktop, core i5 (circa 2013), 16GB RAM, Debian 11, running with other processes
@@ -20,7 +22,7 @@ Commodity PC desktop, core i5 (circa 2013), 16GB RAM, Debian 11, running with ot
 
 
 ## BusyBox 1.28.0
-    
+
     git clone https://git.busybox.net/busybox
     cd busybox
     git checkout 1_28_0
@@ -56,6 +58,10 @@ Commodity PC desktop, core i5 (circa 2013), 16GB RAM, Debian 11, running with ot
             util-linux/volume_id/ \
         2>unit_pc.time | tee unit_pc
     time kmaxdriver.py --aggregate < unit_pc > full_pc 2> full_pc.time
+
+There is no automated way (yet) to get the list of top-level
+directories, so right now they are manually-entered in the call to
+Kmax.
 
 ### Results 2019-11-18
 
