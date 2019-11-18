@@ -1,0 +1,6 @@
+# taken from https://wiki.linuxfoundation.org/gsoc/2019-gsoc-safety-critical-linux#student_project_proposals_2018
+
+obj-$(CONFIG_FUTEX) += futex.o
+ifeq ($(CONFIG_COMPAT),y)
+obj-$(CONFIG_FUTEX) += futex_compat.o
+endif
