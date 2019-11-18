@@ -1,0 +1,9 @@
+ifeq ($(CONFIG_A),y)
+obj-$(CONFIG_B) += kcmp.o
+else
+obj-$(CONFIG_B) += kcmp.o
+endif
+
+# Output SHOULD be: CONFIG_B=y
+# Output IS:        CONFIG_B=y && CONFIG_A=y && defined(CONFIG_B) && defined(CONFIG_A)
+# which seems to ignore the else clause.

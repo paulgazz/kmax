@@ -1,0 +1,10 @@
+ifneq ($(CONFIG_A),y)
+obj-y += kcmp.o
+endif
+
+# Output SHOULD be: !CONFIG_A=y
+# Output IS:        || CONFIG_A=y && defined(CONFIG_A)
+
+# Output after applying fix (see below):
+# (!defined(CONFIG_A)) || (CONFIG_A=y && defined(CONFIG_A))
+# which also includes cases where CONFIG_A=y.
