@@ -28,9 +28,9 @@ This requires python setup tools (`pip install setuptools`).  Use
 This will run Kmax on the example from the
 [paper](https://paulgazzillo.com/papers/esecfse17.pdf) on Kmax.
 
-    kbuildplus.py -B tests/paper_example
+    kbuildplus.py tests/paper_example
 
-This will output the list of configuration conditions for each compilation unit file in the example Kbuild file.  The `-B` tells Kmax to treat configuration options as Boolean options (as opposed to Kconfig tristate options).
+This will output the list of configuration conditions for each compilation unit file in the example Kbuild file.  By default, Kmax to treat configuration options as Boolean options (as opposed to Kconfig tristate options).  Pass `-T` for experimental support for tristate.
 
     unit_pc tests/kbuild/fork.o 1
     unit_pc tests/kbuild/probe_32.o (CONFIG_A && CONFIG_B)
@@ -63,6 +63,6 @@ Kmax includes a Makefile hack to get all the top-level Linux directories.  Combi
 
 The symbolic constraints for each compilation unit, including the conjunction of all of its parent directories, can be computed with this command:
 
-    cat unit_pc | python /path/to/kmax/kbuildplus/aggregate.py > full_pc
+    cat unit_pc | python kmaxdriver.py --aggregate > full_pc
 
 This is the [format](docs/unit_pc.md) for `unit_pc` and `full_pc`.
