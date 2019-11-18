@@ -20,6 +20,9 @@ Clone the repository and run
 
     python setup.py install
 
+This requires python setup tools (`pip install setuptools`).  Use
+`--prefix` to specify a different installation directory.
+
 ## Simple example
 
 This will run Kmax on the example from the
@@ -39,15 +42,27 @@ The `unit_pc` lines have the [format](docs/unit_pc.md) of compilation unit name 
 
 There is a script that will run Kmax on all Kbuild Makefiles from a project, e.g., the Linux kernel source code.
 
-    # from, e.g., the top-level directory of the linux-4.19.50 source code
-    cd linux-source/
-    make defconfig # setup the build and config system
-    kmaxdriver.py -B -g $(make CC=cc ARCH=x86 -f /path/to/kmax/scripts/makefile_override alldirs) | tee unit_pc
+First get the Linux source and prepare its build system.
 
-The `-B` options means treat configuraion options as Boolean (as opposed to tristate) and `-g` means get the presence conditions in the `unit_pc` [format](docs/unit_pc.md).  The `makefile_override` file will extract all the top-level source directories, e.g., drivers, kernel, etc, from the Linux build system.  These are then each processed by Kmax, recursively entering any Kbuild subdirectories.
+    wget https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.3.11.tar.xz
+    tar -xvf linux-5.3.11.tar.xz
+    cd linux-5.3.11
+    make defconfig # any config will work here.  it's just to setup the build system.
 
-Finally, aggregate `unit_pc` to `full_pc`, i.e., combine the constraints for subdirectories with the constraints of the members of those subdirectories
+To try Kmax on a particular Kbuild Makefile, use the `kbuildplus.py` tool:
 
-    cat unit_pc | python /path/to/kmax/kbuildplus/aggregate.py > aggregate_pc
+    kbuildplus.py ipc/
+    
+This will run Kmax on a single Kbuild Makefile, and show the symbolic configurations for each compilation unit and subdirectory.  Kmax can also recursively analyze Kbuild Makefiles by following subdirectories, use the `kmaxdriver.py` which uses `kbuildplus.py` to process each Kbuild Makefile and recursively process those in subdirectories.  `-g` means collect the symbolic constraints.
 
-The aggregated file has a [format](docs/unit_pc.md) describing the constraints of on the compilation unit.
+    kmaxdriver.py -g net/
+    
+Kmax includes a Makefile hack to get all the top-level Linux directories.  Combined with `kmaxdriver.py` this command will collect the symbolic constraints for the whole (x86) source, saving them into `unit_pc`.
+
+    kmaxdriver.py -g $(make CC=cc ARCH=x86 -f /path/to/kmax/scripts/makefile_override alldirs) | tee unit_pc
+
+The symbolic constraints for each compilation unit, including the conjunction of all of its parent directories, can be computed with this command:
+
+    cat unit_pc | python /path/to/kmax/kbuildplus/aggregate.py > full_pc
+
+This is the [format](docs/unit_pc.md) for `unit_pc` and `full_pc`.
