@@ -15,6 +15,8 @@ Commodity PC desktop, core i5 (circa 2013), 16GB RAM, Debian 11, running with ot
 
 - Running time for `kmaxdriver.py -g`
 
+        15548.80user 94.16system 4:21:11elapsed 99%CPU (0avgtext+0avgdata 42040maxresident)k
+        18672inputs+1016outputs (0major+11417656minor)pagefaults 0swaps
 
 - Running time for `kmaxdriver.py --aggregate`
 

@@ -63,6 +63,6 @@ Kmax includes a Makefile hack to get all the top-level Linux directories.  Combi
 
 The symbolic constraints for each compilation unit, including the conjunction of all of its parent directories, can be computed with this command:
 
-    cat unit_pc | python kmaxdriver.py --aggregate > full_pc
+    cat unit_pc | kmaxdriver.py --aggregate > full_pc
 
 This is the [format](docs/unit_pc.md) for `unit_pc` and `full_pc`.
