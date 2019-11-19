@@ -1,7 +1,7 @@
 ## Experiments
 
-- [Results][#results]
-- [Setup][#setup]
+- [Results](#results)
+- [Setup](#setup)
 
 ### Results
 
