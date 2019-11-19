@@ -28,13 +28,16 @@ def contains_unexpanded(s):
     return s is not None and match_unexpanded_variables.match(s)
 
     
-# Placeholders for symbolic boolean operations
-def conj(a, b): return None if a is None or b is None else a & b
+# wrappers for symbolic boolean operations
+def conj(a, b): return kmax.datastructures.conj(a, b)
+def disj(a, b): return kmax.datastructures.disj(a, b)
+def neg(a): return kmax.datastructures.neg(a)
+
+# todo, remove since most likely will not used
 def zconj(a, b): return None if a is None or b is None else z3.And(a, b)
-def disj(a, b): return None if a is None or b is None else a | b
 def zdisj(a, b): return None if a is None or b is None else z3.Or(a, b)
-def neg(a): return None if a is None else ~a
 def zneg(a): return None if a is None else z3.Not(a)
+
 
 def isz3false(z):
   s = z3.Solver()
@@ -202,7 +205,7 @@ class Kbuild:
         if expected:
             return bdd, zbdd
         else:
-            return neg(bdd), zneg(zbdd)
+            return neg(bdd), z3.Not(zbdd)
 
     def process_variableref(self, name):
         if name not in self.variables and name == 'BITS':

@@ -6,6 +6,10 @@ import kmax.vcommon as CM
 import kmax.settings
 mlog = CM.getLogger(__name__, kmax.settings.logger_level)
 
+def conj(a, b): return None if a is None or b is None else a & b
+def disj(a, b): return None if a is None or b is None else a | b
+def neg(a): return None if a is None else ~a
+
 class CondDef(tuple):
     def __new__(cls, cond, zcond, mdef):
         return super(CondDef, cls).__new__(cls, (cond, zcond, mdef))
