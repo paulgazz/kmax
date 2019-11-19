@@ -11,10 +11,10 @@ class CondDef(tuple):
         return super(CondDef, cls).__new__(cls, (cond, zcond, mdef))
     
     def __init__(self, cond, zcond, mdef):
+        # assert isinstance(cond, pycudd.DdNode), cond
         assert z3.is_expr(zcond)
-        
         assert mdef is None or isinstance(mdef, str), mdef  #CONFIG_A, 'y', 'm'
-        self.cond = None
+        self.cond = cond
         self.zcond = zcond
         self.mdef = mdef
 
@@ -27,7 +27,7 @@ class CondDef(tuple):
 
 class Multiverse(list):
     def __init__(self, ls=[]):
-        assert all(isinstance(cd, CondDef) for cd in ls), ls
+        #assert allisinstance(cd, CondDef) for cd in ls), ls
         
         list.__init__(self, ls)
 
@@ -44,9 +44,9 @@ class Multiverse(list):
         for cond, zcond, val in self:
             if val in cache:
                 c, zc = cache[val]
-                cache[val] = (None, z3.Or(zc, zcond)) #disj
+                cache[val] = (kmax.alg.disj(c, cond), z3.Or(zc, zcond)) #disj
             else:
-                cache[val] = (None, zcond)
+                cache[val] = (cond, zcond)
 
         mv = Multiverse([CondDef(c, zc, v)
                          for v, (c, zc)  in cache.iteritems()])
@@ -62,11 +62,12 @@ class VarEntry(tuple):
     
     def __init__(self, val, cond, zcond, flavor):
         assert val is None or isinstance(val, str), val
+        # assert isinstance(cond, pycudd.DdNode), cond
         assert z3.is_expr(zcond), zcond
         assert flavor in set({VarEntry.RECURSIVE, VarEntry.SIMPLE}), flavor
 
         self.val = val.strip() if isinstance(val, str) else val
-        self.cond = None
+        self.cond = cond
         self.zcond = z3.simplify(zcond)
         self.flavor = flavor
 
@@ -83,6 +84,7 @@ class VarEntry(tuple):
 
 class BoolVar(tuple):
     def __new__(cls, bdd, zbdd, idx):
+        # assert isinstance(bdd, pycudd.DdNode), bdd
         assert idx >= 0, idx
         
         return super(BoolVar, cls).__new__(cls, (bdd, zbdd, idx))
@@ -91,7 +93,7 @@ class BoolVar(tuple):
         assert z3.is_expr(zbdd), zbdd
         assert idx >= 0, idx
         
-        self.bdd = None
+        self.bdd = bdd
         self.zbdd = zbdd
         self.idx = idx
 
