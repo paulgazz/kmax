@@ -35,6 +35,12 @@ if __name__ == '__main__':
        type=str,
        help="""the name of a KConfigData file containing configuration variable data""")
 
+    ag('-D',
+       '--define',
+       action='append',
+       help="""\
+    define a makefile variable""")
+
     ag('-B',
        '--boolean-configs',
        action="store_true",
@@ -78,6 +84,7 @@ if __name__ == '__main__':
     if not args.tristate_configs:
         kmax.settings.do_boolean_configs = args.boolean_configs
     kmax.settings.unit_pc_format = args.unit_pc_format
+    kmax.settings.defines = args.define
 
     # case_study = args.case_study
     # if not case_study:

@@ -38,7 +38,7 @@ def zneg(a): return None if a is None else z3.Not(a)
 
 def isz3false(z):
   s = z3.Solver()
-  s.add(z)
+  s.add(z3.simplify(z))
   return z3.sat != s.check()
     
 def isBooleanConfig(name):
@@ -120,7 +120,7 @@ class Kbuild:
         # get a new randomized variable name that is equivalent to the
         # given variable.  this also updates a structure that records
         # which variables are equivalent
-        
+
         assert isinstance(name, str), name
 
         if name in self.var_equiv_sets:
@@ -1033,7 +1033,7 @@ class Run:
         makefile.close()
 
         kbuild = Kbuild()
-        #kbuild.add_definitions(kmax.settings.define)
+        kbuild.add_definitions(kmax.settings.defines)
         stmts = parser.parsestring(s, makefile.name)
 
         kbuild.process_stmts(stmts, kbuild.T, ZSolver.T)
@@ -1208,7 +1208,7 @@ class Run:
         more variables to look at are available"""
 
         assert isinstance(kbuild, Kbuild), kbuild
-        assert path is None or os.path.isdir(path), path
+        assert path is None or path is "" or os.path.isdir(path), path
         assert isinstance(compilation_units, set), compilation_units
         assert isinstance(subdirs, set), subdirs
         assert isinstance(composites, set), composites
