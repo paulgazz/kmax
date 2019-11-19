@@ -1,11 +1,32 @@
+## Linux 
+
+    wget https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.3.11.tar.xz
+    tar -xvf /linux-5.4-rc6.tar.gz
+    cd linux-5.4-rc6
+    make defconfig # any config will work here.  it's just to setup the build system.
+    /usr/bin/time kmaxdriver.py -g $(make CC=cc ARCH=x86 -f /path/to/kmax/scripts/makefile_override alldirs) 2>unit_pc.err | tee unit_pc
+    /usr/bin/time kmaxdriver.py --aggregate < unit_pc > full_pc 2> full_pc.err
+
+### Results 2019-11-18
+
+Commodity PC desktop, core i5 (circa 2013), 16GB RAM, Debian 11, running with other processes
+
+- Symbolic constraints for compilation units: https://drive.google.com/file/d/1wh4z8LE6wLJIJ1rqd7MnZa0AsjuabzS3/view?usp=sharing
+
+- Running time for `kmaxdriver.py -g`
+
+
+- Running time for `kmaxdriver.py --aggregate`
+
+
 ## Linux 5.3.11
 
     wget https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.3.11.tar.xz
     tar -xvf linux-5.3.11.tar.xz
     cd linux-5.3.11
     make defconfig # any config will work here.  it's just to setup the build system.
-    time kmaxdriver.py -g $(make CC=cc ARCH=x86 -f /path/to/kmax/scripts/makefile_override alldirs) 2>unit_pc.time | tee unit_pc
-    time kmaxdriver.py --aggregate < unit_pc > full_pc 2> full_pc.time
+    /usr/bin/time kmaxdriver.py -g $(make CC=cc ARCH=x86 -f /path/to/kmax/scripts/makefile_override alldirs) 2>unit_pc.err | tee unit_pc
+    /usr/bin/time kmaxdriver.py --aggregate < unit_pc > full_pc 2> full_pc.err
 
 The `makefile_override` Makefile will extract the list of top-level directories from the top-leverl Linux Makefile.  This top-level Makefile is not a Kbuild Makefile, so Kmax is not used.
 
@@ -17,9 +38,17 @@ Commodity PC desktop, core i5 (circa 2013), 16GB RAM, Debian 11, running with ot
 
 - Running time for `kmaxdriver.py -g`
 
+        real    273m22.829s
+        user    270m59.705s
+        sys     2m19.206s
+
+(Note that this is considerably slower than original BDD version of Kmax.)
 
 - Running time for `kmaxdriver.py --aggregate`
 
+        real    0m1.559s
+        user    0m1.542s
+        sys     0m0.016s
 
 ## BusyBox 1.28.0
 
@@ -27,7 +56,7 @@ Commodity PC desktop, core i5 (circa 2013), 16GB RAM, Debian 11, running with ot
     cd busybox
     git checkout 1_28_0
     make defconfig
-    time kmaxdriver.py -g \
+    /usr/bin/time kmaxdriver.py -g \
             archival/ \
             archival/libarchive/ \
             console-tools/ \
@@ -56,8 +85,8 @@ Commodity PC desktop, core i5 (circa 2013), 16GB RAM, Debian 11, running with ot
             sysklogd/ \
             util-linux/ \
             util-linux/volume_id/ \
-        2>unit_pc.time | tee unit_pc
-    time kmaxdriver.py --aggregate < unit_pc > full_pc 2> full_pc.time
+        2>unit_pc.err | tee unit_pc
+    /usr/bin/time kmaxdriver.py --aggregate < unit_pc > full_pc 2> full_pc.err
 
 There is no automated way (yet) to get the list of top-level
 directories, so right now they are manually-entered in the call to
