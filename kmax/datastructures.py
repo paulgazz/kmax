@@ -6,6 +6,13 @@ import kmax.vcommon as CM
 import kmax.settings
 mlog = CM.getLogger(__name__, kmax.settings.logger_level)
 
+# todo: implement with dd package
+def bdd_one(): return None
+def bdd_zero(): return None
+def bdd_ithvar(i): return None
+def bdd_init(): pass
+def bdd_destroy(): pass
+
 def conj(a, b): return None if a is None or b is None else a & b
 def disj(a, b): return None if a is None or b is None else a | b
 def neg(a): return None if a is None else ~a

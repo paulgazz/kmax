@@ -32,6 +32,11 @@ def contains_unexpanded(s):
 def conj(a, b): return kmax.datastructures.conj(a, b)
 def disj(a, b): return kmax.datastructures.disj(a, b)
 def neg(a): return kmax.datastructures.neg(a)
+def bdd_one(): return kmax.datastructures.bdd_one()
+def bdd_zero(): return kmax.datastructures.bdd_zero()
+def bdd_ithvar(i): return kmax.datastructures.bdd_ithvar(i)
+def bdd_init(): kmax.datastructures.bdd_init()
+def bdd_destroy(): kmax.datastructures.bdd_destroy()
 
 # todo, remove since most likely will not used
 def zconj(a, b): return None if a is None or b is None else z3.And(a, b)
@@ -77,11 +82,12 @@ class ZSolver:
 
 class Kbuild:
     def __init__(self):
+        bdd_init()
         self.zsolver = ZSolver()        
 
         # Boolean constants
-        self.T = None  # todo: replace with bdd
-        self.F = None  # todo: replace wth bdd
+        self.T = bdd_one()
+        self.F = bdd_zero()
 
         self.variables = {}
         self.bvars = {}
@@ -117,7 +123,7 @@ class Kbuild:
             return self.bvars[name]
         except KeyError:
             idx = len(self.bvars)
-            bdd = None
+            bdd = bdd_ithvar(idx)
             zbdd = z3.Bool(name.format(idx))
             bv = BoolVar(bdd, zbdd, idx)
             self.bvars[name] = bv
@@ -1182,7 +1188,9 @@ class Run:
         # _f(kbuild.unit_pc, unit_pcs)
         # _f(kbuild.subdir_pc, subdir_pcs)
 
-        #clean up  
+        #clean up
+        bdd_destroy()
+        
         return subdirs
 
     @classmethod
