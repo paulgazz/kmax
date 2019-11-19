@@ -27,7 +27,6 @@ def contains_unexpanded(s):
 
     return s is not None and match_unexpanded_variables.match(s)
 
-    
 # wrappers for symbolic boolean operations
 def conj(a, b): return kmax.datastructures.conj(a, b)
 def disj(a, b): return kmax.datastructures.disj(a, b)
@@ -37,6 +36,7 @@ def bdd_zero(): return kmax.datastructures.bdd_zero()
 def bdd_ithvar(i): return kmax.datastructures.bdd_ithvar(i)
 def bdd_init(): kmax.datastructures.bdd_init()
 def bdd_destroy(): kmax.datastructures.bdd_destroy()
+def isbddfalse(b): kmax.datastructures.isbddfalse(b)
 
 # todo, remove since most likely will not used
 def zconj(a, b): return None if a is None or b is None else z3.And(a, b)
@@ -48,10 +48,11 @@ def isz3false(z):
   s = z3.Solver()
   s.add(z3.simplify(z))
   return z3.sat != s.check()
-    
+
 def isfalse(b, z):
     # todo, replace with bdd
-    return isz3false(z)
+    # return isz3false(z)
+    return isbddfalse(b)
 
 def isBooleanConfig(name):
     # if all_config_var_names is not None and not isNonbooleanConfig(name):

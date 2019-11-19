@@ -2,20 +2,27 @@ import pdb
 trace = pdb.set_trace
 import z3
 import kmax.vcommon as CM
+from dd.autoref import BDD
 
 import kmax.settings
 mlog = CM.getLogger(__name__, kmax.settings.logger_level)
 
+# warning: this is not well encapsulated.  multiple runs in same process may not work properly
+bdd_lib = BDD()
+
 # todo: implement with dd package
-def bdd_one(): return None
-def bdd_zero(): return None
-def bdd_ithvar(i): return None
+def bdd_one(): return bdd_lib.true
+def bdd_zero(): return bdd_lib.false
+def bdd_ithvar(i):
+    bdd_lib.add_var(i)
+    return bdd_lib.var(i)
 def bdd_init(): pass
 def bdd_destroy(): pass
 
 def conj(a, b): return None if a is None or b is None else a & b
 def disj(a, b): return None if a is None or b is None else a | b
 def neg(a): return None if a is None else ~a
+def isbddfalse(b): return b == bdd_lib.false
 
 class CondDef(tuple):
     def __new__(cls, cond, zcond, mdef):
@@ -33,7 +40,7 @@ class CondDef(tuple):
         if not printCond:
             return "{}".format(self.mdef)
         else:
-            return "({}, {})".format(self.zcond, self.mdef)
+            return "({}, {}, {})".format(self.cond, self.zcond, self.mdef)
 
 
 class Multiverse(list):
@@ -84,6 +91,9 @@ class VarEntry(tuple):
 
     def __str__(self, printCond=None):
         ss = [self.val, self.flavor]
+
+        if printCond:
+            ss.append(str(self.cond))
             
         ss.append(self.zcond)
             
@@ -110,6 +120,8 @@ class BoolVar(tuple):
 
     def __str__(self, printCond=None):
         ss = [self.idx, self.zbdd]
+        if printCond:
+            ss.append(str(self.bdd))
         return ", ".join(map(str,ss))
 
 
