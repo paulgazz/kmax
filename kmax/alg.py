@@ -27,20 +27,33 @@ def contains_unexpanded(s):
 
     return s is not None and match_unexpanded_variables.match(s)
 
-    
-# Placeholders for symbolic boolean operations
-def conj(a, b): return None if a is None or b is None else a & b
+# wrappers for symbolic boolean operations
+def conj(a, b): return kmax.datastructures.conj(a, b)
+def disj(a, b): return kmax.datastructures.disj(a, b)
+def neg(a): return kmax.datastructures.neg(a)
+def bdd_one(): return kmax.datastructures.bdd_one()
+def bdd_zero(): return kmax.datastructures.bdd_zero()
+def bdd_ithvar(i): return kmax.datastructures.bdd_ithvar(i)
+def bdd_init(): kmax.datastructures.bdd_init()
+def bdd_destroy(): kmax.datastructures.bdd_destroy()
+def isbddfalse(b): kmax.datastructures.isbddfalse(b)
+
+# todo, remove since most likely will not used
 def zconj(a, b): return None if a is None or b is None else z3.And(a, b)
-def disj(a, b): return None if a is None or b is None else a | b
 def zdisj(a, b): return None if a is None or b is None else z3.Or(a, b)
-def neg(a): return None if a is None else ~a
 def zneg(a): return None if a is None else z3.Not(a)
+
 
 def isz3false(z):
   s = z3.Solver()
-  s.add(z)
+  s.add(z3.simplify(z))
   return z3.sat != s.check()
-    
+
+def isfalse(b, z):
+    # todo, replace with bdd
+    # return isz3false(z)
+    return isbddfalse(b)
+
 def isBooleanConfig(name):
     # if all_config_var_names is not None and not isNonbooleanConfig(name):
     #     return name in all_config_var_names
@@ -70,11 +83,12 @@ class ZSolver:
 
 class Kbuild:
     def __init__(self):
+        bdd_init()
         self.zsolver = ZSolver()        
 
         # Boolean constants
-        self.T = None
-        self.F = None
+        self.T = bdd_one()
+        self.F = bdd_zero()
 
         self.variables = {}
         self.bvars = {}
@@ -110,7 +124,7 @@ class Kbuild:
             return self.bvars[name]
         except KeyError:
             idx = len(self.bvars)
-            bdd = None
+            bdd = bdd_ithvar(idx)
             zbdd = z3.Bool(name.format(idx))
             bv = BoolVar(bdd, zbdd, idx)
             self.bvars[name] = bv
@@ -120,7 +134,7 @@ class Kbuild:
         # get a new randomized variable name that is equivalent to the
         # given variable.  this also updates a structure that records
         # which variables are equivalent
-        
+
         assert isinstance(name, str), name
 
         if name in self.var_equiv_sets:
@@ -198,7 +212,7 @@ class Kbuild:
         if expected:
             return bdd, zbdd
         else:
-            return neg(bdd), zneg(zbdd)
+            return neg(bdd), z3.Not(zbdd)
 
     def process_variableref(self, name):
         if name not in self.variables and name == 'BITS':
@@ -335,7 +349,7 @@ class Kbuild:
         for (sc, szc, s), (rc, rzc, r), (dc, dzc, d) in zip(from_vals, to_vals, in_vals):
             instance_cond = conj(sc, conj(rc, dc))
             instance_zcond = z3.And(szc, rzc, dzc)
-            if not isz3false(instance_zcond):
+            if not isfalse(instance_cond, instance_zcond):
                 if r is None: r = ""  # Fixes bug in net/l2tp/Makefile
                 instance_result = None if d is None else d.replace(s, r)
                 hoisted_results.append(CondDef(instance_cond, instance_zcond, instance_result))
@@ -362,7 +376,7 @@ class Kbuild:
         for cond, zcond, value in then_part:
             cond = conj(then_cond, cond)
             zcond = z3.And(then_zcond, zcond)
-            if not isz3false(zcond):
+            if not isfalse(cond, zcond):
                 expansions.append(CondDef(cond, zcond, value))
 
         if len(function._arguments) > 2:
@@ -371,7 +385,7 @@ class Kbuild:
                 cond = conj(else_cond, cond)
                 zcond = z3.And(else_zcond, zcond)
 
-                if not isz3false(zcond):
+                if not isfalse(cond, zcond):
                     expansions.append(CondDef(cond, zcond, value))
 
         return Multiverse(expansions)
@@ -389,7 +403,7 @@ class Kbuild:
             instance_cond = conj(c1, c2)
             instance_zcond = z3.And(zc1, zc2)
 
-            if not isz3false(instance_zcond):
+            if not isfalse(instance_cond, instance_zcond):
                 if d is None:
                     instance_result = None
                 else:
@@ -417,7 +431,7 @@ class Kbuild:
             instance_cond = conj(c1, conj(c2, c3))
             instance_zcond = z3.And(zc1, zc2, zc3)
             
-            if not isz3false(instance_zcond):
+            if not isfalse(instance_cond, instance_zcond):
                 if r == None: r = ""  # Fixes bug in net/l2tp/Makefile
                 pattern = "^" + s.replace(r"%", r"(.*)", 1) + "$"
                 replacement = r.replace(r"%", r"\1", 1)
@@ -441,7 +455,7 @@ class Kbuild:
                 resulting_cond = conj(prefix_cond, tokens_cond)
                 resulting_zcond = z3.And(prefix_zcond, tokens_zcond)
 
-                if not isz3false(resulting_zcond):
+                if not isfalse(resulting_cond, resulting_zcond):
                     # append prefix to each token in the token_string
                     if token_string is None:
                         prefixed_tokens = ""                            
@@ -616,11 +630,11 @@ class Kbuild:
 
                     #TODO: check term_zcond == term_cond
                     
-                    if not isz3false(term_zcond) and (v1 == v2) == cond.expected:
+                    if not isfalse(term_cond, term_zcond) and (v1 == v2) == cond.expected:
                         hoisted_cond = disj(hoisted_cond, term_cond)
                         hoisted_zcond = z3.Or(hoisted_zcond, term_zcond)
                         
-                    elif not isz3false(term_zcond):
+                    elif not isfalse(term_cond, term_zcond):
                         hoisted_else = disj(hoisted_else, term_cond)
                         hoisted_zelse = z3.Or(hoisted_zelse, term_zcond)
                         
@@ -849,7 +863,7 @@ class Kbuild:
                 # print("+=", name, z3.simplify(zsimply), z3.simplify(zrecursively))
 
                 #tvn: TODO: add check for zrecursively
-                if not isz3false(zrecursively):
+                if not isfalse(recursively, zrecursively):
                     if new_var_name not in self.variables:
                         self.variables[new_var_name] = []
                     self.variables[new_var_name].append(
@@ -859,7 +873,7 @@ class Kbuild:
                                 VarEntry.RECURSIVE))
 
                 #tvn: TODO: add check for zsimply
-                if not isz3false(zsimply):
+                if not isfalse(simply, zsimply):
                     new_definitions = self.expand_and_flatten(value, presence_cond,presence_zcond)
                     # print("simply", new_definitions)
                     new_variables = []
@@ -891,12 +905,12 @@ class Kbuild:
         for equiv in self.get_var_equiv_set(name):
             if equiv in self.variables:
                 self.variables[equiv] = \
-                    [v for v in self.variables[equiv] if not isz3false(v.zcond)]
+                    [v for v in self.variables[equiv] if not isfalse(v.cond, v.zcond)]
                 
 
     def process_setvariable(self, setvar, cond, zcond):
         """Find a satisfying set of configurations for variable."""
-
+        # assert isinstance(cond, pycudd.DdNode), cond
         assert isinstance(setvar, parserdata.SetVariable), setvar
         assert z3.is_expr(zcond), zcond
 
@@ -1033,7 +1047,7 @@ class Run:
         makefile.close()
 
         kbuild = Kbuild()
-        #kbuild.add_definitions(kmax.settings.define)
+        kbuild.add_definitions(kmax.settings.defines)
         stmts = parser.parsestring(s, makefile.name)
 
         kbuild.process_stmts(stmts, kbuild.T, ZSolver.T)
@@ -1175,7 +1189,9 @@ class Run:
         # _f(kbuild.unit_pc, unit_pcs)
         # _f(kbuild.subdir_pc, subdir_pcs)
 
-        #clean up  
+        #clean up
+        bdd_destroy()
+        
         return subdirs
 
     @classmethod
@@ -1208,7 +1224,7 @@ class Run:
         more variables to look at are available"""
 
         assert isinstance(kbuild, Kbuild), kbuild
-        assert path is None or os.path.isdir(path), path
+        assert path is None or path is "" or os.path.isdir(path), path
         assert isinstance(compilation_units, set), compilation_units
         assert isinstance(subdirs, set), subdirs
         assert isinstance(composites, set), composites

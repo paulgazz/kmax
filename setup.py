@@ -29,5 +29,6 @@ setup(
         'enum34',
         'regex',
         'z3-solver',
+        'dd',
     ],
 )
