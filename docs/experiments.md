@@ -1,75 +1,7 @@
-## Setup
+## Experiments
 
-
-### Machines
-
-1. Commodity PC desktop, core i5 (circa 2013), 16GB RAM, Debian 11, running with other processes
-
-### Commands to run kmax
-
-#### Linux 5.4-rc6
-
-    wget https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.3.11.tar.xz
-    tar -xvf /linux-5.4-rc6.tar.gz
-    cd linux-5.4-rc6
-    make defconfig # any config will work here.  it's just to setup the build system.
-    /usr/bin/time kmaxdriver.py -g $(make CC=cc ARCH=x86 -f /path/to/kmax/scripts/makefile_override alldirs) 2>unit_pc.err | tee unit_pc
-    /usr/bin/time kmaxdriver.py --aggregate < unit_pc > full_pc 2> full_pc.err
-
-
-#### Linux 5.3.11
-
-    wget https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.3.11.tar.xz
-    tar -xvf linux-5.3.11.tar.xz
-    cd linux-5.3.11
-    make defconfig # any config will work here.  it's just to setup the build system.
-    /usr/bin/time kmaxdriver.py -g $(make CC=cc ARCH=x86 -f /path/to/kmax/scripts/makefile_override alldirs) 2>unit_pc.err | tee unit_pc
-    /usr/bin/time kmaxdriver.py --aggregate < unit_pc > full_pc 2> full_pc.err
-
-The `makefile_override` Makefile will extract the list of top-level directories from the top-leverl Linux Makefile.  This top-level Makefile is not a Kbuild Makefile, so Kmax is not used.
-
-#### BusyBox 1.28.0
-
-    git clone https://git.busybox.net/busybox
-    cd busybox
-    git checkout 1_28_0
-    make defconfig
-    /usr/bin/time kmaxdriver.py -g \
-            archival/ \
-            archival/libarchive/ \
-            console-tools/ \
-            coreutils/ \
-            coreutils/libcoreutils/ \
-            debianutils/ \
-            klibc-utils/ \
-            e2fsprogs/ \
-            editors/ \
-            findutils/ \
-            init/ \
-            libbb/ \
-            libpwdgrp/ \
-            loginutils/ \
-            mailutils/ \
-            miscutils/ \
-            modutils/ \
-            networking/ \
-            networking/libiproute/ \
-            networking/udhcp/ \
-            printutils/ \
-            procps/ \
-            runit/ \
-            selinux/ \
-            shell/ \
-            sysklogd/ \
-            util-linux/ \
-            util-linux/volume_id/ \
-        2>unit_pc.err | tee unit_pc
-    /usr/bin/time kmaxdriver.py --aggregate < unit_pc > full_pc 2> full_pc.err
-
-There is no automated way (yet) to get the list of top-level
-directories, so right now they are manually-entered in the call to
-Kmax.
-
+- [Results][#results]
+- [Setup][#setup]
 
 ### Results
 
@@ -156,3 +88,72 @@ Using machine 1
         real    0m0.121s
         user    0m0.109s
         sys     0m0.012s
+
+### Setup
+
+#### Machines
+
+1. Commodity PC desktop, core i5 (circa 2013), 16GB RAM, Debian 11, running with other processes
+
+#### Linux 5.4-rc6
+
+    wget https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.3.11.tar.xz
+    tar -xvf /linux-5.4-rc6.tar.gz
+    cd linux-5.4-rc6
+    make defconfig # any config will work here.  it's just to setup the build system.
+    /usr/bin/time kmaxdriver.py -g $(make CC=cc ARCH=x86 -f /path/to/kmax/scripts/makefile_override alldirs) 2>unit_pc.err | tee unit_pc
+    /usr/bin/time kmaxdriver.py --aggregate < unit_pc > full_pc 2> full_pc.err
+
+
+#### Linux 5.3.11
+
+    wget https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.3.11.tar.xz
+    tar -xvf linux-5.3.11.tar.xz
+    cd linux-5.3.11
+    make defconfig # any config will work here.  it's just to setup the build system.
+    /usr/bin/time kmaxdriver.py -g $(make CC=cc ARCH=x86 -f /path/to/kmax/scripts/makefile_override alldirs) 2>unit_pc.err | tee unit_pc
+    /usr/bin/time kmaxdriver.py --aggregate < unit_pc > full_pc 2> full_pc.err
+
+The `makefile_override` Makefile will extract the list of top-level directories from the top-leverl Linux Makefile.  This top-level Makefile is not a Kbuild Makefile, so Kmax is not used.
+
+#### BusyBox 1.28.0
+
+    git clone https://git.busybox.net/busybox
+    cd busybox
+    git checkout 1_28_0
+    make defconfig
+    /usr/bin/time kmaxdriver.py -g \
+            archival/ \
+            archival/libarchive/ \
+            console-tools/ \
+            coreutils/ \
+            coreutils/libcoreutils/ \
+            debianutils/ \
+            klibc-utils/ \
+            e2fsprogs/ \
+            editors/ \
+            findutils/ \
+            init/ \
+            libbb/ \
+            libpwdgrp/ \
+            loginutils/ \
+            mailutils/ \
+            miscutils/ \
+            modutils/ \
+            networking/ \
+            networking/libiproute/ \
+            networking/udhcp/ \
+            printutils/ \
+            procps/ \
+            runit/ \
+            selinux/ \
+            shell/ \
+            sysklogd/ \
+            util-linux/ \
+            util-linux/volume_id/ \
+        2>unit_pc.err | tee unit_pc
+    /usr/bin/time kmaxdriver.py --aggregate < unit_pc > full_pc 2> full_pc.err
+
+There is no automated way (yet) to get the list of top-level
+directories, so right now they are manually-entered in the call to
+Kmax.
