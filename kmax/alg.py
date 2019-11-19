@@ -41,6 +41,10 @@ def isz3false(z):
   s.add(z3.simplify(z))
   return z3.sat != s.check()
     
+def isfalse(b, z):
+    # todo, replace with bdd
+    return isz3false(z)
+
 def isBooleanConfig(name):
     # if all_config_var_names is not None and not isNonbooleanConfig(name):
     #     return name in all_config_var_names
@@ -73,8 +77,8 @@ class Kbuild:
         self.zsolver = ZSolver()        
 
         # Boolean constants
-        self.T = None
-        self.F = None
+        self.T = None  # todo: replace with bdd
+        self.F = None  # todo: replace wth bdd
 
         self.variables = {}
         self.bvars = {}
@@ -335,7 +339,7 @@ class Kbuild:
         for (sc, szc, s), (rc, rzc, r), (dc, dzc, d) in zip(from_vals, to_vals, in_vals):
             instance_cond = conj(sc, conj(rc, dc))
             instance_zcond = z3.And(szc, rzc, dzc)
-            if not isz3false(instance_zcond):
+            if not isfalse(instance_cond, instance_zcond):
                 if r is None: r = ""  # Fixes bug in net/l2tp/Makefile
                 instance_result = None if d is None else d.replace(s, r)
                 hoisted_results.append(CondDef(instance_cond, instance_zcond, instance_result))
@@ -362,7 +366,7 @@ class Kbuild:
         for cond, zcond, value in then_part:
             cond = conj(then_cond, cond)
             zcond = z3.And(then_zcond, zcond)
-            if not isz3false(zcond):
+            if not isfalse(cond, zcond):
                 expansions.append(CondDef(cond, zcond, value))
 
         if len(function._arguments) > 2:
@@ -371,7 +375,7 @@ class Kbuild:
                 cond = conj(else_cond, cond)
                 zcond = z3.And(else_zcond, zcond)
 
-                if not isz3false(zcond):
+                if not isfalse(cond, zcond):
                     expansions.append(CondDef(cond, zcond, value))
 
         return Multiverse(expansions)
@@ -389,7 +393,7 @@ class Kbuild:
             instance_cond = conj(c1, c2)
             instance_zcond = z3.And(zc1, zc2)
 
-            if not isz3false(instance_zcond):
+            if not isfalse(instance_cond, instance_zcond):
                 if d is None:
                     instance_result = None
                 else:
@@ -417,7 +421,7 @@ class Kbuild:
             instance_cond = conj(c1, conj(c2, c3))
             instance_zcond = z3.And(zc1, zc2, zc3)
             
-            if not isz3false(instance_zcond):
+            if not isfalse(instance_cond, instance_zcond):
                 if r == None: r = ""  # Fixes bug in net/l2tp/Makefile
                 pattern = "^" + s.replace(r"%", r"(.*)", 1) + "$"
                 replacement = r.replace(r"%", r"\1", 1)
@@ -441,7 +445,7 @@ class Kbuild:
                 resulting_cond = conj(prefix_cond, tokens_cond)
                 resulting_zcond = z3.And(prefix_zcond, tokens_zcond)
 
-                if not isz3false(resulting_zcond):
+                if not isfalse(resulting_cond, resulting_zcond):
                     # append prefix to each token in the token_string
                     if token_string is None:
                         prefixed_tokens = ""                            
@@ -616,11 +620,11 @@ class Kbuild:
 
                     #TODO: check term_zcond == term_cond
                     
-                    if not isz3false(term_zcond) and (v1 == v2) == cond.expected:
+                    if not isfalse(term_cond, term_zcond) and (v1 == v2) == cond.expected:
                         hoisted_cond = disj(hoisted_cond, term_cond)
                         hoisted_zcond = z3.Or(hoisted_zcond, term_zcond)
                         
-                    elif not isz3false(term_zcond):
+                    elif not isfalse(term_cond, term_zcond):
                         hoisted_else = disj(hoisted_else, term_cond)
                         hoisted_zelse = z3.Or(hoisted_zelse, term_zcond)
                         
@@ -849,7 +853,7 @@ class Kbuild:
                 # print("+=", name, z3.simplify(zsimply), z3.simplify(zrecursively))
 
                 #tvn: TODO: add check for zrecursively
-                if not isz3false(zrecursively):
+                if not isfalse(recursively, zrecursively):
                     if new_var_name not in self.variables:
                         self.variables[new_var_name] = []
                     self.variables[new_var_name].append(
@@ -859,7 +863,7 @@ class Kbuild:
                                 VarEntry.RECURSIVE))
 
                 #tvn: TODO: add check for zsimply
-                if not isz3false(zsimply):
+                if not isfalse(simply, zsimply):
                     new_definitions = self.expand_and_flatten(value, presence_cond,presence_zcond)
                     # print("simply", new_definitions)
                     new_variables = []
@@ -891,12 +895,12 @@ class Kbuild:
         for equiv in self.get_var_equiv_set(name):
             if equiv in self.variables:
                 self.variables[equiv] = \
-                    [v for v in self.variables[equiv] if not isz3false(v.zcond)]
+                    [v for v in self.variables[equiv] if not isfalse(v.cond, v.zcond)]
                 
 
     def process_setvariable(self, setvar, cond, zcond):
         """Find a satisfying set of configurations for variable."""
-
+        # assert isinstance(cond, pycudd.DdNode), cond
         assert isinstance(setvar, parserdata.SetVariable), setvar
         assert z3.is_expr(zcond), zcond
 
