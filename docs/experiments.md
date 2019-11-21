@@ -7,6 +7,15 @@
 
 Please find all the resulting build constraints from Kmax here: https://drive.google.com/drive/folders/1k1ONMlY_r2Y6VJe0qcboycG4U5hNtqTT?usp=sharing
 
+#### Linux next-20191121
+
+- Symbolic constraints for compilation units: 
+
+- Running time for `kmaxdriver.py -g`
+
+    346.55user 45.59system 7:16.39elapsed 89%CPU (0avgtext+0avgdata 38656maxresident)k
+    12232inputs+0outputs (0major+11732031minor)pagefaults 0swaps
+
 #### Linux 5.3.11 2019-11-19
 
 Using machine 1

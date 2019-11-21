@@ -57,12 +57,16 @@ This will run Kmax on a single Kbuild Makefile, and show the symbolic configurat
 
     kmaxdriver.py -g net/
     
-Kmax includes a Makefile hack to get all the top-level Linux directories.  Combined with `kmaxdriver.py` this command will collect the symbolic constraints for the whole (x86) source, saving them into `unit_pc`.
+Kmax includes a Makefile hack to get all the top-level Linux directories.  Combined with `kmaxdriver.py` this command will collect the symbolic constraints for the whole (x86) source, saving them into `unit_pc`.  Be sure to change `/path/to/kmax` to your kmax installation to get the Makefile shunt.
 
-    kmaxdriver.py -g $(make CC=cc ARCH=x86 -f /path/to/kmax/scripts/makefile_override alldirs) | tee unit_pc
+    kmaxdriver.py -g $(make CC=cc ARCH=x86 -f /path/to/kmax/scripts/makefile_override alldirs) | tee unit.kmax
 
 The symbolic constraints for each compilation unit, including the conjunction of all of its parent directories, can be computed with this command:
 
-    cat unit_pc | kmaxdriver.py --aggregate > full_pc
+    cat unit_pc | kmaxdriver.py --aggregate > kmax
+    
+These commands together:
 
-This is the [format](docs/unit_pc.md) for `unit_pc` and `full_pc`.
+    kmaxdriver.py -g $(make CC=cc ARCH=x86 -f /path/to/kmax/scripts/makefile_override alldirs) | tee unit.kmax | kmaxdriver.py --aggregate > kmax
+
+This is the [format](docs/unit_pc.md) for `unit.kmax` and `kmax`.
