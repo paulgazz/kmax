@@ -19,6 +19,11 @@ if __name__ == '__main__':
        choices=range(5),
        default = 3)    
     
+    ag('-z',
+       '--output-smtlib2',
+       action="store_true",
+       help="""Use z3's smtlib2 format""")
+    
     ag('-t',
        '--table',
        action="store_true",
@@ -85,6 +90,7 @@ if __name__ == '__main__':
         kmax.settings.do_boolean_configs = args.boolean_configs
     kmax.settings.unit_pc_format = args.unit_pc_format
     kmax.settings.defines = args.define
+    kmax.settings.output_smtlib2 = args.output_smtlib2
 
     # case_study = args.case_study
     # if not case_study:

@@ -203,9 +203,14 @@ class Results:
             return s
     
     def to_exp(self, s):
-        s = str(s).replace('\n', '').replace(' ', '')
-        
-        return self.to_exp_step(s)
+        if kmax.settings.output_smtlib2:
+            solver = z3.Solver()
+            solver.add(s)
+            return solver.to_smt2()
+        else:
+            s = str(s).replace('\n', '').replace(' ', '')
+
+            return self.to_exp_step(s)
 
     def get_line_format(self, filename):
         if filename.endswith("/"):
@@ -236,7 +241,7 @@ class Results:
         #         if len(subsubpath) == 0: subsubpath = "/"
         #         print subsubpath, subsubpath in subdir_pcs
         #         if subsubpath in subdir_pcs: print subsubpath, subdir_pcs[subsubpath]
-        
+
         result = '\n'.join(self.get_line_format(filename).format(filename, self.to_exp(z3.simplify(path_conds[filename])))
-                         for filename in path_conds.keys())
+                           for filename in path_conds.keys())
         return result
