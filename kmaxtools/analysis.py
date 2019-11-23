@@ -6,10 +6,10 @@ import z3
 import cPickle as pickle
 import sys
 
-import kmax.vcommon as CM
+import kmaxtools.vcommon as CM
 
-import kmax.settings
-mlog = CM.getLogger(__name__, kmax.settings.logger_level)
+import kmaxtools.settings
+mlog = CM.getLogger(__name__, kmaxtools.settings.logger_level)
 
 class FileAnalysis:
     @classmethod
@@ -362,7 +362,7 @@ class FileAnalysis:
 
 #         files =[os.path.join(self.topdir, f) for f in os.listdir(self.topdir)]
 #         self.makefiles = sorted(f for f in files if os.path.isfile(f))
-#                 #for i in ~/Dropbox/git/kmax-dev/tests/kbuild/*; do echo "testing" $i &>> out ; kbuildplus.py -g $i &>> out ; done
+#                 #for i in ~/Dropbox/git/kmax-dev/tests/kbuild/*; do echo "testing" $i &>> out ; kmax.py -g $i &>> out ; done
     
 
 # class CaseStudy(GeneralAnalysis):

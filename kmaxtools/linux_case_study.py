@@ -28,7 +28,7 @@ import subprocess
 import cPickle as pickle
 import time
 
-import kmax.vcommon as CM
+import kmaxtools.vcommon as CM
 
 scriptpath = os.path.dirname(os.path.realpath(__file__))
 
@@ -148,7 +148,7 @@ def covering_set(kbuild_dir,        # src directory to process
     print "skipping", kbuild_dir
     return set()
 
-  covering_set_args = [ "python", os.path.join(scriptpath, "kbuildplus.py"),
+  covering_set_args = [ "python", os.path.join(scriptpath, "kmax.py"),
                         "--case-study", "linux",
                         "--log_level", "0",
                         # "-p",  #tvn why use this flag ? 

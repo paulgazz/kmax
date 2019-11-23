@@ -9,22 +9,22 @@ def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 setup(
-    name = "kmax",
-    version = "2.0rc5",
+    name = "kmaxtools",
+    version = "2.0rc7",
     author = "Paul Gazzillo",
     author_email = "paul@pgazz.com",
     description = ("Collecting symbolic configurations from Kbuild Makefiles"),
     license = "GPLv2+",
-    keywords = "makefile kbuild kmax configurations",
+    keywords = "makefile kconfig kbuild configurations kmax kclause klocalizer",
     url = "https://github.com/paulgazz/kmax",
-    packages=['kmax', 'pymake', 'tests'],
+    packages=['kmaxtools', 'pymake', 'tests'],
     long_description=read('README.md'),
     classifiers=[
         "Development Status :: 4 - Beta",
         "Topic :: Utilities",
         "License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)",
     ],
-    scripts=['kmax/kmaxdriver.py', 'kmax/kbuildplus.py'],
+    scripts=['kmax/kmax', 'kmax/kmaxmerge'],
     install_requires=[
         'enum34',
         'regex',

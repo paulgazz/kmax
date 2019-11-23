@@ -11,12 +11,12 @@ from collections import defaultdict
 import pdb
 trace = pdb.set_trace
 import z3
-import kmax.vcommon as CM
+import kmaxtools.vcommon as CM
 
 from datastructures import CondDef, Multiverse, VarEntry, BoolVar, Results
 
-import kmax.settings
-mlog = CM.getLogger(__name__, kmax.settings.logger_level)
+import kmaxtools.settings
+mlog = CM.getLogger(__name__, kmaxtools.settings.logger_level)
 
 match_unexpanded_variables = re.compile(r'.*\$\(.*\).*')
 def contains_unexpanded(s):
@@ -28,15 +28,15 @@ def contains_unexpanded(s):
     return s is not None and match_unexpanded_variables.match(s)
 
 # wrappers for symbolic boolean operations
-def conj(a, b): return kmax.datastructures.conj(a, b)
-def disj(a, b): return kmax.datastructures.disj(a, b)
-def neg(a): return kmax.datastructures.neg(a)
-def bdd_one(): return kmax.datastructures.bdd_one()
-def bdd_zero(): return kmax.datastructures.bdd_zero()
-def bdd_ithvar(i): return kmax.datastructures.bdd_ithvar(i)
-def bdd_init(): kmax.datastructures.bdd_init()
-def bdd_destroy(): kmax.datastructures.bdd_destroy()
-def isbddfalse(b): kmax.datastructures.isbddfalse(b)
+def conj(a, b): return kmaxtools.datastructures.conj(a, b)
+def disj(a, b): return kmaxtools.datastructures.disj(a, b)
+def neg(a): return kmaxtools.datastructures.neg(a)
+def bdd_one(): return kmaxtools.datastructures.bdd_one()
+def bdd_zero(): return kmaxtools.datastructures.bdd_zero()
+def bdd_ithvar(i): return kmaxtools.datastructures.bdd_ithvar(i)
+def bdd_init(): kmaxtools.datastructures.bdd_init()
+def bdd_destroy(): kmaxtools.datastructures.bdd_destroy()
+def isbddfalse(b): kmaxtools.datastructures.isbddfalse(b)
 
 # todo, remove since most likely will not used
 def zconj(a, b): return None if a is None or b is None else z3.And(a, b)
@@ -243,7 +243,7 @@ class Kbuild:
                                 (not_defined, '-nommu') ])
 
         elif name.startswith("CONFIG_"):
-            if kmax.settings.do_boolean_configs:
+            if kmaxtools.settings.do_boolean_configs:
                 #varbdd = self.bvars[name].bdd
                 v = self.get_bvars(name).bdd
                 zv = self.get_bvars(name).zbdd
@@ -1034,7 +1034,7 @@ class Run:
             makefile = subdirs.pop()
             mlog.info("processing makefile: {}".format(makefile))            
             subdirs_ = self.extract(makefile)
-            if kmax.settings.do_recursive:
+            if kmaxtools.settings.do_recursive:
                 subdirs = subdirs.union(subdirs_)
 
     def extract(self, path):
@@ -1047,7 +1047,7 @@ class Run:
         makefile.close()
 
         kbuild = Kbuild()
-        kbuild.add_definitions(kmax.settings.defines)
+        kbuild.add_definitions(kmaxtools.settings.defines)
         stmts = parser.parsestring(s, makefile.name)
 
         kbuild.process_stmts(stmts, kbuild.T, ZSolver.T)
@@ -1166,7 +1166,7 @@ class Run:
         self.check_unexpanded_vars(subdirs, "subdirectory")
         self.check_unexpanded_vars(kbuild.variables.keys(), "variable name")
 
-        if kmax.settings.do_table:
+        if kmaxtools.settings.do_table:
             mlog.info(kbuild.getSymbTable(printCond=kbuild.bdd_to_str))
 
         presence_conditions = {}

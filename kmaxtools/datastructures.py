@@ -1,11 +1,11 @@
 import pdb
 trace = pdb.set_trace
 import z3
-import kmax.vcommon as CM
+import kmaxtools.vcommon as CM
 from dd.autoref import BDD
 
-import kmax.settings
-mlog = CM.getLogger(__name__, kmax.settings.logger_level)
+import kmaxtools.settings
+mlog = CM.getLogger(__name__, kmaxtools.settings.logger_level)
 
 # warning: this is not well encapsulated.  multiple runs in same process may not work properly
 bdd_lib = BDD()
@@ -62,7 +62,7 @@ class Multiverse(list):
         for cond, zcond, val in self:
             if val in cache:
                 c, zc = cache[val]
-                cache[val] = (kmax.alg.disj(c, cond), z3.Or(zc, zcond)) #disj
+                cache[val] = (kmaxtools.alg.disj(c, cond), z3.Or(zc, zcond)) #disj
             else:
                 cache[val] = (cond, zcond)
 
@@ -203,7 +203,7 @@ class Results:
             return s
     
     def to_exp(self, s):
-        if kmax.settings.output_smtlib2:
+        if kmaxtools.settings.output_smtlib2:
             solver = z3.Solver()
             solver.add(s)
             return solver.to_smt2()
