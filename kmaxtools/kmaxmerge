@@ -119,15 +119,15 @@ if __name__ == '__main__':
                          action="store_true",
                          help="""\
   Treat all Boolean configuration variables as tristate variables""")
-  argparser.add_argument('-n',
-                         '--naive-append',
-                         action="store_true",
-                         help="""\
-  use naive append behavior, which has more exponential explosion""")
   argparser.add_argument('--aggregate',
                          action="store_true",
                          help="""\
   aggregate per-file constraints in the unit_pc format""")
+  argparser.add_argument('-z',
+                         '--z3',
+                         action="store_true",
+                         help="""\
+  collect per-file constraints as a pickled dictionary from names to smtlib2 expressions""")
 
 
   args = argparser.parse_args()
@@ -182,6 +182,7 @@ if __name__ == '__main__':
       with open(args.excludes_file, "r") as f:
         excludes = pickle.load(f)
 
+  z3_pcs = {}
   def covering_set(kbuild_dir,        # src directory to process
                    compilation_units, # updated with units
                    library_units,     # updated with lib units
@@ -201,8 +202,6 @@ if __name__ == '__main__':
     if kbuild_dir in excludes:
       print "skipping", kbuild_dir
       return set()
-
-    # kbuildplus = os.path.join(os.path.dirname(os.path.realpath(__file__)), "kmax")
 
     covering_set_args = [ "kmax",
                           # "-Dsrc=" + kbuild_dir,      # drivers/staging/wlags49_h25/, drivers/gpu/drm/nouveau/
@@ -226,20 +225,16 @@ if __name__ == '__main__':
     # turn on file analysis to aggregate data about kmax coverage
     if args.file_analysis:
       covering_set_args.append("-F")
-      
-    # if args.get_presence_conditions:
-    #   covering_set_args.append("-g")
 
     if args.tristate_configs:
       covering_set_args.append("-T")
 
-    if args.naive_append:
-      covering_set_args.append("-n")
+    if args.z3:
+      covering_set_args.append("-z")
+
     covering_set_args.append(kbuild_dir)
 
-
-    sys.stderr.write("running covering_set: {}\n".format(' '.join(covering_set_args)))
-    #CM.pause()
+    sys.stderr.write("{}\n".format(' '.join(covering_set_args)))
     p = subprocess.Popen(covering_set_args,
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE
@@ -252,21 +247,33 @@ if __name__ == '__main__':
 
     excludes.add(kbuild_dir)
 
-    splitlines = str.splitlines(err)
+    if args.z3:
+      new_z3_pcs = pickle.loads(out)
+      new_pending_subdirectories = []
+      for filename in new_z3_pcs:
+        if filename.endswith("/"):
+          new_pending_subdirectories.append(filename)
+      z3_pcs.update(new_z3_pcs)
+    else:
+      splitlines = str.splitlines(err)
 
-    unit_pc_lines = splitlines
-    unit_pc_lines = filter(lambda x: x.startswith("unit_pc "), unit_pc_lines)
+      unit_pc_lines = splitlines
+      unit_pc_lines = filter(lambda x: x.startswith("unit_pc "), unit_pc_lines)
 
-    subdir_pc_lines = splitlines
-    subdir_pc_lines = filter(lambda x: x.startswith("subdir_pc "), subdir_pc_lines)
+      subdir_pc_lines = splitlines
+      subdir_pc_lines = filter(lambda x: x.startswith("subdir_pc "), subdir_pc_lines)
 
-    new_subdir_pcs = dict([ line.split(" ", 2)[1:3] for line in subdir_pc_lines ])
-    new_unit_pcs = dict([ line.split(" ", 2)[1:3] for line in unit_pc_lines ])
+      new_subdir_pcs = dict([ line.split(" ", 2)[1:3] for line in subdir_pc_lines ])
+      new_unit_pcs = dict([ line.split(" ", 2)[1:3] for line in unit_pc_lines ])
 
-    new_pending_subdirectories = new_subdir_pcs.keys()
+      new_pending_subdirectories = new_subdir_pcs.keys()
 
-    # print new_unit_pcs
-    # print new_subdir_pcs
+      if args.get_presence_conditions:
+        # print presence condition information
+        for unit_name, pc in new_unit_pcs.iteritems():
+          print "unit_pc", unit_name, pc
+        for subdir_name, pc in new_subdir_pcs.iteritems():
+          print "subdir_pc", subdir_name, pc
 
     # (new_compilation_units,
     #  new_library_units,
@@ -288,13 +295,6 @@ if __name__ == '__main__':
     # clean_files.update(new_clean_files)
     # c_file_targets.update(new_c_file_targets)
     # composites.update(new_composites)
-
-    if args.get_presence_conditions:
-      # print presence condition information
-      for unit_name, pc in new_unit_pcs.iteritems():
-        print "unit_pc", unit_name, pc
-      for subdir_name, pc in new_subdir_pcs.iteritems():
-        print "subdir_pc", subdir_name, pc
 
     return new_pending_subdirectories
 
@@ -327,6 +327,10 @@ if __name__ == '__main__':
                                                composites,
                                                broken))
 
+  if args.z3:
+    print(pickle.dumps(z3_pcs))
+    exit(1)
+    
   if args.get_presence_conditions:
     # already printed presence conditions.  don't do anything, so exit
     exit(1)

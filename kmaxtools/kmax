@@ -22,7 +22,7 @@ if __name__ == '__main__':
     ag('-z',
        '--output-smtlib2',
        action="store_true",
-       help="""Use z3's smtlib2 format""")
+       help="""Pickle a dictionary mapping names to z3's smtlib2 format""")
     
     ag('-t',
        '--table',
@@ -114,12 +114,12 @@ if __name__ == '__main__':
     #         myAnalysis = kmaxtools.analysis.Tests(inp)
 
     inp = args.makefile
-    print inp
+    mlog.info("processing {}\n".format(inp))
 
     from kmaxtools.alg import Run
     myrun = Run()
     myrun.run(inp)
-    mlog.info("results01:\n{}".format(myrun.results))
+    print(myrun.results)
 
     if args.file_analysis:
         from kmaxtools.analysis import FileAnalysis

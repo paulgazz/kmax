@@ -17,7 +17,7 @@ setup(
     license = "GPLv2+",
     keywords = "makefile kconfig kbuild configurations kmax kclause klocalizer",
     url = "https://github.com/paulgazz/kmax",
-    packages=['kmaxtools', 'pymake', 'tests'],
+    packages=['kmaxtools', 'pymake'],
     long_description=read('README.md'),
     classifiers=[
         "Development Status :: 4 - Beta",
@@ -30,5 +30,6 @@ setup(
         'regex',
         'z3-solver',
         'dd',
+        'networkx==2.2', # for dd to work on python3
     ],
 )

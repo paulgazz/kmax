@@ -1,3 +1,4 @@
+import pickle
 import pdb
 trace = pdb.set_trace
 import z3
@@ -142,16 +143,24 @@ class Results:
         self.presence_conditions = {}
 
     def __str__(self, details=False):
-        f = lambda k, s: "{}: {}".format(k, ', '.join(s) if details else len(s))
-        delim = '\n' if details else ', '
-        ss = delim.join(f(k, s) for k, s in self.__dict__.iteritems() if s)
-        if self.presence_conditions:
-            ss += '\n{} presence conditions: \n{}'.format(len(self.presence_conditions), self.z3_str(self.presence_conditions))
-        # if self.unit_pcs:
-        #     ss += '\n{} unit pcs: \n{}'.format(len(self.unit_pcs), self.pc_str(self.unit_pcs))
-        # if self.subdir_pcs:
-        #     ss += '\n{} subdir pcs: \n{}'.format(len(self.subdir_pcs), self.pc_str(self.subdir_pcs))
-        return ss
+        if kmaxtools.settings.output_smtlib2:
+            z3_pcs = {}
+            for filename in self.presence_conditions.keys():
+                solver = z3.Solver()
+                solver.add(self.presence_conditions[filename])
+                z3_pcs[filename] = solver.to_smt2()
+            return pickle.dumps(z3_pcs)
+        else:
+            f = lambda k, s: "{}: {}".format(k, ', '.join(s) if details else len(s))
+            delim = '\n' if details else ', '
+            ss = delim.join(f(k, s) for k, s in self.__dict__.iteritems() if s)
+            if self.presence_conditions:
+                ss += '\n{} presence conditions: \n{}'.format(len(self.presence_conditions), self.z3_str(self.presence_conditions))
+            # if self.unit_pcs:
+            #     ss += '\n{} unit pcs: \n{}'.format(len(self.unit_pcs), self.pc_str(self.unit_pcs))
+            # if self.subdir_pcs:
+            #     ss += '\n{} subdir pcs: \n{}'.format(len(self.subdir_pcs), self.pc_str(self.subdir_pcs))
+            return ss
     
     def pc_str(self, s):
         return '\n'.join("{}. {}: {}, {}".format(i, v, f, z3.simplify(g))
@@ -203,14 +212,8 @@ class Results:
             return s
     
     def to_exp(self, s):
-        if kmaxtools.settings.output_smtlib2:
-            solver = z3.Solver()
-            solver.add(s)
-            return solver.to_smt2()
-        else:
-            s = str(s).replace('\n', '').replace(' ', '')
-
-            return self.to_exp_step(s)
+        s = str(s).replace('\n', '').replace(' ', '')
+        return self.to_exp_step(s)
 
     def get_line_format(self, filename):
         if filename.endswith("/"):
