@@ -1,3 +1,21 @@
+#!/usr/bin/env python
+
+# Kmax
+# Copyright (C) 2012-2019 Paul Gazzillo
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 if __name__ == '__main__':
   import os
   import sys
@@ -10,6 +28,8 @@ if __name__ == '__main__':
   import regex  # pip install regex
   import z3
   import z3.z3printer
+  from kmaxtools import expression_converter
+  import pickle
 
   # this script takes the check_dep --dimacs output and converts it into
   # a dimacs-compatible format
@@ -58,9 +78,6 @@ if __name__ == '__main__':
   argparser.add_argument('--comment-format-v2',
                          action="store_true",
                          help="""add extra formatting information to dimacs comments to distinguish them from normal comments""")
-  argparser.add_argument('--use-z3',
-                         action="store_true",
-                         help="""generate z3 clauses (instead of dimacs clauses)""")
   args = argparser.parse_args()
 
   debug = args.debug
@@ -68,19 +85,9 @@ if __name__ == '__main__':
   remove_true_clauses = True
   deduplicate_clauses = True
 
-  use_z3 = args.use_z3
-
   root_var = "SPECIAL_ROOT_VARIABLE"
 
-  # mapping from configuration variable name to dimacs variable number
-  varnums = {}
-
-  # mapping from configuration variable name to z3 variable
-  z3vars = {}
-
-  # dimacs clauses
-  clauses = []
-  z3_clauses = []
+  z3_clauses = {}
 
   # collect dep lines
   dep_exprs = {}
@@ -94,11 +101,6 @@ if __name__ == '__main__':
 
   # collect defaults
   def_bool_lines = defaultdict(set)
-
-  # names of variables that should be removed later. this is currently
-  # used to captures string constants in boolean expressions, where it
-  # isn't clear what the boolean value should be.
-  variables_to_remove = set()
 
   # keep track of variables that have default values
   has_defaults = set()
@@ -126,481 +128,24 @@ if __name__ == '__main__':
   # this just adds the nonbools as clauses; this is not recommended.
   force_all_nonbools_on = False
 
-  def lookup_varnum(varname):
-    if varname not in varnums:
-      varnums[varname] = len(varnums) + 1
-    return varnums[varname]
-
-  def lookup_z3var(varname):
-    varname = str(varname)
-    if varname not in z3vars:
-      z3vars[varname] = z3.Bool(varname)
-    return z3vars[varname]
-
   ghost_bool_count = 0
   def get_ghost_bool_name(var):
     global ghost_bool_count
     ghost_bool_count += 1
     return "GHOST_BOOL_%d_%s" % (ghost_bool_count, var)
 
-  # parse tree processing
-  class Transformer(compiler.visitor.ASTVisitor):
-    def __init__(self):
-      compiler.visitor.ASTVisitor.__init__(self)
-      self.tree = ()
-
-    # def dispatch(self, node, *args):
-    #   print "JFKDSJFKDSLJKFSD"
-    #   self.node = node
-    #   klass = node.__class__
-    #   meth = self._cache.get(klass, None)
-    #   if meth is None:
-    #       className = klass.__name__
-    #       meth = getattr(self.visitor, 'visit' + className, self.default)
-    #       self._cache[klass] = meth
-    #   className = klass.__name__
-    #   print "dispatch", className, (meth and meth.__name__ or '')
-    #   print meth
-    #   return meth(node, *args)
-
-    def default(self, node):
-      # TODO: convert ast to string to be a predicate
-      predicate = str(node)
-      return ("name", predicate)
-
-    def visitDiscard(self, node):
-      self.tree = self.visit(node.getChildren()[0])
-
-    def visitOr(self, node):
-      children = node.getChildren()
-      left = self.visit(children[0])
-      for i in range(1, len(children)):
-        left = ("or", left, self.visit(children[i]))
-      return left
-
-    def visitAnd(self, node):
-      children = node.getChildren()
-      left = self.visit(children[0])
-      for i in range(1, len(children)):
-        left = ("and", left, self.visit(children[i]))
-      return left
-
-    def visitNot(self, node):
-      return ("not", self.visit(node.expr))
-
-    def visitName(self, node):
-      return ("name", node.name)
-
-    def visitConst(self, node):
-      # convert to int.  strings get converted to their length. this
-      # will make empty strings false and non-empty strings true.
-      value = node.value
-      # if value == None:
-      #   return 0
-      try:
-        num = int(value)
-        return ("const", num)
-      except:
-        try:
-          # make a new variable out of the string constant, but remove
-          # it later.
-          s = str(value)
-          dummy_var = "UNSUPPORTED_VALUE_" + s
-          sys.stderr.write("warning: use of undefined variable in dependency: %s\n" % (dummy_var))
-          variables_to_remove.add(dummy_var)
-          return ("name", dummy_var)
-        except:
-          print(traceback.format_exc())
-          sys.stderr.write("error: cannot process value \"%s\"\n" % (value))
-          exit(1)
-
-  def convert(node):
-    """takes a tree and returns a list of clauses or a constant value"""
-    nodetype = node[0]
-    if nodetype == "or":
-      left = node[1]
-      right = node[2]
-      l = convert(left)
-      r = convert(right)
-
-      # check for constants
-      if isinstance(l, int):
-        if l == 0:
-          return r
-        else:
-          return 1
-      if isinstance(r, int):
-        if r == 0:
-          return l
-        else:
-          return 1
-
-      assert(isinstance(l, list) and isinstance(r, list))
-      # construct new clauses by taking each pairwise combination of l and r's elements
-      new_clauses = []
-      for lc in l:
-        for rc in r:
-          assert(isinstance(lc, list) and isinstance(rc, list))
-          new_clauses.append(lc + rc)
-      return new_clauses
-
-    elif nodetype == "and":
-      left = node[1]
-      right = node[2]
-      l = convert(left)
-      r = convert(right)
-
-      # check for constants
-      if isinstance(l, int):
-        if l == 0:
-          return 0
-        else:
-          return r
-      if isinstance(r, int):
-        if r == 0:
-          return 0
-        else:
-          return l
-
-      assert(isinstance(l, list) and isinstance(r, list))
-      return l + r  # join two lists of clauses
-
-    elif nodetype == "not":
-      negated_node = node[1]
-      negated_type = negated_node[0]
-      if negated_type == "name":
-        varnum = lookup_varnum(negated_node[1])
-        return [[-varnum]]
-      if negated_type == "const":
-        value = negated_node[1]
-        if value == 0:
-          return 1
-        else:
-          return 0
-      elif negated_type == "not":
-        return convert(negated_node[1]) # double-negation
-      elif negated_type == "and":
-        left = negated_node[1]
-        right = negated_node[2]
-        return convert(("or", ("not", left), ("not", right))) # de morgan
-      elif negated_type == "or":
-        left = negated_node[1]
-        right = negated_node[2]
-        return convert(("and", ("not", left), ("not", right))) # de morgan
+  def add_clause(varname, new_clause):
+    if new_clause is not None:
+      if varname not in z3_clauses.keys():
+        z3_clauses[varname] = [ new_clause ]
       else:
-        assert(False)
-
-    elif nodetype == "name":
-      varnum = lookup_varnum(node[1])
-      return [[varnum]]
-
-    elif nodetype == "const":
-      return node[1]
-
+        z3_clauses[varname].append(new_clause)
     else:
-      assert(False)
+      # todo: warning
+      pass
 
-  def convert_to_cnf(expr):
-    try:
-      ast = compiler.parse(expr)
-    except RuntimeError as e:
-      sys.stderr.write("exception: %s\n" % (e))
-      sys.stderr.write("could not convert expression to cnf\n%s\n" % (expr))
-      exit(1)
-      return []
-    # get Discard(ACTUAL_EXPR) from Module(None, Stmt([Discard(ACTUAL_EXPR)))
-    actual_expr = ast.getChildNodes()[0].getChildNodes()[0]
-    # print ast
-    transformer = Transformer()
-    compiler.walk(actual_expr, transformer, walker=transformer, verbose=True)
-    tree = transformer.tree
-    # print tree
-    clauses = convert(tree)
-    if (isinstance(clauses, list)):
-      return clauses
-    else:
-      # constants don't add any clauses
-      return []
-
-  def convert_z3_ast(node):
-    """takes a tree and returns a list of clauses or a constant value"""
-    nodetype = node[0]
-    if nodetype == "or":
-      left = node[1]
-      right = node[2]
-      l = convert_z3_ast(left)
-      r = convert_z3_ast(right)
-
-      # check for constants
-      if isinstance(l, int):
-        if l == 0:
-          return r
-        else:
-          return 1
-      if isinstance(r, int):
-        if r == 0:
-          return l
-        else:
-          return 1
-
-      assert(isinstance(l, list) and isinstance(r, list))
-      # construct new clauses by taking each pairwise combination of l and r's elements
-      new_clauses = []
-      for lc in l:
-        for rc in r:
-          # assert(isinstance(lc, list) and isinstance(rc, list))
-          new_clauses.append(z3.Or(lc,rc))
-      return new_clauses
-
-    elif nodetype == "and":
-      left = node[1]
-      right = node[2]
-      l = convert_z3_ast(left)
-      r = convert_z3_ast(right)
-
-      # check for constants
-      if isinstance(l, int):
-        if l == 0:
-          return 0
-        else:
-          return r
-      if isinstance(r, int):
-        if r == 0:
-          return 0
-        else:
-          return l
-
-      assert(isinstance(l, list) and isinstance(r, list))
-      # construct new clauses by taking each pairwise combination of l and r's elements
-      new_clauses = []
-      for lc in l:
-        for rc in r:
-          # assert(isinstance(lc, list) and isinstance(rc, list))
-          new_clauses.append(z3.And(lc,rc))
-      return new_clauses
-
-    elif nodetype == "not":
-      negated_node = node[1]
-      negated_type = negated_node[0]
-      if negated_type == "name":
-        z3var = lookup_z3var(negated_node[1])
-        return [z3.Not(z3var)]
-      if negated_type == "const":
-        value = negated_node[1]
-        if value == 0:
-          return 1
-        else:
-          return 0
-      elif negated_type == "not":
-        return convert_z3_ast(negated_node[1]) # double-negation
-      elif negated_type == "and":
-        left = negated_node[1]
-        right = negated_node[2]
-        return convert_z3_ast(("or", ("not", left), ("not", right))) # de morgan
-      elif negated_type == "or":
-        left = negated_node[1]
-        right = negated_node[2]
-        return convert_z3_ast(("and", ("not", left), ("not", right))) # de morgan
-      else:
-        assert(False)
-
-    elif nodetype == "name":
-      z3var = lookup_z3var(node[1])
-      return [z3var]
-
-    elif nodetype == "const":
-      return node[1]
-
-    else:
-      assert(False)
-
-  t_simplify = z3.Tactic('ctx-solver-simplify')
-  t_tseitin = z3.Tactic('tseitin-cnf-core')
-  def convert_to_z3(expr):
-    try:
-      ast = compiler.parse(expr)
-    except RuntimeError as e:
-      sys.stderr.write("exception: %s\n" % (e))
-      sys.stderr.write("could not convert expression to cnf\n%s\n" % (expr))
-      # exit(1)
-      return []
-    except:
-      # handle broken expressions
-      return []
-    # get Discard(ACTUAL_EXPR) from Module(None, Stmt([Discard(ACTUAL_EXPR)))
-    actual_expr = ast.getChildNodes()[0].getChildNodes()[0]
-    # print ast
-    transformer = Transformer()
-    compiler.walk(actual_expr, transformer, walker=transformer, verbose=True)
-    tree = transformer.tree
-    # print tree
-    clauses = convert_z3_ast(tree)
-    # print clauses
-    if isinstance(clauses, list):
-      # for clause in clauses:
-      #   print "hello"
-      #   print "really before", clause
-      #   clause = z3.simplify(clause, elim_and=True)
-      #   print "before", clause
-      #   clause = t_tseitin(clause)
-      #   print "after", clause
-      #   # print clause
-      #   # print "after"
-      #   # g = z3.Goal()
-      #   # # g.add(t_simplify(z3.simplify(clause)))
-      #   # # g.add(clause)
-      #   # test = z3.And(z3.Not(z3.Bool('CONFIG_CRC32')),
-      #   #               z3.Bool('CONFIG_CRC32_SLICEBY8'))
-      #   # # g.add(test)
-      #   # test = z3.And(z3.Or(z3.Not(z3.Bool('CONFIG_CRC32')),
-      #   #        z3.Bool('CONFIG_CRC32_SLICEBY8'),
-      #   #        z3.Bool('CONFIG_CRC32_SLICEBY4'),
-      #   #        z3.Bool('CONFIG_CRC32_SARWATE'),
-      #   #        z3.Bool('CONFIG_CRC32_BIT')),
-      #   #     z3.Or(z3.And(z3.Not(z3.Bool('CONFIG_CRC32_SLICEBY8')),
-      #   #            z3.Not(z3.Bool('CONFIG_CRC32_SLICEBY4')),
-      #   #            z3.Not(z3.Bool('CONFIG_CRC32_SARWATE')),
-      #   #            z3.Not(z3.Bool('CONFIG_CRC32_BIT'))),
-      #   #        z3.Bool('CONFIG_CRC32')))
-      #   # # test = z3.And(z3.Not(z3.Bool('CONFIG_CRC32')),
-      #   # #        z3.Bool('CONFIG_CRC32_SLICEBY8'))
-      #   # test = z3.simplify(test, elim_and=True)
-      #   # # test = t_simplify(test)
-      #   # print test
-      #   # g.add(test)
-      #   # print "yo"
-      #   # print t_tseitin(g)
-      #   # print "next"
-      #   exit(1)
-
-      # # use tseitin
-      # clauses = [ t_tseitin(z3.simplify(clause, elim_and=True)) if z3.is_expr(clause) else clause for clause in clauses ]
-
-      # without tseitin and no CNF
-      clauses = [ t_simplify(clause) if z3.is_expr(clause) else clause for clause in clauses ]
-      # print clauses
-    if (isinstance(clauses, list)):
-      return clauses
-    else:
-      # constants don't add any clauses
-      return []
-
-  def convert_z3_ast_real(node):
-    """takes a tree and returns a list of clauses or a constant value"""
-    nodetype = node[0]
-    if nodetype == "or":
-      left = node[1]
-      right = node[2]
-      l = convert_z3_ast_real(left)
-      r = convert_z3_ast_real(right)
-
-      # check for constants
-      if isinstance(l, int):
-        if l == 0:
-          return r
-        else:
-          return 1
-      if isinstance(r, int):
-        if r == 0:
-          return l
-        else:
-          return 1
-
-      return z3.Or(l, r)
-
-    elif nodetype == "and":
-      left = node[1]
-      right = node[2]
-      l = convert_z3_ast_real(left)
-      r = convert_z3_ast_real(right)
-
-      # check for constants
-      if isinstance(l, int):
-        if l == 0:
-          return 0
-        else:
-          return r
-      if isinstance(r, int):
-        if r == 0:
-          return 0
-        else:
-          return l
-
-      return z3.And(l, r)
-
-    elif nodetype == "not":
-      negated_node = node[1]
-      negated_type = negated_node[0]
-      if negated_type == "name":
-        z3var = lookup_z3var(negated_node[1])
-        return z3.Not(z3var)
-      if negated_type == "const":
-        value = negated_node[1]
-        if value == 0:
-          return 1
-        else:
-          return 0
-      elif negated_type == "not" or negated_type == "and" or negated_type == "or":
-        # print(negated_node)
-        z3_node = convert_z3_ast_real(negated_node)
-        if isinstance(z3_node, int):
-          return z3_node
-        else:
-          return z3.Not(z3_node)
-      else:
-        assert(False)
-
-    elif nodetype == "name":
-      z3var = lookup_z3var(node[1])
-      # print("FJKDLS", z3var)
-      return z3var
-
-    elif nodetype == "const":
-      return node[1]
-
-    else:
-      assert(False)
-
-  def convert_to_z3_real(expr):
-    try:
-      ast = compiler.parse(expr)
-    except RuntimeError as e:
-      sys.stderr.write("exception: %s\n" % (e))
-      sys.stderr.write("could not convert expression to cnf\n%s\n" % (expr))
-      # exit(1)
-      return []
-    except:
-      # handle broken expressions
-      return []
-    # get Discard(ACTUAL_EXPR) from Module(None, Stmt([Discard(ACTUAL_EXPR)))
-    actual_expr = ast.getChildNodes()[0].getChildNodes()[0]
-    # print ast
-    transformer = Transformer()
-    compiler.walk(actual_expr, transformer, walker=transformer, verbose=True)
-    tree = transformer.tree
-    # print tree
-    clause = convert_z3_ast_real(tree)
-    # print("ast_real")
-    # print(clause)
-    if z3.is_expr(clause):
-      # clause = t_simplify(z3.simplify(clause))
-      clause = t_simplify(clause)
-    # print("after_simplify")
-    # print(clause)
-    return clause
-
-  def add_clauses(expr):
-    """Either convert to dimacs or to z3"""
-    if use_z3:
-      new_clauses = convert_to_z3(expr)
-      z3_clauses.extend(new_clauses)
-      # new_clause = convert_to_z3_real(expr)
-      # print("new_clause", new_clause)
-      # z3_clauses.append(new_clause)
-    else:
-      new_clauses = convert_to_cnf(expr)
-      # print new_clauses
-      clauses.extend(new_clauses)
+  def convert_and_add_clause(varname, expr):
+    add_clause(varname, expression_converter.convert_to_z3(expr))
 
   def pretty_printer(expr, stream=sys.stdout):
     depth = 0
@@ -635,39 +180,6 @@ if __name__ == '__main__':
         pass
       else:
         stream.write("%s" % (expr[i]))
-
-  def collect_identifiers(node):
-    """takes a tree and returns a list of clauses or a constant value"""
-    nodetype = node[0]
-    if nodetype == "or" or nodetype == "and":
-      left = node[1]
-      right = node[2]
-      l = collect_identifiers(left)
-      r = collect_identifiers(right)
-      return l+r
-    elif nodetype == "not":
-      negated_node = node[1]
-      return collect_identifiers(negated_node)
-    elif nodetype == "name":
-      return [node[1]]
-    elif nodetype == "const":
-      return []
-    else:
-      assert(False)
-
-  def get_identifiers(expr):
-    try:
-      ast = compiler.parse(expr)
-    except:
-      sys.stderr.write("error: could not parse %s\n" % (line))
-      sys.stderr.write(traceback.format_exc())
-      sys.stderr.write("\n")
-      return []
-    actual_expr = ast.getChildNodes()[0].getChildNodes()[0]
-    transformer = Transformer()
-    compiler.walk(actual_expr, transformer, walker=transformer, verbose=True)
-    tree = transformer.tree
-    return collect_identifiers(tree)
 
   def implication(antecedent, consequent):
     return "((not (%s)) or (%s))" % (antecedent, consequent)
@@ -715,7 +227,6 @@ if __name__ == '__main__':
       pass
     elif (instr == "config"):
       varname, typename = data.split(" ", 1)
-      lookup_varnum(varname)
       if typename == "bool":
         bools.add(varname)
       else:
@@ -745,15 +256,14 @@ if __name__ == '__main__':
         # model nonbool values with ghost boolean values
         ghost_bool_name = get_ghost_bool_name(var)
         ghost_bools[ghost_bool_name] = (var, val)
-        varnum = lookup_varnum(ghost_bool_name)
         # print ghost_bool_name, varnum, val
         if expr == "(1)":
-          clauses.append([varnum])
+          add_clause(var, z3.Bool(var))
         else:
           full_expr = "(not (" + expr + ")) or (" + ghost_bool_name + ")"
           # print line
           # print full_expr
-          add_clauses(full_expr)
+          convert_and_add_clause(var, full_expr)
       else:
         # just add the first nonbool default
         if var not in nonbool_defaults:
@@ -764,10 +274,9 @@ if __name__ == '__main__':
       for var in vars:
         if (var[0] == "-"):  # negation
           realvar = var[1:]
-          clause.append(-lookup_varnum(realvar))
+          add_clause(realvar, z3.Not(z3.Bool(realvar)))
         else:
-          clause.append(lookup_varnum(var))
-      clauses.append(clause)
+          add_clause(realvar, z3.Bool(realvar))
     elif (instr == "bool_choice"):
       var_string, dep_expr = data.split("|",1)
       config_vars = var_string.split(" ")
@@ -796,10 +305,10 @@ if __name__ == '__main__':
       # print expr1, expr2
       final_expr = "(((not %s) or %s) and ((%s) or (not %s)))" % (expr1, expr2, expr1, expr2)
       # print final_expr
-      add_clauses(final_expr_expr)
+      convert_and_add_clause("<NONE>", final_expr_expr)
     elif (instr == "constraint"):
       expr = data
-      add_clauses(expr)
+      convert_and_add_clause("<NONE>", expr)
     else:
       sys.stderr.write("unsupported instruction: %s\n" % (line))
       exit(1)
@@ -945,11 +454,7 @@ if __name__ == '__main__':
     for i in range(0, len(config_vars)):
       for j in range(0, len(config_vars)):
         if i != j:
-          var_i = lookup_varnum(config_vars[i])
-          var_j = lookup_varnum(config_vars[j])
-          clause = [-var_i, -var_j]
-          # print clause
-          clauses.append(clause)
+          add_clause("<CHOICE>", z3.Or(z3.Not(z3.Bool(config_vars[i])), z3.Not(z3.Bool(config_vars[j]))))
     assert len(config_vars) > 0
 
     # adding the following clauses:
@@ -982,7 +487,7 @@ if __name__ == '__main__':
     if debug_expressions:
       sys.stderr.write("bool choice")
       pretty_printer(final_expression, stream=sys.stderr)
-    add_clauses(final_expression)
+    convert_and_add_clause("<CHOICE>", final_expression)
 
   # generate clauses for dependencies and defaults
   for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(selects.keys())).union(set(def_bool_lines.keys())).union(set(prompt_lines.keys())):
@@ -992,7 +497,7 @@ if __name__ == '__main__':
       dep_expr = dep_exprs[var]
       if dep_expr != "(1)":
         has_dependencies.add(var)  # track vars that have dependencies
-        in_dependencies.update(get_identifiers(dep_expr))  # track vars that are in other dependencies
+        in_dependencies.update(expression_converter.get_identifiers(dep_expr))  # track vars that are in other dependencies
     else:
       dep_expr = None
 
@@ -1003,7 +508,7 @@ if __name__ == '__main__':
         has_selects.add(var)
         if rev_dep_expr != "(1)":
           has_dependencies.add(var)  # track vars that have dependencies
-          in_dependencies.update(get_identifiers(rev_dep_expr))  # track vars that are in other dependencies
+          in_dependencies.update(expression_converter.get_identifiers(rev_dep_expr))  # track vars that are in other dependencies
       else:
         rev_dep_expr = None
 
@@ -1059,7 +564,6 @@ if __name__ == '__main__':
           if debug: # sys.stderr.write("stringified %s\n" % (rev_dep_expr))
             sys.stderr.write("stringified\n")
             pretty_printer(rev_dep_expr, stream=sys.stderr)
-
 
     else:  # use select lines (deprecated)
       if var in selects.keys():
@@ -1175,7 +679,7 @@ if __name__ == '__main__':
         for clause in clauses:
           if clause is not None:
             expression = existential_disjunction(*clause)
-            add_clauses(expression)
+            convert_and_add_clause(var, expression)
 
       else:
         if var not in has_prompt:
@@ -1364,7 +868,7 @@ if __name__ == '__main__':
 
         if final_expr != None:
           if debug_expressions: sys.stderr.write("%s final expression is %s\n" % (var, final_expr))
-          add_clauses(final_expr)
+          convert_and_add_clause(var, final_expr)
 
     elif var in nonbools:
       nonbools_with_dep.add(var)
@@ -1390,35 +894,22 @@ if __name__ == '__main__':
         else:
           final_expr = biimplication(var, dep_expr)
         # print final_expr
-        add_clauses(final_expr)
+        convert_and_add_clause(var, final_expr)
     else:
       assert True
 
-  if use_z3:
-    # print clauses for now
-    # for clause in z3_clauses:
-    #   print clause
-    # print len(z3_clauses)
 
-    # filtered_clauses = [ x for x in z3_clauses if z3.is_expr(x) ]
-    # final_z3 = z3.And(filtered_clauses)
+  # convert all z3 clauses to their smtlib2 strings
+  for var in z3_clauses.keys():
+    def convert_to_smtlib2(z3_clause):
+      s = z3.Solver()
+      s.add(z3_clause)
+      return s.to_smt2()
+    z3_clauses[var] = [ convert_to_smtlib2(clause) for clause in z3_clauses[var] ]
+  print(pickle.dumps(z3_clauses))
 
-    unpacked_clauses = [ x[0][0] for x in z3_clauses ]
-    # print("unpacked", unpacked_clauses)
-    final_z3 = z3.And(unpacked_clauses)
-    s = z3.Solver()
-    s.add(final_z3)
-    # print(s.check())
-    final_z3_smt2 = s.to_smt2()
-    print(final_z3_smt2)
-    # print(z3.parse_smt2_string(final_z3_smt2))
-
-    # s = z3.Solver()
-    # s.add(z3.Not(final_z3))
-    # print s.check()
-
-    # quit and don't do dimacs clause processing
-    exit(1)
+  # quit and don't do dimacs clause processing
+  exit(1)
 
   if force_all_nonbools_on:
     for nonbool in (nonbools):
