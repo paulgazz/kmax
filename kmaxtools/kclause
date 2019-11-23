@@ -274,9 +274,15 @@ if __name__ == '__main__':
       for var in vars:
         if (var[0] == "-"):  # negation
           realvar = var[1:]
-          add_clause(realvar, z3.Not(z3.Bool(realvar)))
+          clause.append(z3.Not(z3.Bool(realvar)))
         else:
-          add_clause(realvar, z3.Bool(realvar))
+          clause.append(z3.Bool(realvar))
+      if len(clause) > 0:
+        pass
+      elif len(clause) == 1:
+        add_clause(var, clause[0])
+      else:
+        add_clause(var, z3.Or(clause))
     elif (instr == "bool_choice"):
       var_string, dep_expr = data.split("|",1)
       config_vars = var_string.split(" ")
@@ -852,10 +858,15 @@ if __name__ == '__main__':
           cond_nonvisible_expr = None
 
         if debug_expressions: sys.stderr.write("var %s\n" % (var))
+        if debug_expressions: sys.stderr.write("dep_expr %s\n" % (dep_expr))
+        if debug_expressions: sys.stderr.write("rev_dep_expr %s\n" % (rev_dep_expr))
+        if debug_expressions: sys.stderr.write("def_y_expr %s\n" % (def_y_expr))
+        if debug_expressions: sys.stderr.write("prompt_expr %s\n" % (prompt_expr))
+        if debug_expressions: sys.stderr.write("conditional visible %s\n" % (cond_visible_expr))
         if debug_expressions: sys.stderr.write("unconditional visible %s\n" % (visible_expr))
-        if debug_expressions: sys.stderr.write("visible %s\n" % (cond_visible_expr))
-        if debug_expressions: sys.stderr.write("unconditional nonvisible %s\n" % (cond_nonvisible_expr))
-        if debug_expressions: sys.stderr.write("nonvisible %s\n" % (cond_nonvisible_expr))
+        if debug_expressions: sys.stderr.write("conditional nonvisible %s\n" % (cond_nonvisible_expr))
+        if debug_expressions: sys.stderr.write("unconditional nonvisible %s\n" % (nonvisible_expr))
+        if debug_expressions: sys.stderr.write("unconditional nonvisible z3 %s\n" % (expression_converter.convert_to_z3(nonvisible_expr)))
 
         if cond_visible_expr != None and cond_nonvisible_expr != None:
           final_expr = disjunction(cond_visible_expr, cond_nonvisible_expr)

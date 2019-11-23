@@ -235,7 +235,10 @@ def walk_ast_normal(node):
       # print(negated_node)
       z3_node = walk_ast_normal(negated_node)
       if isinstance(z3_node, int):
-        return z3_node
+        if z3_node == 0:
+          return 1
+        else:
+          return 0
       else:
         return z3.Not(z3_node)
     else:
