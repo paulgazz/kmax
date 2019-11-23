@@ -202,9 +202,9 @@ if __name__ == '__main__':
       print "skipping", kbuild_dir
       return set()
 
-    # kbuildplus = os.path.join(os.path.dirname(os.path.realpath(__file__)), "kmax.py")
+    # kbuildplus = os.path.join(os.path.dirname(os.path.realpath(__file__)), "kmax")
 
-    covering_set_args = [ "kmax.py",
+    covering_set_args = [ "kmax",
                           # "-Dsrc=" + kbuild_dir,      # drivers/staging/wlags49_h25/, drivers/gpu/drm/nouveau/
                           # TODO default to empty variable
                           # "-Dobj=" + kbuild_dir,    # drivers/scsi/aic7xxx/

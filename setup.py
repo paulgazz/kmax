@@ -24,7 +24,7 @@ setup(
         "Topic :: Utilities",
         "License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)",
     ],
-    scripts=['kmax/kmax', 'kmax/kmaxmerge'],
+    scripts=['kmaxtools/kmax', 'kmaxtools/kmaxmerge'],
     install_requires=[
         'enum34',
         'regex',

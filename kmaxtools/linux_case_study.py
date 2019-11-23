@@ -148,7 +148,7 @@ def covering_set(kbuild_dir,        # src directory to process
     print "skipping", kbuild_dir
     return set()
 
-  covering_set_args = [ "python", os.path.join(scriptpath, "kmax.py"),
+  covering_set_args = [ "python", os.path.join(scriptpath, "kmax"),
                         "--case-study", "linux",
                         "--log_level", "0",
                         # "-p",  #tvn why use this flag ? 
