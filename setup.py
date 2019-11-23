@@ -24,12 +24,12 @@ setup(
         "Topic :: Utilities",
         "License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)",
     ],
-    scripts=['kmaxtools/kmax', 'kmaxtools/kmaxmerge'],
+    scripts=['kmaxtools/kmax', 'kmaxtools/kmaxmerge', 'kmaxtools/kclause', 'kmaxtools/klocalizer'],
     install_requires=[
         'enum34',
         'regex',
         'z3-solver',
         'dd',
-        'networkx==2.2', # for dd to work on python3
+        'networkx==2.2', # for dd to work on python2
     ],
 )
