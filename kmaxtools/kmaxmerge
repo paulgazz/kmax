@@ -315,6 +315,7 @@ if __name__ == '__main__':
   # find all compilation_units.  run covering_set.py until no more
   # Kbuild subdirectories are left.
   sys.stderr.write("running covering_set\n")
+  # todo add toplevel dirs as always on
   pending_subdirectories.update(args.makefile)
   while len(pending_subdirectories) > 0:
     subdirectories.update(pending_subdirectories)
