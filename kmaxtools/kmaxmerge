@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 
+# todo: make z3 the default, have separate flag for file analysis that just does it all
+
 # Kmax
-# Copyright (C) 2012-2015 Paul Gazzillo
+# Copyright (C) 2012-2019 Paul Gazzillo
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
