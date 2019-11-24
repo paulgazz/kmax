@@ -2,9 +2,29 @@ import traceback
 import sys
 import compiler
 import z3
+import regex
 
 t_simplify = z3.Tactic('ctx-solver-simplify')
 t_tseitin = z3.Tactic('tseitin-cnf-core')
+identifier_pattern = regex.compile("^[A-Za-z0-9_][A-Za-z0-9_]*$") # config var names can apparently start with numbers
+int_pattern = regex.compile("^[0-9]+$")
+hex_pattern = regex.compile("^0x[0-9ABCDEFabcdef]+$")
+
+def glean_unknown_symbol(sym):
+  sym = str(sym)
+  # sys.stderr.write("trying to glean unknown symbol: \"%s\"\n" % (sym))
+  if int_pattern.match(sym):
+    num = int(sym)
+    if num == 0:
+      return z3.BoolVal(False)
+    else:
+      return z3.BoolVal(True)
+  elif hex_pattern.match(sym):
+    return z3.Bool("\"%s\"\n" % (sym))
+  elif identifier_pattern.match(sym):
+    return z3.Bool("%s\n" % (sym))
+  else:
+    return None
 
 # parse tree processing
 class Transformer(compiler.visitor.ASTVisitor):
@@ -13,16 +33,12 @@ class Transformer(compiler.visitor.ASTVisitor):
     self.tree = None
 
   def default(self, node):
-    # sys.stderr.write("default %s\n" % (str(node)))
-    if isinstance(node, int):
-      if node == 0:
-        return z3.BoolVal(False)
-      else:
-        return z3.BoolVal(True)
-    elif isinstance(node, str):
-      return z3.Bool(node)
+    # sys.stderr.write("trying to process default: \"%s\"\n" % (node))
+    result = glean_unknown_symbol(node)
+    # sys.stderr.write("result: %s\n" % (result))
+    if result is not None:
+      return result
     else:
-      # sys.stderr.write("predicate %d %s\n" % (len(node.getChildren()), str(node)))
       predicate = str(node)
       return z3.Bool("PREDICATE_%s" % (predicate))
 
@@ -50,31 +66,15 @@ class Transformer(compiler.visitor.ASTVisitor):
   def visitConst(self, node):
     # sys.stderr.write("const %s %s\n" % (str(node), str(type(node.value))))
     value = node.value
-    if isinstance(value, int):
-      if value == 0:
-        return z3.BoolVal(False)
-      else:
-        return z3.BoolVal(True)
-    try:
-      num = int(value)
-      if num == 0:
-        return z3.BoolVal(False)
-      else:
-        return z3.BoolVal(True)
-    except:
-      try:
-        s = str(value)
-        if s is "0":
-          return z3.BoolVal(False)
-        elif s is "1":
-          return z3.BoolVal(True)
-        dummy_var = "VALUE_%s" % (s)
-        # sys.stderr.write("warning: use of undefined variable in dependency: %s\n" % (dummy_var))
-        return z3.Bool(dummy_var)
-      except:
-        print(traceback.format_exc())
-        sys.stderr.write("error: cannot process value \"%s\"\n" % (value))
-        exit(1)
+    result = glean_unknown_symbol(value)
+    # sys.stderr.write("result const: %s\n" % (result))
+    if result is not None:
+      return result
+    else:
+      print(traceback.format_exc())
+      sys.stderr.write("error: cannot process value \"%s\"\n" % (value))
+      exit(1)
+      return None
 
 # parse tree processing
 class IdentifierCollector(compiler.visitor.ASTVisitor):
