@@ -20,9 +20,9 @@ def glean_unknown_symbol(sym):
     else:
       return z3.BoolVal(True)
   elif hex_pattern.match(sym):
-    return z3.Bool("\"%s\"\n" % (sym))
+    return z3.Bool("\"%s\"" % (sym))
   elif identifier_pattern.match(sym):
-    return z3.Bool("%s\n" % (sym))
+    return z3.Bool("%s" % (sym))
   else:
     return None
 
