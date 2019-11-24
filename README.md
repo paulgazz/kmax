@@ -1,29 +1,96 @@
-# Kmax
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
-Kmax collects configuration information from [Kbuild Makefiles](https://www.kernel.org/doc/html/latest/kbuild/makefiles.html).  It determines, for each compilation unit, a symbolic Boolean expression that represents the conditions under which the file gets compiled and linked into the final program.
+- [The Kmax Tool Suite](#the-kmax-tool-suite)
+  - [Setup](#setup)
+  - [Simple example](#simple-example)
+  - [Example run on Linux](#example-run-on-linux)
+  - [Kclause](#kclause)
 
-Kmax was created by [Paul Gazzillo](https://paulgazzillo.com).  Its algorithm is described in this [publication](https://paulgazzillo.com/papers/esecfse17.pdf).  The paper version of Kmax (v1.0) can be found [here](https://github.com/paulgazz/kmax/releases/tag/v1.0) along with other older [releases](https://github.com/paulgazz/kmax/releases) that have the Kconfig processing and other analysis scripts.
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-Special thanks to [ThanhVu Nguyen](https://cse.unl.edu/~tnguyen/) for integrating z3 into Kmax and refactoring the code.
+# The Kmax Tool Suite
 
-## Related projects
+The Kmax Tool Suite (kmaxtools) contains a set of tools for performing
+automated reasoning on Kconfig and Kbuild constraints.  It consists of
+the following tools:
 
-Kclause extract logical models of Kconfig files, configuration specifications originally used in the Linux source code.  Kclause was originally part of the Kmax repository and is now under development here: <https://github.com/paulgazz/kclause>
+- `klocalizer` takes the name of a compilation unit and automatically
+  generates a `.config` file that, when compiled, will include the
+  given compilation unit.  It uses the logical models from `kclause` and `kmax`
+- `kclause` "compiles"
+  [Kconfig](https://www.kernel.org/doc/html/latest/kbuild/kconfig-language.html)
+  constraints into logical formulas.  `kconfig_extractor` uses Linux's
+  own Kconfig parser to perform an extraction of the syntax of
+  configuration option names, types, dependencies, etc.
+- `kmax` collects configuration information from [Kbuild
+  Makefiles](https://www.kernel.org/doc/html/latest/kbuild/makefiles.html).
+  It determines, for each compilation unit, a symbolic Boolean
+  expression that represents the conditions under which the file gets
+  compiled and linked into the final program.  Its algorithm is
+  described [here](https://paulgazzillo.com/papers/esecfse17.pdf) and
+  the original implementation can be found
+  [here](https://github.com/paulgazz/kmax/releases/tag/v1.0).
 
-Prior versions of Kmax can be found under releases, e.g., the original Kmax paper version from ESEC/FSE 2017 and the version used for the variability-aware bug-finding study in ESEC/FSE 2019: <https://github.com/paulgazz/kmax/releases>
-
-Even older version of Kmax can be found in the SuperC codebase.  The SuperC project parses all configurations of unpreprocessed C code and and can be in the xtc codebase: <https://github.com/paulgazz/xtc>
+kmaxtool's creator and maintainer is [Paul
+Gazzillo](https://paulgazzillo.com).  Contributors include [ThanhVu
+Nguyen](https://cse.unl.edu/~tnguyen/) (z3 integration into `kmax`)
+and Jeho Oh (development of Kconfig logical formaulas).
 
 ## Setup
 
+`kmaxtools` is currently written for python 2.
+
 Clone the repository and run
 
-    python setup.py install
+    sudo python setup.py install
+    
+Or use the `--prefix` argument for different installation directory without `sudo`.
 
-This requires python setup tools (`pip install setuptools`).  Use
-`--prefix` to specify a different installation directory.
+Please see [setup.py] for any dependencies if `setup.py` script does
+not work.  It may be necessary to install these manually via `pip`, e.g.,
 
-## Simple example
+    pip install enum34
+    pip install regex
+    pip install z3-solver
+    pip install dd
+    pip install networkx==2.2
+
+## Quick Start
+
+The fastest way to get started is to use formulas already extracted for your version of Linux.
+
+
+    cd /path/to/linux/
+    wget https://opentheblackbox.com/kmaxspecs/kmaxspecs_linux_5_3_11.tar.bz2
+    tar -xvf kmaxspecs_linux_5_3_11.tar.bz2
+    
+This will create a `kmaxspecs` directory for use with `klocalizer` and
+will obviate the need to run `kclause` and `kmax`.  (See below for
+directions on running these for a new version of Linux.)
+
+### For one architecture
+
+If you already know the architecture you'd like to build `.config`
+file for, run `klocalizer` like this to create the configuration:
+
+    klocalizer drivers/usb/storage/alauda.o > .config
+    make olddefconfig
+    
+The compilation unit (should) now be included when compiling the kernel:
+
+    make drivers/usb/storage/alauda.o
+
+###
+
+Some files 
+
+## Kmax
+
+(This guide on Kmax is out-of-date.)
+
+### Simple example
 
 This will run Kmax on the example from the
 [paper](https://paulgazzillo.com/papers/esecfse17.pdf) on Kmax.
@@ -38,7 +105,7 @@ This will output the list of configuration conditions for each compilation unit 
 
 The `unit_pc` lines have the [format](docs/unit_pc.md) of compilation unit name followed by the Boolean expression, in C-style syntax.  The Boolean expression describes the constraints that must be satisfied for the compilation unit to be included.
 
-## Example run on Linux
+### Example run on Linux
 
 There is a script that will run Kmax on all Kbuild Makefiles from a project, e.g., the Linux kernel source code.
 
