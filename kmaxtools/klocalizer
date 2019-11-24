@@ -1,12 +1,47 @@
 #!/usr/bin/env python
+import sys
+import argparse
+import z3
+import regex
+import pickle
+
+def get_kclause_constraints(file):  
+  with open(file, 'r') as fp:
+    kclause = pickle.load(fp)
+
+    kclause_constraints = {}
+    for var in kclause.keys():
+      kclause_constraints[var] = [ z3.parse_smt2_string(clause) for clause in kclause[var] ]
+    kclause = None
+    return kclause_constraints
+
+def get_kmax_constraints(file):
+  with open(file, 'r') as fp:
+    kmax = pickle.load(fp)
+    # todo: support multiple compilation units
+
+    if not args.compilation_unit:
+      info("no compilation unit given.  generating .config according to kconfig specs only.")
+    elif args.compilation_unit not in kmax.keys():
+      raise Exception("%s not found in %s.  please check the compilation unit against the kmax file" % (args.compilation_unit, args.kmax_file))
+
+    kmax_constraints = []
+    if args.compilation_unit in kmax.keys():
+      # add the condition for the compilation unit and each of its parent directories
+      kmax_constraints.append(z3.parse_smt2_string(kmax[args.compilation_unit]))
+      subpath, basename = args.compilation_unit.rsplit('/', 1)
+      elems = subpath.rsplit('/')
+      for i in reversed(range(0, len(elems))):
+        subarray = elems[0:(len(elems) - i)]
+        subsubpath = '/'.join(subarray) + "/"
+        if subsubpath in kmax.keys():
+          kmax_constraints.append(z3.parse_smt2_string(kmax[subsubpath]))
+        else:
+          sys.stderr.write("%s not found in %s.  assuming it's always included.\n" % (subsubpath, args.kmax_file))
+    kmax = None
+    return kmax_constraints
 
 if __name__ == '__main__':    
-  # from pysat.solvers import Glucose3
-  import sys
-  import argparse
-  import z3
-  import regex
-  import pickle
 
   def info(msg, ending="\n"):
     sys.stderr.write("%s%s" % (msg, ending))
@@ -14,11 +49,11 @@ if __name__ == '__main__':
   argparser = argparse.ArgumentParser()
   argparser.add_argument('--kmax-file',
                          type=str,
-                         default="kmax",
+                         default="kbuild.kmax",
                          help="""The file containing the Kbuild constraints as a pickled dictionary from compilation unit or subdirectory to constraints in smtlib2 format.  Defaults to \"kmax\".""")
   argparser.add_argument('--kclause-file',
                          type=str,
-                         default="kclause",
+                         default="kconfig.kclause",
                          help="""The file containing the Kconfig constraints as a pickled dictionary from configuration option to constraints in smtlib2 format.  Defaults to \"kclause\".""")
   argparser.add_argument('--optimize',
                          type=str,
@@ -39,48 +74,31 @@ if __name__ == '__main__':
   argparser.add_argument("compilation_unit", nargs='?', help="The path of the compilation unit (.o file) to generate a .config for, relative to the top of the source tree.")
   args = argparser.parse_args()
 
-  with open(args.kmax_file, 'r') as fp:
-    kmax = pickle.load(fp)
+  kmax_constraints = get_kmax_constraints(args.kmax_file)
 
-  # todo: support multiple compilation units
-  if not args.compilation_unit:
-    info("no compilation unit given.  generating .config according to kconfig specs only.")
-  elif args.compilation_unit not in kmax.keys():
-    raise Exception("%s not found in %s.  please check the compilation unit against the kmax file" % (args.compilation_unit, args.kmax_file))
-
-  with open(args.kclause_file, 'r') as fp:
-    kclause = pickle.load(fp)
+  kclause_constraints = get_kclause_constraints(args.kclause_file)
 
   solver = z3.Solver()
   if args.optimize or args.show_core: solver.set(unsat_core=True)
 
-  if args.compilation_unit in kmax.keys():
-    # add the condition for the compilation unit and each of its parent directories
-    solver.add(z3.parse_smt2_string(kmax[args.compilation_unit]))
-    subpath, basename = args.compilation_unit.rsplit('/', 1)
-    elems = subpath.rsplit('/')
-    for i in reversed(range(0, len(elems))):
-      subarray = elems[0:(len(elems) - i)]
-      subsubpath = '/'.join(subarray) + "/"
-      if subsubpath in kmax.keys():
-        solver.add(z3.parse_smt2_string(kmax[subsubpath]))
-      else:
-        sys.stderr.write("%s not found in %s.  assuming it's always included.\n" % (subsubpath, args.kmax_file))
+  # add kmax constraints
+  for constraint in kmax_constraints:
+    solver.add(constraint)
 
-  for var in kclause.keys():
-    for clause in kclause[var]:
-      z3_clause = z3.parse_smt2_string(clause)
-      solver.add(z3_clause)
-
-  exit(1)
-
+  # add user-specified constraints
   for define in args.define:
     solver.add(z3.Bool(define))
-
   for undefine in args.undefine:
     solver.add(z3.Not(z3.Bool(undefine)))
+  
+  # add kclause constraints
+  kclause_assumptions = []
+  for var in kclause_constraints.keys():
+    for z3_clause in kclause_constraints[var]:
+      kclause_assumptions.extend(z3_clause)
 
-  if (solver.check() == z3.sat):
+  result = solver.check(kclause_assumptions)
+  if (result == z3.sat):
     model = None
     if not args.optimize:
       info("satisfiable. generating config file")
@@ -136,7 +154,8 @@ if __name__ == '__main__':
         info("")
         info("found satisfying config")
       model = solver.model()
-      # (2) soft assertion approach
+      
+      # (2) soft assertion approach. (todo)
 
     # end else for if not args.optimize
 
