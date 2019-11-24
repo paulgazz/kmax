@@ -135,7 +135,8 @@ if __name__ == '__main__':
     return "GHOST_BOOL_%d_%s" % (ghost_bool_count, var)
 
   def add_clause(varname, new_clause):
-    if new_clause is not None:
+    # if new_clause is not None:
+    if new_clause is not None and not new_clause.eq(z3.BoolVal(True)):
       if varname not in z3_clauses.keys():
         z3_clauses[varname] = [ new_clause ]
       else:
@@ -811,7 +812,7 @@ if __name__ == '__main__':
               nonvisible_expr = conjunction(clause1, conjunction(clause2, conjunction(clause3, clause4)))
 
           else:
-            # old
+            # the conditions under which a nonvisible variable can be enabled
 
             # I <-> ((E & D) | A)
             # I is the variable, A is the selects (reverse deps), E is the direct dep, D is the default y condition
@@ -840,7 +841,7 @@ if __name__ == '__main__':
             else:
               nonvisible_expr = None
 
-        # compute the complete expression for the variable
+        # compute the complete expression for the variable, combining both the visible and nonvisible semantics
         # prompt_expr and visible_expr or not prompt_expr and nonvisible_expr
         if visible_expr != None:
           if prompt_expr != None:
@@ -869,7 +870,7 @@ if __name__ == '__main__':
         if debug_expressions: sys.stderr.write("unconditional visible %s\n" % (visible_expr))
         if debug_expressions: sys.stderr.write("conditional nonvisible %s\n" % (cond_nonvisible_expr))
         if debug_expressions: sys.stderr.write("unconditional nonvisible %s\n" % (nonvisible_expr))
-        if debug_expressions: sys.stderr.write("unconditional nonvisible z3 %s\n" % (expression_converter.convert_to_z3(nonvisible_expr)))
+        if debug_expressions: sys.stderr.write("unconditional nonvisible z3 %s\n" % (expression_converter.convert_to_z3(nonvisible_expr) if nonvisible_expr is not None else None))
 
         if cond_visible_expr != None and cond_nonvisible_expr != None:
           final_expr = disjunction(cond_visible_expr, cond_nonvisible_expr)
@@ -882,6 +883,7 @@ if __name__ == '__main__':
 
         if final_expr != None:
           if debug_expressions: sys.stderr.write("%s final expression is %s\n" % (var, final_expr))
+          if debug_expressions: sys.stderr.write("%s final expression z3 is %s\n" % (var, expression_converter.convert_to_z3(final_expr) if final_expr is not None else None))
           convert_and_add_clause(var, final_expr)
 
     elif var in nonbools:
@@ -914,12 +916,14 @@ if __name__ == '__main__':
 
 
   # convert all z3 clauses to their smtlib2 strings
+  sys.stderr.write("creating map from variables to formulas in smtlib2 format\n")
   for var in z3_clauses.keys():
     def convert_to_smtlib2(z3_clause):
       s = z3.Solver()
       s.add(z3_clause)
       return s.to_smt2()
     z3_clauses[var] = [ convert_to_smtlib2(clause) for clause in z3_clauses[var] ]
+  sys.stderr.write("pickling the map\n")
   print(pickle.dumps(z3_clauses))
 
   # quit and don't do dimacs clause processing
