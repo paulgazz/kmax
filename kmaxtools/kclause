@@ -640,9 +640,12 @@ if __name__ == '__main__':
       def_y_expr = "(0)"
       delim = " or "
       for def_bool_line in def_bool_lines[var]:
-        val, expr = def_bool_line.split(" ", 1)
-        if val == "1":
+        val, expr = def_bool_line.split("|", 1)
+        # sys.stderr.write("%s|%s|%s\n" % (var, val, expr))
+        if val == "1" or val == "y":
           def_y_expr = def_y_expr + delim + "(" + expr + ")"
+        else:
+          def_y_expr = def_y_expr + delim + "((" + val + ") and (" + expr + "))"
     else:
       def_y_expr = None
 

@@ -1880,7 +1880,7 @@ int main(int argc, char **argv)
           if ((NULL != prop) && (NULL != (prop->expr))) {
             printf("def_bool %s%s ", config_prefix, sym->name);
             print_python_expr(prop->expr, stdout, E_NONE);
-            printf(" (");
+            printf("|(");
             if (NULL != prop->visible.expr) {
               print_python_expr(prop->visible.expr, stdout, E_NONE);
             } else {
