@@ -33,6 +33,7 @@ if __name__ == '__main__':
   import subprocess
   import cPickle as pickle
   import time
+  import z3
 
   import kmaxtools.vcommon as CM
 
@@ -316,6 +317,21 @@ if __name__ == '__main__':
   # Kbuild subdirectories are left.
   sys.stderr.write("running covering_set\n")
   # todo add toplevel dirs as always on
+
+  solver = z3.Solver()
+  solver.add(z3.BoolVal(True))
+  true_smt2 = solver.to_smt2()
+  
+  for path in args.makefile:
+    if os.path.exists(path):
+      if os.path.isdir(path):
+        dirname = path
+      else:
+        dirname = os.path.dirname(path)
+      if not dirname.endswith("/"):
+        dirname = dirname + "/"
+      z3_pcs[dirname] = true_smt2
+  
   pending_subdirectories.update(args.makefile)
   while len(pending_subdirectories) > 0:
     subdirectories.update(pending_subdirectories)
