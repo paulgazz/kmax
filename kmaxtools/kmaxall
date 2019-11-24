@@ -18,9 +18,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# Collect the presence conditions for all compilation units and
-# subdirectories from Kbuild Makefiles by repeatedly calling
-# kmax.py
+# Recursively collect the presence conditions for all compilation
+# units and subdirectories from Kbuild Makefiles by repeatedly calling
+# kmax
 
 if __name__ == '__main__':    
 
