@@ -6,7 +6,7 @@ import regex
 
 t_simplify = z3.Tactic('ctx-solver-simplify')
 t_tseitin = z3.Tactic('tseitin-cnf-core')
-identifier_pattern = regex.compile("^[A-Za-z0-9_][A-Za-z0-9_]*$") # config var names can apparently start with numbers
+identifier_pattern = regex.compile("^[A-Za-z0-9_]+$") # config var names can start with numbers, see kconfig/lexer.l
 int_pattern = regex.compile("^[0-9]+$")
 hex_pattern = regex.compile("^0x[0-9ABCDEFabcdef]+$")
 
@@ -22,7 +22,7 @@ def glean_unknown_symbol(sym):
   elif hex_pattern.match(sym):
     return z3.Bool("\"%s\"" % (sym))
   elif identifier_pattern.match(sym):
-    return z3.Bool("%s" % (sym))
+    return z3.Bool("CONFIG_%s" % (sym))
   else:
     return None
 
