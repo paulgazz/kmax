@@ -916,7 +916,7 @@ if __name__ == '__main__':
 
 
   # convert all z3 clauses to their smtlib2 strings
-  sys.stderr.write("creating map from variables to formulas in smtlib2 format\n")
+  sys.stderr.write("creating map from variables to constraints in smtlib2 format\n")
   for var in z3_clauses.keys():
     def convert_to_smtlib2(z3_clause):
       s = z3.Solver()
