@@ -92,12 +92,12 @@ if __name__ == '__main__':
     solver.add(z3.Not(z3.Bool(undefine)))
   
   # add kclause constraints
-  kclause_assumptions = []
   for var in kclause_constraints.keys():
     for z3_clause in kclause_constraints[var]:
-      kclause_assumptions.extend(z3_clause)
+      solver.add(z3_clause)
 
-  result = solver.check(kclause_assumptions)
+  # solve
+  result = solver.check()
   if (result == z3.sat):
     model = None
     if not args.optimize:
