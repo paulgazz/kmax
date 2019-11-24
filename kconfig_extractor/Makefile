@@ -30,11 +30,11 @@ kconfig_extractor: $(OBJ)
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-%.tab.c: %.y
-	bison -l -b $* -p $* -t $<
+parser.tab.c: parser.y
+	bison -o parser.tab.c --defines=parser.tab.h -t -l parser.y
 
-%.lex.c: %.l
-	flex -o $@ $<
+lexer.lex.c: lexer.l
+	flex -o lexer.lex.c -L lexer.l
 
 clean:
 	$(RM) $(CPROGS) *.o
