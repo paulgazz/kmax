@@ -70,3 +70,8 @@ These commands together:
     kmaxdriver.py -g $(make CC=cc ARCH=x86 -f /path/to/kmax/scripts/makefile_override alldirs) | tee unit.kmax | kmaxdriver.py --aggregate > kmax
 
 This is the [format](docs/unit_pc.md) for `unit.kmax` and `kmax`.
+
+## Kclause
+
+    /path/to/kmax/kconfig_extractor/kconfig_extractor --extract -e ARCH=x86_64 -e SRCARCH=x86 -e KERNELVERSION=kcu -e srctree=./ -e CC=cc Kconfig > kconfig.kclause
+    kclause --remove-orphaned-nonvisible < kconfig.extract > kconfig.kclause
