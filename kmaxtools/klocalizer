@@ -7,7 +7,7 @@ if __name__ == '__main__':
   argparser.add_argument('--kmax-file',
                          type=str,
                          default="kbuild.kmax",
-                         help="""The file containing the Kbuild constraints as a pickled dictionary from compilation unit or subdirectory to constraints in smtlib2 format.  Defaults to \"kbuild.kmax\".""")
+                         help="""The file containing the Kbuild constraints as a pickled dictionary from compilation unit.  Defaults to \"kbuild.kmax\".""")
   argparser.add_argument('--kclause-file',
                          type=str,
                          default="kconfig.kclause",
@@ -53,10 +53,20 @@ if __name__ == '__main__':
     exit(1)
 
   constraints = get_constraints(kclause_file, kmax_file, compilation_unit, constraints_file, define, undefine)
-  
-  model = klocalize(constraints, show_unsat_core)
+    
+  solver = z3.Solver()
+  solver.set(unsat_core=show_unsat_core)
 
-  if model is not None and optimize:
-    model = optimize_model(optimize, constraints)
-
-  print_model_as_config(model)
+  if (solver.check(constraints) == z3.unsat):
+    sys.stderr.write("ERROR: The compilation unit's constraints are unsatisfiable, so no configuration can be generated.  This could be because (1) the compilation unit is only available in another architecture or (2) the logical formulas are wrong (overconstrained).\n")
+    if show_unsat_core:
+      info("The following constraint(s) prevented satisfiability:\n%s" % (str(solver.unsat_core())))
+    else:
+      info("Try running again with --show-unsat-core to see what constraints prevented satisfiability.")
+    model = None
+  else:
+    info("The compilation unit's constraints are satisfiable.")
+    model = solver.model()
+    if model is not None and optimize:
+      model = optimize_model(optimize, constraints)
+    print_model_as_config(model)

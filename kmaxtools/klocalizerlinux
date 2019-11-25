@@ -1,5 +1,7 @@
 #!/bin/python
 
+import z3
+
 from kmaxtools.localize import *
 
 architectures = [
@@ -19,19 +21,18 @@ architectures = [
   "nios2",
   "openrisc",
   "parisc",
-  "powerpc",
+  "powerpc", "powerpc32", "powerpc64",
   "riscv",
   "s390",
-  "sh",
-  "sparc",
+  "sh", "sh32", "sh64",
+  "sparc", "sparc32", "sparc64",
   "um",
   "unicore32",
-  "x86",
+  "x86", "i386", "x86_64",
   "xtensa",
 ]
 
-
-architecture_configs = [
+architecture_configs = {
   "ALPHA",
   "ARC",
   "ARM",
@@ -65,45 +66,158 @@ architecture_configs = [
   "X86_32",
   "X86",
   "XTENSA"
-]
-
-def get_arch_files(kmaxspecs, arch):
-  return (os.path.join(os.path.join(kmaxspecs, arch), "kconfig.kclause"),
-          os.path.join(os.path.join(kmaxspecs, arch), "kbuild.kmax"))
 }
 
+config_broken = z3.Not(z3.Bool("CONFIG_BROKEN"))
+
+def get_arch_files(kmaxspecs, arch):
+  return (os.path.join(os.path.join(kmaxspecs, arch), "kclause"),
+          os.path.join(os.path.join(kmaxspecs, arch), "kmax"))
+
+def get_arch_specific_constraints(arch, architecture_configs):
+  free_vars = []
+  if arch == "x86":
+    on_vars = [ "X86" ]
+    free_vars = [ "X86_32", "X86_64" ]
+  elif arch == "x86_64":
+    on_vars = [ "X86", "X86_64" ]
+  elif arch == "i386":
+    on_vars = [ "X86", "X86_32" ]
+  elif arch == "arm":
+    on_vars = [ "ARM" ]
+  elif arch == "arm64":
+    on_vars = [ "ARM64" ]
+  elif arch == "ppc":
+    on_vars = [ "PPC" ]
+    free_vars = [ "PPC32", "PPC64" ]
+  elif arch == "ppc32":
+    on_vars = [ "PPC32" ]
+  elif arch == "ppc64":
+    on_vars = [ "PPC64" ]
+  elif arch == "superh":
+    on_vars = [ "SUPERH" ]
+    free_vars = [ "SUPERH32", "SUPERH64" ]
+  elif arch == "superh32":
+    on_vars = [ "SUPERH32" ]
+  elif arch == "superh64":
+    on_vars = [ "SUPERH64" ]
+  elif arch == "sparc":
+    on_vars = [ "SPARC" ]
+    free_vars = [ "SPARC32", "SPARC64" ]
+  elif arch == "sparc32":
+    on_vars = [ "SPARC32" ]
+  elif arch == "sparc64":
+    on_vars = [ "SPARC64" ]
+  elif arch == "um":
+    on_vars = [ "UML", "X86" ]
+    free_vars = [ "X86_32", "X86_64" ]
+  else:
+    on_vars = [ varname for varname in architecture_configs if varname.lower().startswith(arch.lower()) ]
+  
+  arch_on = [ z3.Bool("CONFIG_%s" % (varname)) for varname in architecture_configs if varname in on_vars ]
+  arch_off = [ z3.Not(z3.Bool("CONFIG_%s" % (varname))) for varname in architecture_configs if varname not in free_vars and varname not in on_vars ]
+  return arch_on + arch_off
 
 if __name__ == '__main__':    
   argparser = argparse.ArgumentParser()
   argparser.add_argument('--kmaxspecs',
                          type=str,
                          default="kmaxspecs/",
-                         help="""Path to the Linux kmaxspecs/ folder, which contains kmax/kclause formulas for each architecture.""")
+                         help="""Path to the Linux kmaxspecs/ folder, which contains kmax/kclause formulas for each architecture.  Defaults to kmaxspecs/""")
   argparser.add_argument('-a',
                          '--arch',
-                         default="x86",
-                         action="store_true",
-                         help="""Specify each architecture to try.  These archs will be tried first in order if --all is also given.""")
+                         action="append",
+                         default=[],
+                         help="""Specify each architecture to try.  These archs will be tried first in order if --all is also given.  Defaults to all.""")
   argparser.add_argument('--all',
                          action="store_true",
                          help="""Check all architectures for a satisfying configuration.  This tries each architecture's formulas given in the --kmaxspecs folder.""")
-  argparser.add_argument("compilation_unit", nargs='1', help="The path of the compilation unit (.o file) to generate a .config for, relative to the top of the source tree.")
+  argparser.add_argument('-o',
+                         '--output',
+                         type=str,
+                         default=".config",
+                         help="""Name of the output .config file.  Defaults to .config.""")
+  argparser.add_argument('-w',
+                         '--overwrite',
+                         action="store_true",
+                         help="""Force overwriting the given output file.""")
+  argparser.add_argument('--ignore-config-broken',
+                         action="store_true",
+                         help="""Ignore CONFIG_BROKEN dependencies.""")
+  argparser.add_argument("compilation_unit", help="The path of the compilation unit (.o file) to generate a .config for, relative to the top of the source tree.")
   args = argparser.parse_args()
 
-  archs = args.archs
-  all = args.all_archs
+  archs = args.arch
+  allarchs = args.all
   kmaxspecs = args.kmaxspecs
+  compilation_unit = args.compilation_unit
+  output_file = args.output
+  force = args.overwrite
+  ignore_config_broken = args.ignore_config_broken
+
+  if len(archs) == 0:
+    # try some popular ones first
+    archs = [ "x86", "sparc", "arm", "arm64", "powerpc", "mips" ]
+    allarchs = True
+                 
+  output_fp = None
+  if os.path.exists(output_file):
+    if not force:
+      error("Output file \"%s\" already exists.  Use -w to force overwriting it." % (output_file))
+      exit(1)
+    else:
+      info("Overwriting config file \"%s\" as requested." % (output_file))
 
   if not os.path.isdir(kmaxspecs):
     error("Cannot find kmaxspecs directory: %s" % (kmaxspecs))
     info("Download formulas from https://opentheblackbox.com/kmaxspecs/ or follow the README.md to generate them with kclause and kmax.\n")
     exit(1)
-    
-  constraints = get_constraints(kmax_file, compilation_unit, kclause_file, constraints_file)
-  
-  model = klocalize(constraints, show_unsat_core)
 
-  # if model is not None and optimize:
-  #   model = optimize_model(optimize, constraints)
+  if allarchs:
+    # add those not already requested by the user
+    archs = archs + [ arch for arch in architectures if arch not in archs ]
 
-  # print_model_as_config(model)
+  info("Trying the following architectures: %s" % (" ".join(archs)))
+
+  for arch in archs:
+    if arch not in architectures:
+      warning("Skipping unknown architecture %s" % (arch))
+    else:
+      info("Trying to find %s in %s." % (compilation_unit, arch))
+      (kclause_file, kmax_file) = get_arch_files(kmaxspecs, arch)
+      info("Using these formulas from %s and %s" % (kclause_file, kmax_file))
+      if not os.path.isfile(kmax_file) or not os.path.isfile(kclause_file):
+        if not os.path.isfile(kclause_file):
+          error("Cannot find kclause formulas file: %s" % (kclause_file))
+        if not os.path.isfile(kmax_file):
+          error("Cannot find kmax formulas file: %s" % (kmax_file))
+        info("Download formulas from https://opentheblackbox.com/kmaxspecs/ or follow the README.md to generate them with kclause and kmax.\n")
+      constraints = get_constraints(kclause_file, kmax_file, compilation_unit)
+      if constraints == None:
+        info("Could not get constraints.")
+      else:
+        arch_constraints = get_arch_specific_constraints(arch, architecture_configs)
+        # info("Using these architecture-specific constraints: %s" % (str(arch_constraints)))
+        constraints.extend(arch_constraints)
+
+        if not ignore_config_broken: constraints.append(config_broken)
+
+        solver = z3.Solver()
+        solver.set(unsat_core=True)
+
+        if (solver.check(constraints) == z3.unsat):
+          info("No configuration for %s found." % (arch))
+          if not ignore_config_broken and config_broken in solver.unsat_core():
+            error("This compilation unit seems to depend on CONFIG_BROKEN, so it may not be buildable anyway.  Stopping the search.  Run again with --ignore-config-broken to search anyway.")
+            exit(1)
+        else:
+          info("The compilation unit's constraints are satisfiable.")
+          model = solver.model()
+          if model is not None:
+            info("Found satisfying configuration for %s" % (arch))
+            info("Writing the configuration to %s" % (output_file))
+            print_model_as_config(model, open(output_file, 'w'))
+            exit(0)
+        
+  info("Could not find any configurations for the compilation unit in the given architectures.")
+  exit(1)

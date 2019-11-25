@@ -24,7 +24,7 @@ def get_kclause_constraints(kclause_file):
     kclause = None
     return kclause_constraints
 
-def get_kmax_constraints(kmax_file, compilation_unit):
+def get_kmax_constraints(kmax_file, compilation_unit, view=False):
   if not compilation_unit.endswith(".o"):
     compilation_unit = os.path.splitext(compilation_unit)[0] + ".o"
     warning("Forcing file extension to be .o, since lookup is by compilation unit: %s" % (compilation_unit))
@@ -33,24 +33,28 @@ def get_kmax_constraints(kmax_file, compilation_unit):
     kmax = pickle.load(fp)
     # todo: support multiple compilation units
 
+    
     if compilation_unit not in kmax.keys():
       error("%s not found in %s.  Please check that the compilation unit is in the kmax file." % (compilation_unit, kmax_file))
-      return []
+      return None
     else:
       kmax_constraints = []
       if compilation_unit in kmax.keys():
         # add the condition for the compilation unit and each of its parent directories
         kmax_constraints.append(z3.parse_smt2_string(kmax[compilation_unit]))
+        if view:
+          print("%s\n%s\n" % (compilation_unit, kmax_constraints[-1]))
         subpath, basename = compilation_unit.rsplit('/', 1)
         elems = subpath.rsplit('/')
-        for i in reversed(range(0, len(elems))):
+        for i in range(0, len(elems)):
           subarray = elems[0:(len(elems) - i)]
           subsubpath = '/'.join(subarray) + "/"
           if subsubpath in kmax.keys():
             kmax_constraints.append(z3.parse_smt2_string(kmax[subsubpath]))
+            if view:
+              print("%s\n%s\n" % (subsubpath, kmax_constraints[-1]))
           else:
             info("%s not found in %s, assuming it is always included." % (subsubpath, kmax_file))
-      kmax = None
       return kmax_constraints
 
 def get_constraints(kclause_file, kmax_file=None, compilation_unit=None, constraints_file=None, define=[], undefine=[]):
@@ -64,6 +68,8 @@ def get_constraints(kclause_file, kmax_file=None, compilation_unit=None, constra
   if kmax_file is not None:
     if compilation_unit is not None:
       kmax_constraints = get_kmax_constraints(kmax_file, compilation_unit)
+      if kmax_constraints == None:
+        return None
       for constraint in kmax_constraints:
         constraints.extend(constraint)
     else:
@@ -83,26 +89,9 @@ def get_constraints(kclause_file, kmax_file=None, compilation_unit=None, constra
 
   return constraints
 
-def klocalize(constraints, show_unsat_core):
-  """returns a model from the sat solver"""
-  solver = z3.Solver()
-  solver.set(unsat_core=show_unsat_core)
-
-  if (solver.check(constraints) == z3.unsat):
-    # todo: better reporting to the user
-    sys.stderr.write("ERROR: The compilation unit's constraints are unsatisfiable, so no configuration can be generated.  This could be because (1) the compilation unit is only available in another architecture or (2) the logical formulas are wrong (overconstrained).\n")
-    # todo: need to add assumptions to checker in order to get a core.  try using a separate formula for each configuration option
-    if show_unsat_core:
-      info("The following constraint(s) prevented satisfiability:\n%s" % (str(solver.unsat_core())))
-    else:
-      info("Try running again with --show-unsat-core to see what constraints prevented satisfiability.")
-    return None
-  else:
-    info("The compilation unit's constraints are satisfiable.")
-    return solver.model()
-
-def print_model_as_config(model):
-  info("Printing model in .config format to stdout.")
+def print_model_as_config(model, fp=sys.stdout):
+  info("Printing model as config file to %s." % ("stdout" if fp == sys.stdout else (fp.name)))
+    
   if model is not None:
     # print the model in .config format
     token_pattern = regex.compile("CONFIG_[A-Za-z0-9_]+")
@@ -111,11 +100,11 @@ def print_model_as_config(model):
       matches = token_pattern.match(str_entry)
       if matches:
         if model[entry]:
-          print("%s=y" % (str_entry))
+          fp.write("%s=y\n" % (str_entry))
           # if str_entry not in kclause_constraints.keys():
           #   sys.stderr.write("warning: %s was not defined in the kconfig spec, but may be required for this unit.\n" % (str_entry))
         else:
-          print("# %s is not set" % (str_entry))
+          fp.write("# %s is not set\n" % (str_entry))
       # else:
       #   sys.stderr.write("omitting non-config var %s\n" % (str_entry))
   else:
