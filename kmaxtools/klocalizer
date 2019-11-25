@@ -51,6 +51,58 @@ def get_kmax_constraints(kmax_file, compilation_unit):
     kmax = None
     return kmax_constraints
 
+def klocalize(compilation_unit, constraints, define, undefine, show_unsat_core):
+  solver = z3.Solver()
+  solver.set(unsat_core=show_unsat_core)
+
+  if (solver.check(constraints) == z3.unsat):
+    # todo: better reporting to the user
+    sys.stderr.write("ERROR: The compilation unit's constraints are unsatisfiable, so no configuration can be generated.  This could be because (1) the compilation unit is only available in another architecture or (2) the logical formulas are wrong (overconstrained).\n")
+    # todo: need to add assumptions to checker in order to get a core.  try using a separate formula for each configuration option
+    if show_unsat_core:
+      info("The following constraint(s) prevented satisfiability:\n%s" % (str(solver.unsat_core())))
+    else:
+      info("Try running again with --show-unsat-core to see what constraints prevented satisfiability.")
+    return None
+  else:
+    info("The compilation unit's constraints are satisfiable.")
+    return solver.model()
+
+def optimize_model(optimize, constraints):
+  solver = z3.Solver()
+  solver.set(unsat_core=show_unsat_core)
+  for constraint in constraints:
+    solver.add(constraint)
+
+  # try to match the given .config file as much as possible.
+  # there are two approaches to try: (1) add the .config has
+  # constraints, get the unsat core and try to remove assumptions
+  # until we get something sat, (2) add the .config has soft
+  # assertions.
+
+  assumptions = get_config_file_constraints(optimize)
+
+  # (1) unsat core approach. keep removing assumptions until the formula is satisfiable
+  res = solver.check(assumptions)
+  if res == z3.sat:
+    info("Already satisfiable.  No optimization needed.")
+    return solver.model()
+  else:
+    info("Optimizing via unsat core approach.")
+    info("%d assumptions left to try removing." % (len(assumptions)), ending="\r")
+    while res == z3.unsat:
+      core = solver.unsat_core()
+      # remove all assumptions that in the core.  todo, try randomizing this or removing only some assumptions each iteration.
+      assumptions = [ assumption for assumption in assumptions if assumption not in core ]
+      info(len(assumptions), ending="\r")
+      res = solver.check(assumptions)
+      core = solver.unsat_core()
+      res = solver.check(assumptions)
+    info("\nFound satisfying config.")
+    return solver.model()
+  
+  # (2) soft assertion approach. (todo)
+
 on_pattern = regex.compile("^(CONFIG_[A-Za-z0-9_]+)=[ym]")
 off_pattern = regex.compile("^# (CONFIG_[A-Za-z0-9_]+) is not set")
 def get_config_file_constraints(config_file):
@@ -79,12 +131,12 @@ if __name__ == '__main__':
   argparser = argparse.ArgumentParser()
   argparser.add_argument('--kmax-file',
                          type=str,
-                         default="kmaxspecs/x86/kbuild.kmax",
-                         help="""The file containing the Kbuild constraints as a pickled dictionary from compilation unit or subdirectory to constraints in smtlib2 format.  Defaults to \"kmax\".""")
+                         default="kbuild.kmax",
+                         help="""The file containing the Kbuild constraints as a pickled dictionary from compilation unit or subdirectory to constraints in smtlib2 format.  Defaults to \"kbuild.kmax\".""")
   argparser.add_argument('--kclause-file',
                          type=str,
-                         default="kmaxspecs/x86/kconfig.kclause",
-                         help="""The file containing the Kconfig constraints as a pickled dictionary from configuration option to constraints in smtlib2 format.  Defaults to \"kclause\".""")
+                         default="kconfig.kclause",
+                         help="""The file containing the Kconfig constraints as a pickled dictionary from configuration option to constraints in smtlib2 format.  Defaults to \"kmaxspecs/x86/kconfig.kclause\".""")
   argparser.add_argument('--optimize',
                          type=str,
                          help="""An existing .config file to use to try to match as closely as possible while still containing the desired objective.""")
@@ -106,92 +158,52 @@ if __name__ == '__main__':
   args = argparser.parse_args()
 
   compilation_unit = args.compilation_unit
+  kmax_file = args.kmax_file
+  kclause_file = args.kclause_file
+  define = args.define
+  undefine = args.undefine
+  show_unsat_core = args.show_unsat_core
+  optimize = args.optimize
 
-  if not os.path.isfile(args.kmax_file) or not os.path.isfile(args.kclause_file):
-    if not os.path.isfile(args.kclause_file):
-      error("cannot find kclause file: %s" % (args.kclause_file))
-    if not os.path.isfile(args.kmax_file):
-      error("cannot find kmax file: %s" % (args.kmax_file))
-    info("Download kmaxspecs from https://opentheblackbox.com/kmaxspecs/ or follow the README.md to generate them with kclause and kmax.\n")
+  """returns a model from the sat solver"""
+  if not os.path.isfile(kmax_file) or not os.path.isfile(kclause_file):
+    if not os.path.isfile(kclause_file):
+      error("Cannot find kclause formulas file: %s" % (kclause_file))
+    if not os.path.isfile(kmax_file):
+      error("Cannot find kmax formulas file: %s" % (kmax_file))
+    info("Download formulas from https://opentheblackbox.com/kmaxspecs/ or follow the README.md to generate them with kclause and kmax.\n")
     exit(1)
     
   if not compilation_unit.endswith(".o"):
     compilation_unit = os.path.splitext(compilation_unit)[0] + ".o"
     warning("Forcing file extension to be .o, since lookup is by compilation unit: %s" % (compilation_unit))
 
-  kmax_constraints = get_kmax_constraints(args.kmax_file, compilation_unit)
+  kmax_constraints = get_kmax_constraints(kmax_file, compilation_unit)
 
-  kclause_constraints = get_kclause_constraints(args.kclause_file)
+  kclause_constraints = get_kclause_constraints(kclause_file)
 
-  solver = z3.Solver()
-  solver.set(unsat_core=True)
+  constraints = []
 
   # add kmax constraints
   for constraint in kmax_constraints:
-    solver.add(constraint)
+    constraints.extend(constraint)
 
-  model = None
-  kclause_assumptions = []
+  # add kclause constraints
   for var in kclause_constraints.keys():
     for z3_clause in kclause_constraints[var]:
-      kclause_assumptions.extend(z3_clause)
+      constraints.extend(z3_clause)
 
   # add user-specified constraints
-  user_assumptions = []
-  for define in args.define:
-    user_assumptions.append(z3.Bool(define))
-  for undefine in args.undefine:
-    user_assumptions.append(z3.Not(z3.Bool(undefine)))
+  for define in define:
+    constraints.append(z3.Bool(define))
+  for undefine in undefine:
+    constraints.append(z3.Not(z3.Bool(undefine)))
 
-  if (solver.check(kclause_assumptions + user_assumptions) == z3.unsat):
-    # todo: better reporting to the user
-    sys.stderr.write("ERROR: The compilation unit's constraints are unsatisfiable, so no configuration can be generated.  This could be because (1) the compilation unit is only available in another architecture or (2) the logical formulas are wrong (overconstrained).\n")
-    # todo: need to add assumptions to checker in order to get a core.  try using a separate formula for each configuration option
-    if args.show_unsat_core:
-      info("The following constraint(s) prevented satisfiability:\n%s" % (str(solver.unsat_core())))
-    else:
-      info("Try running again with --show-unsat-core to see what constraints prevented satisfiability.")
-    exit(1)
+  model = klocalize(compilation_unit, constraints, define, undefine, show_unsat_core)
+
+  if model is not None and optimize:
+    model = optimize_model(optimize, constraints)
   
-  info("The compilation unit's constraints are satisfiable.")
-  if not args.optimize:
-    model = solver.model()
-  else:
-    # add kclause constraints to solver (they were used as assumptions before)
-    for var in kclause_constraints.keys():
-      for z3_clause in kclause_constraints[var]:
-        solver.add(z3_clause)
-        
-    # add user assumptions to solver
-    for user_assumption in user_assumptions:
-      solver.add(user_assumption)
-
-    # try to match the given .config file as much as possible.
-    # there are two approaches to try: (1) add the .config has
-    # constraints, get the unsat core and try to remove assumptions
-    # until we get something sat, (2) add the .config has soft
-    # assertions.
-
-    assumptions = get_config_file_constraints(args.optimize)
-    # (1) unsat core approach. keep removing assumptions until the formula is satisfiable
-    res = solver.check(assumptions)
-    if res == z3.sat:
-      info("Already satisfiable.  No optimization needed.")
-    else:
-      info("Optimizing via unsat core approach.")
-      info("%d assumptions left to try removing." % (len(assumptions)), ending="\r")
-      while res == z3.unsat:
-        core = solver.unsat_core()
-        # remove all assumptions that in the core.  todo, try randomizing this or removing only some assumptions each iteration.
-        assumptions = [ assumption for assumption in assumptions if assumption not in core ]
-        info(len(assumptions), ending="\r")
-        res = solver.check(assumptions)
-        core = solver.unsat_core()
-        res = solver.check(assumptions)
-      info("\nFound satisfying config.")
-    # (2) soft assertion approach. (todo)
-  # end if not args.optimize else
-  model = solver.model()
   # print the model in .config format
   token_pattern = regex.compile("CONFIG_[A-Za-z0-9_]+")
   for entry in model:
