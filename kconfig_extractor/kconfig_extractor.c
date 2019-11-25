@@ -174,7 +174,7 @@ bool find_dep(struct expr *e, char *name)
 
   default:
     fprintf(stderr, "error: invalid expression type\n");
-    exit(1);
+    /* exit(1); */
 	}
 }
 
@@ -933,7 +933,7 @@ void print_deps_expr(struct expr *e)
 
   default:
     fprintf(stderr, "error: invalid expression type\n");
-    exit(1);
+    /* exit(1); */
 	}
 }
 
@@ -994,7 +994,7 @@ bool defdeps_expr(struct expr *e)
 
   default:
     fprintf(stderr, "error: invalid expression type\n");
-    exit(1);
+    /* exit(1); */
 	}
 }
 
@@ -1060,7 +1060,7 @@ bool depsym_expr(struct expr *e)
 
   default:
     fprintf(stderr, "error: invalid expression type\n");
-    exit(1);
+    /* exit(1); */
 	}
 }
 
@@ -1125,7 +1125,7 @@ bool idepsym_expr(struct expr *e)
 
   default:
     fprintf(stderr, "error: invalid expression type\n");
-    exit(1);
+    /* exit(1); */
 	}
 }
 
