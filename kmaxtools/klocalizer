@@ -26,32 +26,66 @@ def get_kclause_constraints(kclause_file):
     return kclause_constraints
 
 def get_kmax_constraints(kmax_file, compilation_unit):
+  if not compilation_unit.endswith(".o"):
+    compilation_unit = os.path.splitext(compilation_unit)[0] + ".o"
+    warning("Forcing file extension to be .o, since lookup is by compilation unit: %s" % (compilation_unit))
+
   with open(kmax_file, 'r') as fp:
     kmax = pickle.load(fp)
     # todo: support multiple compilation units
 
-    if not compilation_unit:
-      info("No compilation unit given.  Generating .config according to kconfig specs only.")
-    elif compilation_unit not in kmax.keys():
-      raise Exception("%s not found in %s.  Please check that the compilation unit is in the kmax file." % (compilation_unit, kmax_file))
+    if compilation_unit not in kmax.keys():
+      error("%s not found in %s.  Please check that the compilation unit is in the kmax file." % (compilation_unit, kmax_file))
+      return []
+    else:
+      kmax_constraints = []
+      if compilation_unit in kmax.keys():
+        # add the condition for the compilation unit and each of its parent directories
+        kmax_constraints.append(z3.parse_smt2_string(kmax[compilation_unit]))
+        subpath, basename = compilation_unit.rsplit('/', 1)
+        elems = subpath.rsplit('/')
+        for i in reversed(range(0, len(elems))):
+          subarray = elems[0:(len(elems) - i)]
+          subsubpath = '/'.join(subarray) + "/"
+          if subsubpath in kmax.keys():
+            kmax_constraints.append(z3.parse_smt2_string(kmax[subsubpath]))
+          else:
+            info("%s not found in %s, assuming it is always included." % (subsubpath, kmax_file))
+      kmax = None
+      return kmax_constraints
 
-    kmax_constraints = []
-    if compilation_unit in kmax.keys():
-      # add the condition for the compilation unit and each of its parent directories
-      kmax_constraints.append(z3.parse_smt2_string(kmax[compilation_unit]))
-      subpath, basename = compilation_unit.rsplit('/', 1)
-      elems = subpath.rsplit('/')
-      for i in reversed(range(0, len(elems))):
-        subarray = elems[0:(len(elems) - i)]
-        subsubpath = '/'.join(subarray) + "/"
-        if subsubpath in kmax.keys():
-          kmax_constraints.append(z3.parse_smt2_string(kmax[subsubpath]))
-        else:
-          info("%s not found in %s, assuming it is always included." % (subsubpath, kmax_file))
-    kmax = None
-    return kmax_constraints
+def get_constraints(kclause_file, kmax_file=None, compilation_unit=None, constraints_file=None, define=[], undefine=[]):
+  constraints = []
 
-def klocalize(compilation_unit, constraints, define, undefine, show_unsat_core):
+  if constraints_file:
+    ad_hoc_constraints = get_ad_hoc_constraints(constraints_file)
+    constraints.extend(ad_hoc_constraints)
+
+  # add kmax constraints
+  if kmax_file is not None:
+    if compilation_unit is not None:
+      kmax_constraints = get_kmax_constraints(kmax_file, compilation_unit)
+      for constraint in kmax_constraints:
+        constraints.extend(constraint)
+    else:
+      info("No compilation unit given.  Not using kmax constraints.")
+
+  # add kclause constraints
+  kclause_constraints = get_kclause_constraints(kclause_file)
+  for var in kclause_constraints.keys():
+    for z3_clause in kclause_constraints[var]:
+      constraints.extend(z3_clause)
+
+  # add user-specified constraints
+  for define in define:
+    constraints.append(z3.Bool(define))
+  for undefine in undefine:
+    constraints.append(z3.Not(z3.Bool(undefine)))
+
+  return constraints
+
+def klocalize(constraints, show_unsat_core):
+  """returns a model from the sat solver"""
   solver = z3.Solver()
   solver.set(unsat_core=show_unsat_core)
 
@@ -67,6 +101,26 @@ def klocalize(compilation_unit, constraints, define, undefine, show_unsat_core):
   else:
     info("The compilation unit's constraints are satisfiable.")
     return solver.model()
+
+def print_model_as_config(model):
+  info("Printing model in .config format to stdout.")
+  if model is not None:
+    # print the model in .config format
+    token_pattern = regex.compile("CONFIG_[A-Za-z0-9_]+")
+    for entry in model:
+      str_entry = str(entry)
+      matches = token_pattern.match(str_entry)
+      if matches:
+        if model[entry]:
+          print("%s=y" % (str_entry))
+          # if str_entry not in kclause_constraints.keys():
+          #   sys.stderr.write("warning: %s was not defined in the kconfig spec, but may be required for this unit.\n" % (str_entry))
+        else:
+          print("# %s is not set" % (str_entry))
+      # else:
+      #   sys.stderr.write("omitting non-config var %s\n" % (str_entry))
+  else:
+    warning("model is None.  Not printing.")
 
 def optimize_model(optimize, constraints):
   solver = z3.Solver()
@@ -126,8 +180,27 @@ def get_config_file_constraints(config_file):
 
     return constraints
   
-if __name__ == '__main__':    
+ad_hoc_on_pattern = regex.compile("^(CONFIG_[A-Za-z0-9_]+)$")
+ad_hoc_off_pattern = regex.compile("^!(CONFIG_[A-Za-z0-9_]+)$")
+def get_ad_hoc_constraints(config_file):
+  constraints = []
+  with open(config_file, 'r') as fp:
+    lines = fp.readlines()
+    for line in lines:
+      line = line.strip()
+      off = ad_hoc_off_pattern.match(line)
+      if off:
+        constraint = z3.Not(z3.Bool(off.group(1)))
+        constraints.append(constraint)
+      else:
+        on = ad_hoc_on_pattern.match(line)
+        if on:
+          constraint = z3.Bool(on.group(1))
+          constraints.append(constraint)
 
+    return constraints
+  
+if __name__ == '__main__':    
   argparser = argparse.ArgumentParser()
   argparser.add_argument('--kmax-file',
                          type=str,
@@ -136,7 +209,10 @@ if __name__ == '__main__':
   argparser.add_argument('--kclause-file',
                          type=str,
                          default="kconfig.kclause",
-                         help="""The file containing the Kconfig constraints as a pickled dictionary from configuration option to constraints in smtlib2 format.  Defaults to \"kmaxspecs/x86/kconfig.kclause\".""")
+                         help="""The file containing the Kconfig constraints as a pickled dictionary from configuration option to constraints in smtlib2 format.  Defaults to \"kconfig.kclause\".""")
+  argparser.add_argument('--constraints-file',
+                         type=str,
+                         help="""A text file containing ad-hoc constraints.  One configuration option name per line.  Prefix with ! to force it off; no prefix means force on.""")
   argparser.add_argument('--optimize',
                          type=str,
                          help="""An existing .config file to use to try to match as closely as possible while still containing the desired objective.""")
@@ -160,12 +236,12 @@ if __name__ == '__main__':
   compilation_unit = args.compilation_unit
   kmax_file = args.kmax_file
   kclause_file = args.kclause_file
+  constraints_file = args.constraints_file
   define = args.define
   undefine = args.undefine
   show_unsat_core = args.show_unsat_core
   optimize = args.optimize
 
-  """returns a model from the sat solver"""
   if not os.path.isfile(kmax_file) or not os.path.isfile(kclause_file):
     if not os.path.isfile(kclause_file):
       error("Cannot find kclause formulas file: %s" % (kclause_file))
@@ -173,48 +249,12 @@ if __name__ == '__main__':
       error("Cannot find kmax formulas file: %s" % (kmax_file))
     info("Download formulas from https://opentheblackbox.com/kmaxspecs/ or follow the README.md to generate them with kclause and kmax.\n")
     exit(1)
-    
-  if not compilation_unit.endswith(".o"):
-    compilation_unit = os.path.splitext(compilation_unit)[0] + ".o"
-    warning("Forcing file extension to be .o, since lookup is by compilation unit: %s" % (compilation_unit))
 
-  kmax_constraints = get_kmax_constraints(kmax_file, compilation_unit)
-
-  kclause_constraints = get_kclause_constraints(kclause_file)
-
-  constraints = []
-
-  # add kmax constraints
-  for constraint in kmax_constraints:
-    constraints.extend(constraint)
-
-  # add kclause constraints
-  for var in kclause_constraints.keys():
-    for z3_clause in kclause_constraints[var]:
-      constraints.extend(z3_clause)
-
-  # add user-specified constraints
-  for define in define:
-    constraints.append(z3.Bool(define))
-  for undefine in undefine:
-    constraints.append(z3.Not(z3.Bool(undefine)))
-
-  model = klocalize(compilation_unit, constraints, define, undefine, show_unsat_core)
+  constraints = get_constraints(kclause_file, kmax_file, compilation_unit, constraints_file, define, undefine)
+  
+  model = klocalize(constraints, show_unsat_core)
 
   if model is not None and optimize:
     model = optimize_model(optimize, constraints)
-  
-  # print the model in .config format
-  token_pattern = regex.compile("CONFIG_[A-Za-z0-9_]+")
-  for entry in model:
-    str_entry = str(entry)
-    matches = token_pattern.match(str_entry)
-    if matches:
-      if model[entry]:
-        print("%s=y" % (str_entry))
-        # if str_entry not in kclause_constraints.keys():
-        #   sys.stderr.write("warning: %s was not defined in the kconfig spec, but may be required for this unit.\n" % (str_entry))
-      else:
-        print("# %s is not set" % (str_entry))
-    # else:
-    #   sys.stderr.write("omitting non-config var %s\n" % (str_entry))
+
+  print_model_as_config(model)
