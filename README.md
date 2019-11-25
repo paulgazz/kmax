@@ -4,11 +4,18 @@
 
 - [The Kmax Tool Suite](#the-kmax-tool-suite)
   - [Setup](#setup)
-  - [Simple example](#simple-example)
-  - [Example run on Linux](#example-run-on-linux)
+  - [Quick Start](#quick-start)
+    - [For one architecture](#for-one-architecture)
+  - [Gotchas](#gotchas)
+  - [Advanced Use Cases](#advanced-use-cases)
+    - [](#)
+  - [Kmax](#kmax)
+    - [Simple example](#simple-example)
+    - [Example run on Linux](#example-run-on-linux)
   - [Kclause](#kclause)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 
 # The Kmax Tool Suite
 
@@ -81,6 +88,31 @@ file for, run `klocalizer` like this to create the configuration:
 The compilation unit (should) now be included when compiling the kernel:
 
     make drivers/usb/storage/alauda.o
+
+## Gotchas
+
+need to have logical formulas downloaded first
+
+use the CONFIG_ prefix on variables when defining them
+
+use .o ending (though it will change it automatically)
+
+constraints may be imperfect
+
+
+## Advanced Use Cases
+
+search in some subset of architectures
+
+optimize after finding it
+
+  klocalizer with specific file
+
+view kbuild constraints for the compilation unit and each subdirectory
+
+
+
+
 
 ###
 
