@@ -68,14 +68,13 @@ not work.  It may be necessary to install these manually via `pip`, e.g.,
 
 The fastest way to get started is to use formulas already extracted for your version of Linux.
 
-
     cd /path/to/linux/
-    wget https://opentheblackbox.com/kmaxtools/kmaxtools_formulas_linux_5_3_11.tar.bz2
-    tar -xvf kmaxtools_formulas_linux_5_3_11.tar.bz2
+    wget https://opentheblackbox.com/kmax/kmax_formulas_linux_next-20191121.tar.bz2
+    tar -xvf kmax_formulas_linux_next-20191121.tar.bz2
 
-This contains a `.kmaxtools` directory containing the Kconfig and
+This contains a `.kmax` directory containing the Kconfig and
 Kbuild formulas for each architecture.  If a version is not available
-[here](https://opentheblackbox.com/kmaxtools), see below for
+[here](https://opentheblackbox.com/kmax), see below for
 directions on generating these formulas.
 
 Assuming you are compiling for x86, the following will generate a
@@ -167,7 +166,7 @@ Override the default formulas with the following:
 ## Troubleshooting
 
 - `klocalizer` requires the formulas from `kmax` and
-  `kclause`. [Download](https://opentheblackbox.com/kmaxtools) these
+  `kclause`. [Download](https://opentheblackbox.com/kmax) these
   first or generate them (see below).
 
 - Use the CONFIG_ prefix on variables when referring to them in user constraints.

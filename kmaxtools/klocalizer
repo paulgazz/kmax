@@ -173,6 +173,9 @@ architecture_configs = {"ALPHA", "ARC", "ARM", "ARM64", "C6X", "CSKY", "H8300", 
 
 config_broken = z3.Not(z3.Bool("CONFIG_BROKEN"))
 
+def get_arch_kclause_file(formulas, arch):
+  return os.path.join(os.path.join(os.path.join(formulas, "kclause"), arch), "kclause")
+
 def get_arch_specific_constraints(arch, architecture_configs):
   free_vars = []
   if arch == "x86":
@@ -221,8 +224,8 @@ if __name__ == '__main__':
   argparser = argparse.ArgumentParser()
   argparser.add_argument('--formulas',
                          type=str,
-                         default=".kmaxtools/",
-                         help="""Path to the formulas which contain one kmax file for all compilation units and one directory for each architecture containing kclause files.  Defaults to \".kmaxtools/\"""")
+                         default=".kmax/",
+                         help="""Path to the formulas which contain one kmax file for all compilation units and one directory for each architecture containing kclause files.  Defaults to \".kmax/\"""")
   argparser.add_argument('--kmax-formulas',
                          type=str,
                          default=None,
@@ -328,7 +331,7 @@ if __name__ == '__main__':
       archs = archs + [ arch for arch in architectures if arch not in archs ]
     info("Trying the following architectures: %s" % (" ".join(archs)))
     for arch in archs:
-      arch_kclause = os.path.join(os.path.join(formulas, arch), "kclause")
+      arch_kclause = get_arch_kclause_file(formulas, arch)
       if not os.path.isfile(arch_kclause):
         info("Skipping %s, because no kclause found at %s." % (arch, arch_kclause))
       else:
@@ -400,7 +403,7 @@ if __name__ == '__main__':
         solver.set(unsat_core=True)
 
         if (solver.check(constraints) == z3.unsat):
-          info("The constraints are unsatisfiable.  This either means no configuration is possible or kmaxtools formulas are overconstrained.")
+          info("The constraints are unsatisfiable.  This either means no configuration is possible or kmax formulas are overconstrained.")
           if not ignore_config_broken and config_broken in solver.unsat_core():
             error("This compilation unit seems to depend on CONFIG_BROKEN, so it may not be buildable.  Stopping the search.  Run again with --ignore-config-broken to search anyway.")
             exit(1)
