@@ -48,18 +48,20 @@ def get_kmax_constraints(kmax_file, compilation_unit, view=False):
       kmax_constraints = []
       if compilation_unit in kmax.keys():
         # add the condition for the compilation unit and each of its parent directories
-        kmax_constraints.extend(z3.parse_smt2_string(kmax[compilation_unit]))
+        comp_unit_constraint = z3.parse_smt2_string(kmax[compilation_unit])
+        kmax_constraints.extend(comp_unit_constraint)
         if view:
-          print("%s\n%s\n" % (compilation_unit, kmax_constraints[-1]))
+          print("%s\n%s\n" % (compilation_unit, comp_unit_constraint))
         subpath, basename = compilation_unit.rsplit('/', 1)
         elems = subpath.rsplit('/')
         for i in range(0, len(elems)):
           subarray = elems[0:(len(elems) - i)]
           subsubpath = '/'.join(subarray) + "/"
           if subsubpath in kmax.keys():
-            kmax_constraints.extend(z3.parse_smt2_string(kmax[subsubpath]))
+            subsubpath_constraint = z3.parse_smt2_string(kmax[subsubpath])
+            kmax_constraints.extend(subsubpath_constraint)
             if view:
-              print("%s\n%s\n" % (subsubpath, kmax_constraints[-1]))
+              print("%s\n%s\n" % (subsubpath, subsubpath_constraint))
           else:
             info("%s not found in %s, assuming it is always included." % (subsubpath, kmax_file))
       return kmax_constraints
