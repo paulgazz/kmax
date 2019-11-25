@@ -1,0 +1,109 @@
+#!/bin/python
+
+from kmaxtools.localize import *
+
+architectures = [
+  "alpha",
+  "arc",
+  "arm",
+  "arm64",
+  "c6x",
+  "csky",
+  "h8300",
+  "hexagon",
+  "ia64",
+  "m68k",
+  "microblaze",
+  "mips",
+  "nds32",
+  "nios2",
+  "openrisc",
+  "parisc",
+  "powerpc",
+  "riscv",
+  "s390",
+  "sh",
+  "sparc",
+  "um",
+  "unicore32",
+  "x86",
+  "xtensa",
+]
+
+
+architecture_configs = [
+  "ALPHA",
+  "ARC",
+  "ARM",
+  "ARM64",
+  "C6X",
+  "CSKY",
+  "H8300",
+  "HEXAGON",
+  "IA64",
+  "M68K",
+  "MICROBLAZE",
+  "MIPS",
+  "NDS32",
+  "NIOS2",
+  "OPENRISC",
+  "PARISC",
+  "PPC64",
+  "PPC32",
+  "PPC",
+  "RISCV",
+  "S390",
+  "SUPERH64",
+  "SUPERH32",
+  "SUPERH",
+  "SPARC64",
+  "SPARC32",
+  "SPARC",
+  "UML",
+  "UNICORE32",
+  "X86_64",
+  "X86_32",
+  "X86",
+  "XTENSA"
+]
+
+def get_arch_files(kmaxspecs, arch):
+  return (os.path.join(os.path.join(kmaxspecs, arch), "kconfig.kclause"),
+          os.path.join(os.path.join(kmaxspecs, arch), "kbuild.kmax"))
+}
+
+
+if __name__ == '__main__':    
+  argparser = argparse.ArgumentParser()
+  argparser.add_argument('--kmaxspecs',
+                         type=str,
+                         default="kmaxspecs/",
+                         help="""Path to the Linux kmaxspecs/ folder, which contains kmax/kclause formulas for each architecture.""")
+  argparser.add_argument('-a',
+                         '--arch',
+                         default="x86",
+                         action="store_true",
+                         help="""Specify each architecture to try.  These archs will be tried first in order if --all is also given.""")
+  argparser.add_argument('--all',
+                         action="store_true",
+                         help="""Check all architectures for a satisfying configuration.  This tries each architecture's formulas given in the --kmaxspecs folder.""")
+  argparser.add_argument("compilation_unit", nargs='1', help="The path of the compilation unit (.o file) to generate a .config for, relative to the top of the source tree.")
+  args = argparser.parse_args()
+
+  archs = args.archs
+  all = args.all_archs
+  kmaxspecs = args.kmaxspecs
+
+  if not os.path.isdir(kmaxspecs):
+    error("Cannot find kmaxspecs directory: %s" % (kmaxspecs))
+    info("Download formulas from https://opentheblackbox.com/kmaxspecs/ or follow the README.md to generate them with kclause and kmax.\n")
+    exit(1)
+    
+  constraints = get_constraints(kmax_file, compilation_unit, kclause_file, constraints_file)
+  
+  model = klocalize(constraints, show_unsat_core)
+
+  # if model is not None and optimize:
+  #   model = optimize_model(optimize, constraints)
+
+  # print_model_as_config(model)
