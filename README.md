@@ -1,6 +1,6 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
 
 - [The Kmax Tool Suite](#the-kmax-tool-suite)
   - [Setup](#setup)
@@ -70,107 +70,112 @@ The fastest way to get started is to use formulas already extracted for your ver
 
 
     cd /path/to/linux/
-    wget https://opentheblackbox.com/kmaxspecs/kmaxspecs_linux_5_3_11.tar.bz2
-    tar -xvf kmaxspecs_linux_5_3_11.tar.bz2
+    wget https://opentheblackbox.com/kmaxtools/kmaxtools_formulas_linux_5_3_11.tar.bz2
+    tar -xvf kmaxtools_formulas_linux_5_3_11.tar.bz2
+
+This contains a `.kmaxtools` directory containing the Kconfig and
+Kbuild formulas for each architecture.  If a version is not available
+[here](https://opentheblackbox.com/kmaxtools), see below for
+directions on generating these formulas.
+
+Assuming you are compiling for x86, the following will generate a
+configuration that includes the `drivers/usb/storage/alauda.o` compilation unit.
+
+    klocalizer drivers/usb/storage/alauda.o
     
-This will create a `kmaxspecs` directory for use with `klocalizer` and
-will obviate the need to run `kclause` and `kmax`.  (See below for
-directions on running these for a new version of Linux.)
+The configuration is not complete, since it only accounts for Boolean/tristate configuration options.  Complete it with `olddefconfig`:
 
-### For one architecture
-
-If you already know the architecture you'd like to build `.config`
-file for, run `klocalizer` like this to create the configuration:
-
-    klocalizer drivers/usb/storage/alauda.o > .config
     make olddefconfig
-    
-The compilation unit (should) now be included when compiling the kernel:
+
+The compilation unit should now be buildable.
 
     make drivers/usb/storage/alauda.o
 
-## Gotchas
+If you cannot get a configuration or it is still not buildable, see the Troubleshooting section.
 
-need to have logical formulas downloaded first
+## Use Cases
 
-use the CONFIG_ prefix on variables when defining them
+By default, `klocalizer` checks each architecture's Kconfig
+constraints against the Kbuild constraints for the given compilation
+unit.  The following are examples of how to customize this process.
 
-use .o ending (though it will change it automatically)
+### Controlling the Search of Architectures
 
-constraints may be imperfect
+Use `-a` to only search a specific architecture.
 
+    klocalizer -a x86 drivers/usb/storage/alauda.o
 
-## Advanced Use Cases
+Specify multiple `-a` arguments to search the given architectures in given order.
 
-search in some subset of architectures
+    klocalizer -a x86 -a sparc drivers/watchdog/cpwd.o
 
-optimize after finding it
+Specify `-a` and `-all` to search all architectures, trying the ones given in `-a` first.
+
+    klocalizer -a x86 -a arm --all drivers/watchdog/cpwd.o
+
+### Generating an Arbitrary Configuration for an Architecture
+
+Pass a single architecture name without the compilation unit to
+generate an arbitrary configuration for that architecture.  Passing
+multiple architectures is not supported.
+
+    klocalizer -a x86
+
+### Setting Additional Configuration Options
+
+Multiple `--define` and `--undefine` arguments can be used to force
+configurations on or off when searching for constraints.
+
+    klocalizer --define CONFIG_USB --define CONFIG_FS --undefine CONFIG_SOUND drivers/usb/storage/alauda.o
+
+Note that this can prevent finding a valid configuration.
+ 
+    klocalizer -a x86 --undefine CONFIG_USB drivers/usb/storage/alauda.o  # no configuration possible because alauda depends on USB
+
+### Investigating Unsatisfied Constraints
+
+Use `--show-unsat-core` to see what constraints are causing the issue:
+
+    klocalizer --show-unsat-core -a x86 --undefine CONFIG_USB drivers/usb/storage/alauda.o  # no configuration possible because alauda depends on USB
+
+### Optimizing the Resulting Configuration (Experimental)
+
+Klocalizer will attempt to match a given configuration, while still
+maintaing the configuration options necessary to build the given
+compilation unit.  This works by passing it an existing configuration,
+e.g., `allnoconfig`, with the `--optimize` flag.
+
+    make allnoconfig
+    mv .config allnoconfig
+    klocalizer --optimize allnoconfig drivers/usb/storage/alauda.o
 
   klocalizer with specific file
 
-view kbuild constraints for the compilation unit and each subdirectory
+### View the Kbuild Constraints
 
+View the Kbuild constraints for a compilation unit and each of
+its subdirectories with
 
+    klocalizer --view-kbuild drivers/usb/storage/alauda.o
 
+### Using New Formulas
 
+Override the default formulas with the following:
 
-###
-
-Some files 
-
-## Kmax
-
-(This guide on Kmax is out-of-date.)
-
-### Simple example
-
-This will run Kmax on the example from the
-[paper](https://paulgazzillo.com/papers/esecfse17.pdf) on Kmax.
-
-    kbuildplus.py tests/paper_example
-
-This will output the list of configuration conditions for each compilation unit file in the example Kbuild file.  By default, Kmax to treat configuration options as Boolean options (as opposed to Kconfig tristate options).  Pass `-T` for experimental support for tristate.
-
-    unit_pc tests/kbuild/fork.o 1
-    unit_pc tests/kbuild/probe_32.o (CONFIG_A && CONFIG_B)
-    unit_pc tests/kbuild/probe_64.o ((! CONFIG_A) && CONFIG_B)
-
-The `unit_pc` lines have the [format](docs/unit_pc.md) of compilation unit name followed by the Boolean expression, in C-style syntax.  The Boolean expression describes the constraints that must be satisfied for the compilation unit to be included.
-
-### Example run on Linux
-
-There is a script that will run Kmax on all Kbuild Makefiles from a project, e.g., the Linux kernel source code.
-
-First get the Linux source and prepare its build system.
-
-    wget https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.3.11.tar.xz
-    tar -xvf linux-5.3.11.tar.xz
-    cd linux-5.3.11
-    make defconfig # any config will work here.  it's just to setup the build system.
-
-To try Kmax on a particular Kbuild Makefile, use the `kbuildplus.py` tool:
-
-    kbuildplus.py ipc/
+    klocalizer --kmax-formula kbuild.kmax --kclause-formula kconfig.kclause drivers/watchdog/cpwd.o
     
-This will run Kmax on a single Kbuild Makefile, and show the symbolic configurations for each compilation unit and subdirectory.  Kmax can also recursively analyze Kbuild Makefiles by following subdirectories, use the `kmaxdriver.py` which uses `kbuildplus.py` to process each Kbuild Makefile and recursively process those in subdirectories.  `-g` means collect the symbolic constraints.
+## Troubleshooting
 
-    kmaxdriver.py -g net/
-    
-Kmax includes a Makefile hack to get all the top-level Linux directories.  Combined with `kmaxdriver.py` this command will collect the symbolic constraints for the whole (x86) source, saving them into `unit_pc`.  Be sure to change `/path/to/kmax` to your kmax installation to get the Makefile shunt.
+- `klocalizer` requires the formulas from `kmax` and
+  `kclause`. [Download](https://opentheblackbox.com/kmaxtools) these
+  first or generate them (see below).
 
-    kmaxdriver.py -g $(make CC=cc ARCH=x86 -f /path/to/kmax/scripts/makefile_override alldirs) | tee unit.kmax
+- Use the CONFIG_ prefix on variables when referring to them in user constraints.
 
-The symbolic constraints for each compilation unit, including the conjunction of all of its parent directories, can be computed with this command:
+- Use the `.o` ending for compilation units (though `klocalizer` will change it automatically.)
 
-    cat unix.kmax | kmaxdriver.py --aggregate > kmax
-    
-These commands together:
+- The extracted formulas may not be exact.  No resulting configuration is a sign that the formulas are overconstrained.  A resulting configuration that does not include the desired compilation unit mean the formulas may be underconstrained.
 
-    kmaxdriver.py -g $(make CC=cc ARCH=x86 -f /path/to/kmax/scripts/makefile_override alldirs) | tee unit.kmax | kmaxdriver.py --aggregate > kmax
+## Generating Formulas
 
-This is the [format](docs/unit_pc.md) for `unit.kmax` and `kmax`.
-
-## Kclause
-
-    /path/to/kmax/kconfig_extractor/kconfig_extractor --extract -e ARCH=x86_64 -e SRCARCH=x86 -e KERNELVERSION=kcu -e srctree=./ -e CC=cc Kconfig > kconfig.kclause
-    kclause --remove-orphaned-nonvisible < kconfig.extract > kconfig.kclause
+(TBD)

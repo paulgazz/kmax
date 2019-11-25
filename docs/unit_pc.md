@@ -1,3 +1,12 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+
+- [Constraints for compilation units in the `full_pc` format](#constraints-for-compilation-units-in-the-full_pc-format)
+- [Constraints for compilation units in the `unit_pc` format](#constraints-for-compilation-units-in-the-unit_pc-format)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## Constraints for compilation units in the `full_pc` format
 
 The `full_pc` line has the following format:
