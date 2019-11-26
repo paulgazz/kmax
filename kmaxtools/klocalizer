@@ -72,10 +72,6 @@ def get_kmax_constraints(kmax_file, compilation_unit, view=False):
             info("%s not found in %s, assuming it is always included." % (subsubpath, kmax_file))
       return kmax_constraints
 
-def get_constraints(kclause_file, kmax_file=None, compilation_unit=None, constraints_file=None, define=[], undefine=[]):
-
-  return constraints
-
 def print_model_as_config(model, fp=sys.stdout):
   info("Printing model as config file to %s." % ("stdout" if fp == sys.stdout else (fp.name)))
     
@@ -345,7 +341,6 @@ if __name__ == '__main__':
       else:
         kclause_to_try[arch] = arch_kclause
 
-  print(len(kclause_to_try.keys()))
   if len(kclause_to_try.keys()) == 0:
     error("No kclause files found.  Please check --formulas directory or use --kclause-formula explicitly.")
     exit(1)
@@ -374,7 +369,10 @@ if __name__ == '__main__':
     os.rename(output_file, backup_file)
   info("Using output file \"%s\"." % (output_file))
 
-  for arch in [ arch for arch in archs if arch in kclause_to_try.keys() ]:
+  archlist = [ arch for arch in archs if arch in kclause_to_try.keys() ]
+  if None in kclause_to_try.keys():
+    archlist = [None] + archlist
+  for arch in archlist:
     kclause_file = kclause_to_try[arch]
     if arch == None:
       info("Trying user-specific kclause file: %s" % (kclause_file))
@@ -390,43 +388,44 @@ if __name__ == '__main__':
         warning("%s not found in %s.  Please check that the compilation unit is in the kmax file." % (compilation_unit, kmax_file))
       else:
         constraints.extend(kmax_constraints)
-        if constraints_file:
-          constraints.extend(get_ad_hoc_constraints(constraints_file))
+        
+    if constraints_file:
+      constraints.extend(get_ad_hoc_constraints(constraints_file))
 
-        # add kclause constraints
-        constraints.extend(get_kclause_constraints(kclause_file))
+    # add kclause constraints
+    constraints.extend(get_kclause_constraints(kclause_file))
 
-        # add user-specified constraints
-        for define in define:
-          constraints.append(z3.Bool(define))
-        for undefine in undefine:
-          constraints.append(z3.Not(z3.Bool(undefine)))
+    # add user-specified constraints
+    for define in define:
+      constraints.append(z3.Bool(define))
+    for undefine in undefine:
+      constraints.append(z3.Not(z3.Bool(undefine)))
 
+    if arch is not None:
+      constraints.extend(get_arch_specific_constraints(arch, architecture_configs))
+
+    if not ignore_config_broken: constraints.append(config_broken)
+
+    solver = z3.Solver()
+    solver.set(unsat_core=True)
+
+    if (solver.check(constraints) == z3.unsat):
+      info("The constraints are unsatisfiable.  This either means no configuration is possible or kmax formulas are overconstrained.")
+      if not ignore_config_broken and config_broken in solver.unsat_core():
+        error("This compilation unit seems to depend on CONFIG_BROKEN, so it may not be buildable.  Stopping the search.  Run again with --ignore-config-broken to search anyway.")
+        exit(1)
+      if show_unsat_core:
+        info("The following constraint(s) prevented satisfiability:\n%s" % (str(solver.unsat_core())))
+      else:
+        info("Run with --show-unsat-core to see what constraints prevented satisfiability.")
+    else:
+      info("The constraints are satisfiable.")
+      model = solver.model()
+      if optimize:
+        model = optimize_model(optimize, constraints)
+      if model is not None:
+        info("Writing the configuration to %s" % (output_file))
         if arch is not None:
-          constraints.extend(get_arch_specific_constraints(arch, architecture_configs))
-
-        if not ignore_config_broken: constraints.append(config_broken)
-
-        solver = z3.Solver()
-        solver.set(unsat_core=True)
-
-        if (solver.check(constraints) == z3.unsat):
-          info("The constraints are unsatisfiable.  This either means no configuration is possible or kmax formulas are overconstrained.")
-          if not ignore_config_broken and config_broken in solver.unsat_core():
-            error("This compilation unit seems to depend on CONFIG_BROKEN, so it may not be buildable.  Stopping the search.  Run again with --ignore-config-broken to search anyway.")
-            exit(1)
-          if show_unsat_core:
-            info("The following constraint(s) prevented satisfiability:\n%s" % (str(solver.unsat_core())))
-          else:
-            info("Run with --show-unsat-core to see what constraints prevented satisfiability.")
-        else:
-          info("The constraints are satisfiable.")
-          model = solver.model()
-          if optimize:
-            model = optimize_model(optimize, constraints)
-          if model is not None:
-            info("Writing the configuration to %s" % (output_file))
-            if arch is not None:
-              info("Generated configuration for %s" % (arch))
-            print_model_as_config(model, open(output_file, 'w'))
-            exit(0)
+          info("Generated configuration for %s" % (arch))
+        print_model_as_config(model, open(output_file, 'w'))
+        exit(0)
