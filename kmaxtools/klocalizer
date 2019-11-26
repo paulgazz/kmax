@@ -171,7 +171,9 @@ def get_ad_hoc_constraints(config_file):
 
     return constraints
 
-architectures = ["alpha", "arc", "arm", "arm64", "c6x", "csky", "h8300", "hexagon", "ia64", "m68k", "microblaze", "mips", "nds32", "nios2", "openrisc", "parisc", "powerpc", "powerpc32", "powerpc64", "riscv", "s390", "sh", "sh32", "sh64", "sparc", "sparc32", "sparc64", "um", "unicore32", "x86", "i386", "x86_64", "xtensa"]
+architectures = ["alpha", "arc", "arm", "arm64", "c6x", "csky", "h8300", "hexagon", "ia64", "m68k", "microblaze", "mips", "nds32", "nios2", "openrisc", "parisc", "powerpc", "riscv", "s390", "sh", "sparc", "um", "unicore32", "x86", "xtensa"]
+
+# "powerpc32", "powerpc64", "sparc32", "sparc64", "sh32", "sh64", "i386", "x86_64", 
 
 architecture_configs = {"ALPHA", "ARC", "ARM", "ARM64", "C6X", "CSKY", "H8300", "HEXAGON", "IA64", "M68K", "MICROBLAZE", "MIPS", "NDS32", "NIOS2", "OPENRISC", "PARISC", "PPC64", "PPC32", "PPC", "RISCV", "S390", "SUPERH64", "SUPERH32", "SUPERH", "SPARC64", "SPARC32", "SPARC", "UML", "UNICORE32", "X86_64", "X86_32", "X86", "XTENSA"}
 
