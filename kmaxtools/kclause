@@ -106,6 +106,8 @@ if __name__ == '__main__':
   has_defaults = set()
   has_prompt = set()
 
+  defined_vars = set()
+  
   bools = set()
   choice_vars = set()
   bool_choices = []
@@ -219,7 +221,7 @@ if __name__ == '__main__':
   # print convert_to_cnf("a or b or c or d or f")
   # exit(1)
 
-  # collect clauses
+  sys.stderr.write("collect clauses\n")
   for line in sys.stdin:
     if debug: sys.stderr.write("started %s\n" % (line))
     instr, data = line.strip().split(" ", 1)
@@ -259,11 +261,13 @@ if __name__ == '__main__':
         ghost_bools[ghost_bool_name] = (var, val)
         # print ghost_bool_name, varnum, val
         if expr == "(1)":
+          defined_vars.add(var)
           add_clause(var, z3.Bool(var))
         else:
           full_expr = "(not (" + expr + ")) or (" + ghost_bool_name + ")"
           # print line
           # print full_expr
+          defined_vars.add(var)
           convert_and_add_clause(var, full_expr)
       else:
         # just add the first nonbool default
@@ -281,8 +285,10 @@ if __name__ == '__main__':
       if len(clause) > 0:
         pass
       elif len(clause) == 1:
+        defined_vars.add(var)
         add_clause(var, clause[0])
       else:
+        defined_vars.add(var)
         add_clause(var, z3.Or(clause))
     elif (instr == "bool_choice"):
       var_string, dep_expr = data.split("|",1)
@@ -459,9 +465,10 @@ if __name__ == '__main__':
     # mutex choice: a -> !b, a -> !c, ..., b -> !a, b -> !c, ...
     choice_vars.update(set(config_vars))
     for i in range(0, len(config_vars)):
+      defined_vars.add(config_vars[i])
       for j in range(0, len(config_vars)):
         if i != j:
-          add_clause("<CHOICE>", z3.Or(z3.Not(z3.Bool(config_vars[i])), z3.Not(z3.Bool(config_vars[j]))))
+          add_clause(config_vars[i], z3.Or(z3.Not(z3.Bool(config_vars[i])), z3.Not(z3.Bool(config_vars[j]))))
     assert len(config_vars) > 0
 
     # adding the following clauses:
@@ -480,6 +487,7 @@ if __name__ == '__main__':
     individual_conditions = ""
     delim = ""
     for var in config_vars:
+      defined_vars.add(var)
       possible_choices = possible_choices + delim + var
       if var in dep_exprs and dep_exprs[var] != None:
         individual_dep_expr = "(%s)" % (dep_exprs[var])
@@ -689,6 +697,7 @@ if __name__ == '__main__':
         for clause in clauses:
           if clause is not None:
             expression = existential_disjunction(*clause)
+            defined_vars.add(var)
             convert_and_add_clause(var, expression)
 
       else:
@@ -884,6 +893,7 @@ if __name__ == '__main__':
         if final_expr != None:
           if debug_expressions: sys.stderr.write("%s final expression is %s\n" % (var, final_expr))
           if debug_expressions: sys.stderr.write("%s final expression z3 is %s\n" % (var, expression_converter.convert_to_z3(final_expr) if final_expr is not None else None))
+          defined_vars.add(var)
           convert_and_add_clause(var, final_expr)
 
     elif var in nonbools:
@@ -910,21 +920,31 @@ if __name__ == '__main__':
         else:
           final_expr = biimplication(var, dep_expr)
         # print final_expr
+        defined_vars.add(var)
         convert_and_add_clause(var, final_expr)
     else:
       assert True
 
-
-  # convert all z3 clauses to their smtlib2 strings
-  sys.stderr.write("creating map from variables to constraints in smtlib2 format\n")
+  sys.stderr.write("converting constraints to smtlib2 format and collecting variable usage information\n")
+  used_vars = set()
+  num_vars = len(z3_clauses.keys())
+  processing = 1
   for var in z3_clauses.keys():
+    sys.stderr.write("processing %d/%d configuration options\r" % (processing, num_vars))
+    processing += 1
+    for clause in z3_clauses[var]:
+      used = z3.z3util.get_vars(clause)
+      used = [ str(varname) for varname in used ]
+      used_vars.update(used)
     def convert_to_smtlib2(z3_clause):
       s = z3.Solver()
       s.add(z3_clause)
       return s.to_smt2()
     z3_clauses[var] = [ convert_to_smtlib2(clause) for clause in z3_clauses[var] ]
+  sys.stderr.write("\n")
   sys.stderr.write("pickling the map\n")
-  print(pickle.dumps(z3_clauses))
+  used_vars = [ var for var in used_vars if var.startswith("CONFIG_") ]
+  print(pickle.dumps((z3_clauses, defined_vars, used_vars)))
 
   # quit and don't do dimacs clause processing
   exit(1)
