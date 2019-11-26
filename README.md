@@ -15,6 +15,17 @@
     - [Using New Formulas](#using-new-formulas)
   - [Troubleshooting](#troubleshooting)
   - [Generating Formulas](#generating-formulas)
+    - [Kmax](#kmax)
+  - [Kmax](#kmax-1)
+    - [Simple example](#simple-example)
+    - [Example run on Linux](#example-run-on-linux)
+  - [Kclause](#kclause)
+  - [Building kconfig_extract](#building-kconfig_extract)
+  - [Installing kclause](#installing-kclause)
+  - [Running kclause](#running-kclause)
+  - [DIMACS format](#dimacs-format)
+  - [Other usage](#other-usage)
+    - [Get a list of all visible configs](#get-a-list-of-all-visible-configs)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -179,4 +190,17 @@ Override the default formulas with the following:
 
 ## Generating Formulas
 
-(TBD)
+These commands and scripts are intended to be run from the root of
+your Linux source tree.
+
+To get the formulas for compilation units defined in the Kbuild files,
+we first need a list of all the top-level source directories for each
+architecture.  The script uses a hacky Makefile to do this.  Then
+calls kmaxall with all of the top-level directories.  This is a memory
+intensive operation.  The next script calls kclause on each of the
+architectures, as named in the arch/ directory.
+
+    mkdir -p .kmax/
+    /usr/bin/time bash /path/to/kmax/scripts/kmaxlinux.sh
+    /usr/bin/time bash /path/to/kmax/scripts/kclauselinux.sh
+
