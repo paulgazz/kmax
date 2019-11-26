@@ -360,20 +360,20 @@ if __name__ == '__main__':
     else:
       assert(False)
       
-  if os.path.exists(output_file):
-    def randstring(n):
-      return ''.join(random.choice('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789') for i in range(n))
-    tries = 0
-    maxtries = 5
-    backup_file = "%s.saved_%s" % (output_file, randstring(5))
-    while os.path.exists(backup_file) and tries < maxtries:
-      backup_file = "%s.saved_%s" % (output_file, randstring(5))
-      tries += 1
-    if tries == maxtries:
-      error("Output file \"%s\" already exists and cannot find a suitable backup file name.  Please delete the file manually or specify another output file." % (output_file))
-      exit(1)
-    info("Output file \"%s\" already exists.  Moving to \"%s\"." % (output_file, backup_file))
-    os.rename(output_file, backup_file)
+  # if os.path.exists(output_file):
+  #   def randstring(n):
+  #     return ''.join(random.choice('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789') for i in range(n))
+  #   tries = 0
+  #   maxtries = 5
+  #   backup_file = "%s.saved_%s" % (output_file, randstring(5))
+  #   while os.path.exists(backup_file) and tries < maxtries:
+  #     backup_file = "%s.saved_%s" % (output_file, randstring(5))
+  #     tries += 1
+  #   if tries == maxtries:
+  #     error("Output file \"%s\" already exists and cannot find a suitable backup file name.  Please delete the file manually or specify another output file." % (output_file))
+  #     exit(1)
+  #   info("Output file \"%s\" already exists.  Moving to \"%s\"." % (output_file, backup_file))
+  #   os.rename(output_file, backup_file)
   info("Using output file \"%s\"." % (output_file))
 
   archlist = [ arch for arch in archs if arch in kclause_to_try.keys() ]
