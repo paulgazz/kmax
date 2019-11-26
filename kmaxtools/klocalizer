@@ -276,6 +276,9 @@ if __name__ == '__main__':
   argparser.add_argument('--ignore-config-broken',
                          action="store_true",
                          help="""Ignore CONFIG_BROKEN dependencies.""")
+  argparser.add_argument('--allow-undeclared',
+                         action="store_true",
+                         help="""Do not disable undeclared configuration options, which may overconstrain the formula.""")
   argparser.add_argument('--view-kbuild',
                          action="store_true",
                          help="""Just show the Kbuild constraints for the given compilation unit.  All other arguments are ignored.""")
@@ -294,6 +297,7 @@ if __name__ == '__main__':
   define = args.define
   undefine = args.undefine
   ignore_config_broken = args.ignore_config_broken
+  allow_undeclared = args.allow_undeclared
   view_kbuild = args.view_kbuild
   compilation_unit = args.compilation_unit
 
@@ -395,7 +399,7 @@ if __name__ == '__main__':
       constraints.extend(get_ad_hoc_constraints(constraints_file))
 
     # add kclause constraints
-    constraints.extend(get_kclause_constraints(kclause_file))
+    constraints.extend(get_kclause_constraints(kclause_file, remove_undeclared=not allow_undeclared))
 
     # add user-specified constraints
     for define in define:
