@@ -309,6 +309,7 @@ if __name__ == '__main__':
 
   if not kmax_file:
     kmax_file = os.path.join(formulas, "kmax")
+  info("Kmax formula file: %s" % (kmax_file))
     
   if compilation_unit is not None and not os.path.isfile(kmax_file):
     error("Cannot find kmax formulas file: %s" % (kmax_file))
@@ -378,12 +379,12 @@ if __name__ == '__main__':
   archlist = [ arch for arch in archs if arch in kclause_to_try.keys() ]
   if None in kclause_to_try.keys():
     archlist = [None] + archlist
+  seen_unsat = False
   for arch in archlist:
     kclause_file = kclause_to_try[arch]
-    if arch == None:
-      info("Trying user-specific kclause file: %s" % (kclause_file))
-    else:
-      info("Trying kclause file for %s: %s" % (arch, kclause_file))
+    if arch is not None:
+      info("Trying \"%s\"" % (arch))
+    info("Kclause formula file: %s" % (kclause_file))
     
     constraints = []
 
@@ -391,7 +392,8 @@ if __name__ == '__main__':
     if compilation_unit is not None:
       kmax_constraints = get_kmax_constraints(kmax_file, compilation_unit)
       if kmax_constraints is None:
-        warning("%s not found in %s.  Please check that the compilation unit is in the kmax file." % (compilation_unit, kmax_file))
+        error("%s not found in %s.  Please check that the compilation unit is in the kmax file." % (compilation_unit, kmax_file))
+        exit(1)
       else:
         constraints.extend(kmax_constraints)
         
@@ -423,7 +425,9 @@ if __name__ == '__main__':
       if show_unsat_core:
         info("The following constraint(s) prevented satisfiability:\n%s" % (str(solver.unsat_core())))
       else:
-        info("Run with --show-unsat-core to see what constraints prevented satisfiability.")
+        if not seen_unsat:
+          info("Run with --show-unsat-core to see what constraints prevented satisfiability.")
+          seen_unsat = True
     else:
       info("The constraints are satisfiable.")
       model = solver.model()
@@ -434,6 +438,8 @@ if __name__ == '__main__':
         if arch is not None:
           info("Generated configuration for %s" % (arch))
         print_model_as_config(model, open(output_file, 'w'))
+        if arch is not None:
+          info("Build with \"make ARCH=%s %s\"." % (arch, compilation_unit))
         exit(0)
-  warning("No satisfying configuration found.")
+  error("No satisfying configuration found.")
   exit(1)
