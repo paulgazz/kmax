@@ -273,9 +273,9 @@ if __name__ == '__main__':
                          action="append",
                          default=[],
                          help="""Manually set a configuration option to be disabled.""")
-  argparser.add_argument('--ignore-config-broken',
+  argparser.add_argument('--disable-config-broken',
                          action="store_true",
-                         help="""Ignore CONFIG_BROKEN dependencies.""")
+                         help="""Disable CONFIG_BROKEN dependencies.""")
   argparser.add_argument('--allow-undeclared',
                          action="store_true",
                          help="""Do not disable undeclared configuration options, which may overconstrain the formula.""")
@@ -296,7 +296,7 @@ if __name__ == '__main__':
   optimize = args.optimize
   define = args.define
   undefine = args.undefine
-  ignore_config_broken = args.ignore_config_broken
+  disable_config_broken = args.disable_config_broken
   allow_undeclared = args.allow_undeclared
   view_kbuild = args.view_kbuild
   compilation_unit = args.compilation_unit
@@ -410,15 +410,15 @@ if __name__ == '__main__':
     if arch is not None:
       constraints.extend(get_arch_specific_constraints(arch, architecture_configs))
 
-    if not ignore_config_broken: constraints.append(config_broken)
+    if disable_config_broken: constraints.append(config_broken)
 
     solver = z3.Solver()
     solver.set(unsat_core=True)
 
     if (solver.check(constraints) == z3.unsat):
       info("The constraints are unsatisfiable.  This either means no configuration is possible or kmax formulas are overconstrained.")
-      if not ignore_config_broken and config_broken in solver.unsat_core():
-        error("This compilation unit seems to depend on CONFIG_BROKEN, so it may not be buildable.  Stopping the search.  Run again with --ignore-config-broken to search anyway.")
+      if disable_config_broken and config_broken in solver.unsat_core():
+        error("This compilation unit seems to depend on CONFIG_BROKEN, so it may not be buildable.  Stopping the search.  Run again without --disable-config-broken to search anyway.")
         exit(1)
       if show_unsat_core:
         info("The following constraint(s) prevented satisfiability:\n%s" % (str(solver.unsat_core())))
