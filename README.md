@@ -82,13 +82,14 @@ not work.  It may be necessary to install these manually via `pip`, e.g.,
 The fastest way to get started is to use formulas already extracted for your version of Linux.
 
     cd /path/to/linux/
-    wget https://opentheblackbox.com/kmax/kmax_formulas_linux_next-20191121.tar.bz2
-    tar -xvf kmax_formulas_linux_next-20191121.tar.bz2
+    wget https://opentheblackbox.com/kmax/kmax-formulas_linux-v5.3.11.tar.bz2
+    tar -xvf kmax-formulas_linux-v5.3.11.tar.bz2
 
-This contains a `.kmax` directory containing the Kconfig and
-Kbuild formulas for each architecture.  If a version is not available
-[here](https://opentheblackbox.com/kmax), see below for
-directions on generating these formulas.
+This contains a `.kmax` directory containing the Kconfig and Kbuild
+formulas for each architecture.  If a version is not available
+[here](https://opentheblackbox.com/kmax) submit an issue to request
+the formulas be generated and uplodated or see below for directions on
+generating these formulas.
 
 Assuming you are compiling for x86, the following will generate a
 configuration that includes the `drivers/usb/storage/alauda.o` compilation unit.
@@ -200,7 +201,9 @@ calls kmaxall with all of the top-level directories.  This is a memory
 intensive operation.  The next script calls kclause on each of the
 architectures, as named in the arch/ directory.
 
+    cd /path/to/linux
     mkdir -p .kmax/
     /usr/bin/time bash /path/to/kmax/scripts/kmaxlinux.sh
     /usr/bin/time bash /path/to/kmax/scripts/kclauselinux.sh
+    bash /path/to/kmax/scripts/packageformulaslinux.sh
 
