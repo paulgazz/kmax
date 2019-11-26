@@ -17,9 +17,10 @@ def warning(msg, ending="\n"):
 def error(msg, ending="\n"):
   sys.stderr.write("ERROR: %s%s" % (msg, ending))
 
-def get_kclause_constraints(kclause_file):  
+def get_kclause_constraints(kclause_file, remove_undeclared=True):
   with open(kclause_file, 'r') as fp:
-    kclause = pickle.load(fp)
+    kclause, defined_vars, used_vars = pickle.load(fp)
+    # kclause = pickle.load(fp)
 
     kclause_constraints = {}
     for var in kclause.keys():
@@ -29,7 +30,12 @@ def get_kclause_constraints(kclause_file):
     for var in kclause_constraints.keys():
       for z3_clause in kclause_constraints[var]:
         constraints.extend(z3_clause)
-        
+
+    if remove_undeclared:
+      undeclared_vars = set(used_vars).difference(set(defined_vars))
+      unselectable = [ z3.Not(z3.Bool(varname)) for varname in undeclared_vars ]
+      constraints.extend(unselectable)
+
     return constraints
 
 def get_kmax_constraints(kmax_file, compilation_unit, view=False):
