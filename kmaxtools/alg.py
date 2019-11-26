@@ -92,6 +92,7 @@ class Kbuild:
 
         self.variables = {}
         self.bvars = {}
+        self.reverse_bvars = {}
         self.undefined_variables = set()
         # self.token_pc = {} # token presence conds, e.g., 'fork.o': True
         # self.unit_pc = {} # compilation unit presence conds
@@ -128,6 +129,7 @@ class Kbuild:
             zbdd = z3.Bool(name.format(idx))
             bv = BoolVar(bdd, zbdd, idx)
             self.bvars[name] = bv
+            self.reverse_bvars[idx] = name
             return bv
     
     def get_var_equiv(self, name):
@@ -160,6 +162,7 @@ class Kbuild:
               for name in self.variables]
         ss = ["var: {}:\n{}\n---------".format(name, f(vs))
               for name, vs in ss if vs]
+
         return '\n'.join(ss)
     
     def get_presence_conditions(self, vars, pcs, cond, zcond):
@@ -706,54 +709,29 @@ class Kbuild:
     def append_values(self, *args):
         return self.join_values(args, " ")
 
-    def bdd_to_cnf(self, condition):
+    def bdd_to_dnf(self, condition):
         """Converts the expression to conjunctive normal form
 
         @returns a list of terms, represented as lists of factors"""
-        stdout = os.dup(1)
-        temp_fd, temp_filename = tempfile.mkstemp()
-        sys.stdout.flush()
-        os.dup2(temp_fd, 1)
-        condition.PrintMinterm()
-        sys.stdout.flush()
-        os.dup2(stdout, 1)
-        os.close(stdout)
-        os.lseek(temp_fd, 0, os.SEEK_SET)
-        with os.fdopen(temp_fd) as f:
-            expression = []
-            for line in filter(lambda l: len(l) > 0, (l.rstrip() for l in f.readlines())):
-                minterm = list(line)
-                term = []
-                for name in self.bvars:
-                    value = minterm[self.bvars[name].idx]
-                    if value == '1':
-                        term.append(name)
-                    elif value == '0':
-                        term.append("!" + name)
-                    elif value == '-':
-                        pass
-                    else:
-                        mlog.error("Unknown setting for variable in minterm: {}".format(minterm))
-                        exit(1)
-                        
-                expression.append(term)
-            os.remove(temp_filename)
-            return expression
-        
-        mlog.error("Could not open temp file containing minterms: {}".format(temp_filename))
-        exit(1)
+
+        solutions = kmaxtools.datastructures.bdd_solutions(condition)
+        expression = []
+        for solution_term in solutions:
+            term = []
+            for factor in solution_term:
+                if solution_term[factor]:
+                    term.append(self.reverse_bvars[factor])
+                else:
+                    term.append("!%s" % (self.reverse_bvars[factor]))
+            expression.append(term)
+        return expression
 
     def bdd_to_str(self, condition):
         """Converts the expression to a string"""
 
-        if condition == self.T:
-            return "1"
-        elif condition == self.F:
-            return "0"
-
         expression = ""
         term_delim = ""
-        for sublist in self.bdd_to_cnf(condition):
+        for sublist in self.bdd_to_dnf(condition):
             term = ""
             factor_delim = ""
             for factor in sublist:
@@ -1173,12 +1151,10 @@ class Run:
         kbuild.get_presence_conditions([ "obj-y", "obj-m", "lib-y", "lib-m" ], presence_conditions, kbuild.T, ZSolver.T)
         for token in presence_conditions:
             filename = os.path.join(path, token)
-            # print "FILENAME", filename
             if filename not in self.results.presence_conditions.keys():
                 self.results.presence_conditions[filename] = presence_conditions[token]
             else:
                 self.results.presence_conditions[filename] = z3.Or(self.results.presence_conditions[filename], presence_conditions[token])
-
         # print self.results.presence_conditions
 
         # removed because this method for getting presence conditions is obsolete

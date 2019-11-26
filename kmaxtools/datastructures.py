@@ -25,6 +25,14 @@ def disj(a, b): return None if a is None or b is None else a | b
 def neg(a): return None if a is None else ~a
 def isbddfalse(b): return b == bdd_lib.false
 
+def bdd_solutions(b):
+    d = bdd_lib.pick(b)
+    n = bdd_lib.count(b)
+    print(n)
+    expression = []
+    solutions = [d for d in bdd_lib.pick_iter(b)]
+    return solutions
+
 class CondDef(tuple):
     def __new__(cls, cond, zcond, mdef):
         return super(CondDef, cls).__new__(cls, (cond, zcond, mdef))
