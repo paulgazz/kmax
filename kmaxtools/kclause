@@ -230,6 +230,7 @@ if __name__ == '__main__':
       pass
     elif (instr == "config"):
       varname, typename = data.split(" ", 1)
+      defined_vars.add(varname)
       if typename == "bool":
         bools.add(varname)
       else:
