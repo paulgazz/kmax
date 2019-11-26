@@ -435,3 +435,5 @@ if __name__ == '__main__':
           info("Generated configuration for %s" % (arch))
         print_model_as_config(model, open(output_file, 'w'))
         exit(0)
+  warning("No satisfying configuration found.")
+  exit(1)
