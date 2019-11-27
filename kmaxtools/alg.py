@@ -1026,7 +1026,9 @@ class Run:
         stmts = parser.parsestring(s, makefile.name)
 
         kbuild.process_stmts(stmts, kbuild.T, ZSolver.T)
-
+        # SPECIAL-obj-simple uses a simply-expanded variable to expand obj-y in case obj-y is recursively-expanded, which means the variables haven't been expanded in obj-y yet, e.g., ptrace_$(BITS)
+        kbuild.process_stmts(parser.parsestring("SPECIAL-obj-simple := $(obj-y)", makefile.name), kbuild.T, ZSolver.T)
+        
         subdirs = self.results.subdirs
         compilation_units = self.results.compilation_units
         composites = self.results.composites
@@ -1042,7 +1044,7 @@ class Run:
             ["obj-y", "obj-m",
              "core-y", "core-m", "drivers-y", "drivers-m",
              "net-y", "net-m", "libs-y", "libs-m", "head-y",
-             "head-m"])
+             "head-m", "SPECIAL-obj-simple"])
              
         self.collect_units(kbuild,
                            path,
@@ -1145,7 +1147,7 @@ class Run:
             mlog.info(kbuild.getSymbTable(printCond=kbuild.bdd_to_str))
 
         presence_conditions = {}
-        kbuild.get_presence_conditions([ "obj-y", "obj-m", "lib-y", "lib-m" ], presence_conditions, kbuild.T, ZSolver.T)
+        kbuild.get_presence_conditions([ "obj-y", "obj-m", "lib-y", "lib-m", "SPECIAL-obj-simple" ], presence_conditions, kbuild.T, ZSolver.T)
         for token in presence_conditions:
             # resolve any uses of ../ or ./
             filename = os.path.relpath(os.path.abspath(os.path.join(path, token)))
