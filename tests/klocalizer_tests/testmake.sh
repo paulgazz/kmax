@@ -6,18 +6,31 @@ test_klocalizer () {
   filename=$1
 
   echo "$filename"
-  /usr/bin/time klocalizer "${filename}" | tee archname.txt
-  arch=$(cat archname.txt)
-  if [[ $arch != "x86" ]]; then
-    make.cross ARCH=$(cat archname.txt) olddefconfig "$filename"
-  else
-    make olddefconfig "$filename"
-  fi
-  
+  /usr/bin/time klocalizer "${filename}" > archname.txt
   if [[ ${?} -eq 0 ]]; then
-    echo "OKAY"
+      echo "CONFIGURES"
+      arch=$(cat archname.txt)
+      # target="$filename"
+      target="$(dirname $filename)/"
+      if [[ $arch != "x86" ]]; then
+          make.cross olddefconfig clean ARCH=$(cat archname.txt) "$target" |& tee build.txt
+      else
+        make olddefconfig clean "$target" |& tee build.txt
+      fi
+      if [[ ${?} -eq 0 ]]; then
+          grep "$filename" build.txt
+          if [[ ${?} -eq 0 ]]; then
+              echo "PASS configure and make"
+          else
+            echo "FAIL not found in make output.  be sure to run make clean first"
+          fi
+      else
+        echo "FAIL make"
+      fi
+  elif [[ ${?} -eq 2 ]]; then
+    echo "PASS found CONFIG_BROKEN"
   else
-    echo "FAIL"
+    echo "FAIL klocalizer"
   fi
 }
 
