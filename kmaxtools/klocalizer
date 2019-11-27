@@ -58,18 +58,19 @@ def get_kmax_constraints(kmax_file, compilation_unit, view=False):
         kmax_constraints.extend(comp_unit_constraint)
         if view:
           print("%s\n%s\n" % (compilation_unit, comp_unit_constraint))
-        subpath, basename = compilation_unit.rsplit('/', 1)
-        elems = subpath.rsplit('/')
-        for i in range(0, len(elems)):
-          subarray = elems[0:(len(elems) - i)]
-          subsubpath = '/'.join(subarray) + "/"
-          if subsubpath in kmax.keys():
-            subsubpath_constraint = z3.parse_smt2_string(kmax[subsubpath])
-            kmax_constraints.extend(subsubpath_constraint)
-            if view:
-              print("%s\n%s\n" % (subsubpath, subsubpath_constraint))
-          else:
-            info("%s not found in %s, assuming it is always included." % (subsubpath, kmax_file))
+        if '/' in compilation_unit:
+          subpath, basename = compilation_unit.rsplit('/', 1)
+          elems = subpath.rsplit('/')
+          for i in range(0, len(elems)):
+            subarray = elems[0:(len(elems) - i)]
+            subsubpath = '/'.join(subarray) + "/"
+            if subsubpath in kmax.keys():
+              subsubpath_constraint = z3.parse_smt2_string(kmax[subsubpath])
+              kmax_constraints.extend(subsubpath_constraint)
+              if view:
+                print("%s\n%s\n" % (subsubpath, subsubpath_constraint))
+            else:
+              info("%s not found in %s, assuming it is always included." % (subsubpath, kmax_file))
       return kmax_constraints
 
 def print_model_as_config(model, fp=sys.stdout):
