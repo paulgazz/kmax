@@ -36,12 +36,11 @@ def bdd_zero(): return kmaxtools.datastructures.bdd_zero()
 def bdd_ithvar(i): return kmaxtools.datastructures.bdd_ithvar(i)
 def bdd_init(): kmaxtools.datastructures.bdd_init()
 def bdd_destroy(): kmaxtools.datastructures.bdd_destroy()
-def isbddfalse(b): kmaxtools.datastructures.isbddfalse(b)
+def isbddfalse(b): return kmaxtools.datastructures.isbddfalse(b)
 
-# todo, remove since most likely will not used
-def zconj(a, b): return None if a is None or b is None else z3.And(a, b)
-def zdisj(a, b): return None if a is None or b is None else z3.Or(a, b)
-def zneg(a): return None if a is None else z3.Not(a)
+def zconj(a, b): return None if a is None or b is None else z3.simplify(z3.And(a, b))
+def zdisj(a, b): return None if a is None or b is None else z3.simplify(z3.Or(a, b))
+def zneg(a): return None if a is None else z3.simplify(z3.Not(a))
 
 
 def isz3false(z):
@@ -50,7 +49,6 @@ def isz3false(z):
   return z3.sat != s.check()
 
 def isfalse(b, z):
-    # todo, replace with bdd
     # return isz3false(z)
     return isbddfalse(b)
 
@@ -183,11 +181,11 @@ class Kbuild:
                 tokens = value.split()
                 for token in tokens:
                     and_cond = conj(cond, bdd_condition)
-                    and_zcond = z3.And(zcond, z3_condition)
+                    and_zcond = zconj(zcond, z3_condition)
                     if token not in pcs.keys():
                         pcs[token] = and_zcond
                     else:
-                        pcs[token] = z3.Or(pcs[token], and_zcond)
+                        pcs[token] = zdisj(pcs[token], and_zcond)
                     if token.endswith(".o"): # and unit_name not in compilation_units:
                         if (token[:-2] + "-objs") in self.variables or \
                             (token[:-2] + "-y") in self.variables:
@@ -263,15 +261,15 @@ class Kbuild:
 
                 defined, zdefined = self.get_defined(name, True)
                 is_defined_y = conj(defined, conj(equals_y, neg(equals_m)))
-                zis_defined_y = z3.And(zdefined, z3.And(zequals_y, z3.Not(zequals_m)))
+                zis_defined_y = zconj(zdefined, zconj(zequals_y, z3.Not(zequals_m)))
 
 
                 is_defined_m = conj(defined, conj(equals_m, neg(equals_y)))
-                zis_defined_m = z3.And(zdefined, z3.And(zequals_m, z3.Not(zequals_y)))
+                zis_defined_m = zconj(zdefined, zconj(zequals_m, z3.Not(zequals_y)))
 
                 notdefined, znotdefined = self.get_defined(name, False)
                 not_defined = disj(notdefined, conj(neg(is_defined_y), neg(is_defined_m)))
-                znot_defined = z3.Or(znotdefined, z3.And(z3.Not(zis_defined_y), z3.Not(zis_defined_m)))   
+                znot_defined = zdisj(znotdefined, zconj(z3.Not(zis_defined_y), z3.Not(zis_defined_m)))   
 
 
                 return Multiverse([ CondDef(is_defined_y, zis_defined_y, 'y'),
@@ -337,7 +335,7 @@ class Kbuild:
 
             for v in expanded_name:
                 expanded_names.append(
-                    CondDef(conj(name_cond, v.cond), z3.And(name_zcond, v.zcond), v.mdef)
+                    CondDef(conj(name_cond, v.cond), zconj(name_zcond, v.zcond), v.mdef)
                 )
         return Multiverse(expanded_names)
 
@@ -351,7 +349,7 @@ class Kbuild:
         hoisted_results = []
         for (sc, szc, s), (rc, rzc, r), (dc, dzc, d) in zip(from_vals, to_vals, in_vals):
             instance_cond = conj(sc, conj(rc, dc))
-            instance_zcond = z3.And(szc, rzc, dzc)
+            instance_zcond = z3.simplify(z3.And(szc, rzc, dzc))
             if not isfalse(instance_cond, instance_zcond):
                 if r is None: r = ""  # Fixes bug in net/l2tp/Makefile
                 instance_result = None if d is None else d.replace(s, r)
@@ -369,16 +367,16 @@ class Kbuild:
         for cond, zcond, value in cond_part:
             if value:
                 then_cond = disj(then_cond, cond)
-                then_zcond = z3.Or(then_zcond, zcond)
+                then_zcond = zdisj(then_zcond, zcond)
             else:
                 else_cond = disj(then_cond, cond)
-                else_zcond = z3.Or(then_zcond, zcond)
+                else_zcond = zdisj(then_zcond, zcond)
 
         expansions = []
 
         for cond, zcond, value in then_part:
             cond = conj(then_cond, cond)
-            zcond = z3.And(then_zcond, zcond)
+            zcond = zconj(then_zcond, zcond)
             if not isfalse(cond, zcond):
                 expansions.append(CondDef(cond, zcond, value))
 
@@ -386,7 +384,7 @@ class Kbuild:
             else_part = self.mk_Multiverse(self.process_expansion(function._arguments[2]))
             for cond, zcond, value in else_part:
                 cond = conj(else_cond, cond)
-                zcond = z3.And(else_zcond, zcond)
+                zcond = zconj(else_zcond, zcond)
 
                 if not isfalse(cond, zcond):
                     expansions.append(CondDef(cond, zcond, value))
@@ -404,7 +402,7 @@ class Kbuild:
         # Compute the function for each combination of arguments
         for (c1, zc1, s), (c2, zc2, d) in hoisted_args:
             instance_cond = conj(c1, c2)
-            instance_zcond = z3.And(zc1, zc2)
+            instance_zcond = zconj(zc1, zc2)
 
             if not isfalse(instance_cond, instance_zcond):
                 if d is None:
@@ -432,7 +430,7 @@ class Kbuild:
         # Compute the function for each combination of arguments
         for (c1, zc1, s), (c2, zc2, r), (c3, zc3, d) in hoisted_args:
             instance_cond = conj(c1, conj(c2, c3))
-            instance_zcond = z3.And(zc1, zc2, zc3)
+            instance_zcond = z3.simplify(z3.And(zc1, zc2, zc3))
             
             if not isfalse(instance_cond, instance_zcond):
                 if r == None: r = ""  # Fixes bug in net/l2tp/Makefile
@@ -456,7 +454,7 @@ class Kbuild:
         for (prefix_cond, prefix_zcond, prefix) in prefixes:
             for (tokens_cond, tokens_zcond, token_string) in token_strings:
                 resulting_cond = conj(prefix_cond, tokens_cond)
-                resulting_zcond = z3.And(prefix_zcond, tokens_zcond)
+                resulting_zcond = zconj(prefix_zcond, tokens_zcond)
 
                 if not isfalse(resulting_cond, resulting_zcond):
                     # append prefix to each token in the token_string
@@ -539,7 +537,7 @@ class Kbuild:
                 for subcondition, zsubcondition, subverse in element:
                     for condition, zcondition, verse in hoisted:
                         newcondition = conj(condition, subcondition)
-                        newzcondition = z3.And(zcondition, zsubcondition)
+                        newzcondition = zconj(zcondition, zsubcondition)
                         
                         newverse = list(verse)
                         if isinstance(subverse, list):
@@ -602,13 +600,13 @@ class Kbuild:
                 #trace()
                 cds = [cd for cd in expansion if cd.mdef is not None]
                 hoisted_cond = reduce(disj, [cd.cond for cd in cds])
-                hoisted_zcond = z3.Or([cd.zcond for cd in cds])
+                hoisted_zcond = z3.simplify(z3.Or([cd.zcond for cd in cds]))
 
                 first_branch_cond = hoisted_cond
                 first_branch_zcond = hoisted_zcond
 
             first_branch_cond = conj(presence_cond, first_branch_cond)
-            first_branch_zcond = z3.And(presence_zcond, first_branch_zcond)
+            first_branch_zcond = zconj(presence_zcond, first_branch_zcond)
 
             else_branch_cond = neg(first_branch_cond)
             else_branch_zcond = z3.Not(first_branch_zcond)
@@ -629,17 +627,17 @@ class Kbuild:
                 for cd2 in exp2:
                     v2 = cd2.mdef if cd2.mdef else ""
                     term_cond = conj(cd1.cond, cd2.cond)
-                    term_zcond = z3.And(cd1.zcond, cd2.zcond)
+                    term_zcond = zconj(cd1.zcond, cd2.zcond)
 
                     #TODO: check term_zcond == term_cond
                     
                     if not isfalse(term_cond, term_zcond) and (v1 == v2) == cond.expected:
                         hoisted_cond = disj(hoisted_cond, term_cond)
-                        hoisted_zcond = z3.Or(hoisted_zcond, term_zcond)
+                        hoisted_zcond = zdisj(hoisted_zcond, term_zcond)
                         
                     elif not isfalse(term_cond, term_zcond):
                         hoisted_else = disj(hoisted_else, term_cond)
-                        hoisted_zelse = z3.Or(hoisted_zelse, term_zcond)
+                        hoisted_zelse = zdisj(hoisted_zelse, term_zcond)
                         
                     if contains_unexpanded(v1) or contains_unexpanded(v2):
                         # this preserves configurations where we
@@ -648,15 +646,15 @@ class Kbuild:
                         bdd = v.bdd
                         zbdd = v.zbdd
                         hoisted_cond = disj(hoisted_cond, bdd)
-                        hoisted_zcond = z3.Or(hoisted_zcond, zbdd)
+                        hoisted_zcond = zdisj(hoisted_zcond, zbdd)
                         
                         hoisted_else = disj(hoisted_else, neg(bdd))
-                        hoisted_zelse = z3.Or(hoisted_zelse, z3.Not(zbdd))
+                        hoisted_zelse = zdisj(hoisted_zelse, z3.Not(zbdd))
 
                 first_branch_cond = conj(presence_cond, hoisted_cond)
-                first_branch_zcond = z3.And(presence_zcond, hoisted_zcond)      
+                first_branch_zcond = zconj(presence_zcond, hoisted_zcond)      
                 else_branch_cond = conj(presence_cond, hoisted_else)
-                else_branch_zcond = z3.And(presence_zcond, hoisted_zelse)
+                else_branch_zcond = zconj(presence_zcond, hoisted_zelse)
                 
         else:
             mlog.error("unsupported conditional branch: {}".format(cond))
@@ -758,7 +756,7 @@ class Kbuild:
                     map(lambda (old_value, old_cond, old_zcond, old_flavor): 
                             VarEntry(old_value, 
                                     conj(old_cond, neg(presence_cond)),
-                                    z3.And(old_zcond, z3.Not(presence_zcond)),
+                                    zconj(old_zcond, z3.Not(presence_zcond)),
                                     old_flavor), 
                         self.variables[name])
 
@@ -832,15 +830,14 @@ class Kbuild:
                     # TODO: optimization, memoize these
                     if old_flavor == VarEntry.SIMPLE:
                         simply = disj(simply, old_cond)
-                        zsimply = z3.Or(zsimply, old_zcond)
+                        zsimply = zdisj(zsimply, old_zcond)
                     else:
                         assert old_flavor == VarEntry.RECURSIVE
                         recursively = disj(recursively, old_cond)
-                        zrecursively = z3.Or(zrecursively, old_zcond)
+                        zrecursively = zdisj(zrecursively, old_zcond)
 
                 # print("+=", name, z3.simplify(zsimply), z3.simplify(zrecursively))
 
-                #tvn: TODO: add check for zrecursively
                 if not isfalse(recursively, zrecursively):
                     if new_var_name not in self.variables:
                         self.variables[new_var_name] = []
@@ -850,16 +847,16 @@ class Kbuild:
                                 presence_zcond,
                                 VarEntry.RECURSIVE))
 
-                #tvn: TODO: add check for zsimply
                 if not isfalse(simply, zsimply):
                     new_definitions = self.expand_and_flatten(value, presence_cond,presence_zcond)
                     # print("simply", new_definitions)
                     new_variables = []
                     for new_cond, new_zcond, new_value in new_definitions:
-                        and_zcond = z3.simplify(z3.And(new_zcond, presence_zcond))
-                        if not z3.is_false(and_zcond):
+                        and_cond = conj(new_cond, presence_cond)
+                        and_zcond = zconj(new_zcond, presence_zcond)
+                        if not isfalse(and_cond, and_zcond):
                             new_variables.append(VarEntry(
-                                new_value, conj(new_cond, presence_cond), and_zcond, VarEntry.SIMPLE))
+                                new_value, and_cond, and_zcond, VarEntry.SIMPLE))
 
                     self.variables[new_var_name] = new_variables
                     # print("simply_done", new_variables)
@@ -933,7 +930,7 @@ class Kbuild:
         else:
             for local_cond, local_zcond, expanded_name in name:
                 nested_cond = conj(local_cond, cond)
-                nested_zcond = z3.And(local_zcond, zcond)
+                nested_zcond = zconj(local_zcond, zcond)
                 # f(expanded_name, nested_cond, nested_zcond)  # remove because this method for presence conditions is obsolete
                 self.add_var(expanded_name, nested_cond, nested_zcond, token, value)
 
@@ -1154,7 +1151,7 @@ class Run:
             if filename not in self.results.presence_conditions.keys():
                 self.results.presence_conditions[filename] = presence_conditions[token]
             else:
-                self.results.presence_conditions[filename] = z3.Or(self.results.presence_conditions[filename], presence_conditions[token])
+                self.results.presence_conditions[filename] = zdisj(self.results.presence_conditions[filename], presence_conditions[token])
         # print self.results.presence_conditions
 
         # removed because this method for getting presence conditions is obsolete
