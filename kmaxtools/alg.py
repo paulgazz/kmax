@@ -1147,7 +1147,8 @@ class Run:
         presence_conditions = {}
         kbuild.get_presence_conditions([ "obj-y", "obj-m", "lib-y", "lib-m" ], presence_conditions, kbuild.T, ZSolver.T)
         for token in presence_conditions:
-            filename = os.path.join(path, token)
+            # resolve any uses of ../ or ./
+            filename = os.path.relpath(os.path.abspath(os.path.join(path, token)))
             if filename not in self.results.presence_conditions.keys():
                 self.results.presence_conditions[filename] = presence_conditions[token]
             else:
