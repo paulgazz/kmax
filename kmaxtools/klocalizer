@@ -441,6 +441,7 @@ if __name__ == '__main__':
         print_model_as_config(model, open(output_file, 'w'))
         if arch is not None:
           info("Build with \"make ARCH=%s %s\"." % (arch, compilation_unit))
+          print(arch)
         exit(0)
   error("No satisfying configuration found.")
   exit(1)
