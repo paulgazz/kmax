@@ -1,0 +1,10 @@
+config CONFIG_64BIT bool
+prompt CONFIG_64BIT ("i386"=="x86")
+def_bool CONFIG_64BIT "i386"!="i386"|(1)
+config CONFIG_X86_32 bool
+def_bool CONFIG_X86_32 1|( not CONFIG_64BIT)
+config CONFIG_X86_64 bool
+def_bool CONFIG_X86_64 1|(CONFIG_64BIT)
+config CONFIG_HPET_TIMER bool
+prompt CONFIG_HPET_TIMER (CONFIG_X86_32)
+def_bool CONFIG_HPET_TIMER CONFIG_X86_64|(1)
