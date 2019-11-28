@@ -935,10 +935,10 @@ if __name__ == '__main__':
   for var in z3_clauses.keys():
     sys.stderr.write("processing %d/%d configuration options\r" % (processing, num_vars))
     processing += 1
-    for clause in z3_clauses[var]:
-      used = z3.z3util.get_vars(clause)
-      used = [ str(varname) for varname in used ]
-      used_vars.update(used)
+    # for clause in z3_clauses[var]:
+    #   used = z3.z3util.get_vars(clause)
+    #   used = [ str(varname) for varname in used ]
+    #   used_vars.update(used)
     def convert_to_smtlib2(z3_clause):
       s = z3.Solver()
       s.add(z3_clause)
@@ -946,8 +946,9 @@ if __name__ == '__main__':
     z3_clauses[var] = [ convert_to_smtlib2(clause) for clause in z3_clauses[var] ]
   sys.stderr.write("\n")
   sys.stderr.write("pickling the map\n")
-  used_vars = [ var for var in used_vars if var.startswith("CONFIG_") ]
-  print(pickle.dumps((z3_clauses, defined_vars, used_vars)))
+  # used_vars = [ var for var in used_vars if var.startswith("CONFIG_") ]
+  # print(pickle.dumps((z3_clauses, defined_vars, used_vars)))
+  print(pickle.dumps(z3_clauses))
 
   # quit and don't do dimacs clause processing
   exit(1)

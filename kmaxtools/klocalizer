@@ -17,10 +17,10 @@ def warning(msg, ending="\n"):
 def error(msg, ending="\n"):
   sys.stderr.write("ERROR: %s%s" % (msg, ending))
 
-def get_kclause_constraints(kclause_file, remove_undeclared=True):
+def get_kclause_constraints(kclause_file):
   with open(kclause_file, 'r') as fp:
-    kclause, defined_vars, used_vars = pickle.load(fp)
-    # kclause = pickle.load(fp)
+    # kclause, defined_vars, used_vars = pickle.load(fp)
+    kclause = pickle.load(fp)
 
     kclause_constraints = {}
     for var in kclause.keys():
@@ -30,11 +30,6 @@ def get_kclause_constraints(kclause_file, remove_undeclared=True):
     for var in kclause_constraints.keys():
       for z3_clause in kclause_constraints[var]:
         constraints.extend(z3_clause)
-
-    if remove_undeclared:
-      undeclared_vars = set(used_vars).difference(set(defined_vars))
-      unselectable = [ z3.Not(z3.Bool(varname)) for varname in undeclared_vars ]
-      constraints.extend(unselectable)
 
     return constraints
 
@@ -255,9 +250,6 @@ if __name__ == '__main__':
   argparser.add_argument('--allow-config-broken',
                          action="store_true",
                          help="""Allow CONFIG_BROKEN dependencies.""")
-  argparser.add_argument('--allow-undeclared',
-                         action="store_true",
-                         help="""Do not disable undeclared configuration options, which may overconstrain the formula.""")
   argparser.add_argument('--view-kbuild',
                          action="store_true",
                          help="""Just show the Kbuild constraints for the given compilation unit.  All other arguments are ignored.""")
@@ -276,7 +268,6 @@ if __name__ == '__main__':
   define = args.define
   undefine = args.undefine
   disable_config_broken = not args.allow_config_broken
-  allow_undeclared = args.allow_undeclared
   view_kbuild = args.view_kbuild
   compilation_unit = args.compilation_unit
 
@@ -364,63 +355,65 @@ if __name__ == '__main__':
     kclause_file = kclause_to_try[arch]
     if arch is not None:
       info("Trying \"%s\"" % (arch))
-    info("Kclause formula file: %s" % (kclause_file))
-    
-    constraints = []
-
-    # add kmax constraints
-    if compilation_unit is not None:
-      kmax_constraints = get_kmax_constraints(kmax_file, compilation_unit)
-      if kmax_constraints is None:
-        error("%s not found in %s.  Please check that the compilation unit is in the kmax file." % (compilation_unit, kmax_file))
-        exit(1)
-      else:
-        constraints.extend(kmax_constraints)
-        
-    if constraints_file:
-      constraints.extend(get_ad_hoc_constraints(constraints_file))
-
-    # add kclause constraints
-    constraints.extend(get_kclause_constraints(kclause_file, remove_undeclared=not allow_undeclared))
-
-    # add user-specified constraints
-    for user_define in define:
-      constraints.append(z3.Bool(user_define))
-    for user_undefine in undefine:
-      constraints.append(z3.Not(z3.Bool(user_undefine)))
-
-    if arch is not None:
-      constraints.extend(get_arch_specific_constraints(arch, architecture_configs))
-
-    if disable_config_broken: constraints.append(config_broken)
-
-    solver = z3.Solver()
-    solver.set(unsat_core=True)
-
-    if (solver.check(constraints) == z3.unsat):
-      info("The constraints are unsatisfiable.  This either means no configuration is possible or kmax formulas are overconstrained.")
-      if disable_config_broken and config_broken in solver.unsat_core():
-        error("This compilation unit seems to depend on CONFIG_BROKEN, so it may not be buildable.  Stopping the search.  Run again with --allow-config-broken to search anyway.")
-        exit(2)
-      if show_unsat_core:
-        info("The following constraint(s) prevented satisfiability:\n%s" % (str(solver.unsat_core())))
-      else:
-        if not seen_unsat:
-          info("Run with --show-unsat-core to see what constraints prevented satisfiability.")
-          seen_unsat = True
+    info("Kclause formulas file: %s" % (kclause_file))
+    if not os.path.exists(kclause_file):
+      error("Cannot find kclause formulas file: %s" % (kclause_file))
     else:
-      info("The constraints are satisfiable.")
-      model = solver.model()
-      if optimize:
-        model = optimize_model(optimize, constraints)
-      if model is not None:
-        info("Writing the configuration to %s" % (output_file))
-        if arch is not None:
-          info("Generated configuration for %s" % (arch))
-        print_model_as_config(model, open(output_file, 'w'))
-        if arch is not None:
-          info("Build with \"make.cross ARCH=%s olddefconfig %s\"." % (arch, compilation_unit))
-          print(arch)
-        exit(0)
+      constraints = []
+
+      # add kmax constraints
+      if compilation_unit is not None:
+        kmax_constraints = get_kmax_constraints(kmax_file, compilation_unit)
+        if kmax_constraints is None:
+          error("%s not found in %s.  Please check that the compilation unit is in the kmax file." % (compilation_unit, kmax_file))
+          exit(1)
+        else:
+          constraints.extend(kmax_constraints)
+
+      if constraints_file:
+        constraints.extend(get_ad_hoc_constraints(constraints_file))
+
+      # add kclause constraints
+      constraints.extend(get_kclause_constraints(kclause_file))
+
+      # add user-specified constraints
+      for user_define in define:
+        constraints.append(z3.Bool(user_define))
+      for user_undefine in undefine:
+        constraints.append(z3.Not(z3.Bool(user_undefine)))
+
+      if arch is not None:
+        constraints.extend(get_arch_specific_constraints(arch, architecture_configs))
+
+      if disable_config_broken: constraints.append(config_broken)
+
+      solver = z3.Solver()
+      solver.set(unsat_core=True)
+
+      if (solver.check(constraints) == z3.unsat):
+        info("The constraints are unsatisfiable.  This either means no configuration is possible or kmax formulas are overconstrained.")
+        if disable_config_broken and config_broken in solver.unsat_core():
+          error("This compilation unit seems to depend on CONFIG_BROKEN, so it may not be buildable.  Stopping the search.  Run again with --allow-config-broken to search anyway.")
+          exit(2)
+        if show_unsat_core:
+          info("The following constraint(s) prevented satisfiability:\n%s" % (str(solver.unsat_core())))
+        else:
+          if not seen_unsat:
+            info("Run with --show-unsat-core to see what constraints prevented satisfiability.")
+            seen_unsat = True
+      else:
+        info("The constraints are satisfiable.")
+        model = solver.model()
+        if optimize:
+          model = optimize_model(optimize, constraints)
+        if model is not None:
+          info("Writing the configuration to %s" % (output_file))
+          if arch is not None:
+            info("Generated configuration for %s" % (arch))
+          print_model_as_config(model, open(output_file, 'w'))
+          if arch is not None:
+            info("Build with \"make.cross ARCH=%s olddefconfig %s\"." % (arch, compilation_unit))
+            print(arch)
+          exit(0)
   error("No satisfying configuration found.")
   exit(1)
