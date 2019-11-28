@@ -21,10 +21,10 @@ def glean_unknown_symbol(sym):
       return z3.BoolVal(True)
   elif hex_pattern.match(sym):
     return z3.Bool("\"%s\"" % (sym))
-  elif identifier_pattern.match(sym):
-    return z3.Bool("CONFIG_%s" % (sym))
+  # elif identifier_pattern.match(sym):
+  #   return z3.Bool("CONFIG_%s" % (sym))
   else:
-    return None
+    return z3.StringVal(sym)
 
 # parse tree processing
 class Transformer(compiler.visitor.ASTVisitor):
@@ -42,26 +42,81 @@ class Transformer(compiler.visitor.ASTVisitor):
       predicate = str(node)
       return z3.Bool("PREDICATE_%s" % (predicate))
 
+  def visitCompare(self, node):
+    children = node.getChildren()
+    if len(children) == 3:
+      left = node.getChildren()[0]
+      op = str(node.getChildren()[1])
+      if op == "==" or op == "!=":
+        right = node.getChildren()[2]
+        left_z3 = self.visit(left)
+        right_z3 = self.visit(right)
+        if z3.is_string(left_z3) and z3.is_string(right_z3) or z3.is_bool(left_z3) and z3.is_bool(right_z3):
+          if op == "==":
+            result = z3.simplify(z3.Not(z3.Distinct(left_z3, right_z3)))
+            return result
+          elif op == "!=":
+            # sys.stderr.write("%s != %s\n" % (left_z3, right_z3))
+            result = z3.simplify(z3.Distinct(left_z3, right_z3))
+            return result
+        # elif z3.is_string(left_z3) and z3.is_bool(right_z3):
+        #   if op == "==":
+        #     pass
+        #   elif op == "!=":
+        #     pass
+        # elif z3.is_bool(left_z3) and z3.is_string(right_z3):
+        #   if op == "==":
+        #     pass
+        #   elif op == "!=":
+        #     pass
+          
+    # this expression is not supported, so make a predicate variable for it
+    predicate = str(node)
+    return z3.Bool("PREDICATE_%s" % (predicate))
+
   def visitDiscard(self, node):
+    # sys.stderr.write("%s\n" % (node.getChildren()[0]))
     self.tree = self.visit(node.getChildren()[0])
+    # sys.stderr.write("%s\n" % (self.tree))
 
   def visitOr(self, node):
     # sys.stderr.write("or %s\n" % (str(node)))
     children = node.getChildren()
-    return z3.Or([self.visit(child) for child in children])
+    # sys.stderr.write("%s\n" % str(children))
+    operands = [self.visit(child) for child in children]
+    # sys.stderr.write("%s\n" % str(operands))
+    # for child in operands:
+    #   sys.stderr.write("%s\n" % str(child))
+    #   sys.stderr.write("%s\n" % str(z3.is_bool(child)))
+    operands = [(child if z3.is_bool(child) else z3.BoolVal(False)) for child in operands]
+    return z3.Or(operands)
 
   def visitAnd(self, node):
     # sys.stderr.write("and %s\n" % (str(node)))
     children = node.getChildren()
-    return z3.And([self.visit(child) for child in children])
+    # sys.stderr.write("%s\n" % str(children))
+    operands = [self.visit(child) for child in children]
+    # sys.stderr.write("%s\n" % str(operands))
+    # for child in operands:
+    #   sys.stderr.write("%s\n" % str(child))
+    #   sys.stderr.write("%s\n" % str(z3.is_bool(child)))
+    operands = [(child if z3.is_bool(child) else z3.BoolVal(False)) for child in operands]
+    return z3.And(operands)
 
   def visitNot(self, node):
     # sys.stderr.write("not %s\n" % (str(node)))
-    return z3.Not(self.visit(node.expr))
+    operand = self.visit(node.expr)
+    if z3.is_bool(operand):
+      return z3.Not(operand)
+    else:
+      return z3.BoolVal(True)
 
   def visitName(self, node):
     # sys.stderr.write("name %s\n" % (str(node)))
-    return z3.Bool(node.name)
+    result = z3.Bool(node.name)
+    # sys.stderr.write("name z3 %s\n" % (str(result)))
+    # sys.stderr.write("name is_bool %s\n" % (str(z3.is_bool(result))))
+    return result
 
   def visitConst(self, node):
     # sys.stderr.write("const %s %s\n" % (str(node), str(type(node.value))))

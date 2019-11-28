@@ -172,60 +172,38 @@ def get_ad_hoc_constraints(config_file):
 
     return constraints
 
-architectures = ["alpha", "arc", "arm", "arm64", "c6x", "csky", "h8300", "hexagon", "ia64", "m68k", "microblaze", "mips", "nds32", "nios2", "openrisc", "parisc", "powerpc", "riscv", "s390", "sh", "sparc", "um", "unicore32", "x86", "xtensa"]
+# names of architectures corresponding to make and make.cross's ARCH variable
+architectures = ["i386", "x86_64", "alpha", "arc", "arm", "arm64", "c6x", "csky", "h8300", "hexagon", "ia64", "m68k", "microblaze", "mips", "nds32", "nios2", "openrisc", "parisc", "powerpc", "riscv", "s390", "sh", "sh64", "sparc32", "sparc64", "um", "unicore32",  "xtensa"]
 
-# "powerpc32", "powerpc64", "sparc32", "sparc64", "sh32", "sh64", "i386", "x86_64", 
-
+# architecture-specific configs, enabled/disabled based on the architecture selected
 architecture_configs = {"ALPHA", "ARC", "ARM", "ARM64", "C6X", "CSKY", "H8300", "HEXAGON", "IA64", "M68K", "MICROBLAZE", "MIPS", "NDS32", "NIOS2", "OPENRISC", "PARISC", "PPC64", "PPC32", "PPC", "RISCV", "S390", "SUPERH64", "SUPERH32", "SUPERH", "SPARC64", "SPARC32", "SPARC", "UML", "UNICORE32", "X86_64", "X86_32", "X86", "XTENSA"}
 
+# dependency on CONFIG_BROKEN will prevent a build, so we check for it
 config_broken = z3.Not(z3.Bool("CONFIG_BROKEN"))
 
+# get the name of the kclause formula file, using the srcarch map
 def get_arch_kclause_file(formulas, arch):
   return os.path.join(os.path.join(os.path.join(formulas, "kclause"), arch), "kclause")
 
 def get_arch_specific_constraints(arch, architecture_configs):
-  free_vars = []
-  if arch == "x86":
-    on_vars = [ "X86" ]
-    free_vars = [ "X86_32", "X86_64" ]
-  elif arch == "x86_64":
-    on_vars = [ "X86", "X86_64" ]
+  if arch == "x86_64":
+    return [ z3.Bool("CONFIG_X86"), z3.Bool("CONFIG_X86_64"), z3.Not(z3.Bool("CONFIG_X86_32")), z3.Bool("BITS=64"), z3.Not(z3.Bool("BITS=32")) ]
   elif arch == "i386":
-    on_vars = [ "X86", "X86_32" ]
-  elif arch == "arm":
-    on_vars = [ "ARM" ]
-  elif arch == "arm64":
-    on_vars = [ "ARM64" ]
-  elif arch == "ppc":
-    on_vars = [ "PPC" ]
-    free_vars = [ "PPC32", "PPC64" ]
-  elif arch == "ppc32":
-    on_vars = [ "PPC32" ]
-  elif arch == "ppc64":
-    on_vars = [ "PPC64" ]
-  elif arch == "superh":
-    on_vars = [ "SUPERH" ]
-    free_vars = [ "SUPERH32", "SUPERH64" ]
-  elif arch == "superh32":
-    on_vars = [ "SUPERH32" ]
-  elif arch == "superh64":
-    on_vars = [ "SUPERH64" ]
-  elif arch == "sparc":
-    on_vars = [ "SPARC" ]
-    free_vars = [ "SPARC32", "SPARC64" ]
+    return [ z3.Bool("CONFIG_X86"), z3.Bool("CONFIG_X86_32"), z3.Not(z3.Bool("CONFIG_X86_64")), z3.Bool("BITS=32"), z3.Not(z3.Bool("BITS=64")) ]
+  elif arch == "powerpc":
+    return [ z3.Bool("PPC") ]
+  elif arch == "sh":
+    return [ z3.Bool("CONFIG_SUPERH"), z3.Bool("CONFIG_SUPERH32"), z3.Not(z3.Bool("CONFIG_SUPERH64")), z3.Bool("BITS=32"), z3.Not(z3.Bool("BITS=64")) ]
+  elif arch == "sh64":
+    return [ z3.Bool("CONFIG_SUPERH"), z3.Bool("CONFIG_SUPERH64"), z3.Not(z3.Bool("CONFIG_SUPERH32")), z3.Bool("BITS=64"), z3.Not(z3.Bool("BITS=32")) ]
   elif arch == "sparc32":
-    on_vars = [ "SPARC32" ]
+    return [ z3.Bool("CONFIG_SPARC"), z3.Bool("CONFIG_SPARC32"), z3.Not(z3.Bool("CONFIG_SPARC64")), z3.Bool("BITS=32"), z3.Not(z3.Bool("BITS=64")) ]
   elif arch == "sparc64":
-    on_vars = [ "SPARC64" ]
-  elif arch == "um":
-    on_vars = [ "UML", "X86" ]
-    free_vars = [ "X86_32", "X86_64" ]
+    return [ z3.Bool("CONFIG_SPARC"), z3.Bool("CONFIG_SPARC64"), z3.Not(z3.Bool("CONFIG_SPARC32")), z3.Bool("BITS=64"), z3.Not(z3.Bool("BITS=32")) ]
+  elif arch == "um":  # todo fix this to work for all archs
+    return [ z3.Bool("UML"), z3.Bool("CONFIG_X86") ]
   else:
-    on_vars = [ varname for varname in architecture_configs if varname.lower().startswith(arch.lower()) ]
-  
-  arch_on = [ z3.Bool("CONFIG_%s" % (varname)) for varname in architecture_configs if varname in on_vars ]
-  arch_off = [ z3.Not(z3.Bool("CONFIG_%s" % (varname))) for varname in architecture_configs if varname not in free_vars and varname not in on_vars ]
-  return arch_on + arch_off
+    return [ "CONFIG_%s" % (arch.upper()) ]
 
 if __name__ == '__main__':    
   argparser = argparse.ArgumentParser()
@@ -248,7 +226,7 @@ if __name__ == '__main__':
                          '--arch',
                          action="append",
                          default=[],
-                         help="""Specify each architecture to try.  These archs will be tried first in order if --all is also given.  Defaults to all.""")
+                         help="""Specify each architecture to try.  These archs will be tried first in order if --all is also given.  Defaults to all.  Available architectures: %s""" % (", ".join(architectures)))
   argparser.add_argument('--all',
                          action="store_true",
                          help="""Check all architectures for a satisfying configuration.  This tries each architecture's formulas given in the --formulas folder.""")
@@ -336,7 +314,7 @@ if __name__ == '__main__':
   else:
     if len(archs) == 0:
       # try popular ones first
-      archs = [ "x86", "sparc", "arm", "arm64", "powerpc", "mips" ]
+      archs = [ "x86_64", "i386", "arm", "arm64", "sparc64", "sparc32", "powerpc64", "powerpc32", "mips" ]
       allarchs = True
     if allarchs:
       # add those not already requested by the user
@@ -344,6 +322,7 @@ if __name__ == '__main__':
     info("Trying the following architectures: %s" % (" ".join(archs)))
     for arch in archs:
       arch_kclause = get_arch_kclause_file(formulas, arch)
+      info("Kclause formulas file: %s" % (arch_kclause))
       if not os.path.isfile(arch_kclause):
         info("Skipping %s, because no kclause found at %s." % (arch, arch_kclause))
       else:
@@ -440,7 +419,7 @@ if __name__ == '__main__':
           info("Generated configuration for %s" % (arch))
         print_model_as_config(model, open(output_file, 'w'))
         if arch is not None:
-          info("Build with \"make ARCH=%s %s\"." % (arch, compilation_unit))
+          info("Build with \"make.cross ARCH=%s olddefconfig %s\"." % (arch, compilation_unit))
           print(arch)
         exit(0)
   error("No satisfying configuration found.")
