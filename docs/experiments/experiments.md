@@ -25,7 +25,23 @@
 
 ### Results
 
-Please find all the resulting build constraints from Kmax here: https://drive.google.com/drive/folders/1k1ONMlY_r2Y6VJe0qcboycG4U5hNtqTT?usp=sharing
+Please find the resulting formulas here: <https://opentheblackbox.com/kmax>
+
+#### Linux next-20191121 2019-11-28
+
+Using machine 2 (kmax and kclause started simultaneously)
+
+- Formulas: Please find the resulting formulas here: <https://opentheblackbox.com/kmax/kmax-formulas_linux-next-20191121.tar.bz2>
+
+- Running time for `kmaxlinux.sh`
+
+    671.85user 62.03system 12:13.47elapsed 100%CPU (0avgtext+0avgdata 71160maxresident)k
+    0inputs+12312outputs (0major+24954658minor)pagefaults 0swaps
+
+- Running time for `kclauselinux.sh`
+
+    3579.12user 12.00system 59:50.65elapsed 100%CPU (0avgtext+0avgdata 138324maxresident)k
+    0inputs+711232outputs (0major+3498420minor)pagefaults 0swaps
 
 #### Linux next-20191121
 
@@ -123,6 +139,8 @@ Using machine 1
 #### Machines
 
 1. Commodity PC desktop, core i5 (circa 2013), 16GB RAM, Debian 11, running with other processes
+1. Commodity PC laptop, core i7 (circa 2018), 16GB RAM, Ubuntu 18.04, running with other processes
+
 
 #### Linux 5.4-rc6
 
@@ -130,8 +148,8 @@ Using machine 1
     tar -xvf /linux-5.4-rc6.tar.gz
     cd linux-5.4-rc6
     make defconfig # any config will work here.  it's just to setup the build system.
-    /usr/bin/time kmaxdriver.py -g $(make CC=cc ARCH=x86 -f /path/to/kmax/scripts/makefile_override alldirs) 2>unit_pc.err | tee unit_pc
-    /usr/bin/time kmaxdriver.py --aggregate < unit_pc > full_pc 2> full_pc.err
+    /usr/bin/time bash /path/to/kmax/scripts/kmaxlinux.sh
+    /usr/bin/time bash /path/to/kmax/scripts/kclauselinux.sh
 
 
 #### Linux 5.3.11
@@ -140,10 +158,10 @@ Using machine 1
     tar -xvf linux-5.3.11.tar.xz
     cd linux-5.3.11
     make defconfig # any config will work here.  it's just to setup the build system.
-    /usr/bin/time kmaxdriver.py -g $(make CC=cc ARCH=x86 -f /path/to/kmax/scripts/makefile_override alldirs) 2>unit_pc.err | tee unit_pc
-    /usr/bin/time kmaxdriver.py --aggregate < unit_pc > full_pc 2> full_pc.err
+    /usr/bin/time bash /path/to/kmax/scripts/kmaxlinux.sh
+    /usr/bin/time bash /path/to/kmax/scripts/kclauselinux.sh
 
-The `makefile_override` Makefile will extract the list of top-level directories from the top-leverl Linux Makefile.  This top-level Makefile is not a Kbuild Makefile, so Kmax is not used.
+Older timing used `kmaxdriver.py` which has been superceded by `kmaxlinux.sh` and `kmaxall`
 
 #### BusyBox 1.28.0
 
