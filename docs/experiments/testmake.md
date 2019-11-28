@@ -1,3 +1,14 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+
+- [Klocalizer Tests](#klocalizer-tests)
+  - [Setup](#setup)
+  - [Results](#results)
+    - [Linux next-20191121 2019-11-28](#linux-next-20191121-2019-11-28)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Klocalizer Tests
 
 ## Setup

@@ -15,6 +15,16 @@
     - [Using New Formulas](#using-new-formulas)
   - [Troubleshooting](#troubleshooting)
   - [Generating Formulas](#generating-formulas)
+  - [Kmax](#kmax)
+    - [Simple example](#simple-example)
+    - [Example run on Linux](#example-run-on-linux)
+  - [Kclause](#kclause)
+  - [Building kconfig_extract](#building-kconfig_extract)
+  - [Installing kclause](#installing-kclause)
+  - [Running kclause](#running-kclause)
+  - [DIMACS format](#dimacs-format)
+  - [Other usage](#other-usage)
+    - [Get a list of all visible configs](#get-a-list-of-all-visible-configs)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
