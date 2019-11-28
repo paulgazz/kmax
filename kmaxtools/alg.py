@@ -1084,20 +1084,21 @@ class Run:
                                None,
                                hostprog_composites)
 
-        for v in set([ "targets", "extra-y" ]):
-            for u in kbuild.split_defs(v):
-                unit_name = os.path.join(path, u)
-                if unit_name.endswith(".o"):
-                    raise NotImplementedError
-                    #extra_targets.add(unit_name)
+        # todo: collect non-kbuild object files to replicate prior analyses
+        # for v in set([ "targets", "extra-y" ]):
+        #     for u in kbuild.split_defs(v):
+        #         unit_name = os.path.join(path, u)
+        #         if unit_name.endswith(".o"):
+        #             raise NotImplementedError
+        #             # extra_targets.add(unit_name)
 
-        for u in kbuild.split_defs("targets"):
-            if u.endswith(".c"):
-                raise NotImplementedError
-                #c_file_targets.add(os.path.join(obj, u))
+        # for u in kbuild.split_defs("targets"):
+        #     if u.endswith(".c"):
+        #         raise NotImplementedError
+        #         #c_file_targets.add(os.path.join(obj, u))
 
-        for u in kbuild.split_defs("clean-files"):
-            clean_files.add(os.path.join(path, u))
+        # for u in kbuild.split_defs("clean-files"):
+        #     clean_files.add(os.path.join(path, u))
             
 
         # look for variables starting with obj-, lib-, hostprogs-,
