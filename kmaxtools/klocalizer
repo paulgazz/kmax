@@ -42,19 +42,34 @@ def get_kmax_constraints(kmax_file, compilation_unit, view=False):
     kmax = pickle.load(fp)
     # todo: support multiple compilation units
 
-    
-    if compilation_unit not in kmax.keys():
+    # resolve all kbuild paths to file names, remove ../ relative
+    # paths.  these paths are needed in the kmax formulas to preserve
+    # the conditions on each subdirectory leading to the compilation
+    # unit, which may not strictly be subdirectories.
+
+    resolved_to_kbuild_map = {}
+    for key in kmax.keys():
+      resolved_filename = os.path.relpath(os.path.abspath(key))
+      if key.endswith("/"):
+        # preserve the ending slash, which signals a subdirectory
+        # instead of a compilation unit in kbuild
+        resolved_filename = resolved_filename + "/"
+      resolved_to_kbuild_map[resolved_filename] = key
+
+    if compilation_unit not in resolved_to_kbuild_map.keys():
       return None
     else:
       kmax_constraints = []
-      if compilation_unit in kmax.keys():
+      kbuild_path = resolved_to_kbuild_map[compilation_unit]
+      info("Full path via Kbuild: %s" %(kbuild_path))
+      if kbuild_path in kmax.keys():
         # add the condition for the compilation unit and each of its parent directories
-        comp_unit_constraint = z3.parse_smt2_string(kmax[compilation_unit])
+        comp_unit_constraint = z3.parse_smt2_string(kmax[kbuild_path])
         kmax_constraints.extend(comp_unit_constraint)
         if view:
-          print("%s\n%s\n" % (compilation_unit, comp_unit_constraint))
-        if '/' in compilation_unit:
-          subpath, basename = compilation_unit.rsplit('/', 1)
+          print("%s\n%s\n" % (kbuild_path, comp_unit_constraint))
+        if '/' in kbuild_path:
+          subpath, basename = kbuild_path.rsplit('/', 1)
           elems = subpath.rsplit('/')
           for i in range(0, len(elems)):
             subarray = elems[0:(len(elems) - i)]

@@ -1151,10 +1151,7 @@ class Run:
         kbuild.get_presence_conditions([ "obj-y", "obj-m", "lib-y", "lib-m", "SPECIAL-obj-simple" ], presence_conditions, kbuild.T, ZSolver.T)
         for token in presence_conditions:
             # resolve any uses of ../ or ./
-            filename = os.path.relpath(os.path.abspath(os.path.join(path, token)))
-            if token.endswith("/"):
-                # preserve the trailing slash, which signals a subdirectory to kbuild, instead of compilation unit
-                filename = filename + "/"
+            filename = os.path.join(path, token)
             if filename not in self.results.presence_conditions.keys():
                 self.results.presence_conditions[filename] = presence_conditions[token]
             else:
