@@ -2,24 +2,24 @@
 
 set -x
 
+script_dir="$(dirname $0)/../../scripts/"
+
 test_klocalizer () {
   filename=$1
 
   echo "$filename"
   /usr/bin/time klocalizer "${filename}" > archname.txt
-  if [[ ${?} -eq 0 ]]; then
+  errcode=${?}
+  if [[ ${errcode} -eq 0 ]]; then
       echo "CONFIGURES"
       arch=$(cat archname.txt)
-      # target="$filename"
-      target="$(dirname $filename)/"
-      if [[ $arch != "x86" ]]; then
-          make.cross olddefconfig clean ARCH=$(cat archname.txt) "$target" |& tee build.txt
-      else
-        make olddefconfig clean "$target" |& tee build.txt
-      fi
-      if [[ ${?} -eq 0 ]]; then
-          grep "$filename" build.txt
-          if [[ ${?} -eq 0 ]]; then
+      target="$filename"
+      # target="$(dirname $filename)/"
+      "${script_dir}/make.cross" ARCH=$(cat archname.txt) clean olddefconfig "$target" |& tee build.txt
+      errcode=${?}
+      if [[ ${errcode} -eq 0 ]]; then
+          grep "CC *$filename" build.txt
+          if [[ ${errcode} -eq 0 ]]; then
               echo "PASS configure and make"
           else
             echo "FAIL not found in make output.  be sure to run make clean first"
@@ -27,7 +27,7 @@ test_klocalizer () {
       else
         echo "FAIL make"
       fi
-  elif [[ ${?} -eq 2 ]]; then
+  elif [[ ${errcode} -eq 2 ]]; then
     echo "PASS found CONFIG_BROKEN"
   else
     echo "FAIL klocalizer"
@@ -52,5 +52,7 @@ test_klocalizer drivers/video/fbdev/fsl-diu-fb.o
 test_klocalizer drivers/watchdog/cpwd.o
 test_klocalizer drivers/watchdog/riowd.o
 test_klocalizer drivers/gpu/drm/i915/gem/i915_gem_context.o
+test_klocalizer arch/x86/kernel/irq_64.o
+test_klocalizer arch/x86/kernel/irq_32.o
 test_klocalizer arch/x86/um/signal.o
 test_klocalizer arch/x86/um/ptrace_32.o
