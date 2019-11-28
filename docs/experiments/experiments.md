@@ -28,6 +28,20 @@
 
 Please find the resulting formulas here: <https://opentheblackbox.com/kmax>
 
+#### Linux v5.4 2019-11-28
+
+- Formulas: Please find the resulting formulas here: <https://opentheblackbox.com/kmax/kmax-formulas_linux-v5.4.tar.bz2>
+
+- Running time for `kmaxlinux.sh`
+
+    654.23user 61.98system 11:55.82elapsed 100%CPU (0avgtext+0avgdata 71272maxresident)k
+    0inputs+12184outputs (0major+24781951minor)pagefaults 0swaps
+
+- Running time for `kclauselinux.sh`
+
+    3443.57user 8.88system 57:31.99elapsed 100%CPU (0avgtext+0avgdata 137524maxresident)k
+    0inputs+704320outputs (0major+3467838minor)pagefault
+
 #### Linux next-20191121 2019-11-28
 
 Using machine 2 (kmax and kclause started simultaneously)
