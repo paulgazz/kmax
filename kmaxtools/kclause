@@ -727,7 +727,7 @@ if __name__ == '__main__':
             pass
           else:
             # neither kind means it's a free variable
-            visible_expr = None
+            visible_expr = "(1)"
 
           if args.include_bool_defaults and var in def_bool_lines.keys():
             sys.stderr.write("warning: defaults are ignored for visibles, because they are user-selectable: %s\n" % (var))
@@ -896,6 +896,8 @@ if __name__ == '__main__':
           if debug_expressions: sys.stderr.write("%s final expression z3 is %s\n" % (var, expression_converter.convert_to_z3(final_expr) if final_expr is not None else None))
           defined_vars.add(var)
           convert_and_add_clause(var, final_expr)
+        else:
+          sys.stderr.write("%s has no final expression\n" % (var))
 
     elif var in nonbools:
       nonbools_with_dep.add(var)
