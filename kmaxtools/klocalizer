@@ -342,7 +342,6 @@ if __name__ == '__main__':
     info("Trying the following architectures: %s" % (" ".join(archs)))
     for arch in archs:
       arch_kclause = get_arch_kclause_file(formulas, arch)
-      info("Kclause formulas file: %s" % (arch_kclause))
       if not os.path.isfile(arch_kclause):
         info("Skipping %s, because no kclause found at %s." % (arch, arch_kclause))
       else:

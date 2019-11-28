@@ -9,28 +9,28 @@ test_klocalizer () {
 
   echo "$filename"
   /usr/bin/time klocalizer "${filename}" > archname.txt
-  errcode=${?}
-  if [[ ${errcode} -eq 0 ]]; then
-      echo "CONFIGURES"
+  errcodekloc=${?}
+  if [[ ${errcodekloc} -eq 0 ]]; then
       arch=$(cat archname.txt)
       target="$filename"
       # target="$(dirname $filename)/"
       "${script_dir}/make.cross" ARCH=$(cat archname.txt) clean olddefconfig "$target" |& tee build.txt
-      errcode=${?}
-      if [[ ${errcode} -eq 0 ]]; then
+      errcodemake=${?}
+      if [[ ${errcodemake} -eq 0 ]]; then
           grep "CC *$filename" build.txt
-          if [[ ${errcode} -eq 0 ]]; then
-              echo "PASS configure and make"
+          errcodegrep=${?}
+          if [[ ${errcodegrep} -eq 0 ]]; then
+              echo "PASS all $filename"
           else
-            echo "FAIL not found in make output.  be sure to run make clean first"
+            echo "FAIL make.cross_missing $filename"
           fi
       else
-        echo "FAIL make"
+        echo "FAIL make.cross_error $filename"
       fi
-  elif [[ ${errcode} -eq 2 ]]; then
-    echo "PASS found CONFIG_BROKEN"
+  elif [[ ${errcodekloc} -eq 2 ]]; then
+    echo "NONE CONFIG_BROKEN $filename"
   else
-    echo "FAIL klocalizer"
+    echo "FAIL klocalizer $filename"
   fi
 }
 
