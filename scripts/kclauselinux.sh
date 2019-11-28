@@ -3,11 +3,10 @@
 set -x
 
 script_dir=$(dirname $0)
-# for arch in x86_64 i386 alpha arc arm arm64 c6x csky h8300 hexagon ia64 m68k microblaze mips nds32 nios2 openrisc parisc powerpc riscv s390 sh sh64 sparc32 sparc64 um unicore32 xtensa; do
-for arch in i386 x86_64; do
+for arch in x86_64 i386 arm arm64 sparc sparc64 mips ia64 powerpc alpha arc c6x csky h8300 hexagon m68k microblaze nds32 nios2 openrisc parisc riscv s390 sh sh64 um unicore32 xtensa; do
   if [[ "$arch" == "x86_64" || "$arch" == "i386" || "$arch" == "um" ]]; then
     srcarch="x86"
-  elif [[ "$arch" == "sparc64" || "$arch" == "sparch32" ]]; then
+  elif [[ "$arch" == "sparc64" || "$arch" == "sparc" ]]; then
     srcarch="sparc"
   elif [[ "$arch" == "sh64" || "$arch" == "sh" ]]; then
     srcarch="sh"

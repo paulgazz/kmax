@@ -183,7 +183,7 @@ def get_ad_hoc_constraints(config_file):
     return constraints
 
 # names of architectures corresponding to make and make.cross's ARCH variable
-architectures = ["i386", "x86_64", "alpha", "arc", "arm", "arm64", "c6x", "csky", "h8300", "hexagon", "ia64", "m68k", "microblaze", "mips", "nds32", "nios2", "openrisc", "parisc", "powerpc", "riscv", "s390", "sh", "sh64", "sparc32", "sparc64", "um", "unicore32",  "xtensa"]
+architectures = ["i386", "x86_64", "alpha", "arc", "arm", "arm64", "c6x", "csky", "h8300", "hexagon", "ia64", "m68k", "microblaze", "mips", "nds32", "nios2", "openrisc", "parisc", "powerpc", "riscv", "s390", "sh", "sh64", "sparc", "sparc64", "um", "unicore32",  "xtensa"]
 
 # architecture-specific configs, enabled/disabled based on the architecture selected
 architecture_configs = set([ "CONFIG_ALPHA", "CONFIG_ARC", "CONFIG_ARM", "CONFIG_ARM64", "CONFIG_C6X", "CONFIG_CSKY", "CONFIG_H8300", "CONFIG_HEXAGON", "CONFIG_IA64", "CONFIG_M68K", "CONFIG_MICROBLAZE", "CONFIG_MIPS", "CONFIG_NDS32", "CONFIG_NIOS2", "CONFIG_OPENRISC", "CONFIG_PARISC", "CONFIG_PPC64", "CONFIG_PPC32", "CONFIG_PPC", "CONFIG_RISCV", "CONFIG_S390", "CONFIG_SUPERH64", "CONFIG_SUPERH32", "CONFIG_SUPERH", "CONFIG_SPARC64", "CONFIG_SPARC32", "CONFIG_SPARC", "CONFIG_UML", "CONFIG_UNICORE32", "CONFIG_X86_64", "CONFIG_X86_32", "CONFIG_X86", "CONFIG_XTENSA" ])
@@ -191,7 +191,8 @@ architecture_configs = set([ "CONFIG_ALPHA", "CONFIG_ARC", "CONFIG_ARM", "CONFIG
 # dependency on CONFIG_BROKEN will prevent a build, so we check for it
 config_broken = z3.Not(z3.Bool("CONFIG_BROKEN"))
 
-# get the name of the kclause formula file, using the srcarch map
+
+
 def get_arch_kclause_file(formulas, arch):
   return os.path.join(os.path.join(os.path.join(formulas, "kclause"), arch), "kclause")
 
@@ -211,7 +212,7 @@ def get_arch_specific_constraints(arch, architecture_configs):
   elif arch == "sh64":
     constraints = [ z3.Bool("CONFIG_SUPERH"), z3.Bool("CONFIG_SUPERH64"), z3.Not(z3.Bool("CONFIG_SUPERH32")), z3.Bool("BITS=64"), z3.Not(z3.Bool("BITS=32")) ]
     disabled = architecture_configs.difference(set(["CONFIG_SUPERH", "CONFIG_SUPERH32", "CONFIG_SUPERH64"]))
-  elif arch == "sparc32":
+  elif arch == "sparc":
     constraints = [ z3.Bool("CONFIG_SPARC"), z3.Bool("CONFIG_SPARC32"), z3.Not(z3.Bool("CONFIG_SPARC64")), z3.Bool("BITS=32"), z3.Not(z3.Bool("BITS=64")) ]
     disabled = architecture_configs.difference(set(["CONFIG_SPARC", "CONFIG_SPARC32", "CONFIG_SPARC64"]))
   elif arch == "sparc64":
@@ -219,10 +220,13 @@ def get_arch_specific_constraints(arch, architecture_configs):
     disabled = architecture_configs.difference(set(["CONFIG_SPARC", "CONFIG_SPARC32", "CONFIG_SPARC64"]))
   elif arch == "um":  # todo fix this to work for all archs
     constraints = [ z3.Bool("UML"), z3.Bool("CONFIG_X86") ]
-    disabled = architecture_configs.difference(set(["UML", "CONFIG_X86", "CONFIG_X86_64", "CONFIG_X86_32"]))
+    disabled = architecture_configs.difference(set(["CONFIG_UML", "CONFIG_X86", "CONFIG_X86_64", "CONFIG_X86_32"]))
   else:
-    constraints = [ "CONFIG_%s" % (arch.upper()) ]
+    arch_var = "CONFIG_%s" % (arch.upper())
+    constraints = [ z3.Bool(arch_var) ]
+    disabled = architecture_configs.difference(set([ arch_var ]))
   disabled_z3 = [ z3.Not(z3.Bool(var)) for var in disabled ]
+  info(str(disabled_z3))
   return constraints + disabled_z3
 
 if __name__ == '__main__':    
@@ -330,7 +334,7 @@ if __name__ == '__main__':
   else:
     if len(archs) == 0:
       # try popular ones first
-      archs = [ "x86_64", "i386", "arm", "arm64", "sparc64", "sparc32", "powerpc64", "powerpc32", "mips" ]
+      archs = [ "x86_64", "i386", "arm", "arm64", "sparc64", "sparc", "powerpc64", "powerpc32", "mips" ]
       allarchs = True
     if allarchs:
       # add those not already requested by the user
