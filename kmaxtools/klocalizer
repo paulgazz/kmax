@@ -357,6 +357,14 @@ if __name__ == '__main__':
   #   os.rename(output_file, backup_file)
   info("Using output file \"%s\"." % (output_file))
 
+  # add kmax constraints
+  kmax_constraints = None
+  if compilation_unit is not None:
+    kmax_constraints = get_kmax_constraints(kmax_file, compilation_unit)
+    if kmax_constraints is None:
+      error("%s not found in %s.  Please check that the compilation unit is in the kmax file." % (compilation_unit, kmax_file))
+      exit(1)
+      
   archlist = [ arch for arch in archs if arch in kclause_to_try.keys() ]
   if None in kclause_to_try.keys():
     archlist = [None] + archlist
@@ -371,14 +379,8 @@ if __name__ == '__main__':
     else:
       constraints = []
 
-      # add kmax constraints
-      if compilation_unit is not None:
-        kmax_constraints = get_kmax_constraints(kmax_file, compilation_unit)
-        if kmax_constraints is None:
-          error("%s not found in %s.  Please check that the compilation unit is in the kmax file." % (compilation_unit, kmax_file))
-          exit(1)
-        else:
-          constraints.extend(kmax_constraints)
+      if kmax_constraints:
+        constraints.extend(kmax_constraints)
 
       if constraints_file:
         constraints.extend(get_ad_hoc_constraints(constraints_file))
