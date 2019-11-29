@@ -12,9 +12,14 @@ test_klocalizer () {
   errcodekloc=${?}
   if [[ ${errcodekloc} -eq 0 ]]; then
       arch=$(cat archname.txt)
+      if [[ "${arch}" == "um32" ]]; then
+          archvar="ARCH=um SUBARCH=i386"
+      else
+          archvar="ARCH=$(cat archname.txt)"
+      fi
       target="$filename"
       # target="$(dirname $filename)/"
-      "${script_dir}/make.cross" ARCH=$(cat archname.txt) clean olddefconfig "$target" |& tee build.txt
+      "${script_dir}/make.cross" $archvar clean olddefconfig "$target" |& tee build.txt
       errcodemake=${?}
       if [[ ${errcodemake} -eq 0 ]]; then
           grep "CC *$filename" build.txt
@@ -55,4 +60,5 @@ test_klocalizer drivers/gpu/drm/i915/gem/i915_gem_context.o
 test_klocalizer arch/x86/kernel/irq_64.o
 test_klocalizer arch/x86/kernel/irq_32.o
 test_klocalizer arch/x86/um/signal.o
+test_klocalizer arch/x86/um/ptrace_64.o
 test_klocalizer arch/x86/um/ptrace_32.o
