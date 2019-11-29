@@ -79,12 +79,12 @@ not work.  It may be necessary to install these manually via `pip`, e.g.,
 The fastest way to get started is to use formulas already extracted for your version of Linux.
 
     cd /path/to/linux/
-    wget https://opentheblackbox.com/kmax/kmax-formulas_linux-v5.3.11.tar.bz2
+    wget https://opentheblackbox.net/kmax/kmax-formulas_linux-v5.3.11.tar.bz2
     tar -xvf kmax-formulas_linux-v5.3.11.tar.bz2
 
 This contains a `.kmax` directory containing the Kconfig and Kbuild
 formulas for each architecture.  If a version is not available
-[here](https://opentheblackbox.com/kmax) submit an issue to request
+[here](https://opentheblackbox.net/kmax) submit an issue to request
 the formulas be generated and uplodated or see below for directions on
 generating these formulas.
 
@@ -177,7 +177,7 @@ Override the default formulas with the following:
 ## Troubleshooting
 
 - `klocalizer` requires the formulas from `kmax` and
-  `kclause`. [Download](https://opentheblackbox.com/kmax) these
+  `kclause`. [Download](https://opentheblackbox.net/kmax) these
   first or generate them (see below).
 
 - Use the `CONFIG_` prefix on variables when referring to them in user constraints.
