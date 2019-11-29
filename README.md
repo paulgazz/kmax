@@ -113,15 +113,15 @@ unit.  The following are examples of how to customize this process.
 
 Use `-a` to only search a specific architecture.
 
-    klocalizer -a x86 drivers/usb/storage/alauda.o
+    klocalizer -a x86_64 drivers/usb/storage/alauda.o
 
 Specify multiple `-a` arguments to search the given architectures in given order.
 
-    klocalizer -a x86 -a sparc drivers/watchdog/cpwd.o
+    klocalizer -a x86_64 -a sparc drivers/watchdog/cpwd.o
 
 Specify `-a` and `-all` to search all architectures, trying the ones given in `-a` first.
 
-    klocalizer -a x86 -a arm --all drivers/watchdog/cpwd.o
+    klocalizer -a x86_64 -a arm --all drivers/watchdog/cpwd.o
 
 ### Generating an Arbitrary Configuration for an Architecture
 
@@ -129,7 +129,7 @@ Pass a single architecture name without the compilation unit to
 generate an arbitrary configuration for that architecture.  Passing
 multiple architectures is not supported.
 
-    klocalizer -a x86
+    klocalizer -a x86_64
 
 ### Setting Additional Configuration Options
 
@@ -140,13 +140,13 @@ configurations on or off when searching for constraints.
 
 Note that this can prevent finding a valid configuration.
  
-    klocalizer -a x86 --undefine CONFIG_USB drivers/usb/storage/alauda.o  # no configuration possible because alauda depends on USB
+    klocalizer -a x86_64 --undefine CONFIG_USB drivers/usb/storage/alauda.o  # no configuration possible because alauda depends on USB
 
 ### Investigating Unsatisfied Constraints
 
 Use `--show-unsat-core` to see what constraints are causing the issue:
 
-    klocalizer --show-unsat-core -a x86 --undefine CONFIG_USB drivers/usb/storage/alauda.o  # no configuration possible because alauda depends on USB
+    klocalizer --show-unsat-core -a x86_64 --undefine CONFIG_USB drivers/usb/storage/alauda.o  # no configuration possible because alauda depends on USB
 
 ### Optimizing the Resulting Configuration (Experimental)
 
@@ -172,7 +172,7 @@ its subdirectories with
 
 Override the default formulas with the following:
 
-    klocalizer --kmax-formula kbuild.kmax --kclause-formula kconfig.kclause drivers/watchdog/cpwd.o
+    klocalizer --kmax-formula kmax --kclause-formula kclause drivers/watchdog/cpwd.o
     
 ## Troubleshooting
 
@@ -180,7 +180,7 @@ Override the default formulas with the following:
   `kclause`. [Download](https://opentheblackbox.com/kmax) these
   first or generate them (see below).
 
-- Use the CONFIG_ prefix on variables when referring to them in user constraints.
+- Use the `CONFIG_` prefix on variables when referring to them in user constraints.
 
 - Use the `.o` ending for compilation units (though `klocalizer` will change it automatically.)
 
