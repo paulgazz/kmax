@@ -5,6 +5,7 @@
 - [Klocalizer Tests](#klocalizer-tests)
   - [Setup](#setup)
   - [Results](#results)
+    - [Linux v5.4 2019-11-29](#linux-v54-2019-11-29)
     - [Linux v5.4 2019-11-28](#linux-v54-2019-11-28)
     - [Linux next-20191121 2019-11-28](#linux-next-20191121-2019-11-28)
 
