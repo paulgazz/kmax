@@ -17,14 +17,12 @@
   - [Generating Formulas](#generating-formulas)
   - [Kmax](#kmax)
     - [Simple example](#simple-example)
-    - [Example run on Linux](#example-run-on-linux)
+    - [Example on Linux](#example-on-linux)
   - [Kclause](#kclause)
-  - [Building kconfig_extract](#building-kconfig_extract)
-  - [Installing kclause](#installing-kclause)
-  - [Running kclause](#running-kclause)
-  - [DIMACS format](#dimacs-format)
-  - [Other usage](#other-usage)
-    - [Get a list of all visible configs](#get-a-list-of-all-visible-configs)
+    - [Example](#example)
+    - [Building kconfig_extract](#building-kconfig_extract)
+    - [Other uses](#other-uses)
+      - [Get a list of all visible configs](#get-a-list-of-all-visible-configs)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -205,4 +203,75 @@ architectures, as named in the arch/ directory.
     /usr/bin/time bash /path/to/kmax/scripts/kmaxlinux.sh
     /usr/bin/time bash /path/to/kmax/scripts/kclauselinux.sh
     bash /path/to/kmax/scripts/packageformulaslinux.sh
+    
+## Kmax
 
+### Simple example
+
+This will run Kmax on the example from the
+[paper](https://paulgazzillo.com/papers/esecfse17.pdf) on Kmax.
+
+    kmax tests/paper_example
+
+This will output the list of configuration conditions for each compilation unit file in the example Kbuild file.  By default, Kmax to treat configuration options as Boolean options (as opposed to Kconfig tristate options).  Pass `-T` for experimental support for tristate.
+
+    unit_pc tests/kbuild/fork.o 1
+    unit_pc tests/kbuild/probe_32.o (CONFIG_A && CONFIG_B)
+    unit_pc tests/kbuild/probe_64.o ((! CONFIG_A) && CONFIG_B)
+
+The `unit_pc` lines have the [format](docs/unit_pc.md) of compilation unit name followed by the Boolean expression, in C-style syntax.  The Boolean expression describes the constraints that must be satisfied for the compilation unit to be included.  Use `-z` to emit the z3 formulas in smtlib2 format.
+
+### Example on Linux
+
+There is a script that will run Kmax on all Kbuild Makefiles from a project, e.g., the Linux kernel source code.
+
+First get the Linux source and prepare its build system.
+
+    wget https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.3.11.tar.xz
+    tar -xvf linux-5.3.11.tar.xz
+    cd linux-5.3.11
+    make defconfig # any config will work here.  it's just to setup the build system.
+
+To try Kmax on a particular Kbuild Makefile, use the `kbuildplus.py` tool:
+
+    kmax ipc/
+    
+This will run Kmax on a single Kbuild Makefile, and show the symbolic configurations for each compilation unit and subdirectory.  Kmax can also recursively analyze Kbuild Makefiles by following subdirectories, use the `kmaxdriver.py` which uses `kbuildplus.py` to process each Kbuild Makefile and recursively process those in subdirectories.  `-g` means collect the symbolic constraints.
+
+    kmaxall -g net/
+    
+Kmax includes a Makefile hack to get all the top-level Linux directories.  Combined with `kmaxall` this command will collect the symbolic constraints for the whole (x86) source, saving them into `unit_pc`.  Be sure to change `/path/to/kmax` to your kmax installation to get the Makefile shunt.
+
+    kmaxall -g $(make CC=cc ARCH=x86 -f /path/to/kmax/scripts/makefile_override alldirs) | tee kmax
+
+## Kclause
+
+### Example
+
+Kclause extracts a logical model from Kconfig.  It works in two stages:
+
+1. The `kconfig_extractor` tool uses the Kconfig parser shipped with Linux to extract configuration variables dependencies to an intermediate language.
+
+2. The `kclause` tool takes this intermediate language and generates a z3 formula.
+
+From the root of a Linux source tree, run the following:
+
+    /path/to/kmax/kconfig_extractor/kconfig_extractor --extract -e ARCH=x86_64 -e SRCARCH=x86 -e KERNELVERSION=kcu -e srctree=./ -e CC=cc Kconfig > kconfig_extract
+    kclause --remove-orphaned-nonvisible < kconfig_extract > kclause
+
+### Building kconfig_extract
+
+    make -C /path/to/kmax/kconfig_extractor/
+
+### Other uses
+
+#### Get a list of all visible configs
+
+    # all the configs that have a prompt condition
+    grep "^prompt " kconfig.kclause | cut -f2 -d\  | sort | uniq | tee visible.txt
+
+    # all the configs
+    grep "^config " kconfig.kclause | cut -f2 -d\  | sort | uniq | tee configs.txt
+    
+    # the visibles should be a subset of the configs
+    diff configs.txt visible.txt  | grep ">"
