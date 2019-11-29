@@ -33,55 +33,57 @@ def get_kclause_constraints(kclause_file):
 
     return constraints
 
-def get_kmax_constraints(kmax_file, compilation_unit, view=False):
+def unpickle_kmax_file(kmax_file):
+  with open(kmax_file, 'r') as fp:
+    kmax = pickle.load(fp)
+    return kmax
+
+def get_resolved_to_kbuild_map(kmax):
+  # resolve all kbuild paths to file names, remove ../ relative
+  # paths.  these paths are needed in the kmax formulas to preserve
+  # the conditions on each subdirectory leading to the compilation
+  # unit, which may not strictly be subdirectories.
+  resolved_to_kbuild_map = {}
+  for key in kmax.keys():
+    resolved_filename = os.path.relpath(os.path.abspath(key))
+    if key.endswith("/"):
+      # preserve the ending slash, which signals a subdirectory
+      # instead of a compilation unit in kbuild
+      resolved_filename = resolved_filename + "/"
+    resolved_to_kbuild_map[resolved_filename] = key
+  return resolved_to_kbuild_map
+
+def get_kmax_constraints(kmax_formulas, resolved_to_kbuild_map, compilation_unit, view=False):
   if not compilation_unit.endswith(".o"):
     compilation_unit = os.path.splitext(compilation_unit)[0] + ".o"
     warning("Forcing file extension to be .o, since lookup is by compilation unit: %s" % (compilation_unit))
 
-  with open(kmax_file, 'r') as fp:
-    kmax = pickle.load(fp)
-    # todo: support multiple compilation units
-
-    # resolve all kbuild paths to file names, remove ../ relative
-    # paths.  these paths are needed in the kmax formulas to preserve
-    # the conditions on each subdirectory leading to the compilation
-    # unit, which may not strictly be subdirectories.
-
-    resolved_to_kbuild_map = {}
-    for key in kmax.keys():
-      resolved_filename = os.path.relpath(os.path.abspath(key))
-      if key.endswith("/"):
-        # preserve the ending slash, which signals a subdirectory
-        # instead of a compilation unit in kbuild
-        resolved_filename = resolved_filename + "/"
-      resolved_to_kbuild_map[resolved_filename] = key
-
-    if compilation_unit not in resolved_to_kbuild_map.keys():
-      return None
-    else:
-      kmax_constraints = []
-      kbuild_path = resolved_to_kbuild_map[compilation_unit]
-      info("Full path via Kbuild: %s" %(kbuild_path))
-      if kbuild_path in kmax.keys():
-        # add the condition for the compilation unit and each of its parent directories
-        comp_unit_constraint = z3.parse_smt2_string(kmax[kbuild_path])
-        kmax_constraints.extend(comp_unit_constraint)
-        if view:
-          print("%s\n%s\n" % (kbuild_path, comp_unit_constraint))
-        if '/' in kbuild_path:
-          subpath, basename = kbuild_path.rsplit('/', 1)
-          elems = subpath.rsplit('/')
-          for i in range(0, len(elems)):
-            subarray = elems[0:(len(elems) - i)]
-            subsubpath = '/'.join(subarray) + "/"
-            if subsubpath in kmax.keys():
-              subsubpath_constraint = z3.parse_smt2_string(kmax[subsubpath])
-              kmax_constraints.extend(subsubpath_constraint)
-              if view:
-                print("%s\n%s\n" % (subsubpath, subsubpath_constraint))
-            else:
-              info("%s not found in %s, assuming it is always included." % (subsubpath, kmax_file))
-      return kmax_constraints
+  if compilation_unit not in resolved_to_kbuild_map.keys():
+    return None
+  else:
+    kmax_constraints = []
+    kbuild_path = resolved_to_kbuild_map[compilation_unit]
+    info("Full path via Kbuild: %s" %(kbuild_path))
+    if kbuild_path in kmax_formulas.keys():
+      # add the condition for the compilation unit and each of its parent directories
+      comp_unit_constraint = z3.parse_smt2_string(kmax_formulas[kbuild_path])
+      kmax_constraints.extend(comp_unit_constraint)
+      if view:
+        print("%s\n%s\n" % (kbuild_path, comp_unit_constraint))
+      if '/' in kbuild_path:
+        subpath, basename = kbuild_path.rsplit('/', 1)
+        elems = subpath.rsplit('/')
+        for i in range(0, len(elems)):
+          subarray = elems[0:(len(elems) - i)]
+          subsubpath = '/'.join(subarray) + "/"
+          if subsubpath in kmax_formulas.keys():
+            subsubpath_constraint = z3.parse_smt2_string(kmax_formulas[subsubpath])
+            kmax_constraints.extend(subsubpath_constraint)
+            if view:
+              print("%s\n%s\n" % (subsubpath, subsubpath_constraint))
+          else:
+            info("%s has no kmax formula, assuming it is unconstrained." % (subsubpath))
+    return kmax_constraints
 
 def print_model_as_config(model, fp=sys.stdout):
   info("Printing model as config file to %s." % ("stdout" if fp == sys.stdout else (fp.name)))
@@ -191,7 +193,26 @@ architecture_configs = set([ "CONFIG_ALPHA", "CONFIG_ARC", "CONFIG_ARM", "CONFIG
 # dependency on CONFIG_BROKEN will prevent a build, so we check for it
 config_broken = z3.Not(z3.Bool("CONFIG_BROKEN"))
 
-
+def get_archs_from_subdir(kbuild_path):
+  """Get the architectures associated with the given arch/ subdirectory."""
+  assert(kbuild_path.startswith("arch/"))
+  elems = kbuild_path.split("/")
+  if (len(elems) < 3):
+    warning("need at least three elements, i.e., arch/NAME/unit.o to get arch name.")
+    return []
+  else:
+    subdir = elems[1]
+    # todo: handle um archs
+    if subdir == "x86":
+      archs = [ "x86_64", "i386" ]
+    elif subdir == "sh":
+      archs = [ "sh", "sh64" ]
+    elif subdir == "sparc":
+      archs = [ "sparc", "sparc64" ]
+    else:
+      # arch matches subdir name
+      archs = [ subdir ]
+    return archs
 
 def get_arch_kclause_file(formulas, arch):
   return os.path.join(os.path.join(os.path.join(formulas, "kclause"), arch), "kclause")
@@ -316,7 +337,9 @@ if __name__ == '__main__':
   if view_kbuild:
     if compilation_unit is not None:
       info("The Kbuild constraints for %s:" % (compilation_unit))
-      get_kmax_constraints(kmax_file, compilation_unit, view=True)
+      kmax_formulas = unpickle_kmax_file(kmax_file)
+      resolved_to_kbuild_map = get_resolved_to_kbuild_map(kmax_formulas)
+      get_kmax_constraints(kmax_formulas, resolved_to_kbuild_map, compilation_unit, view=True)
       exit(0)
     else:
       error("Please provide a compilation unit when using --view-kbuild.")
@@ -345,7 +368,7 @@ if __name__ == '__main__':
         info("Skipping %s, because no kclause found at %s." % (arch, arch_kclause))
       else:
         kclause_to_try[arch] = arch_kclause
-
+        
   if len(kclause_to_try.keys()) == 0:
     error("No kclause files found.  Please check --formulas directory or use --kclause-formula explicitly.")
     exit(1)
@@ -377,10 +400,18 @@ if __name__ == '__main__':
   # add kmax constraints
   kmax_constraints = None
   if compilation_unit is not None:
-    kmax_constraints = get_kmax_constraints(kmax_file, compilation_unit)
+    kmax_formulas = unpickle_kmax_file(kmax_file)
+    resolved_to_kbuild_map = get_resolved_to_kbuild_map(kmax_formulas)
+    kmax_constraints = get_kmax_constraints(kmax_formulas, resolved_to_kbuild_map, compilation_unit)
     if kmax_constraints is None:
       error("%s not found in %s.  Please check that the compilation unit is in the kmax file." % (compilation_unit, kmax_file))
       exit(1)
+    # check for compilation-unit in arch/ subfolder
+    kbuild_path = resolved_to_kbuild_map[compilation_unit]
+    if kbuild_path.startswith("arch/"):
+      # narrow the set of possible architectures
+      unit_arch = get_archs_from_subdir(kbuild_path)
+      archs = [ arch for arch in archs if arch in unit_arch ]
       
   archlist = [ arch for arch in archs if arch in kclause_to_try.keys() ]
   if None in kclause_to_try.keys():
