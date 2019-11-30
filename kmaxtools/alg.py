@@ -1156,7 +1156,17 @@ class Run:
                 self.results.presence_conditions[filename] = presence_conditions[token]
             else:
                 self.results.presence_conditions[filename] = zdisj(self.results.presence_conditions[filename], presence_conditions[token])
-        # print self.results.presence_conditions
+
+        # add core-y and core-m, which contain full paths instead of subdirectories
+        # presence_conditions = {}
+        # kbuild.get_presence_conditions([ "core-y", "core-m" ], presence_conditions, kbuild.T, ZSolver.T)
+        # for token in presence_conditions:
+        #     # resolve any uses of ../ or ./
+        #     filename = token
+        #     if filename not in self.results.presence_conditions.keys():
+        #         self.results.presence_conditions[filename] = presence_conditions[token]
+        #     else:
+        #         self.results.presence_conditions[filename] = zdisj(self.results.presence_conditions[filename], presence_conditions[token])
 
         # removed because this method for getting presence conditions is obsolete
         # def _f(d, s):
