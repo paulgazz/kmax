@@ -30,34 +30,6 @@ The output will contain
 
 ## Results
 
-### Linux v5.4 2019-11-29
-
-| compilation unit | klocalizer | make.cross | notes |
-| --- | --- | --- | --- |
-| drivers/usb/storage/alauda.o | yes | yes | |
-| sound/soc/intel/boards/glk_rt5682_max98357a.o | yes | yes | |
-| sound/mips/sgio2audio.o | yes | yes | |
-| drivers/char/efirtc.o | yes | yes | |
-| sound/soc/mediatek/common/mtk-btcvsd.o | yes | yes | |
-| drivers/watchdog/pnx833x_wdt.o | `CONFIG_BROKEN` | | |
-| drivers/tty/n_r3964.o | `CONFIG_BROKEN` | | |
-| drivers/block/ataflop.o | yes | yes | |
-| drivers/char/ipmi/ipmi_devintf.o | yes | yes | |
-| virt/kvm/arm/arm.o | yes | __no__ | `klocalizer` needs to handle arch-specific directories, `arch/s390/kvm/../../../virt/kmax` |
-| drivers/watchdog/pcwd.o | yes | yes | |
-| drivers/watchdog/mixcomwd.o | yes | yes | |
-| virt/kvm/kvm_main.o | yes | __no__ | `klocalizer` needs to handle arch-specific directories, `arch/s390/kvm/../../../virt/kmax` |
-| drivers/block/amiflop.o | yes | yes | |
-| drivers/video/fbdev/fsl-diu-fb.o | yes | yes | |
-| drivers/watchdog/cpwd.o | yes | yes | |
-| drivers/watchdog/riowd.o | yes | yes | |
-| drivers/gpu/drm/i915/gem/i915_gem_context.o | __no__ | | `kmax` bug |
-| arch/x86/kernel/irq_64.o | yes | yes | |
-| arch/x86/kernel/irq_32.o | yes | yes | |
-| arch/x86/um/signal.o | yes | yes | |
-| arch/x86/um/ptrace_64.o | yes | yes | |
-| arch/x86/um/ptrace_32.o | yes | __no__ | unsure how to build um x86 32-bit |
-
 ### Linux v5.4 2019-11-28
 
 | compilation unit | klocalizer | make.cross | notes |
