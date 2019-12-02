@@ -29,6 +29,30 @@
 
 Please find the resulting formulas here: <https://opentheblackbox.net/kmax>
 
+#### Linux next-20191129 2019-12-02
+
+Using machine 1
+
+- Formulas: Please find the resulting formulas here: <https://opentheblackbox.net/kmax/kmax-formulas_linux-next-20191129.tar.bz2>
+
+- Running time for `kmaxlinux.sh`
+
+        788.33user 59.98system 14:08.31elapsed 100%CPU (0avgtext+0avgdata 98208maxresident)k
+        48inputs+22640outputs (0major+26695544minor)pagefaults 0swaps
+        Command exited with non-zero status 1
+
+#### Linux next-20191121 2019-12-02
+
+Using machine 1
+
+- Formulas: Please find the resulting formulas here: <https://opentheblackbox.net/kmax/kmax-formulas_linux-next-20191121.tar.bz2>
+
+- Running time for `kmaxlinux.sh`
+
+        759.90user 55.69system 13:59.12elapsed 97%CPU (0avgtext+0avgdata 98184maxresident)k
+        68536inputs+22608outputs (131major+16999166minor)pagefaults 0swaps
+        Command exited with non-zero status 1
+
 #### Linux v5.4 2019-11-28
 
 - Formulas: Please find the resulting formulas here: <https://opentheblackbox.net/kmax/kmax-formulas_linux-v5.4.tar.bz2>
