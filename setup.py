@@ -10,7 +10,7 @@ def read(fname):
 
 setup(
     name = "kmaxtools",
-    version = "2.0-rc12",
+    version = "2.0-rc13",
     author = "Paul Gazzillo",
     author_email = "paul@pgazz.com",
     description = ("Collecting symbolic configurations from Kbuild Makefiles"),
