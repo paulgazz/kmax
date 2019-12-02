@@ -4,8 +4,20 @@ set -x
 
 script_dir="$(dirname $0)/../../scripts/"
 
+# USAGE: test_klocalizer unit_name build_path kbuild_path
 test_klocalizer () {
   filename=$1
+  if [[ "${#}" > "1" ]]; then
+    target="${2}"
+  else
+    target="$filename"
+    # target="$(dirname $filename)/"
+  fi
+  if [[ "${#}" > "2" ]]; then
+      kbuild_path="${3}"
+  else
+    kbuild_path="$filename"
+  fi
 
   echo "$filename"
   /usr/bin/time klocalizer "${filename}" > archname.txt
@@ -17,12 +29,11 @@ test_klocalizer () {
       else
           archvar="ARCH=$(cat archname.txt)"
       fi
-      target="$filename"
-      # target="$(dirname $filename)/"
-      "${script_dir}/make.cross" $archvar clean olddefconfig "$target" |& tee build.txt
+      "${script_dir}/make.cross" $archvar olddefconfig clean "$target" > build.txt 2>&1
       errcodemake=${?}
+      tail -n50 build.txt
       if [[ ${errcodemake} -eq 0 ]]; then
-          grep "CC *$filename" build.txt
+          grep "CC *$kbuild_path" build.txt
           errcodegrep=${?}
           if [[ ${errcodegrep} -eq 0 ]]; then
               echo "PASS all $filename"
@@ -47,11 +58,11 @@ test_klocalizer sound/soc/mediatek/common/mtk-btcvsd.o
 test_klocalizer drivers/watchdog/pnx833x_wdt.o
 test_klocalizer drivers/tty/n_r3964.o
 test_klocalizer drivers/block/ataflop.o
-test_klocalizer drivers/char/ipmi/ipmi_devintf.o
-test_klocalizer virt/kvm/arm/arm.o
+test_klocalizer drivers/char/ipmi/ipmi_devintf.o drivers/char/ipmi/
+# test_klocalizer virt/kvm/arm/arm.o
 test_klocalizer drivers/watchdog/pcwd.o
 test_klocalizer drivers/watchdog/mixcomwd.o
-test_klocalizer virt/kvm/kvm_main.o
+test_klocalizer virt/kvm/kvm_main.o arch/s390/kvm/ arch/s390/kvm/../../../virt/kvm/kvm_main.o
 test_klocalizer drivers/block/amiflop.o
 test_klocalizer drivers/video/fbdev/fsl-diu-fb.o
 test_klocalizer drivers/watchdog/cpwd.o
