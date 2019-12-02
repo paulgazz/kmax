@@ -203,7 +203,11 @@ if __name__ == '__main__':
     global excludes
 
     if kbuild_dir in excludes:
-      print "skipping", kbuild_dir
+      sys.stderr.write("skipping %s\n" % (kbuild_dir))
+      return set()
+
+    if not os.path.exists(kbuild_dir):
+      sys.stderr.write("%s does not exist\n" % (kbuild_dir))
       return set()
 
     covering_set_args = [ "kmax",
