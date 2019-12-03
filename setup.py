@@ -13,7 +13,7 @@ setup(
     version = "2.0-rc13",
     author = "Paul Gazzillo",
     author_email = "paul@pgazz.com",
-    description = ("Collecting symbolic configurations from Kbuild Makefiles"),
+    description = ("Tools for working with symbolic  constraints from Kbuild Makefile."),
     license = "GPLv2+",
     keywords = "makefile kconfig kbuild configurations kmax kclause klocalizer",
     url = "https://github.com/paulgazz/kmax",
