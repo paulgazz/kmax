@@ -3,6 +3,8 @@
 
 
 - [The Kmax Tool Suite](#the-kmax-tool-suite)
+  - [Tools](#tools)
+  - [Contributors](#contributors)
   - [Setup](#setup)
   - [Quick Start](#quick-start)
   - [Use Cases](#use-cases)
