@@ -20,8 +20,8 @@ INFO: Writing the configuration to .config
 INFO: Generated configuration for x86_64
 INFO: Printing model as config file to .config.
 INFO: Build with "make.cross ARCH=x86_64 olddefconfig drivers/usb/storage/alauda.o".
-5.43user 0.13system 0:05.64elapsed 98%CPU (0avgtext+0avgdata 177352maxresident)k
-3848inputs+920outputs (21major+53912minor)pagefaults 0swaps
+5.94user 0.12system 0:06.28elapsed 96%CPU (0avgtext+0avgdata 176232maxresident)k
+856inputs+920outputs (0major+49601minor)pagefaults 0swaps
 + errcodekloc=0
 + [[ 0 -eq 0 ]]
 ++ cat archname.txt
@@ -32,39 +32,38 @@ INFO: Build with "make.cross ARCH=x86_64 olddefconfig drivers/usb/storage/alauda
 + /home/paul/research/repos/kmax/tests/klocalizer_tests/../../scripts//make.cross ARCH=x86_64 olddefconfig clean drivers/usb/storage/alauda.o
 + errcodemake=0
 + tail -n50 build.txt
-  HOSTCC  scripts/genksyms/genksyms.o
-  LEX     scripts/genksyms/lex.lex.c
-  DESCEND  objtool
+  HOSTLD  arch/x86/tools/relocs
   HOSTCC  scripts/genksyms/parse.tab.o
   HOSTCC  scripts/genksyms/lex.lex.o
+  UPD     include/config/kernel.release
+  UPD     include/generated/utsrelease.h
   HOSTCC   /home/paul/src/linux/tools/objtool/fixdep.o
   HOSTLD   /home/paul/src/linux/tools/objtool/fixdep-in.o
   LINK     /home/paul/src/linux/tools/objtool/fixdep
-  HOSTLD  arch/x86/tools/relocs
   CC       /home/paul/src/linux/tools/objtool/builtin-check.o
   CC       /home/paul/src/linux/tools/objtool/builtin-orc.o
+  CC       /home/paul/src/linux/tools/objtool/arch/x86/decode.o
   CC       /home/paul/src/linux/tools/objtool/check.o
   CC       /home/paul/src/linux/tools/objtool/orc_gen.o
   CC       /home/paul/src/linux/tools/objtool/orc_dump.o
-  CC       /home/paul/src/linux/tools/objtool/special.o
-  CC       /home/paul/src/linux/tools/objtool/objtool.o
-  CC       /home/paul/src/linux/tools/objtool/arch/x86/decode.o
-  CC       /home/paul/src/linux/tools/objtool/libstring.o
-  CC       /home/paul/src/linux/tools/objtool/libctype.o
   CC       /home/paul/src/linux/tools/objtool/elf.o
   CC       /home/paul/src/linux/tools/objtool/exec-cmd.o
-  CC       /home/paul/src/linux/tools/objtool/str_error_r.o
+  CC       /home/paul/src/linux/tools/objtool/special.o
+  CC       /home/paul/src/linux/tools/objtool/objtool.o
+  HOSTLD  scripts/genksyms/genksyms
+  CC       /home/paul/src/linux/tools/objtool/libstring.o
   CC       /home/paul/src/linux/tools/objtool/help.o
+  CC       /home/paul/src/linux/tools/objtool/libctype.o
+  LD       /home/paul/src/linux/tools/objtool/arch/x86/objtool-in.o
+  CC       /home/paul/src/linux/tools/objtool/str_error_r.o
   CC       /home/paul/src/linux/tools/objtool/pager.o
   CC       /home/paul/src/linux/tools/objtool/parse-options.o
+  HOSTCC  scripts/mod/mk_elfconfig
   CC       /home/paul/src/linux/tools/objtool/run-command.o
+  CC      scripts/mod/empty.o
+  CC      scripts/mod/devicetable-offsets.s
   CC       /home/paul/src/linux/tools/objtool/sigchain.o
   CC       /home/paul/src/linux/tools/objtool/subcmd-config.o
-  HOSTLD  scripts/genksyms/genksyms
-  HOSTCC  scripts/mod/mk_elfconfig
-  CC      scripts/mod/devicetable-offsets.s
-  CC      scripts/mod/empty.o
-  LD       /home/paul/src/linux/tools/objtool/arch/x86/objtool-in.o
   MKELF   scripts/mod/elfconfig.h
   HOSTCC  scripts/mod/modpost.o
   HOSTCC  scripts/mod/sumversion.o
@@ -72,12 +71,13 @@ INFO: Build with "make.cross ARCH=x86_64 olddefconfig drivers/usb/storage/alauda
   HOSTCC  scripts/mod/file2alias.o
   LD       /home/paul/src/linux/tools/objtool/libsubcmd-in.o
   AR       /home/paul/src/linux/tools/objtool/libsubcmd.a
-  LD       /home/paul/src/linux/tools/objtool/objtool-in.o
-/home/paul/src/linux/tools/objtool
-  LINK     /home/paul/src/linux/tools/objtool/objtool
   HOSTLD  scripts/mod/modpost
   CC      kernel/bounds.s
   CALL    scripts/atomic/check-atomics.sh
+  LD       /home/paul/src/linux/tools/objtool/objtool-in.o
+/home/paul/src/linux/tools/objtool
+  LINK     /home/paul/src/linux/tools/objtool/objtool
+  UPD     include/generated/bounds.h
   CC      arch/x86/kernel/asm-offsets.s
   UPD     include/generated/asm-offsets.h
   CALL    scripts/checksyscalls.sh
@@ -109,8 +109,8 @@ INFO: Writing the configuration to .config
 INFO: Generated configuration for x86_64
 INFO: Printing model as config file to .config.
 INFO: Build with "make.cross ARCH=x86_64 olddefconfig sound/soc/intel/boards/glk_rt5682_max98357a.o".
-5.20user 0.09system 0:05.31elapsed 99%CPU (0avgtext+0avgdata 178100maxresident)k
-0inputs+912outputs (0major+54389minor)pagefaults 0swaps
+5.92user 0.18system 0:06.11elapsed 99%CPU (0avgtext+0avgdata 177284maxresident)k
+0inputs+912outputs (0major+49361minor)pagefaults 0swaps
 + errcodekloc=0
 + [[ 0 -eq 0 ]]
 ++ cat archname.txt
@@ -121,45 +121,45 @@ INFO: Build with "make.cross ARCH=x86_64 olddefconfig sound/soc/intel/boards/glk
 + /home/paul/research/repos/kmax/tests/klocalizer_tests/../../scripts//make.cross ARCH=x86_64 olddefconfig clean sound/soc/intel/boards/glk_rt5682_max98357a.o
 + errcodemake=0
 + tail -n50 build.txt
-  YACC    scripts/genksyms/parse.tab.[ch]
   LEX     scripts/genksyms/lex.lex.c
+  HOSTCC  scripts/sortextable
+  HOSTLD  arch/x86/tools/relocs
   DESCEND  objtool
-  HOSTCC   /home/paul/src/linux/tools/objtool/fixdep.o
   HOSTCC  scripts/genksyms/parse.tab.o
   HOSTCC  scripts/genksyms/lex.lex.o
+  HOSTCC   /home/paul/src/linux/tools/objtool/fixdep.o
   HOSTLD   /home/paul/src/linux/tools/objtool/fixdep-in.o
   LINK     /home/paul/src/linux/tools/objtool/fixdep
+  CC       /home/paul/src/linux/tools/objtool/builtin-check.o
   CC       /home/paul/src/linux/tools/objtool/builtin-orc.o
   CC       /home/paul/src/linux/tools/objtool/check.o
-  CC       /home/paul/src/linux/tools/objtool/orc_gen.o
-  CC       /home/paul/src/linux/tools/objtool/elf.o
-  CC       /home/paul/src/linux/tools/objtool/orc_dump.o
   CC       /home/paul/src/linux/tools/objtool/arch/x86/decode.o
-  CC       /home/paul/src/linux/tools/objtool/libstring.o
-  CC       /home/paul/src/linux/tools/objtool/objtool.o
-  CC       /home/paul/src/linux/tools/objtool/builtin-check.o
-  CC       /home/paul/src/linux/tools/objtool/special.o
-  HOSTLD  arch/x86/tools/relocs
-  CC       /home/paul/src/linux/tools/objtool/libctype.o
-  CC       /home/paul/src/linux/tools/objtool/str_error_r.o
-  CC       /home/paul/src/linux/tools/objtool/subcmd-config.o
+  CC       /home/paul/src/linux/tools/objtool/orc_gen.o
+  CC       /home/paul/src/linux/tools/objtool/orc_dump.o
   CC       /home/paul/src/linux/tools/objtool/exec-cmd.o
-  CC       /home/paul/src/linux/tools/objtool/sigchain.o
-  CC       /home/paul/src/linux/tools/objtool/run-command.o
-  CC       /home/paul/src/linux/tools/objtool/pager.o
-  CC       /home/paul/src/linux/tools/objtool/parse-options.o
+  CC       /home/paul/src/linux/tools/objtool/elf.o
+  CC       /home/paul/src/linux/tools/objtool/special.o
   CC       /home/paul/src/linux/tools/objtool/help.o
-  LD       /home/paul/src/linux/tools/objtool/arch/x86/objtool-in.o
   HOSTLD  scripts/genksyms/genksyms
+  CC       /home/paul/src/linux/tools/objtool/pager.o
+  CC       /home/paul/src/linux/tools/objtool/objtool.o
   HOSTCC  scripts/mod/mk_elfconfig
-  CC      scripts/mod/devicetable-offsets.s
   CC      scripts/mod/empty.o
+  LD       /home/paul/src/linux/tools/objtool/arch/x86/objtool-in.o
+  CC       /home/paul/src/linux/tools/objtool/parse-options.o
+  CC       /home/paul/src/linux/tools/objtool/libstring.o
+  CC       /home/paul/src/linux/tools/objtool/libctype.o
+  CC      scripts/mod/devicetable-offsets.s
+  CC       /home/paul/src/linux/tools/objtool/str_error_r.o
+  CC       /home/paul/src/linux/tools/objtool/run-command.o
+  CC       /home/paul/src/linux/tools/objtool/sigchain.o
   MKELF   scripts/mod/elfconfig.h
   HOSTCC  scripts/mod/modpost.o
   HOSTCC  scripts/mod/sumversion.o
-  HOSTCC  scripts/mod/file2alias.o
+  CC       /home/paul/src/linux/tools/objtool/subcmd-config.o
   LD       /home/paul/src/linux/tools/objtool/libsubcmd-in.o
   AR       /home/paul/src/linux/tools/objtool/libsubcmd.a
+  HOSTCC  scripts/mod/file2alias.o
   LD       /home/paul/src/linux/tools/objtool/objtool-in.o
 /home/paul/src/linux/tools/objtool
   LINK     /home/paul/src/linux/tools/objtool/objtool
@@ -220,8 +220,8 @@ INFO: Writing the configuration to .config
 INFO: Generated configuration for mips
 INFO: Printing model as config file to .config.
 INFO: Build with "make.cross ARCH=mips olddefconfig sound/mips/sgio2audio.o".
-30.08user 0.18system 0:30.27elapsed 99%CPU (0avgtext+0avgdata 251800maxresident)k
-0inputs+880outputs (0major+104695minor)pagefaults 0swaps
+31.72user 0.42system 0:32.15elapsed 99%CPU (0avgtext+0avgdata 250108maxresident)k
+0inputs+880outputs (0major+105921minor)pagefaults 0swaps
 + errcodekloc=0
 + [[ 0 -eq 0 ]]
 ++ cat archname.txt
@@ -232,55 +232,55 @@ INFO: Build with "make.cross ARCH=mips olddefconfig sound/mips/sgio2audio.o".
 + /home/paul/research/repos/kmax/tests/klocalizer_tests/../../scripts//make.cross ARCH=mips olddefconfig clean sound/mips/sgio2audio.o
 + errcodemake=0
 + tail -n50 build.txt
-  HDRINST usr/include/asm/cachectl.h
-  HDRINST usr/include/asm/auxvec.h
-  HDRINST usr/include/asm/ioctls.h
-  HDRINST usr/include/asm/signal.h
-  HDRINST usr/include/asm/sgidefs.h
-  HDRINST usr/include/asm/posix_types.h
-  HDRINST usr/include/asm/msgbuf.h
-  HDRINST usr/include/asm/mman.h
-  HDRINST usr/include/asm/fcntl.h
-  HDRINST usr/include/asm/statfs.h
-  HDRINST usr/include/asm/bitfield.h
-  HDRINST usr/include/asm/shmbuf.h
-  HDRINST usr/include/asm/poll.h
+  HDRINST usr/include/linux/version.h
+  HDRINST usr/include/asm/kvm_para.h
   HDRINST usr/include/asm/resource.h
   HDRINST usr/include/asm/param.h
-  HDRINST usr/include/asm/types.h
-  HDRINST usr/include/asm/sockios.h
-  HDRINST usr/include/asm/hwcap.h
-  HDRINST usr/include/asm/termios.h
-  HDRINST usr/include/asm/inst.h
-  HDRINST usr/include/asm/kvm.h
-  HDRINST usr/include/asm/ptrace.h
-  HDRINST usr/include/asm/sembuf.h
-  HDRINST usr/include/asm/kvm_para.h
-  HDRINST usr/include/asm/socket.h
-  HDRINST usr/include/asm/stat.h
-  HDRINST usr/include/asm/termbits.h
-  HDRINST usr/include/asm/break.h
-  HDRINST usr/include/asm/swab.h
-  HDRINST usr/include/asm/bitsperlong.h
-  HDRINST usr/include/asm/setup.h
-  HDRINST usr/include/asm/ioctl.h
-  HDRINST usr/include/asm/reg.h
-  HDRINST usr/include/asm/unistd_nr_o32.h
+  HDRINST usr/include/asm/auxvec.h
   HDRINST usr/include/asm/siginfo.h
+  HDRINST usr/include/asm/bitfield.h
+  HDRINST usr/include/asm/break.h
+  HDRINST usr/include/asm/ucontext.h
+  HDRINST usr/include/asm/kvm.h
+  HDRINST usr/include/asm/byteorder.h
+  HDRINST usr/include/asm/unistd.h
+  HDRINST usr/include/asm/signal.h
+  HDRINST usr/include/asm/fcntl.h
+  HDRINST usr/include/asm/shmbuf.h
+  HDRINST usr/include/asm/statfs.h
+  HDRINST usr/include/asm/poll.h
+  HDRINST usr/include/asm/sysmips.h
+  HDRINST usr/include/asm/setup.h
+  HDRINST usr/include/asm/termios.h
+  HDRINST usr/include/asm/cachectl.h
+  HDRINST usr/include/asm/ioctl.h
+  HDRINST usr/include/asm/mman.h
+  HDRINST usr/include/asm/stat.h
+  HDRINST usr/include/asm/ptrace.h
+  HDRINST usr/include/asm/sockios.h
+  HDRINST usr/include/asm/sgidefs.h
+  HDRINST usr/include/asm/types.h
+  HDRINST usr/include/asm/posix_types.h
+  HDRINST usr/include/asm/socket.h
+  HDRINST usr/include/asm/reg.h
+  HDRINST usr/include/asm/ioctls.h
+  HDRINST usr/include/asm/sembuf.h
+  HDRINST usr/include/asm/msgbuf.h
+  HDRINST usr/include/asm/inst.h
+  HDRINST usr/include/asm/bitsperlong.h
+  HDRINST usr/include/asm/errno.h
+  HDRINST usr/include/asm/termbits.h
+  HDRINST usr/include/asm/swab.h
+  HDRINST usr/include/asm/sigcontext.h
+  HDRINST usr/include/asm/hwcap.h
+  HDRINST usr/include/asm/unistd_n32.h
   HDRINST usr/include/asm/unistd_n64.h
   HDRINST usr/include/asm/unistd_o32.h
-  HDRINST usr/include/asm/bpf_perf_event.h
   HDRINST usr/include/asm/unistd_nr_n32.h
   HDRINST usr/include/asm/ipcbuf.h
+  HDRINST usr/include/asm/unistd_nr_o32.h
+  HDRINST usr/include/asm/bpf_perf_event.h
   HDRINST usr/include/asm/unistd_nr_n64.h
-  HDRINST usr/include/asm/unistd_n32.h
-  MKELF   scripts/mod/elfconfig.h
-  HOSTCC  scripts/mod/modpost.o
-  HOSTCC  scripts/mod/file2alias.o
-  HOSTCC  scripts/mod/sumversion.o
-  HOSTLD  scripts/mod/modpost
-  CALL    scripts/atomic/check-atomics.sh
-  CALL    scripts/checksyscalls.sh
   CC      sound/mips/sgio2audio.o
 + [[ 0 -eq 0 ]]
 + grep 'CC *sound/mips/sgio2audio.o' build.txt
@@ -352,8 +352,8 @@ INFO: Writing the configuration to .config
 INFO: Generated configuration for ia64
 INFO: Printing model as config file to .config.
 INFO: Build with "make.cross ARCH=ia64 olddefconfig drivers/char/efirtc.o".
-50.73user 0.30system 0:51.03elapsed 99%CPU (0avgtext+0avgdata 251396maxresident)k
-0inputs+856outputs (0major+119814minor)pagefaults 0swaps
+51.50user 0.84system 0:52.34elapsed 99%CPU (0avgtext+0avgdata 250216maxresident)k
+0inputs+856outputs (0major+119128minor)pagefaults 0swaps
 + errcodekloc=0
 + [[ 0 -eq 0 ]]
 ++ cat archname.txt
@@ -364,7 +364,6 @@ INFO: Build with "make.cross ARCH=ia64 olddefconfig drivers/char/efirtc.o".
 + /home/paul/research/repos/kmax/tests/klocalizer_tests/../../scripts//make.cross ARCH=ia64 olddefconfig clean drivers/char/efirtc.o
 + errcodemake=0
 + tail -n50 build.txt
-scripts/kconfig/conf  --syncconfig Kconfig
 
 WARNING: unmet direct dependencies detected for CRYPTO_SHA256
   Depends on [n]: CRYPTO [=n]
@@ -381,19 +380,20 @@ WARNING: unmet direct dependencies detected for CRYPTO_SHA256
   Selected by [y]:
   - NFSD_V4 [=y] && NETWORK_FILESYSTEMS [=y] && NFSD [=y] && PROC_FS [=y]
   CC      arch/ia64/kernel/nr-irqs.s
-  HOSTCC  scripts/dtc/flattree.o
+  UPD     include/generated/nr-irqs.h
   HOSTCC  scripts/dtc/dtc.o
-  HOSTCC  scripts/dtc/data.o
+  HOSTCC  scripts/dtc/flattree.o
   HOSTCC  scripts/dtc/fstree.o
+  HOSTCC  scripts/dtc/data.o
   HOSTCC  scripts/dtc/livetree.o
   HOSTCC  scripts/dtc/treesource.o
   HOSTCC  scripts/dtc/srcpos.o
-  YACC    scripts/dtc/dtc-parser.tab.[ch]
   HOSTCC  scripts/dtc/checks.o
-  LEX     scripts/dtc/dtc-lexer.lex.c
   HOSTCC  scripts/dtc/util.o
-  HOSTCC  scripts/dtc/dtc-parser.tab.o
+  LEX     scripts/dtc/dtc-lexer.lex.c
+  YACC    scripts/dtc/dtc-parser.tab.[ch]
   HOSTCC  scripts/dtc/dtc-lexer.lex.o
+  HOSTCC  scripts/dtc/dtc-parser.tab.o
   HOSTLD  scripts/dtc/dtc
   HOSTCC  scripts/kallsyms
   HOSTCC  scripts/conmakehash
@@ -448,8 +448,8 @@ INFO: Writing the configuration to .config
 INFO: Generated configuration for arm
 INFO: Printing model as config file to .config.
 INFO: Build with "make.cross ARCH=arm olddefconfig sound/soc/mediatek/common/mtk-btcvsd.o".
-16.19user 0.20system 0:16.40elapsed 99%CPU (0avgtext+0avgdata 263200maxresident)k
-0inputs+944outputs (0major+97064minor)pagefaults 0swaps
+16.78user 0.18system 0:16.97elapsed 99%CPU (0avgtext+0avgdata 261100maxresident)k
+0inputs+944outputs (0major+90775minor)pagefaults 0swaps
 + errcodekloc=0
 + [[ 0 -eq 0 ]]
 ++ cat archname.txt
@@ -466,19 +466,19 @@ INFO: Build with "make.cross ARCH=arm olddefconfig sound/soc/mediatek/common/mtk
   HOSTLD  scripts/kconfig/conf
 scripts/kconfig/conf  --syncconfig Kconfig
   SYSHDR  arch/arm/include/generated/uapi/asm/unistd-common.h
-  SYSHDR  arch/arm/include/generated/uapi/asm/unistd-eabi.h
   SYSHDR  arch/arm/include/generated/uapi/asm/unistd-oabi.h
+  SYSHDR  arch/arm/include/generated/uapi/asm/unistd-eabi.h
   HOSTCC  scripts/dtc/dtc.o
   HOSTCC  scripts/dtc/flattree.o
   HOSTCC  scripts/dtc/fstree.o
+  HOSTCC  scripts/dtc/data.o
   HOSTCC  scripts/dtc/livetree.o
   HOSTCC  scripts/dtc/treesource.o
-  HOSTCC  scripts/dtc/data.o
-  HOSTCC  scripts/dtc/checks.o
   HOSTCC  scripts/dtc/srcpos.o
+  HOSTCC  scripts/dtc/checks.o
+  HOSTCC  scripts/dtc/util.o
   LEX     scripts/dtc/dtc-lexer.lex.c
   YACC    scripts/dtc/dtc-parser.tab.[ch]
-  HOSTCC  scripts/dtc/util.o
   HOSTCC  scripts/dtc/dtc-lexer.lex.o
   HOSTCC  scripts/dtc/dtc-parser.tab.o
   HOSTLD  scripts/dtc/dtc
@@ -498,9 +498,9 @@ scripts/kconfig/conf  --syncconfig Kconfig
   CC      scripts/mod/empty.o
   UPD     scripts/mod/devicetable-offsets.h
   MKELF   scripts/mod/elfconfig.h
+  HOSTCC  scripts/mod/modpost.o
   HOSTCC  scripts/mod/file2alias.o
   HOSTCC  scripts/mod/sumversion.o
-  HOSTCC  scripts/mod/modpost.o
   HOSTLD  scripts/mod/modpost
   CC      kernel/bounds.s
   CALL    scripts/atomic/check-atomics.sh
@@ -557,8 +557,8 @@ INFO: Kclause formulas file: .kmax/kclause/mips/kclause
 INFO: The constraints are unsatisfiable.  This either means no configuration is possible or kmax formulas are overconstrained.
 ERROR: This compilation unit seems to depend on CONFIG_BROKEN, so it may not be buildable.  Stopping the search.  Run again with --allow-config-broken to search anyway.
 Command exited with non-zero status 2
-30.06user 0.26system 0:30.33elapsed 99%CPU (0avgtext+0avgdata 251400maxresident)k
-0inputs+0outputs (0major+106140minor)pagefaults 0swaps
+29.89user 0.22system 0:30.12elapsed 99%CPU (0avgtext+0avgdata 255080maxresident)k
+0inputs+0outputs (0major+102307minor)pagefaults 0swaps
 + errcodekloc=2
 + [[ 2 -eq 0 ]]
 + [[ 2 -eq 2 ]]
@@ -582,8 +582,8 @@ INFO: Kclause formulas file: .kmax/kclause/x86_64/kclause
 INFO: The constraints are unsatisfiable.  This either means no configuration is possible or kmax formulas are overconstrained.
 ERROR: This compilation unit seems to depend on CONFIG_BROKEN, so it may not be buildable.  Stopping the search.  Run again with --allow-config-broken to search anyway.
 Command exited with non-zero status 2
-4.02user 0.08system 0:04.11elapsed 99%CPU (0avgtext+0avgdata 169364maxresident)k
-0inputs+0outputs (0major+51894minor)pagefaults 0swaps
+4.42user 0.11system 0:04.55elapsed 99%CPU (0avgtext+0avgdata 168276maxresident)k
+0inputs+0outputs (0major+47653minor)pagefaults 0swaps
 + errcodekloc=2
 + [[ 2 -eq 0 ]]
 + [[ 2 -eq 2 ]]
@@ -655,8 +655,8 @@ INFO: Writing the configuration to .config
 INFO: Generated configuration for m68k
 INFO: Printing model as config file to .config.
 INFO: Build with "make.cross ARCH=m68k olddefconfig drivers/block/ataflop.o".
-53.80user 0.25system 0:54.06elapsed 99%CPU (0avgtext+0avgdata 251208maxresident)k
-0inputs+888outputs (0major+119414minor)pagefaults 0swaps
+54.60user 0.31system 0:54.92elapsed 99%CPU (0avgtext+0avgdata 255232maxresident)k
+0inputs+888outputs (0major+118813minor)pagefaults 0swaps
 + errcodekloc=0
 + [[ 0 -eq 0 ]]
 ++ cat archname.txt
@@ -671,9 +671,9 @@ INFO: Build with "make.cross ARCH=m68k olddefconfig drivers/block/ataflop.o".
   HOSTCC  scripts/kconfig/confdata.o
   HOSTCC  scripts/kconfig/expr.o
   LEX     scripts/kconfig/lexer.lex.c
-  HOSTCC  scripts/kconfig/preprocess.o
   YACC    scripts/kconfig/parser.tab.[ch]
   HOSTCC  scripts/kconfig/symbol.o
+  HOSTCC  scripts/kconfig/preprocess.o
   HOSTCC  scripts/kconfig/util.o
   HOSTCC  scripts/kconfig/lexer.lex.o
   HOSTCC  scripts/kconfig/parser.tab.o
@@ -685,8 +685,8 @@ scripts/kconfig/conf  --syncconfig Kconfig
   HOSTCC  scripts/dtc/data.o
   HOSTCC  scripts/dtc/livetree.o
   HOSTCC  scripts/dtc/treesource.o
-  HOSTCC  scripts/dtc/checks.o
   HOSTCC  scripts/dtc/srcpos.o
+  HOSTCC  scripts/dtc/checks.o
   HOSTCC  scripts/dtc/util.o
   LEX     scripts/dtc/dtc-lexer.lex.c
   YACC    scripts/dtc/dtc-parser.tab.[ch]
@@ -744,8 +744,8 @@ INFO: Writing the configuration to .config
 INFO: Generated configuration for x86_64
 INFO: Printing model as config file to .config.
 INFO: Build with "make.cross ARCH=x86_64 olddefconfig drivers/char/ipmi/ipmi_devintf.o".
-5.47user 0.11system 0:05.60elapsed 99%CPU (0avgtext+0avgdata 177208maxresident)k
-0inputs+928outputs (0major+53890minor)pagefaults 0swaps
+5.97user 0.11system 0:06.09elapsed 99%CPU (0avgtext+0avgdata 176460maxresident)k
+0inputs+928outputs (0major+48556minor)pagefaults 0swaps
 + errcodekloc=0
 + [[ 0 -eq 0 ]]
 ++ cat archname.txt
@@ -756,43 +756,43 @@ INFO: Build with "make.cross ARCH=x86_64 olddefconfig drivers/char/ipmi/ipmi_dev
 + /home/paul/research/repos/kmax/tests/klocalizer_tests/../../scripts//make.cross ARCH=x86_64 olddefconfig clean drivers/char/ipmi/
 + errcodemake=0
 + tail -n50 build.txt
-  HOSTCC  scripts/genksyms/parse.tab.o
   HOSTCC  scripts/genksyms/lex.lex.o
+  HOSTLD  arch/x86/tools/relocs
+  HOSTCC   /home/paul/src/linux/tools/objtool/fixdep.o
   HOSTLD   /home/paul/src/linux/tools/objtool/fixdep-in.o
   LINK     /home/paul/src/linux/tools/objtool/fixdep
+  CC       /home/paul/src/linux/tools/objtool/builtin-check.o
   CC       /home/paul/src/linux/tools/objtool/builtin-orc.o
   CC       /home/paul/src/linux/tools/objtool/check.o
-  CC       /home/paul/src/linux/tools/objtool/special.o
+  CC       /home/paul/src/linux/tools/objtool/orc_gen.o
   CC       /home/paul/src/linux/tools/objtool/orc_dump.o
   CC       /home/paul/src/linux/tools/objtool/arch/x86/decode.o
-  CC       /home/paul/src/linux/tools/objtool/builtin-check.o
-  CC       /home/paul/src/linux/tools/objtool/orc_gen.o
-  CC       /home/paul/src/linux/tools/objtool/objtool.o
-  CC       /home/paul/src/linux/tools/objtool/elf.o
-  CC       /home/paul/src/linux/tools/objtool/libstring.o
-  HOSTLD  arch/x86/tools/relocs
   CC       /home/paul/src/linux/tools/objtool/exec-cmd.o
-  CC       /home/paul/src/linux/tools/objtool/libctype.o
+  CC       /home/paul/src/linux/tools/objtool/elf.o
   CC       /home/paul/src/linux/tools/objtool/help.o
-  CC       /home/paul/src/linux/tools/objtool/pager.o
-  CC       /home/paul/src/linux/tools/objtool/run-command.o
-  CC       /home/paul/src/linux/tools/objtool/parse-options.o
-  CC       /home/paul/src/linux/tools/objtool/sigchain.o
-  CC       /home/paul/src/linux/tools/objtool/subcmd-config.o
-  CC       /home/paul/src/linux/tools/objtool/str_error_r.o
-  LD       /home/paul/src/linux/tools/objtool/arch/x86/objtool-in.o
+  CC       /home/paul/src/linux/tools/objtool/special.o
+  CC       /home/paul/src/linux/tools/objtool/objtool.o
   HOSTLD  scripts/genksyms/genksyms
+  CC       /home/paul/src/linux/tools/objtool/pager.o
   HOSTCC  scripts/mod/mk_elfconfig
-  CC      scripts/mod/devicetable-offsets.s
+  CC       /home/paul/src/linux/tools/objtool/libstring.o
+  CC       /home/paul/src/linux/tools/objtool/libctype.o
   CC      scripts/mod/empty.o
+  CC       /home/paul/src/linux/tools/objtool/parse-options.o
+  CC       /home/paul/src/linux/tools/objtool/str_error_r.o
+  CC      scripts/mod/devicetable-offsets.s
   MKELF   scripts/mod/elfconfig.h
   HOSTCC  scripts/mod/modpost.o
   HOSTCC  scripts/mod/sumversion.o
+  CC       /home/paul/src/linux/tools/objtool/run-command.o
+  LD       /home/paul/src/linux/tools/objtool/arch/x86/objtool-in.o
   UPD     scripts/mod/devicetable-offsets.h
   HOSTCC  scripts/mod/file2alias.o
+  CC       /home/paul/src/linux/tools/objtool/sigchain.o
+  CC       /home/paul/src/linux/tools/objtool/subcmd-config.o
+  LD       /home/paul/src/linux/tools/objtool/objtool-in.o
   LD       /home/paul/src/linux/tools/objtool/libsubcmd-in.o
   AR       /home/paul/src/linux/tools/objtool/libsubcmd.a
-  LD       /home/paul/src/linux/tools/objtool/objtool-in.o
 /home/paul/src/linux/tools/objtool
   LINK     /home/paul/src/linux/tools/objtool/objtool
   HOSTLD  scripts/mod/modpost
@@ -837,8 +837,8 @@ INFO: Writing the configuration to .config
 INFO: Generated configuration for i386
 INFO: Printing model as config file to .config.
 INFO: Build with "make.cross ARCH=i386 olddefconfig drivers/watchdog/pcwd.o".
-8.50user 0.15system 0:08.66elapsed 99%CPU (0avgtext+0avgdata 190676maxresident)k
-0inputs+936outputs (0major+60629minor)pagefaults 0swaps
+9.04user 0.10system 0:09.15elapsed 99%CPU (0avgtext+0avgdata 189716maxresident)k
+0inputs+936outputs (0major+54982minor)pagefaults 0swaps
 + errcodekloc=0
 + [[ 0 -eq 0 ]]
 ++ cat archname.txt
@@ -849,55 +849,55 @@ INFO: Build with "make.cross ARCH=i386 olddefconfig drivers/watchdog/pcwd.o".
 + /home/paul/research/repos/kmax/tests/klocalizer_tests/../../scripts//make.cross ARCH=i386 olddefconfig clean drivers/watchdog/pcwd.o
 + errcodemake=0
 + tail -n50 build.txt
-  HDRINST usr/include/asm/vsyscall.h
-  HDRINST usr/include/asm/statfs.h
-  HDRINST usr/include/asm/shmbuf.h
-  HDRINST usr/include/asm/mce.h
-  HDRINST usr/include/asm/e820.h
-  HDRINST usr/include/asm/sigcontext32.h
-  HDRINST usr/include/asm/svm.h
-  HDRINST usr/include/asm/kvm.h
-  HDRINST usr/include/asm/ptrace.h
-  HDRINST usr/include/asm/boot.h
-  HDRINST usr/include/asm/sembuf.h
-  HDRINST usr/include/asm/posix_types_x32.h
-  HDRINST usr/include/asm/kvm_para.h
-  HDRINST usr/include/asm/hwcap2.h
-  HDRINST usr/include/asm/stat.h
-  HDRINST usr/include/asm/bitsperlong.h
   HDRINST usr/include/asm/ptrace-abi.h
-  HDRINST usr/include/asm/hw_breakpoint.h
-  HDRINST usr/include/asm/swab.h
-  HDRINST usr/include/asm/a.out.h
+  HDRINST usr/include/asm/unistd.h
+  HDRINST usr/include/asm/signal.h
   HDRINST usr/include/asm/debugreg.h
-  HDRINST usr/include/asm/ldt.h
-  HDRINST usr/include/asm/siginfo.h
+  HDRINST usr/include/asm/shmbuf.h
+  HDRINST usr/include/asm/perf_regs.h
+  HDRINST usr/include/asm/svm.h
+  HDRINST usr/include/asm/statfs.h
+  HDRINST usr/include/asm/processor-flags.h
+  HDRINST usr/include/asm/msr.h
   HDRINST usr/include/asm/bootparam.h
+  HDRINST usr/include/asm/a.out.h
+  HDRINST usr/include/asm/e820.h
   HDRINST usr/include/asm/setup.h
-  HDRINST usr/include/asm/errno.h
-  HDRINST usr/include/asm/ioctls.h
-  HDRINST usr/include/asm/unistd_32.h
+  HDRINST usr/include/asm/posix_types_64.h
+  HDRINST usr/include/asm/hw_breakpoint.h
+  HDRINST usr/include/asm/mman.h
+  HDRINST usr/include/asm/stat.h
+  HDRINST usr/include/asm/vm86.h
+  HDRINST usr/include/asm/ptrace.h
+  HDRINST usr/include/asm/posix_types_32.h
+  HDRINST usr/include/asm/boot.h
+  HDRINST usr/include/asm/ldt.h
+  HDRINST usr/include/asm/posix_types.h
+  HDRINST usr/include/asm/sembuf.h
+  HDRINST usr/include/asm/msgbuf.h
+  HDRINST usr/include/asm/mtrr.h
+  HDRINST usr/include/asm/sigcontext32.h
+  HDRINST usr/include/asm/bitsperlong.h
+  HDRINST usr/include/asm/swab.h
+  HDRINST usr/include/asm/sigcontext.h
+  HDRINST usr/include/asm/kvm_perf.h
   HDRINST usr/include/asm/resource.h
-  HDRINST usr/include/asm/fcntl.h
-  HDRINST usr/include/asm/bpf_perf_event.h
-  HDRINST usr/include/asm/poll.h
   HDRINST usr/include/asm/param.h
-  HDRINST usr/include/asm/ipcbuf.h
-  HDRINST usr/include/asm/types.h
-  HDRINST usr/include/asm/sockios.h
+  HDRINST usr/include/asm/fcntl.h
+  HDRINST usr/include/asm/poll.h
   HDRINST usr/include/asm/termios.h
-  HDRINST usr/include/asm/unistd_x32.h
-  HDRINST usr/include/asm/termbits.h
-  HDRINST usr/include/asm/unistd_64.h
-  HDRINST usr/include/asm/socket.h
+  HDRINST usr/include/asm/unistd_32.h
   HDRINST usr/include/asm/ioctl.h
-  HOSTLD  scripts/mod/modpost
-  CC      kernel/bounds.s
-  CALL    scripts/atomic/check-atomics.sh
-  UPD     include/generated/bounds.h
-  CC      arch/x86/kernel/asm-offsets.s
-  UPD     include/generated/asm-offsets.h
-  CALL    scripts/checksyscalls.sh
+  HDRINST usr/include/asm/ipcbuf.h
+  HDRINST usr/include/asm/sockios.h
+  HDRINST usr/include/asm/types.h
+  HDRINST usr/include/asm/socket.h
+  HDRINST usr/include/asm/ioctls.h
+  HDRINST usr/include/asm/unistd_64.h
+  HDRINST usr/include/asm/bpf_perf_event.h
+  HDRINST usr/include/asm/errno.h
+  HDRINST usr/include/asm/termbits.h
+  HDRINST usr/include/asm/unistd_x32.h
   CC      drivers/watchdog/pcwd.o
 + [[ 0 -eq 0 ]]
 + grep 'CC *drivers/watchdog/pcwd.o' build.txt
@@ -930,8 +930,8 @@ INFO: Writing the configuration to .config
 INFO: Generated configuration for i386
 INFO: Printing model as config file to .config.
 INFO: Build with "make.cross ARCH=i386 olddefconfig drivers/watchdog/mixcomwd.o".
-8.53user 0.13system 0:08.67elapsed 99%CPU (0avgtext+0avgdata 191236maxresident)k
-0inputs+936outputs (0major+60614minor)pagefaults 0swaps
+9.17user 0.13system 0:09.31elapsed 99%CPU (0avgtext+0avgdata 190040maxresident)k
+0inputs+936outputs (0major+56523minor)pagefaults 0swaps
 + errcodekloc=0
 + [[ 0 -eq 0 ]]
 ++ cat archname.txt
@@ -959,15 +959,15 @@ scripts/kconfig/conf  --syncconfig Kconfig
   HOSTCC  scripts/dtc/fstree.o
   HOSTCC  scripts/dtc/data.o
   HOSTCC  scripts/dtc/livetree.o
-  HOSTCC  scripts/dtc/srcpos.o
-  LEX     scripts/dtc/dtc-lexer.lex.c
-  HOSTCC  scripts/dtc/checks.o
-  YACC    scripts/dtc/dtc-parser.tab.[ch]
-  HOSTCC  scripts/dtc/util.o
   HOSTCC  scripts/dtc/treesource.o
+  HOSTLD  arch/x86/tools/relocs
+  HOSTCC  scripts/dtc/srcpos.o
+  HOSTCC  scripts/dtc/checks.o
+  HOSTCC  scripts/dtc/util.o
+  LEX     scripts/dtc/dtc-lexer.lex.c
+  YACC    scripts/dtc/dtc-parser.tab.[ch]
   HOSTCC  scripts/dtc/dtc-lexer.lex.o
   HOSTCC  scripts/dtc/dtc-parser.tab.o
-  HOSTLD  arch/x86/tools/relocs
   HOSTLD  scripts/dtc/dtc
   HOSTCC  scripts/kallsyms
   HOSTCC  scripts/sortextable
@@ -1025,8 +1025,8 @@ INFO: Writing the configuration to .config
 INFO: Generated configuration for s390
 INFO: Printing model as config file to .config.
 INFO: Build with "make.cross ARCH=s390 olddefconfig virt/kvm/kvm_main.o".
-5.15user 0.12system 0:05.28elapsed 99%CPU (0avgtext+0avgdata 172288maxresident)k
-0inputs+920outputs (0major+52271minor)pagefaults 0swaps
+5.59user 0.11system 0:05.71elapsed 99%CPU (0avgtext+0avgdata 170644maxresident)k
+0inputs+920outputs (0major+48083minor)pagefaults 0swaps
 + errcodekloc=0
 + [[ 0 -eq 0 ]]
 ++ cat archname.txt
@@ -1079,13 +1079,13 @@ scripts/kconfig/conf  --syncconfig Kconfig
   CC      arch/s390/kvm/../../../virt/kvm/vfio.o
   CC      arch/s390/kvm/kvm-s390.o
   CC      arch/s390/kvm/intercept.o
-  CC      arch/s390/kvm/vsie.o
-  CC      arch/s390/kvm/guestdbg.o
-  CC      arch/s390/kvm/priv.o
   CC      arch/s390/kvm/interrupt.o
+  CC      arch/s390/kvm/priv.o
   CC      arch/s390/kvm/sigp.o
   CC      arch/s390/kvm/diag.o
   CC      arch/s390/kvm/gaccess.o
+  CC      arch/s390/kvm/guestdbg.o
+  CC      arch/s390/kvm/vsie.o
   AR      arch/s390/kvm/built-in.a
 + [[ 0 -eq 0 ]]
 + grep 'CC *arch/s390/kvm/../../../virt/kvm/kvm_main.o' build.txt
@@ -1160,8 +1160,8 @@ INFO: Writing the configuration to .config
 INFO: Generated configuration for m68k
 INFO: Printing model as config file to .config.
 INFO: Build with "make.cross ARCH=m68k olddefconfig drivers/block/amiflop.o".
-55.35user 0.29system 0:55.66elapsed 99%CPU (0avgtext+0avgdata 251100maxresident)k
-0inputs+856outputs (0major+121597minor)pagefaults 0swaps
+54.28user 0.25system 0:54.53elapsed 99%CPU (0avgtext+0avgdata 250128maxresident)k
+0inputs+856outputs (0major+117615minor)pagefaults 0swaps
 + errcodekloc=0
 + [[ 0 -eq 0 ]]
 ++ cat archname.txt
@@ -1172,33 +1172,37 @@ INFO: Build with "make.cross ARCH=m68k olddefconfig drivers/block/amiflop.o".
 + /home/paul/research/repos/kmax/tests/klocalizer_tests/../../scripts//make.cross ARCH=m68k olddefconfig clean drivers/block/amiflop.o
 + errcodemake=2
 + tail -n50 build.txt
-  HDRINST usr/include/asm/stat.h
-  HDRINST usr/include/asm/a.out.h
-  HDRINST usr/include/asm/bootinfo-mac.h
   HDRINST usr/include/asm/setup.h
+  HDRINST usr/include/asm/cachectl.h
+  HDRINST usr/include/asm/bootinfo-apollo.h
+  HDRINST usr/include/asm/bootinfo-vme.h
+  HDRINST usr/include/asm/stat.h
+  HDRINST usr/include/asm/bootinfo-atari.h
+  HDRINST usr/include/asm/ptrace.h
+  HDRINST usr/include/asm/posix_types.h
+  HDRINST usr/include/asm/ioctls.h
+  HDRINST usr/include/asm/bootinfo-mac.h
   HDRINST usr/include/asm/swab.h
-  HDRINST usr/include/asm/auxvec.h
-  HDRINST usr/include/asm/errno.h
-  HDRINST usr/include/asm/msgbuf.h
-  HDRINST usr/include/asm/unistd_32.h
-  HDRINST usr/include/asm/mman.h
-  HDRINST usr/include/asm/shmbuf.h
+  HDRINST usr/include/asm/sigcontext.h
   HDRINST usr/include/asm/resource.h
-  HDRINST usr/include/asm/statfs.h
-  HDRINST usr/include/asm/bpf_perf_event.h
-  HDRINST usr/include/asm/types.h
-  HDRINST usr/include/asm/ipcbuf.h
-  HDRINST usr/include/asm/sembuf.h
-  HDRINST usr/include/asm/sockios.h
-  HDRINST usr/include/asm/termios.h
-  HDRINST usr/include/asm/bitsperlong.h
-  HDRINST usr/include/asm/termbits.h
-  HDRINST usr/include/asm/socket.h
+  HDRINST usr/include/asm/auxvec.h
   HDRINST usr/include/asm/siginfo.h
+  HDRINST usr/include/asm/shmbuf.h
+  HDRINST usr/include/asm/statfs.h
+  HDRINST usr/include/asm/termios.h
+  HDRINST usr/include/asm/unistd_32.h
   HDRINST usr/include/asm/ioctl.h
-  UPD     include/generated/asm-offsets.h
-  CALL    scripts/checksyscalls.sh
-<stdin>:1511:2: warning: #warning syscall clone3 not implemented [-Wcpp]
+  HDRINST usr/include/asm/ipcbuf.h
+  HDRINST usr/include/asm/mman.h
+  HDRINST usr/include/asm/sockios.h
+  HDRINST usr/include/asm/types.h
+  HDRINST usr/include/asm/socket.h
+  HDRINST usr/include/asm/sembuf.h
+  HDRINST usr/include/asm/msgbuf.h
+  HDRINST usr/include/asm/bitsperlong.h
+  HDRINST usr/include/asm/bpf_perf_event.h
+  HDRINST usr/include/asm/errno.h
+  HDRINST usr/include/asm/termbits.h
   CC      drivers/block/amiflop.o
 In file included from drivers/block/amiflop.c:74:
 drivers/block/amiflop.c: In function 'amiga_floppy_probe':
@@ -1214,14 +1218,10 @@ drivers/block/amiflop.c:1873:18: note: in expansion of macro 'IRQ_AMIGA_DSKBLK'
 drivers/block/amiflop.c:1873:18: note: in expansion of macro 'IRQ_AMIGA_DSKBLK'
   if (request_irq(IRQ_AMIGA_DSKBLK, fd_block_done, 0, "floppy_dma", NULL)) {
                   ^~~~~~~~~~~~~~~~
-scripts/Makefile.build:265: recipe for target 'drivers/block/amiflop.o' failed
-make[3]: *** [drivers/block/amiflop.o] Error 1
-scripts/Makefile.build:503: recipe for target 'drivers/block' failed
-make[2]: *** [drivers/block] Error 2
-Makefile:1693: recipe for target 'drivers' failed
-make[1]: *** [drivers] Error 2
-Makefile:326: recipe for target '__build_one_by_one' failed
-make: *** [__build_one_by_one] Error 2
+make[3]: *** [scripts/Makefile.build:266: drivers/block/amiflop.o] Error 1
+make[2]: *** [scripts/Makefile.build:503: drivers/block] Error 2
+make[1]: *** [Makefile:1693: drivers] Error 2
+make: *** [Makefile:326: __build_one_by_one] Error 2
 + [[ 2 -eq 0 ]]
 + echo 'FAIL make.cross_error drivers/block/amiflop.o'
 FAIL make.cross_error drivers/block/amiflop.o
@@ -1264,8 +1264,8 @@ INFO: Writing the configuration to .config
 INFO: Generated configuration for powerpc
 INFO: Printing model as config file to .config.
 INFO: Build with "make.cross ARCH=powerpc olddefconfig drivers/video/fbdev/fsl-diu-fb.o".
-27.95user 0.27system 0:28.22elapsed 100%CPU (0avgtext+0avgdata 251276maxresident)k
-0inputs+944outputs (0major+102747minor)pagefaults 0swaps
+27.96user 0.25system 0:28.22elapsed 99%CPU (0avgtext+0avgdata 250324maxresident)k
+0inputs+944outputs (0major+98028minor)pagefaults 0swaps
 + errcodekloc=0
 + [[ 0 -eq 0 ]]
 ++ cat archname.txt
@@ -1276,26 +1276,26 @@ INFO: Build with "make.cross ARCH=powerpc olddefconfig drivers/video/fbdev/fsl-d
 + /home/paul/research/repos/kmax/tests/klocalizer_tests/../../scripts//make.cross ARCH=powerpc olddefconfig clean drivers/video/fbdev/fsl-diu-fb.o
 + errcodemake=0
 + tail -n50 build.txt
-  HDRINST usr/include/asm/sembuf.h
-  HDRINST usr/include/asm/kvm_para.h
-  HDRINST usr/include/asm/bitsperlong.h
-  HDRINST usr/include/asm/termbits.h
-  HDRINST usr/include/asm/stat.h
-  HDRINST usr/include/asm/swab.h
   HDRINST usr/include/asm/socket.h
-  HDRINST usr/include/asm/ps3fb.h
-  HDRINST usr/include/asm/ioctl.h
-  HDRINST usr/include/asm/unistd_32.h
-  HDRINST usr/include/asm/statfs.h
+  HDRINST usr/include/asm/ioctls.h
+  HDRINST usr/include/asm/sembuf.h
+  HDRINST usr/include/asm/posix_types.h
+  HDRINST usr/include/asm/msgbuf.h
+  HDRINST usr/include/asm/nvram.h
+  HDRINST usr/include/asm/bitsperlong.h
+  HDRINST usr/include/asm/bpf_perf_event.h
+  HDRINST usr/include/asm/errno.h
+  HDRINST usr/include/asm/termbits.h
+  HDRINST usr/include/asm/swab.h
+  HDRINST usr/include/asm/sigcontext.h
   HDRINST usr/include/asm/resource.h
   HDRINST usr/include/asm/param.h
-  HDRINST usr/include/asm/poll.h
-  HDRINST usr/include/asm/sockios.h
   HDRINST usr/include/asm/siginfo.h
+  HDRINST usr/include/asm/statfs.h
+  HDRINST usr/include/asm/poll.h
+  HDRINST usr/include/asm/unistd_32.h
+  HDRINST usr/include/asm/sockios.h
   HDRINST usr/include/asm/unistd_64.h
-  HDRINST usr/include/asm/setup.h
-  UPD     include/generated/asm-offsets.h
-  CALL    scripts/checksyscalls.sh
   CC      drivers/video/fbdev/fsl-diu-fb.o
 In file included from ./include/linux/acpi.h:15,
                  from ./include/linux/i2c.h:13,
@@ -1366,8 +1366,8 @@ INFO: Writing the configuration to .config
 INFO: Generated configuration for sparc64
 INFO: Printing model as config file to .config.
 INFO: Build with "make.cross ARCH=sparc64 olddefconfig drivers/watchdog/cpwd.o".
-21.46user 0.20system 0:21.66elapsed 99%CPU (0avgtext+0avgdata 251612maxresident)k
-0inputs+888outputs (0major+96941minor)pagefaults 0swaps
+23.07user 0.17system 0:23.25elapsed 99%CPU (0avgtext+0avgdata 249848maxresident)k
+0inputs+888outputs (0major+94881minor)pagefaults 0swaps
 + errcodekloc=0
 + [[ 0 -eq 0 ]]
 ++ cat archname.txt
@@ -1378,55 +1378,55 @@ INFO: Build with "make.cross ARCH=sparc64 olddefconfig drivers/watchdog/cpwd.o".
 + /home/paul/research/repos/kmax/tests/klocalizer_tests/../../scripts//make.cross ARCH=sparc64 olddefconfig clean drivers/watchdog/cpwd.o
 + errcodemake=0
 + tail -n50 build.txt
-  HDRINST usr/include/asm/utrap.h
-  HDRINST usr/include/asm/fbio.h
+  HDRINST usr/include/linux/version.h
+  HDRINST usr/include/asm/resource.h
+  HDRINST usr/include/asm/param.h
+  HDRINST usr/include/asm/auxvec.h
+  HDRINST usr/include/asm/siginfo.h
+  HDRINST usr/include/asm/asi.h
+  HDRINST usr/include/asm/psr.h
   HDRINST usr/include/asm/byteorder.h
-  HDRINST usr/include/asm/envctrl.h
-  HDRINST usr/include/asm/errno.h
-  HDRINST usr/include/asm/perfctr.h
   HDRINST usr/include/asm/unistd.h
   HDRINST usr/include/asm/signal.h
-  HDRINST usr/include/asm/traps.h
-  HDRINST usr/include/asm/auxvec.h
-  HDRINST usr/include/asm/msgbuf.h
-  HDRINST usr/include/asm/sigcontext.h
-  HDRINST usr/include/asm/pstate.h
-  HDRINST usr/include/asm/ioctls.h
-  HDRINST usr/include/asm/posix_types.h
-  HDRINST usr/include/asm/apc.h
-  HDRINST usr/include/asm/mman.h
   HDRINST usr/include/asm/fcntl.h
   HDRINST usr/include/asm/shmbuf.h
-  HDRINST usr/include/asm/display7seg.h
-  HDRINST usr/include/asm/watchdog.h
+  HDRINST usr/include/asm/fbio.h
+  HDRINST usr/include/asm/apc.h
   HDRINST usr/include/asm/poll.h
-  HDRINST usr/include/asm/resource.h
-  HDRINST usr/include/asm/ipcbuf.h
-  HDRINST usr/include/asm/termios.h
-  HDRINST usr/include/asm/ptrace.h
-  HDRINST usr/include/asm/psr.h
-  HDRINST usr/include/asm/sembuf.h
-  HDRINST usr/include/asm/psrcompat.h
-  HDRINST usr/include/asm/param.h
-  HDRINST usr/include/asm/termbits.h
-  HDRINST usr/include/asm/bitsperlong.h
-<stdin>:1511:2: warning: #warning syscall clone3 not implemented [-Wcpp]
-  HDRINST usr/include/asm/stat.h
-  HDRINST usr/include/asm/socket.h
+  HDRINST usr/include/asm/watchdog.h
   HDRINST usr/include/asm/oradax.h
-  HDRINST usr/include/asm/swab.h
-  HDRINST usr/include/asm/uctx.h
-  HDRINST usr/include/asm/asi.h
-  HDRINST usr/include/asm/ioctl.h
   HDRINST usr/include/asm/setup.h
-  HDRINST usr/include/asm/siginfo.h
+  HDRINST usr/include/asm/termios.h
   HDRINST usr/include/asm/openpromio.h
-  HDRINST usr/include/asm/unistd_32.h
-  HDRINST usr/include/asm/types.h
+  HDRINST usr/include/asm/ioctl.h
+  HDRINST usr/include/asm/utrap.h
+  HDRINST usr/include/asm/ipcbuf.h
+  HDRINST usr/include/asm/mman.h
+  HDRINST usr/include/asm/stat.h
+  HDRINST usr/include/asm/pstate.h
+  HDRINST usr/include/asm/uctx.h
+  HDRINST usr/include/asm/ptrace.h
+  HDRINST usr/include/asm/traps.h
+  HDRINST usr/include/asm/perfctr.h
+  HDRINST usr/include/asm/posix_types.h
+  HDRINST usr/include/asm/socket.h
+  HDRINST usr/include/asm/ioctls.h
+  HDRINST usr/include/asm/sembuf.h
+  HDRINST usr/include/asm/msgbuf.h
+  HDRINST usr/include/asm/psrcompat.h
+  HDRINST usr/include/asm/bitsperlong.h
+  HDRINST usr/include/asm/envctrl.h
+  HDRINST usr/include/asm/errno.h
+  HDRINST usr/include/asm/termbits.h
+  HDRINST usr/include/asm/swab.h
+  HDRINST usr/include/asm/display7seg.h
+  HDRINST usr/include/asm/sigcontext.h
   HDRINST usr/include/asm/statfs.h
-  HDRINST usr/include/asm/bpf_perf_event.h
-  HDRINST usr/include/asm/unistd_64.h
+  HDRINST usr/include/asm/unistd_32.h
   HDRINST usr/include/asm/sockios.h
+  HDRINST usr/include/asm/unistd_64.h
+  HDRINST usr/include/asm/types.h
+  HDRINST usr/include/asm/bpf_perf_event.h
   CC      drivers/watchdog/cpwd.o
 + [[ 0 -eq 0 ]]
 + grep 'CC *drivers/watchdog/cpwd.o' build.txt
@@ -1468,8 +1468,8 @@ INFO: Writing the configuration to .config
 INFO: Generated configuration for sparc64
 INFO: Printing model as config file to .config.
 INFO: Build with "make.cross ARCH=sparc64 olddefconfig drivers/watchdog/riowd.o".
-21.42user 0.25system 0:21.68elapsed 99%CPU (0avgtext+0avgdata 251584maxresident)k
-0inputs+864outputs (0major+96996minor)pagefaults 0swaps
+21.95user 0.19system 0:22.15elapsed 99%CPU (0avgtext+0avgdata 250200maxresident)k
+0inputs+864outputs (0major+92627minor)pagefaults 0swaps
 + errcodekloc=0
 + [[ 0 -eq 0 ]]
 ++ cat archname.txt
@@ -1489,8 +1489,8 @@ INFO: Build with "make.cross ARCH=sparc64 olddefconfig drivers/watchdog/riowd.o"
   LEX     scripts/kconfig/lexer.lex.c
   YACC    scripts/kconfig/parser.tab.[ch]
   HOSTCC  scripts/kconfig/preprocess.o
-  HOSTCC  scripts/kconfig/util.o
   HOSTCC  scripts/kconfig/symbol.o
+  HOSTCC  scripts/kconfig/util.o
   HOSTCC  scripts/kconfig/lexer.lex.o
   HOSTCC  scripts/kconfig/parser.tab.o
   HOSTLD  scripts/kconfig/conf
@@ -1510,16 +1510,16 @@ WARNING: unmet direct dependencies detected for COMPAT_BINFMT_ELF
   Depends on [n]: COMPAT [=y] && BINFMT_ELF [=n]
   Selected by [y]:
   - COMPAT [=y] && SPARC64 [=y]
-  HOSTCC  scripts/insert-sys-cert
-  HOSTCC  scripts/extract-cert
-  HOSTCC  scripts/asn1_compiler
   HOSTCC  scripts/kallsyms
+  HOSTCC  scripts/asn1_compiler
+  HOSTCC  scripts/extract-cert
+  HOSTCC  scripts/insert-sys-cert
   HOSTCC  scripts/mod/mk_elfconfig
   CC      scripts/mod/devicetable-offsets.s
   CC      scripts/mod/empty.o
   MKELF   scripts/mod/elfconfig.h
-  HOSTCC  scripts/mod/file2alias.o
   HOSTCC  scripts/mod/modpost.o
+  HOSTCC  scripts/mod/file2alias.o
   HOSTCC  scripts/mod/sumversion.o
   HOSTLD  scripts/mod/modpost
   CC      kernel/bounds.s
@@ -1551,8 +1551,8 @@ INFO: Trying the following architectures: x86_64 i386 arm arm64 sparc64 sparc po
 INFO: Using output file ".config".
 ERROR: drivers/gpu/drm/i915/gem/i915_gem_context.o not found in .kmax/kmax.  Please check that the compilation unit is in the kmax file.
 Command exited with non-zero status 1
-1.02user 0.06system 0:01.09elapsed 99%CPU (0avgtext+0avgdata 61640maxresident)k
-0inputs+0outputs (0major+21858minor)pagefaults 0swaps
+1.35user 0.06system 0:01.42elapsed 99%CPU (0avgtext+0avgdata 60808maxresident)k
+0inputs+0outputs (0major+17262minor)pagefaults 0swaps
 + errcodekloc=1
 + [[ 1 -eq 0 ]]
 + [[ 1 -eq 2 ]]
@@ -1579,8 +1579,8 @@ INFO: Writing the configuration to .config
 INFO: Generated configuration for x86_64
 INFO: Printing model as config file to .config.
 INFO: Build with "make.cross ARCH=x86_64 olddefconfig arch/x86/kernel/irq_64.o".
-5.28user 0.12system 0:05.42elapsed 99%CPU (0avgtext+0avgdata 177180maxresident)k
-0inputs+928outputs (0major+53804minor)pagefaults 0swaps
+5.88user 0.12system 0:06.01elapsed 99%CPU (0avgtext+0avgdata 176532maxresident)k
+0inputs+928outputs (0major+48796minor)pagefaults 0swaps
 + errcodekloc=0
 + [[ 0 -eq 0 ]]
 ++ cat archname.txt
@@ -1591,45 +1591,45 @@ INFO: Build with "make.cross ARCH=x86_64 olddefconfig arch/x86/kernel/irq_64.o".
 + /home/paul/research/repos/kmax/tests/klocalizer_tests/../../scripts//make.cross ARCH=x86_64 olddefconfig clean arch/x86/kernel/irq_64.o
 + errcodemake=0
 + tail -n50 build.txt
-  LEX     scripts/genksyms/lex.lex.c
   YACC    scripts/genksyms/parse.tab.[ch]
+  LEX     scripts/genksyms/lex.lex.c
   DESCEND  objtool
   HOSTCC  scripts/genksyms/parse.tab.o
   HOSTCC  scripts/genksyms/lex.lex.o
+  HOSTLD  arch/x86/tools/relocs
   HOSTCC   /home/paul/src/linux/tools/objtool/fixdep.o
   HOSTLD   /home/paul/src/linux/tools/objtool/fixdep-in.o
   LINK     /home/paul/src/linux/tools/objtool/fixdep
-  HOSTLD  arch/x86/tools/relocs
-  CC       /home/paul/src/linux/tools/objtool/check.o
-  CC       /home/paul/src/linux/tools/objtool/elf.o
-  CC       /home/paul/src/linux/tools/objtool/orc_gen.o
-  CC       /home/paul/src/linux/tools/objtool/special.o
-  CC       /home/paul/src/linux/tools/objtool/orc_dump.o
-  CC       /home/paul/src/linux/tools/objtool/libstring.o
-  CC       /home/paul/src/linux/tools/objtool/builtin-orc.o
   CC       /home/paul/src/linux/tools/objtool/builtin-check.o
   CC       /home/paul/src/linux/tools/objtool/arch/x86/decode.o
-  CC       /home/paul/src/linux/tools/objtool/libctype.o
-  CC       /home/paul/src/linux/tools/objtool/objtool.o
+  CC       /home/paul/src/linux/tools/objtool/builtin-orc.o
+  CC       /home/paul/src/linux/tools/objtool/check.o
+  CC       /home/paul/src/linux/tools/objtool/orc_gen.o
+  CC       /home/paul/src/linux/tools/objtool/orc_dump.o
   CC       /home/paul/src/linux/tools/objtool/exec-cmd.o
-  CC       /home/paul/src/linux/tools/objtool/str_error_r.o
+  CC       /home/paul/src/linux/tools/objtool/elf.o
+  CC       /home/paul/src/linux/tools/objtool/special.o
+  HOSTLD  scripts/genksyms/genksyms
   CC       /home/paul/src/linux/tools/objtool/help.o
   CC       /home/paul/src/linux/tools/objtool/pager.o
-  CC       /home/paul/src/linux/tools/objtool/run-command.o
   CC       /home/paul/src/linux/tools/objtool/parse-options.o
-  CC       /home/paul/src/linux/tools/objtool/subcmd-config.o
-  CC       /home/paul/src/linux/tools/objtool/sigchain.o
-  HOSTLD  scripts/genksyms/genksyms
-  HOSTCC  scripts/mod/mk_elfconfig
-  CC      scripts/mod/devicetable-offsets.s
-  CC      scripts/mod/empty.o
+  CC       /home/paul/src/linux/tools/objtool/objtool.o
+  CC       /home/paul/src/linux/tools/objtool/libstring.o
+  CC       /home/paul/src/linux/tools/objtool/libctype.o
+  CC       /home/paul/src/linux/tools/objtool/run-command.o
+  CC       /home/paul/src/linux/tools/objtool/str_error_r.o
   LD       /home/paul/src/linux/tools/objtool/arch/x86/objtool-in.o
+  CC       /home/paul/src/linux/tools/objtool/sigchain.o
+  CC       /home/paul/src/linux/tools/objtool/subcmd-config.o
+  HOSTCC  scripts/mod/mk_elfconfig
+  CC      scripts/mod/empty.o
+  CC      scripts/mod/devicetable-offsets.s
   MKELF   scripts/mod/elfconfig.h
   HOSTCC  scripts/mod/modpost.o
   HOSTCC  scripts/mod/sumversion.o
-  HOSTCC  scripts/mod/file2alias.o
   LD       /home/paul/src/linux/tools/objtool/libsubcmd-in.o
   AR       /home/paul/src/linux/tools/objtool/libsubcmd.a
+  HOSTCC  scripts/mod/file2alias.o
   LD       /home/paul/src/linux/tools/objtool/objtool-in.o
 /home/paul/src/linux/tools/objtool
   LINK     /home/paul/src/linux/tools/objtool/objtool
@@ -1673,8 +1673,8 @@ INFO: Writing the configuration to .config
 INFO: Generated configuration for i386
 INFO: Printing model as config file to .config.
 INFO: Build with "make.cross ARCH=i386 olddefconfig arch/x86/kernel/irq_32.o".
-8.63user 0.12system 0:08.76elapsed 99%CPU (0avgtext+0avgdata 190088maxresident)k
-0inputs+912outputs (0major+60624minor)pagefaults 0swaps
+9.11user 0.27system 0:09.39elapsed 99%CPU (0avgtext+0avgdata 189832maxresident)k
+0inputs+912outputs (0major+55990minor)pagefaults 0swaps
 + errcodekloc=0
 + [[ 0 -eq 0 ]]
 ++ cat archname.txt
@@ -1694,8 +1694,8 @@ INFO: Build with "make.cross ARCH=i386 olddefconfig arch/x86/kernel/irq_32.o".
   LEX     scripts/kconfig/lexer.lex.c
   YACC    scripts/kconfig/parser.tab.[ch]
   HOSTCC  scripts/kconfig/preprocess.o
-  HOSTCC  scripts/kconfig/util.o
   HOSTCC  scripts/kconfig/symbol.o
+  HOSTCC  scripts/kconfig/util.o
   HOSTCC  scripts/kconfig/lexer.lex.o
   HOSTCC  scripts/kconfig/parser.tab.o
   HOSTLD  scripts/kconfig/conf
@@ -1706,17 +1706,17 @@ scripts/kconfig/conf  --syncconfig Kconfig
   HOSTCC  scripts/dtc/dtc.o
   HOSTCC  scripts/dtc/flattree.o
   HOSTCC  scripts/dtc/fstree.o
+  HOSTCC  scripts/dtc/data.o
   HOSTCC  scripts/dtc/livetree.o
   HOSTCC  scripts/dtc/treesource.o
-  HOSTCC  scripts/dtc/data.o
-  HOSTCC  scripts/dtc/checks.o
   HOSTCC  scripts/dtc/srcpos.o
+  HOSTCC  scripts/dtc/checks.o
   HOSTCC  scripts/dtc/util.o
   LEX     scripts/dtc/dtc-lexer.lex.c
-  YACC    scripts/dtc/dtc-parser.tab.[ch]
-  HOSTCC  scripts/dtc/dtc-parser.tab.o
-  HOSTCC  scripts/dtc/dtc-lexer.lex.o
   HOSTLD  arch/x86/tools/relocs
+  YACC    scripts/dtc/dtc-parser.tab.[ch]
+  HOSTCC  scripts/dtc/dtc-lexer.lex.o
+  HOSTCC  scripts/dtc/dtc-parser.tab.o
   HOSTLD  scripts/dtc/dtc
   HOSTCC  scripts/sortextable
   HOSTCC  scripts/mod/mk_elfconfig
@@ -1763,8 +1763,8 @@ INFO: Writing the configuration to .config
 INFO: Generated configuration for um
 INFO: Printing model as config file to .config.
 INFO: Build with "make.cross ARCH=um olddefconfig arch/x86/um/signal.o".
-5.30user 0.12system 0:05.42elapsed 100%CPU (0avgtext+0avgdata 177400maxresident)k
-0inputs+928outputs (0major+54886minor)pagefaults 0swaps
+5.99user 0.13system 0:06.12elapsed 99%CPU (0avgtext+0avgdata 176256maxresident)k
+0inputs+928outputs (0major+48520minor)pagefaults 0swaps
 + errcodekloc=0
 + [[ 0 -eq 0 ]]
 ++ cat archname.txt
@@ -1775,7 +1775,6 @@ INFO: Build with "make.cross ARCH=um olddefconfig arch/x86/um/signal.o".
 + /home/paul/research/repos/kmax/tests/klocalizer_tests/../../scripts//make.cross ARCH=um olddefconfig clean arch/x86/um/signal.o
 + errcodemake=0
 + tail -n50 build.txt
-.config:3737:warning: symbol value 'y' invalid for DEFAULT_MMAP_MIN_ADDR
 .config:4049:warning: symbol value 'y' invalid for PANIC_TIMEOUT
 .config:4430:warning: symbol value 'y' invalid for DVB_MAX_ADAPTERS
 .config:5659:warning: symbol value 'y' invalid for MTD_UBI_BEB_LIMIT
@@ -1794,12 +1793,12 @@ INFO: Build with "make.cross ARCH=um olddefconfig arch/x86/um/signal.o".
   HOSTCC  scripts/kconfig/confdata.o
   HOSTCC  scripts/kconfig/expr.o
   LEX     scripts/kconfig/lexer.lex.c
-  HOSTCC  scripts/kconfig/preprocess.o
   YACC    scripts/kconfig/parser.tab.[ch]
+  HOSTCC  scripts/kconfig/preprocess.o
   HOSTCC  scripts/kconfig/symbol.o
   HOSTCC  scripts/kconfig/util.o
-  HOSTCC  scripts/kconfig/parser.tab.o
   HOSTCC  scripts/kconfig/lexer.lex.o
+  HOSTCC  scripts/kconfig/parser.tab.o
   HOSTLD  scripts/kconfig/conf
 scripts/kconfig/conf  --syncconfig Kconfig
   HOSTCC  scripts/genksyms/genksyms.o
@@ -1809,6 +1808,7 @@ scripts/kconfig/conf  --syncconfig Kconfig
   HOSTCC  scripts/genksyms/lex.lex.o
   HOSTLD  scripts/genksyms/genksyms
   CC      arch/x86/um/user-offsets.s
+  UPD     include/generated/user_constants.h
   HOSTCC  scripts/mod/mk_elfconfig
   CC      scripts/mod/devicetable-offsets.s
   CC      scripts/mod/empty.o
@@ -1853,8 +1853,8 @@ INFO: Writing the configuration to .config
 INFO: Generated configuration for um
 INFO: Printing model as config file to .config.
 INFO: Build with "make.cross ARCH=um olddefconfig arch/x86/um/ptrace_64.o".
-5.73user 0.13system 0:05.86elapsed 99%CPU (0avgtext+0avgdata 177012maxresident)k
-0inputs+928outputs (0major+53797minor)pagefaults 0swaps
+5.99user 0.19system 0:06.19elapsed 99%CPU (0avgtext+0avgdata 176208maxresident)k
+0inputs+928outputs (0major+49815minor)pagefaults 0swaps
 + errcodekloc=0
 + [[ 0 -eq 0 ]]
 ++ cat archname.txt
@@ -1947,8 +1947,8 @@ INFO: Writing the configuration to .config
 INFO: Generated configuration for um32
 INFO: Printing model as config file to .config.
 INFO: Build with "make.cross ARCH=um32 olddefconfig arch/x86/um/ptrace_32.o".
-8.33user 0.20system 0:08.53elapsed 99%CPU (0avgtext+0avgdata 189980maxresident)k
-0inputs+904outputs (0major+60468minor)pagefaults 0swaps
+9.07user 0.16system 0:09.24elapsed 99%CPU (0avgtext+0avgdata 189196maxresident)k
+0inputs+904outputs (0major+55045minor)pagefaults 0swaps
 + errcodekloc=0
 + [[ 0 -eq 0 ]]
 ++ cat archname.txt
@@ -1956,13 +1956,8 @@ INFO: Build with "make.cross ARCH=um32 olddefconfig arch/x86/um/ptrace_32.o".
 + [[ um32 == \u\m\3\2 ]]
 + archvar='ARCH=um SUBARCH=i386'
 + /home/paul/research/repos/kmax/tests/klocalizer_tests/../../scripts//make.cross ARCH=um SUBARCH=i386 olddefconfig clean arch/x86/um/ptrace_32.o
-+ errcodemake=2
++ errcodemake=0
 + tail -n50 build.txt
-.config:6075:warning: symbol value 'y' invalid for MESSAGE_LOGLEVEL_DEFAULT
-.config:6099:warning: symbol value 'y' invalid for RCU_CPU_STALL_TIMEOUT
-.config:6622:warning: symbol value 'y' invalid for SYSTEM_EXTRA_CERTIFICATE_SIZE
-.config:7741:warning: symbol value 'y' invalid for PANEL_PROFILE
-.config:8986:warning: symbol value 'y' invalid for FRAME_WARN
 .config:9620:warning: symbol value 'y' invalid for FUSION_MAX_SGE
 .config:10411:warning: symbol value 'y' invalid for LEGACY_PTY_COUNT
 .config:10839:warning: symbol value 'y' invalid for CONSOLE_LOGLEVEL_QUIET
@@ -1988,26 +1983,35 @@ INFO: Build with "make.cross ARCH=um32 olddefconfig arch/x86/um/ptrace_32.o".
   HOSTLD  scripts/kconfig/conf
 scripts/kconfig/conf  --syncconfig Kconfig
   HOSTCC  scripts/asn1_compiler
-  HOSTCC  scripts/extract-cert
-  HOSTCC  scripts/insert-sys-cert
   HOSTCC  scripts/genksyms/genksyms.o
   YACC    scripts/genksyms/parse.tab.[ch]
   LEX     scripts/genksyms/lex.lex.c
+  HOSTCC  scripts/extract-cert
+  HOSTCC  scripts/insert-sys-cert
   HOSTCC  scripts/genksyms/parse.tab.o
   HOSTCC  scripts/genksyms/lex.lex.o
   HOSTLD  scripts/genksyms/genksyms
   CC      arch/x86/um/user-offsets.s
-In file included from arch/x86/um/user-offsets.c:2:0:
-/usr/include/stdio.h:27:10: fatal error: bits/libc-header-start.h: No such file or directory
- #include <bits/libc-header-start.h>
-          ^~~~~~~~~~~~~~~~~~~~~~~~~~
-compilation terminated.
-scripts/Makefile.build:99: recipe for target 'arch/x86/um/user-offsets.s' failed
-make[2]: *** [arch/x86/um/user-offsets.s] Error 1
-arch/um/Makefile:118: recipe for target 'archprepare' failed
-make[1]: *** [archprepare] Error 2
-Makefile:326: recipe for target '__build_one_by_one' failed
-make: *** [__build_one_by_one] Error 2
-+ [[ 2 -eq 0 ]]
-+ echo 'FAIL make.cross_error arch/x86/um/ptrace_32.o'
-FAIL make.cross_error arch/x86/um/ptrace_32.o
+  UPD     include/generated/user_constants.h
+  HOSTCC  scripts/mod/mk_elfconfig
+  CC      scripts/mod/devicetable-offsets.s
+  CC      scripts/mod/empty.o
+  UPD     scripts/mod/devicetable-offsets.h
+  MKELF   scripts/mod/elfconfig.h
+  HOSTCC  scripts/mod/modpost.o
+  HOSTCC  scripts/mod/file2alias.o
+  HOSTCC  scripts/mod/sumversion.o
+  HOSTLD  scripts/mod/modpost
+  CC      kernel/bounds.s
+  CALL    scripts/atomic/check-atomics.sh
+  CC      arch/um/kernel/asm-offsets.s
+  UPD     include/generated/asm-offsets.h
+  CALL    scripts/checksyscalls.sh
+  CC      arch/x86/um/ptrace_32.o
++ [[ 0 -eq 0 ]]
++ grep 'CC *arch/x86/um/ptrace_32.o' build.txt
+  CC      arch/x86/um/ptrace_32.o
++ errcodegrep=0
++ [[ 0 -eq 0 ]]
++ echo 'PASS all arch/x86/um/ptrace_32.o'
+PASS all arch/x86/um/ptrace_32.o
