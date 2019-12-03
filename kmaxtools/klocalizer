@@ -54,10 +54,6 @@ def get_resolved_to_kbuild_map(kmax):
   return resolved_to_kbuild_map
 
 def get_kmax_constraints(kmax_formulas, resolved_to_kbuild_map, compilation_unit, view=False):
-  if not compilation_unit.endswith(".o"):
-    compilation_unit = os.path.splitext(compilation_unit)[0] + ".o"
-    warning("Forcing file extension to be .o, since lookup is by compilation unit: %s" % (compilation_unit))
-
   if compilation_unit not in resolved_to_kbuild_map.keys():
     return None
   else:
@@ -344,6 +340,10 @@ if __name__ == '__main__':
   if compilation_unit is not None and not os.path.isfile(kmax_file):
     error("Cannot find kmax formulas file: %s" % (kmax_file))
     exit(1)
+
+  if not compilation_unit.endswith(".o"):
+    compilation_unit = os.path.splitext(compilation_unit)[0] + ".o"
+    warning("Forcing file extension to be .o, since lookup is by compilation unit: %s" % (compilation_unit))
 
   if view_kbuild:
     if compilation_unit is not None:
