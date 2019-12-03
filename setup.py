@@ -1,5 +1,5 @@
 import os
-from setuptools import setup
+from setuptools import setup, Extension
 
 # Utility function to read the README file.
 # Used for the long_description.  It's nice, because now 1) we have a top level
@@ -14,11 +14,12 @@ setup(
     author = "Paul Gazzillo",
     author_email = "paul@pgazz.com",
     description = ("Tools for working with symbolic  constraints from Kbuild Makefile."),
+    long_description_content_type = 'text/markdown',
+    long_description = read('README.md'),
     license = "GPLv2+",
     keywords = "makefile kconfig kbuild configurations kmax kclause klocalizer",
     url = "https://github.com/paulgazz/kmax",
     packages=['kmaxtools', 'pymake'],
-    long_description=read('README.md'),
     classifiers=[
         "Development Status :: 4 - Beta",
         "Topic :: Utilities",
