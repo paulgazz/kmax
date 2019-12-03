@@ -29,6 +29,8 @@
 
 # The Kmax Tool Suite
 
+## Tools
+
 The Kmax Tool Suite (kmaxtools) contains a set of tools for performing
 automated reasoning on Kconfig and Kbuild constraints.  It consists of
 the following tools:
@@ -50,10 +52,12 @@ the following tools:
   the original implementation can be found
   [here](https://github.com/paulgazz/kmax/releases/tag/v1.0).
 
-kmaxtool's creator and maintainer is [Paul
-Gazzillo](https://paulgazzillo.com).  Contributors include [ThanhVu
-Nguyen](https://cse.unl.edu/~tnguyen/) (z3 integration into `kmax`)
-and Jeho Oh (development of Kconfig logical formaulas).
+## Contributors
+
+- [Paul Gazzillo](https://paulgazzillo.com) -- creator and developer
+- [ThanhVu Nguyen](https://cse.unl.edu/~tnguyen/) -- developer and z3 integration into `kmax`
+- Jeho Oh -- developer and kclause's Kconfig logical formulas
+- [Julia Lawall](https://pages.lip6.fr/Julia.Lawall/) -- ideation, evaluation
 
 ## Setup
 
@@ -79,12 +83,12 @@ not work.  It may be necessary to install these manually via `pip`, e.g.,
 The fastest way to get started is to use formulas already extracted for your version of Linux.
 
     cd /path/to/linux/
-    wget https://opentheblackbox.net/kmax/kmax-formulas_linux-v5.3.11.tar.bz2
-    tar -xvf kmax-formulas_linux-v5.3.11.tar.bz2
+    wget https://kmaxtools.opentheblackbox.net/formulas/kmax-formulas_linux-v5.4.tar.bz2
+    tar -xvf kmax-formulas_linux-v5.4.tar.bz2
 
 This contains a `.kmax` directory containing the Kconfig and Kbuild
 formulas for each architecture.  If a version is not available
-[here](https://opentheblackbox.net/kmax) submit an issue to request
+[here](https://kmaxtools.opentheblackbox.net/formulas) submit an issue to request
 the formulas be generated and uplodated or see below for directions on
 generating these formulas.
 
@@ -177,7 +181,7 @@ Override the default formulas with the following:
 ## Troubleshooting
 
 - `klocalizer` requires the formulas from `kmax` and
-  `kclause`. [Download](https://opentheblackbox.net/kmax) these
+  `kclause`. [Download](https://kmaxtools.opentheblackbox.net/formulas) these
   first or generate them (see below).
 
 - Use the `CONFIG_` prefix on variables when referring to them in user constraints.
