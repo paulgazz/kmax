@@ -260,7 +260,12 @@ Kclause extracts a logical model from Kconfig.  It works in two stages:
 
 2. The `kclause` tool takes this intermediate language and generates a z3 formula.
 
-From the root of a Linux source tree, run the following:
+
+First compile `kconfig_extractor`
+
+    make -C kconfig_extractor
+
+Then, from the root of a Linux source tree, run the following:
 
     /path/to/kmax/kconfig_extractor/kconfig_extractor --extract -e ARCH=x86_64 -e SRCARCH=x86 -e KERNELVERSION=kcu -e srctree=./ -e CC=cc Kconfig > kconfig_extract
     kclause --remove-orphaned-nonvisible < kconfig_extract > kclause
