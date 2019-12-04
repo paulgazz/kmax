@@ -29,7 +29,8 @@ test_klocalizer () {
       else
           archvar="ARCH=$(cat archname.txt)"
       fi
-      "${script_dir}/make.cross" $archvar olddefconfig clean "$target" > build.txt 2>&1
+      "${script_dir}/make.cross" $archvar olddefconfig > build.txt 2>&1
+      "${script_dir}/make.cross" $archvar clean "$target" >> build.txt 2>&1
       errcodemake=${?}
       tail -n50 build.txt
       if [[ ${errcodemake} -eq 0 ]]; then
