@@ -60,7 +60,7 @@ test_klocalizer drivers/watchdog/pnx833x_wdt.o
 test_klocalizer drivers/tty/n_r3964.o
 test_klocalizer drivers/block/ataflop.o
 test_klocalizer drivers/char/ipmi/ipmi_devintf.o drivers/char/ipmi/
-test_klocalizer virt/kvm/arm/arm.o arch/arm/kvm arch/arm/kvm/../../../virt/kvm/arm/arm.o
+test_klocalizer virt/kvm/arm/arm.o arch/arm/kvm/ arch/arm/kvm/../../../virt/kvm/arm/arm.o
 test_klocalizer drivers/watchdog/pcwd.o
 test_klocalizer drivers/watchdog/mixcomwd.o
 test_klocalizer virt/kvm/kvm_main.o arch/s390/kvm/ arch/s390/kvm/../../../virt/kvm/kvm_main.o
