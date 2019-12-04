@@ -17,6 +17,20 @@ def warning(msg, ending="\n"):
 def error(msg, ending="\n"):
   sys.stderr.write("ERROR: %s%s" % (msg, ending))
 
+def get_kconfig_extract(formulas, arch):
+  """Return a list of lists, where each list is a line from the kconfig_extract, currently only the config lines.  See docs/kconfig_extract_format.md.  Returns None if no file is found."""
+  kconfig_extract_file = get_arch_kconfig_extract_file(formulas, arch)
+  if not os.path.exists(kconfig_extract_file):
+    warning("no kconfig_extract file found: %s", kconfig_extract_file)
+    return None
+  else:
+    lists = []
+    with open(kconfig_extract_file, 'r') as fp:
+      for line in fp:
+        line = line.strip()
+        lists.append(line.split())
+      return lists
+  
 def get_kclause_constraints(kclause_file):
   with open(kclause_file, 'r') as fp:
     # kclause, defined_vars, used_vars = pickle.load(fp)
@@ -81,9 +95,19 @@ def get_kmax_constraints(kmax_formulas, resolved_to_kbuild_map, compilation_unit
             info("%s has no kmax formula, assuming it is unconstrained." % (subsubpath))
     return kmax_constraints
 
-def print_model_as_config(model, fp=sys.stdout):
+def print_model_as_config(model, fp=sys.stdout, kconfig_extract=None):
   info("Printing model as config file to %s." % ("stdout" if fp == sys.stdout else (fp.name)))
-    
+
+  if kconfig_extract == None:
+    info("No kconfig_extract file available.  Assuming all configuration options are Boolean")
+    types = None
+  else:
+    types = {}
+    for kconfig_line in kconfig_extract:
+      # see docs/kconfig_extract_format.md for more info
+      if kconfig_line[0] == "config":
+        types[kconfig_line[1]] = kconfig_line[2]
+
   if model is not None:
     # print the model in .config format
     token_pattern = regex.compile("CONFIG_[A-Za-z0-9_]+")
@@ -91,10 +115,23 @@ def print_model_as_config(model, fp=sys.stdout):
       str_entry = str(entry)
       matches = token_pattern.match(str_entry)
       if matches:
+        # if str_entry not in kclause_constraints.keys():
+        #   sys.stderr.write("warning: %s was not defined in the kconfig spec, but may be required for this unit.\n" % (str_entry))
         if model[entry]:
-          fp.write("%s=y\n" % (str_entry))
-          # if str_entry not in kclause_constraints.keys():
-          #   sys.stderr.write("warning: %s was not defined in the kconfig spec, but may be required for this unit.\n" % (str_entry))
+          # todo: for non-boolen values, these are simplistic
+          # placeholders. use defaults from kconfig instead. these
+          # have their own dependencies but are not part of
+          # constraints themselves.
+          if types[str_entry] == "bool" or types[str_entry] == "tristate":
+            fp.write("%s=y\n" % (str_entry))
+          elif types[str_entry] == "string":
+            fp.write("%s=\n" % (str_entry))
+          elif types[str_entry] == "number":
+            fp.write("%s=0\n" % (str_entry))
+          elif types[str_entry] == "hex":
+            fp.write("%s=0x0\n" % (str_entry))
+          else:
+            assert(False)
         else:
           fp.write("# %s is not set\n" % (str_entry))
       # else:
@@ -212,14 +249,20 @@ def get_archs_from_subdir(kbuild_path):
       archs = [ subdir ]
     return archs
 
-def get_arch_kclause_file(formulas, arch):
+def get_arch_kclause_subdir(formulas, arch):
   if arch == "um":
     subdir = "x86_64"
   elif arch == "um32":
     subdir = "i386"
   else:
     subdir = arch
-  return os.path.join(os.path.join(os.path.join(formulas, "kclause"), subdir), "kclause")
+  return os.path.join(os.path.join(os.path.join(formulas, "kclause"), subdir))
+  
+def get_arch_kclause_file(formulas, arch):
+  return os.path.join(get_arch_kclause_subdir(formulas, arch), "kclause")
+
+def get_arch_kconfig_extract_file(formulas, arch):
+  return os.path.join(get_arch_kclause_subdir(formulas, arch), "kconfig_extract")
 
 def get_arch_specific_constraints(arch, architecture_configs):
   if arch == "x86_64":
@@ -391,7 +434,7 @@ if __name__ == '__main__':
       exit(1)
     else:
       assert(False)
-      
+
   # if os.path.exists(output_file):
   #   def randstring(n):
   #     return ''.join(random.choice('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789') for i in range(n))
@@ -481,10 +524,13 @@ if __name__ == '__main__':
         if model is not None:
           info("Writing the configuration to %s" % (output_file))
           if arch is not None:
-            info("Generated configuration for %s" % (arch))
-          print_model_as_config(model, open(output_file, 'w'))
+            kconfig_extract = get_kconfig_extract(formulas, arch)
+          else:
+            kconfig_extract = None
+          print_model_as_config(model, open(output_file, 'w'), kconfig_extract)
           if arch is not None:
-            info("Build with \"make.cross ARCH=%s olddefconfig %s\"." % (arch, compilation_unit))
+            info("Generated configuration for %s" % (arch))
+            info("Build with \"make.cross ARCH=%s olddefconfig; make.cross ARCH=%s clean %s\"." % (arch, arch, compilation_unit))
             print(arch)
           exit(0)
   error("No satisfying configuration found.")
