@@ -36,6 +36,34 @@ The output will contain
 
 ## Results
 
+### Linux next-20191203 2019-12-03
+
+| compilation unit | klocalizer | make.cross | notes |
+| --- | --- | --- | --- |
+| drivers/usb/storage/alauda.o | yes | yes | |
+| sound/soc/intel/boards/glk_rt5682_max98357a.o | yes | yes | |
+| sound/mips/sgio2audio.o | yes | yes | configured into build, but gets some kind of assembler error |
+| drivers/char/efirtc.o | yes | yes | |
+| sound/soc/mediatek/common/mtk-btcvsd.o | yes | yes | |
+| drivers/watchdog/pnx833x_wdt.o | yes | n/a | `CONFIG_BROKEN` |
+| drivers/tty/n_r3964.o | yes | n/a | `CONFIG_BROKEN` |
+| drivers/block/ataflop.o | yes | yes | |
+| drivers/char/ipmi/ipmi_devintf.o | yes | yes | need to build drivers/char/ipmi/ for `ipmi_defintf.o` to be compiled |
+| virt/kvm/arm/arm.o | yes | yes | need to build arch/arm/kvm/ for `arm.o` to be compiled |
+| drivers/watchdog/pcwd.o | yes | yes | |
+| drivers/watchdog/mixcomwd.o | yes | yes | |
+| virt/kvm/kvm_main.o (s390) | yes | yes | need to build arch/s390/kvm/ for `kvm_main.o` to be compiled |
+| virt/kvm/kvm_main.o (mips) | yes | yes | need to build arch/mips/kvm/ for `kvm_main.o` to be compiled; it successfully builds, but fpu.o fails. |
+| drivers/block/amiflop.o | yes | yes | works but amiflop.c seems to have a compile-time error due to undeclared identifier |
+| drivers/video/fbdev/fsl-diu-fb.o | yes | yes | |
+| drivers/watchdog/cpwd.o | yes | yes | |
+| drivers/watchdog/riowd.o | yes | yes | |
+| drivers/gpu/drm/i915/gem/i915_gem_context.o | __no__ | | `kmax` bug |
+| arch/x86/kernel/irq_64.o | yes | yes | |
+| arch/x86/kernel/irq_32.o | yes | yes | |
+| arch/x86/um/signal.o | yes | yes | |
+| arch/x86/um/ptrace_32.o | yes | yes | make sure i386 libc is installed to build |
+
 ### Linux v5.3 2019-12-03
 
 | compilation unit | klocalizer | make.cross | notes |
