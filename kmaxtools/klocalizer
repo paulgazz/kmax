@@ -387,7 +387,7 @@ if __name__ == '__main__':
     error("Cannot find kmax formulas file: %s" % (kmax_file))
     exit(1)
 
-  if not compilation_unit.endswith(".o"):
+  if compilation_unit is not None and not compilation_unit.endswith(".o"):
     compilation_unit = os.path.splitext(compilation_unit)[0] + ".o"
     warning("Forcing file extension to be .o, since lookup is by compilation unit: %s" % (compilation_unit))
 
