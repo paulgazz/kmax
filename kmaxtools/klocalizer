@@ -509,17 +509,16 @@ if __name__ == '__main__':
       solver.set(unsat_core=True)
 
       if (solver.check(constraints) == z3.unsat):
-        if disable_config_broken and config_broken in solver.unsat_core():
-          error("This compilation unit seems to depend on CONFIG_BROKEN, so it may not be buildable.  Stopping the search.  Run again with --allow-config-broken to search anyway.")
-          exit(2)
-        else:
-          info("The constraints are unsatisfiable.  This either means no configuration is possible or kmax formulas are overconstrained.")
+        info("The constraints are unsatisfiable.  Either no configuration is possible or the formulas are overconstrained.")
         if show_unsat_core:
           info("The following constraint(s) prevented satisfiability:\n%s" % (str(solver.unsat_core())))
         else:
           if not seen_unsat:
             info("Run with --show-unsat-core to see what constraints prevented satisfiability.")
             seen_unsat = True
+        if disable_config_broken and config_broken in solver.unsat_core():
+          error("Found a dependency on CONFIG_BROKEN, so the compilation unit may not be buildable.  Stopping the search.  Run again with --allow-config-broken to search anyway.")
+          exit(2)
       else:
         info("The constraints are satisfiable.")
         model = solver.model()
