@@ -16,7 +16,7 @@
     - [View the Kbuild Constraints](#view-the-kbuild-constraints)
     - [Using New Formulas](#using-new-formulas)
   - [Troubleshooting](#troubleshooting)
-  - [Generating Formulas](#generating-formulas)
+  - [Generating Formulas for Linux](#generating-formulas-for-linux)
   - [Kmax](#kmax)
     - [Simple example](#simple-example)
     - [Example on Linux](#example-on-linux)
@@ -65,20 +65,32 @@ the following tools:
 
 `kmaxtools` is currently written for python 2.
 
-Clone the repository and run
+There are two ways to install kmaxtools.
 
-    sudo python setup.py install
+1.  The latest release can be installed via `pip`
+
+        pip install kmaxtools
+
+    Upgrade with
+
+        pip install -U kmaxtools
     
-Or use the `--prefix` argument for different installation directory without `sudo`.
+2.  Install from the source repository:
 
-Please see [setup.py] for any dependencies if `setup.py` script does
-not work.  It may be necessary to install these manually via `pip`, e.g.,
+        git clone https://github.com/paulgazz/kmax.git
+        cd kmax
+        sudo python setup.py install
 
-    pip install enum34
-    pip install regex
-    pip install z3-solver
-    pip install dd
-    pip install networkx==2.2
+    Or use the `--prefix` argument for different installation directory without `sudo`.
+
+    Please see [setup.py] for any dependencies if `setup.py` script does
+    not work.  It may be necessary to install these manually via `pip`, e.g.,
+
+        pip install enum34
+        pip install regex
+        pip install z3-solver
+        pip install dd
+        pip install networkx==2.2
 
 ## Quick Start
 
@@ -192,10 +204,12 @@ Override the default formulas with the following:
 
 - The extracted formulas may not be exact.  No resulting configuration is a sign that the formulas are overconstrained.  A resulting configuration that does not include the desired compilation unit mean the formulas may be underconstrained.
 
-## Generating Formulas
+## Generating Formulas for Linux
 
-These commands and scripts are intended to be run from the root of
-your Linux source tree.
+This requires cloning the kmax repository, since there are helper
+scripts to generate the formulas for Linux.  These commands and
+scripts are intended to be run from the root of your Linux source
+tree.
 
 To get the formulas for compilation units defined in the Kbuild files,
 we first need a list of all the top-level source directories for each
