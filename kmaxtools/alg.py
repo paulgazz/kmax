@@ -1027,7 +1027,8 @@ class Run:
 
         kbuild.process_stmts(stmts, kbuild.T, ZSolver.T)
         # SPECIAL-obj-simple uses a simply-expanded variable to expand obj-y in case obj-y is recursively-expanded, which means the variables haven't been expanded in obj-y yet, e.g., ptrace_$(BITS)
-        kbuild.process_stmts(parser.parsestring("SPECIAL-obj-simple := $(obj-y)", makefile.name), kbuild.T, ZSolver.T)
+        kbuild.process_stmts(parser.parsestring("SPECIAL-obj-simple := $(obj-y) $(obj-m)", makefile.name), kbuild.T, ZSolver.T)
+        kbuild.process_stmts(parser.parsestring("SPECIAL-core-simple := $(core-y) $(core-m) $(drivers-y) $(drivers-m) $(net-y) $(net-m) $(libs-y) $(libs-m) $(head-y) $(head-m)", makefile.name), kbuild.T, ZSolver.T)
         
         subdirs = self.results.subdirs
         compilation_units = self.results.compilation_units
@@ -1044,7 +1045,7 @@ class Run:
             ["obj-y", "obj-m",
              "core-y", "core-m", "drivers-y", "drivers-m",
              "net-y", "net-m", "libs-y", "libs-m", "head-y",
-             "head-m", "SPECIAL-obj-simple"])
+             "head-m", "SPECIAL-obj-simple", "SPECIAL-core-simple"])
              
         self.collect_units(kbuild,
                            path,
@@ -1157,9 +1158,10 @@ class Run:
             else:
                 self.results.presence_conditions[filename] = zdisj(self.results.presence_conditions[filename], presence_conditions[token])
 
+        presence_conditions = {}
         kbuild.get_presence_conditions([ "core-y", "core-m",
                                          "drivers-y", "drivers-m", "net-y", "net-m", "libs-y",
-                                         "libs-m", "head-y", "head-m", ], presence_conditions,
+                                         "libs-m", "head-y", "head-m", "SPECIAL-core-simple"], presence_conditions,
                                        kbuild.T, ZSolver.T)
         for token in presence_conditions:
             filename = token
