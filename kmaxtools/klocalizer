@@ -123,7 +123,10 @@ def print_model_as_config(model, fp=sys.stdout, kconfig_extract=None):
           # placeholders. use defaults from kconfig instead. these
           # have their own dependencies but are not part of
           # constraints themselves.
-          if types[str_entry] == "bool" or types[str_entry] == "tristate":
+          if str_entry not in types:
+            warning("%s is not defined by Kconfig for this architecture." % (str_entry))
+            fp.write("%s=y\n" % (str_entry))
+          elif types[str_entry] == "bool" or types[str_entry] == "tristate":
             fp.write("%s=y\n" % (str_entry))
           elif types[str_entry] == "string":
             fp.write("%s=\n" % (str_entry))
