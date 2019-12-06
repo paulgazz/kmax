@@ -22,6 +22,14 @@ test_klocalizer () {
   echo "$filename"
   /usr/bin/time klocalizer "${filename}" > archname.txt
   errcodekloc=${?}
+  cat archname.txt
+  if [[ $errcodekloc -eq 4 ]]; then
+        grep "${kbuild_path}" archname.txt
+        if [[ "${?}" -eq 0 ]]; then
+              /usr/bin/time klocalizer "${kbuild_path}" > archname.txt
+              errcodekloc=${?}
+        fi
+  fi
   if [[ ${errcodekloc} -eq 0 ]]; then
       arch=$(cat archname.txt)
       if [[ "${arch}" == "um32" ]]; then
@@ -32,7 +40,7 @@ test_klocalizer () {
       "${script_dir}/make.cross" $archvar olddefconfig > build.txt 2>&1
       "${script_dir}/make.cross" $archvar clean "$target" >> build.txt 2>&1
       errcodemake=${?}
-      tail -n50 build.txt
+      tail -n1000 build.txt
       if [[ ${errcodemake} -eq 0 ]]; then
           grep "CC *$kbuild_path" build.txt
           errcodegrep=${?}
@@ -44,7 +52,9 @@ test_klocalizer () {
       else
         echo "FAIL make.cross_error $filename"
       fi
-  elif [[ ${errcodekloc} -eq 2 ]]; then
+  elif [[ ${errcodekloc} -eq 4 ]]; then
+    echo "NONE kbuild_paths need to pass a full kbuild path"
+  elif [[ ${errcodekloc} -eq 10 ]]; then
     echo "NONE CONFIG_BROKEN $filename"
   else
     echo "FAIL klocalizer $filename"
@@ -64,6 +74,7 @@ test_klocalizer virt/kvm/arm/arm.o arch/arm/kvm/ arch/arm/kvm/../../../virt/kvm/
 test_klocalizer drivers/watchdog/pcwd.o
 test_klocalizer drivers/watchdog/mixcomwd.o
 test_klocalizer virt/kvm/kvm_main.o arch/s390/kvm/ arch/s390/kvm/../../../virt/kvm/kvm_main.o
+test_klocalizer virt/kvm/kvm_main.o arch/mips/kvm/ arch/mips/kvm/../../../virt/kvm/kvm_main.o
 test_klocalizer drivers/block/amiflop.o
 test_klocalizer drivers/video/fbdev/fsl-diu-fb.o
 test_klocalizer drivers/watchdog/cpwd.o
