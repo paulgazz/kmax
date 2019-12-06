@@ -106,20 +106,26 @@ formulas for each architecture.  If a version is not available
 the formulas be generated and uplodated or see below for directions on
 generating these formulas.
 
-Assuming you are compiling for x86, the following will generate a
-configuration that includes the `drivers/usb/storage/alauda.o` compilation unit.
+Run klocalizer for a given compilation unit, e.g.,
 
     klocalizer drivers/usb/storage/alauda.o
-    
-The configuration is not complete, since it only accounts for Boolean/tristate configuration options.  Complete it with `olddefconfig`:
 
-    make olddefconfig
+This will search each architecture for constraint satisfiability,
+stopping once one is found (or no architecture's constraints are
+satisfiable).  `klocalizer` writes this configuration to `.config` and
+prints the architectures, e.g., `x86_64`, to standard out.
 
-The compilation unit should now be buildable.
+To build the compilation unit using the generated `.config`, use
+[make.cross](https://github.com/fengguang/lkp-tests/blob/master/sbin/make.cross).
+First set any defaults for the `.config` file:
 
-    make drivers/usb/storage/alauda.o
+    make.cross ARCH=x86_64 olddefconfig
 
-If you cannot get a configuration or it is still not buildable, see the Troubleshooting section.
+Then build the compilation unit:
+
+    make.cross ARCH=x86_64 drivers/usb/storage/alauda.o
+
+If you cannot get a configuration or it is still not buildable, see the [Troubleshooting](#troubleshooting) section.
 
 ## Use Cases
 
@@ -203,6 +209,34 @@ Override the default formulas with the following:
 - Use the `.o` ending for compilation units (though `klocalizer` will change it automatically.)
 
 - The extracted formulas may not be exact.  No resulting configuration is a sign that the formulas are overconstrained.  A resulting configuration that does not include the desired compilation unit mean the formulas may be underconstrained.
+
+- Compilation unit not buildable.  There are several possible reasons:
+
+    1. While most compilation units can be built individually with make, some cannot.  In these cases, build the parent directory instead, e.g.,
+    
+        klocalizer drivers/char/ipmi/ipmi_devintf.o  # finds it buildable in x86_64
+        make.cross ARCH=x86_64 olddefconfig
+        make.cross ARCH=x86_64 drivers/char/ipmi/
+        
+    2. The configuration causes the unit to be built, but it has a compile-time error.
+    
+        klocalizer drivers/block/amiflop.o  # finds it buildable in 
+        make.cross ARCH=m68k olddefconfig
+        make.cross ARCH=m68k drivers/block/amiflop.o  # Makefile sees it, but causes compiler error.
+        
+    4. Klocalizer's formulas were wrong in some cases
+
+- If the unit's configuration constraints depend  on - `CONFIG_BROKEN`, then `klocalizer`, by default, which detect it and stop searching, because the compilation unit may not be (easily) compilable.
+    
+        klocalizer drivers/watchdog/pnx833x_wdt.o  # stops after finding a dependency on `CONFIG_BROKEN`
+
+    To get a configuration anyway, use `--allow-config-broken`
+
+        klocalizer --allow-config-broken drivers/watchdog/pnx833x_wdt.o  # finds dependency on mips
+        make.cross ARCH=mips olddefconfig
+        make.cross ARCH=mips drivers/watchdog/pnx833x_wdt.o  # won't be included in the build, due to CONFIG_BROKEN
+
+- If there are no build errors, but the compilation unit does nto get compiled, it may already be compiled.  Be sure to clean object files
 
 ## Generating Formulas for Linux
 
