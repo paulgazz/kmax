@@ -8,9 +8,12 @@ from setuptools import setup, Extension
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
+about = {}
+exec(read(os.path.join("kmaxtools", "about.py")), about)
+
 setup(
-    name = "kmaxtools",
-    version = "2.0-rc15",
+    name = about['__title__'],
+    version = about['__version__'],
     author = "Paul Gazzillo",
     author_email = "paul@pgazz.com",
     description = ("Tools for working with symbolic  constraints from Kbuild Makefile."),

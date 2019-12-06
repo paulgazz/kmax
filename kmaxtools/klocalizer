@@ -7,6 +7,7 @@ import z3
 import regex
 import pickle
 import random
+import kmaxtools.about
 
 def info(msg, ending="\n"):
   sys.stderr.write("INFO: %s%s" % (msg, ending))
@@ -352,9 +353,16 @@ if __name__ == '__main__':
   argparser.add_argument('--view-kbuild',
                          action="store_true",
                          help="""Just show the Kbuild constraints for the given compilation unit.  All other arguments are ignored.""")
+  argparser.add_argument('--version',
+                         action="store_true",
+                         help="""Print the version number.""")
   argparser.add_argument("compilation_unit", nargs='?', help="The path of the compilation unit (.o file) to generate a .config for, relative to the top of the source tree.")
   args = argparser.parse_args()
 
+  if args.version:
+    print("%s %s" % (kmaxtools.about.__title__, kmaxtools.about.__version__))
+    exit(0)
+  
   formulas = args.formulas
   kmax_file = args.kmax_formulas
   kclause_file = args.kclause_formulas

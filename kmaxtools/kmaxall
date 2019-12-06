@@ -34,6 +34,7 @@ if __name__ == '__main__':
   import cPickle as pickle
   import time
   import z3
+  import kmaxtools.about
 
   import kmaxtools.vcommon as CM
 
@@ -131,10 +132,16 @@ if __name__ == '__main__':
                          action="store_true",
                          help="""\
   collect per-file constraints as a pickled dictionary from names to smtlib2 expressions""")
-
+  argparser.add_argument('--version',
+                         action="store_true",
+                         help="""Print the version number.""")
 
   args = argparser.parse_args()
 
+  if args.version:
+    print("%s %s" % (kmaxtools.about.__title__, kmaxtools.about.__version__))
+    exit(0)
+    
   if args.aggregate:
     # aggregate per-file constraints in the unit_pc format
     # see ../README.md for a description of the unit_pc format

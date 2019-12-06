@@ -30,6 +30,7 @@ if __name__ == '__main__':
   import z3.z3printer
   from kmaxtools import expression_converter
   import pickle
+  import kmaxtools.about
 
   # this script takes the check_dep --dimacs output and converts it into
   # a dimacs-compatible format
@@ -78,8 +79,15 @@ if __name__ == '__main__':
   argparser.add_argument('--comment-format-v2',
                          action="store_true",
                          help="""add extra formatting information to dimacs comments to distinguish them from normal comments""")
+  argparser.add_argument('--version',
+                         action="store_true",
+                         help="""Print the version number.""")
   args = argparser.parse_args()
 
+  if args.version:
+    print("%s %s" % (kmaxtools.about.__title__, kmaxtools.about.__version__))
+    exit(0)
+    
   debug = args.debug
   debug_expressions = args.debug_expressions
   remove_true_clauses = True
