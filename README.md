@@ -7,14 +7,7 @@
   - [Contributors](#contributors)
   - [Setup](#setup)
   - [Quick Start](#quick-start)
-  - [Use Cases](#use-cases)
-    - [Controlling the Search of Architectures](#controlling-the-search-of-architectures)
-    - [Generating an Arbitrary Configuration for an Architecture](#generating-an-arbitrary-configuration-for-an-architecture)
-    - [Setting Additional Configuration Options](#setting-additional-configuration-options)
-    - [Investigating Unsatisfied Constraints](#investigating-unsatisfied-constraints)
-    - [Optimizing the Resulting Configuration (Experimental)](#optimizing-the-resulting-configuration-experimental)
-    - [View the Kbuild Constraints](#view-the-kbuild-constraints)
-    - [Using New Formulas](#using-new-formulas)
+  - [Advanced Uses](#advanced-uses)
   - [Troubleshooting](#troubleshooting)
   - [Generating Formulas for Linux](#generating-formulas-for-linux)
   - [Kmax](#kmax)
@@ -94,7 +87,7 @@ There are two ways to install kmaxtools.
 
 ## Quick Start
 
-The fastest way to get started is to use formulas already extracted for your version of Linux.
+The fastest way to get started is to use formulas already extracted for your version of Linux, which you can download here: <https://kmaxtools.opentheblackbox.net/formulas>
 
     cd /path/to/linux/
     wget https://kmaxtools.opentheblackbox.net/formulas/kmax-formulas_linux-v5.4.tar.bz2
@@ -127,52 +120,52 @@ Then build the compilation unit:
 
 If you cannot get a configuration or it is still not buildable, see the [Troubleshooting](#troubleshooting) section.
 
-## Use Cases
+## Advanced Uses
 
 By default, `klocalizer` checks each architecture's Kconfig
 constraints against the Kbuild constraints for the given compilation
 unit.  The following are examples of how to customize this process.
 
-### Controlling the Search of Architectures
+- Controlling the Search of Architectures
 
-Use `-a` to only search a specific architecture.
+    Use `-a` to only search a specific architecture.
 
-    klocalizer -a x86_64 drivers/usb/storage/alauda.o
+        klocalizer -a x86_64 drivers/usb/storage/alauda.o
 
-Specify multiple `-a` arguments to search the given architectures in given order.
+    Specify multiple `-a` arguments to search the given architectures in given order.
 
-    klocalizer -a x86_64 -a sparc drivers/watchdog/cpwd.o
+        klocalizer -a x86_64 -a sparc drivers/watchdog/cpwd.o
 
-Specify `-a` and `-all` to search all architectures, trying the ones given in `-a` first.
+    Specify `-a` and `-all` to search all architectures, trying the ones given in `-a` first.
 
-    klocalizer -a x86_64 -a arm --all drivers/watchdog/cpwd.o
+        klocalizer -a x86_64 -a arm --all drivers/watchdog/cpwd.o
 
-### Generating an Arbitrary Configuration for an Architecture
+- Generating an Arbitrary Configuration for an Architecture
 
-Pass a single architecture name without the compilation unit to
-generate an arbitrary configuration for that architecture.  Passing
-multiple architectures is not supported.
+    Pass a single architecture name without the compilation unit to
+    generate an arbitrary configuration for that architecture.  Passing
+    multiple architectures is not supported.
 
-    klocalizer -a x86_64
+        klocalizer -a x86_64
 
-### Setting Additional Configuration Options
+- Setting Additional Configuration Options
 
-Multiple `--define` and `--undefine` arguments can be used to force
-configurations on or off when searching for constraints.
+    Multiple `--define` and `--undefine` arguments can be used to force
+    configurations on or off when searching for constraints.
 
-    klocalizer --define CONFIG_USB --define CONFIG_FS --undefine CONFIG_SOUND drivers/usb/storage/alauda.o
+        klocalizer --define CONFIG_USB --define CONFIG_FS --undefine CONFIG_SOUND drivers/usb/storage/alauda.o
 
-Note that this can prevent finding a valid configuration.
- 
-    klocalizer -a x86_64 --undefine CONFIG_USB drivers/usb/storage/alauda.o  # no configuration possible because alauda depends on USB
+    Note that this can prevent finding a valid configuration.
 
-### Investigating Unsatisfied Constraints
+        klocalizer -a x86_64 --undefine CONFIG_USB drivers/usb/storage/alauda.o  # no configuration possible because alauda depends on USB
 
-Use `--show-unsat-core` to see what constraints are causing the issue:
+- Investigating Unsatisfied Constraints
 
-    klocalizer --show-unsat-core -a x86_64 --undefine CONFIG_USB drivers/usb/storage/alauda.o  # no configuration possible because alauda depends on USB
+    Use `--show-unsat-core` to see what constraints are causing the issue:
 
-### Optimizing the Resulting Configuration (Experimental)
+        klocalizer --show-unsat-core -a x86_64 --undefine CONFIG_USB drivers/usb/storage/alauda.o  # no configuration possible because alauda depends on USB
+
+- Optimizing the Resulting Configuration (Experimental)
 
 Klocalizer will attempt to match a given configuration, while still
 maintaing the configuration options necessary to build the given
@@ -185,19 +178,19 @@ e.g., `allnoconfig`, with the `--optimize` flag.
 
   klocalizer with specific file
 
-### View the Kbuild Constraints
+- View the Kbuild Constraints
 
-View the Kbuild constraints for a compilation unit and each of
-its subdirectories with
+    View the Kbuild constraints for a compilation unit and each of
+    its subdirectories with
 
-    klocalizer --view-kbuild drivers/usb/storage/alauda.o
+        klocalizer --view-kbuild drivers/usb/storage/alauda.o
 
-### Using New Formulas
+- Using New Formulas
 
-Override the default formulas with the following:
+    Override the default formulas with the following:
 
-    klocalizer --kmax-formula kmax --kclause-formula kclause drivers/watchdog/cpwd.o
-    
+        klocalizer --kmax-formula kmax --kclause-formula kclause drivers/watchdog/cpwd.o
+
 ## Troubleshooting
 
 - `klocalizer` requires the formulas from `kmax` and
