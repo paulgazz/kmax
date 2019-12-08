@@ -61,6 +61,8 @@ test_klocalizer () {
   fi
 }
 
+kmlocalizer --version
+
 test_klocalizer drivers/usb/storage/alauda.o
 test_klocalizer sound/soc/intel/boards/glk_rt5682_max98357a.o
 test_klocalizer sound/mips/sgio2audio.o
