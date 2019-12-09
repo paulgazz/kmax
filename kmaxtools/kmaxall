@@ -223,6 +223,7 @@ if __name__ == '__main__':
       
     covering_set_args = [ "kmax",
                           "-Dsrc=" + src_variable,      # drivers/gpu/drm/nouveau/
+                          "-Dsrctree=./",      # arch/mips/Kbuild.platform
                         ]
 
     if args.define != None:
