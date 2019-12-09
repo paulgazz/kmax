@@ -369,6 +369,9 @@ if __name__ == '__main__':
   argparser.add_argument('--view-kbuild',
                          action="store_true",
                          help="""Just show the Kbuild constraints for the given compilation unit.  All other arguments are ignored.""")
+  argparser.add_argument("--random-seed",
+                         type=int,
+                         help="""The random seed for the solver's model generation.""")
   argparser.add_argument('--version',
                          action="store_true",
                          help="""Print the version number.""")
@@ -392,6 +395,7 @@ if __name__ == '__main__':
   undefine = args.undefine
   disable_config_broken = not args.allow_config_broken
   view_kbuild = args.view_kbuild
+  random_seed = args.random_seed
   compilation_unit = args.compilation_unit
 
   if compilation_unit is None and len(archs) == 0 and not allarchs:
@@ -545,6 +549,8 @@ if __name__ == '__main__':
 
       solver = z3.Solver()
       solver.set(unsat_core=True)
+      if random_seed is not None:
+        solver.set(random_seed=random_seed)
 
       if (solver.check(constraints) == z3.unsat):
         info("The constraints are unsatisfiable.  Either no configuration is possible or the formulas are overconstrained.")
