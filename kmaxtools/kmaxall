@@ -218,16 +218,8 @@ if __name__ == '__main__':
       return set()
 
     covering_set_args = [ "kmax",
-                          # "-Dsrc=" + kbuild_dir,      # drivers/staging/wlags49_h25/, drivers/gpu/drm/nouveau/
-                          # TODO default to empty variable
-                          # "-Dobj=" + kbuild_dir,    # drivers/scsi/aic7xxx/
-                          # "-DKERNELDIR=",           # drivers/staging/wlags49_h25/
-                          # "-Dlibservices=",         # drivers/staging/tidspbridge/
-                          # "-DPWD=",                 # drivers/staging/rts5139/
-                          # "-DGCOV=",                # drivers/scsi/lpfc/
-                          # "-DDBGDEF=",              # drivers/net/wan/lmc/
-                          # "-DACPI_FUTURE_USAGE=",   # drivers/acpi/acpica/
-                          ]
+                          "-Dsrc=" + kbuild_dir,      # drivers/gpu/drm/nouveau/
+                        ]
 
     if args.define != None:
       for define in args.define:
