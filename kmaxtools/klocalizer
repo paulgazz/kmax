@@ -156,7 +156,7 @@ def print_model_as_config(model, fp=sys.stdout, kconfig_extract=None):
   else:
     warning("model is None.  Not printing.")
 
-def optimize_model(optimize, constraints):
+def approximate_model(approximate, constraints):
   solver = z3.Solver()
   solver.set(unsat_core=True)
   for constraint in constraints:
@@ -168,15 +168,15 @@ def optimize_model(optimize, constraints):
   # until we get something sat, (2) add the .config has soft
   # assertions.
 
-  assumptions = get_config_file_constraints(optimize)
+  assumptions = get_config_file_constraints(approximate)
 
   # (1) unsat core approach. keep removing assumptions until the formula is satisfiable
   res = solver.check(assumptions)
   if res == z3.sat:
-    info("Already satisfiable.  No optimization needed.")
+    info("Already satisfiable when constraining with given config.  No approximatation needed.")
     return solver.model()
   else:
-    info("Optimizing via unsat core approach.")
+    info("Approximating via unsat core approach.")
     info("%d assumptions left to try removing." % (len(assumptions)), ending="\r")
     while res == z3.unsat:
       core = solver.unsat_core()
@@ -198,8 +198,8 @@ def get_config_file_constraints(config_file):
 
   constraints = []
   # add the .config as constraints
-  with open(config_file, 'r') as optimize_fp:
-    lines = optimize_fp.readlines()
+  with open(config_file, 'r') as approximate_fp:
+    lines = approximate_fp.readlines()
     for line in lines:
       line = line.strip()
       off = off_pattern.match(line)
@@ -346,7 +346,7 @@ if __name__ == '__main__':
                          type=str,
                          default=".config",
                          help="""Name of the output .config file.  Defaults to .config.""")
-  argparser.add_argument('--optimize',
+  argparser.add_argument('--approximate',
                          type=str,
                          help="""An existing .config file to use to try to match as closely as possible while still containing the desired objective.""")
   argparser.add_argument('-u',
@@ -371,7 +371,7 @@ if __name__ == '__main__':
                          help="""Just show the Kbuild constraints for the given compilation unit.  All other arguments are ignored.""")
   argparser.add_argument("--sample",
                          type=int,
-                         help="""Generate the given number of configurations.  Cannot be used with --optimize and will output to --sample-prefix instead of --output-file.""")
+                         help="""Generate the given number of configurations.  Cannot be used with --approximate and will output to --sample-prefix instead of --output-file.""")
   argparser.add_argument("--sample-prefix",
                          type=str,
                          help="""The prefix of the generated configurations.  Defaults to \"config\".""")
@@ -396,7 +396,7 @@ if __name__ == '__main__':
   constraints_file = args.constraints_file
   output_file = args.output
   show_unsat_core = args.show_unsat_core
-  optimize = args.optimize
+  approximate = args.approximate
   define = args.define
   undefine = args.undefine
   disable_config_broken = not args.allow_config_broken
@@ -409,9 +409,9 @@ if __name__ == '__main__':
   if sample is not None:
     if sample_prefix is None:
       sample_prefix="config"
-    if optimize is not None:
+    if approximate is not None:
       argparser.print_help()
-      warning("--optimize and --sample cannot currently be used together")
+      warning("--approximate and --sample cannot currently be used together")
       exit(0)
     if sample < 1:
       argparser.print_help()
@@ -592,8 +592,8 @@ if __name__ == '__main__':
         info("The constraints are satisfiable.")
         if not sample:
           model = solver.model()
-          if optimize:
-            model = optimize_model(optimize, constraints)
+          if approximate:
+            model = approximate_model(approximate, constraints)
           if model is not None:
             info("Writing the configuration to %s" % (output_file))
             if arch is not None:
