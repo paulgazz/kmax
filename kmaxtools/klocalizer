@@ -369,6 +369,12 @@ if __name__ == '__main__':
   argparser.add_argument('--view-kbuild',
                          action="store_true",
                          help="""Just show the Kbuild constraints for the given compilation unit.  All other arguments are ignored.""")
+  argparser.add_argument("--sample",
+                         type=int,
+                         help="""Generate the given number of configurations.  Cannot be used with --optimize and will output to --sample-prefix instead of --output-file.""")
+  argparser.add_argument("--sample-prefix",
+                         type=str,
+                         help="""The prefix of the generated configurations.  Defaults to \"config\".""")
   argparser.add_argument("--random-seed",
                          type=int,
                          help="""The random seed for the solver's model generation.""")
@@ -395,8 +401,27 @@ if __name__ == '__main__':
   undefine = args.undefine
   disable_config_broken = not args.allow_config_broken
   view_kbuild = args.view_kbuild
+  sample = args.sample
+  sample_prefix = args.sample_prefix
   random_seed = args.random_seed
   compilation_unit = args.compilation_unit
+
+  if sample is not None:
+    if sample_prefix is None:
+      sample_prefix="config"
+    if optimize is not None:
+      argparser.print_help()
+      warning("--optimize and --sample cannot currently be used together")
+      exit(0)
+    if sample < 1:
+      argparser.print_help()
+      warning("Must provide a sample size of two or more.")
+      exit(0)
+  else:
+    if sample_prefix is not None:
+      argparser.print_help()
+      warning("--sample-prefix only to be used with --sample")
+      exit(0)
 
   if compilation_unit is None and len(archs) == 0 and not allarchs:
     argparser.print_help()
@@ -565,20 +590,35 @@ if __name__ == '__main__':
           exit(10)
       else:
         info("The constraints are satisfiable.")
-        model = solver.model()
-        if optimize:
-          model = optimize_model(optimize, constraints)
-        if model is not None:
-          info("Writing the configuration to %s" % (output_file))
+        if not sample:
+          model = solver.model()
+          if optimize:
+            model = optimize_model(optimize, constraints)
+          if model is not None:
+            info("Writing the configuration to %s" % (output_file))
+            if arch is not None:
+              kconfig_extract = get_kconfig_extract(formulas, arch)
+            else:
+              kconfig_extract = None
+            with open(output_file, 'w') as config_fp:
+              print_model_as_config(model, config_fp, kconfig_extract)
+            if arch is not None:
+              info("Generated configuration for %s" % (arch))
+              info("Build with \"make.cross ARCH=%s olddefconfig; make.cross ARCH=%s clean %s\"." % (arch, arch, compilation_unit))
+              print(arch)
+            exit(0)
+        else:
+          info("Generating %s configurations with prefix %s" % (str(sample), sample_prefix))
           if arch is not None:
             kconfig_extract = get_kconfig_extract(formulas, arch)
           else:
             kconfig_extract = None
-          print_model_as_config(model, open(output_file, 'w'), kconfig_extract)
-          if arch is not None:
-            info("Generated configuration for %s" % (arch))
-            info("Build with \"make.cross ARCH=%s olddefconfig; make.cross ARCH=%s clean %s\"." % (arch, arch, compilation_unit))
-            print(arch)
+          for config_i in range(0, sample):
+            if config_i != 0:  # solver.check already called when checking sat above
+              solver.check(constraints)
+            config_filename = "%s%d" % (sample_prefix, config_i + 1)
+            with open(config_filename, 'w') as config_fp:
+              print_model_as_config(solver.model(), config_fp, kconfig_extract)
           exit(0)
   error("No satisfying configuration found.")
   exit(11)
