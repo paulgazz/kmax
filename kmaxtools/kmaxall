@@ -217,8 +217,12 @@ if __name__ == '__main__':
       sys.stderr.write("%s does not exist\n" % (kbuild_dir))
       return set()
 
+    src_variable = kbuild_dir
+    if os.path.exists(kbuild_dir) and os.path.isfile(kbuild_dir):
+      src_variable = os.path.dirname(src_variable)
+      
     covering_set_args = [ "kmax",
-                          "-Dsrc=" + kbuild_dir,      # drivers/gpu/drm/nouveau/
+                          "-Dsrc=" + src_variable,      # drivers/gpu/drm/nouveau/
                         ]
 
     if args.define != None:
@@ -324,18 +328,28 @@ if __name__ == '__main__':
   solver = z3.Solver()
   solver.add(z3.BoolVal(True))
   true_smt2 = solver.to_smt2()
-  
+
+  makefile_paths = args.makefile
   for path in args.makefile:
     if os.path.exists(path):
       if os.path.isdir(path):
         dirname = path
+        # check whether the directory has both a Makefile and a Kbuild Makefile
+        kbuild_path = os.path.join(dirname, "Kbuild")
+        makefile_path = os.path.join(dirname, "Makefile")
+        if os.path.exists(kbuild_path) and os.path.exists(makefile_path):
+          # if they both exists, add the Makefile as well, since kmax,
+          # currently favors the Kbuild file.  this is hacky and there
+          # should be a simpler interface between kmaxall and kmax
+          # with clearer default behavior.
+          makefile_paths.append(makefile_path)
       else:
         dirname = os.path.dirname(path)
       if not dirname.endswith("/"):
         dirname = dirname + "/"
       z3_pcs[dirname] = true_smt2
   
-  pending_subdirectories.update(args.makefile)
+  pending_subdirectories.update(makefile_paths)
   while len(pending_subdirectories) > 0:
     subdirectories.update(pending_subdirectories)
     pending_subdirectories.update(covering_set(pending_subdirectories.pop(),
@@ -351,7 +365,7 @@ if __name__ == '__main__':
 
   if args.z3:
     print(pickle.dumps(z3_pcs))
-    exit(1)
+    exit(0)
     
   if args.get_presence_conditions:
     # already printed presence conditions.  don't do anything, so exit
