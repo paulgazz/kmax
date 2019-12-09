@@ -9,7 +9,7 @@ if [[ ${?} == 0 ]]; then
   rm -rf .kmax/
   mkdir .kmax/
   klocalizer --version >> .kmax/info.txt
-  echo "Linux git describe" >> .kmax/info.txt
+  echo "Linux $(git describe)" >> .kmax/info.txt
   date >> .kmax/info.txt
   /usr/bin/time bash ${scripts_dir}/kmaxlinux.sh |& tee kmaxlinux.out
   /usr/bin/time bash ${scripts_dir}/kclauselinux.sh |& tee kclauselinux.out
