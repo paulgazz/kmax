@@ -126,7 +126,7 @@ By default, `klocalizer` checks each architecture's Kconfig
 constraints against the Kbuild constraints for the given compilation
 unit.  The following are examples of how to customize this process.
 
-- Controlling the Search of Architectures
+- Controlling the search of architectures
 
     Use `-a` to only search a specific architecture.
 
@@ -140,7 +140,7 @@ unit.  The following are examples of how to customize this process.
 
         klocalizer -a x86_64 -a arm --all drivers/watchdog/cpwd.o
 
-- Generating an Arbitrary Configuration for an Architecture
+- Generating an arbitrary configuration for an architecture
 
     Pass a single architecture name without the compilation unit to
     generate an arbitrary configuration for that architecture.  Passing
@@ -148,7 +148,7 @@ unit.  The following are examples of how to customize this process.
 
         klocalizer -a x86_64
 
-- Setting Additional Configuration Options
+- Setting additional configuration options
 
     Multiple `--define` and `--undefine` arguments can be used to force
     configurations on or off when searching for constraints.
@@ -159,37 +159,41 @@ unit.  The following are examples of how to customize this process.
 
         klocalizer -a x86_64 --undefine CONFIG_USB drivers/usb/storage/alauda.o  # no configuration possible because alauda depends on USB
 
-- Investigating Unsatisfied Constraints
+- Investigating unsatisfied constraints
 
     Use `--show-unsat-core` to see what constraints are causing the issue:
 
         klocalizer --show-unsat-core -a x86_64 --undefine CONFIG_USB drivers/usb/storage/alauda.o  # no configuration possible because alauda depends on USB
 
-- Optimizing the Resulting Configuration (Experimental)
+- Approximating a given configuration
 
 Klocalizer will attempt to match a given configuration, while still
 maintaing the configuration options necessary to build the given
 compilation unit.  This works by passing it an existing configuration,
-e.g., `allnoconfig`, with the `--optimize` flag.
+e.g., `allnoconfig`, with the `--approximate` flag.
 
     make allnoconfig
     mv .config allnoconfig
-    klocalizer --optimize allnoconfig drivers/usb/storage/alauda.o
+    klocalizer --approximate allnoconfig drivers/usb/storage/alauda.o
 
   klocalizer with specific file
 
-- View the Kbuild Constraints
+- View the Kbuild constraints
 
     View the Kbuild constraints for a compilation unit and each of
     its subdirectories with
 
         klocalizer --view-kbuild drivers/usb/storage/alauda.o
 
-- Using New Formulas
+- Using new formulas
 
     Override the default formulas with the following:
 
         klocalizer --kmax-formula kmax --kclause-formula kclause drivers/watchdog/cpwd.o
+
+- Generating multiple configurations
+
+        klocalizer -a x86_64 --random-seed 7849 --sample 8 --sample-prefix config
 
 ## Troubleshooting
 
