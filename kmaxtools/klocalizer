@@ -110,7 +110,7 @@ def get_kmax_constraints(kmax_formulas, kbuild_path, view=False):
     return None
 
 def print_model_as_config(model, fp=sys.stdout, kconfig_extract=None):
-  info("Printing model as config file to %s." % ("stdout" if fp == sys.stdout else (fp.name)))
+  info("Printing model as config file to \"%s\"." % ("stdout" if fp == sys.stdout else (fp.name)))
 
   if kconfig_extract == None:
     info("No kconfig_extract file available.  Assuming all configuration options are Boolean")
@@ -469,6 +469,7 @@ if __name__ == '__main__':
         
   if len(kclause_to_try.keys()) == 0:
     error("No kclause files found.  Please check --formulas directory or use --kclause-formula explicitly.")
+    info("Available architectures: %s""" % (", ".join(architectures)))
     exit(7)
   elif not compilation_unit:
     if len(kclause_to_try.keys()) == 1:
