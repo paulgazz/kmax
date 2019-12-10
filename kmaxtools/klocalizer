@@ -565,7 +565,15 @@ if __name__ == '__main__':
             kconfig_types[kconfig_line[1]] = kconfig_line[2]
 
       if kmax_constraints:
+        # add the kmax constraints
         constraints.extend(kmax_constraints)
+        # disable any configuration options not defined in this architecture
+        if kconfig_types:
+          for kmax_constraint in kmax_constraints:
+            used_vars = z3.z3util.get_vars(kmax_constraint)
+            vars_not_in_arch = [ used_var for used_var in used_vars if str(used_var) not in kconfig_types.keys() ]
+            for used_var in vars_not_in_arch:
+              constraints.append(z3.Not(used_var))
 
       if constraints_file:
         constraints.extend(get_ad_hoc_constraints(constraints_file))
