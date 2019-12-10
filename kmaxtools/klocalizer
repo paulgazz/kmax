@@ -422,7 +422,7 @@ if __name__ == '__main__':
 
   if compilation_unit is None and len(archs) == 0 and not allarchs:
     argparser.print_help()
-    error("No formulas found.  Download them from https://kmaxtools.opentheblackbox.net/formulas/ or see the README.md to generate them.\n")
+    error("Please specify a compilation unit or an architecture to generate a satisfying configuration.\n")
     exit(12)
 
   if not os.path.exists(formulas):
