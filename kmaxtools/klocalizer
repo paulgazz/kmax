@@ -408,22 +408,22 @@ if __name__ == '__main__':
       sample_prefix="config"
     if approximate is not None:
       argparser.print_help()
-      warning("--approximate and --sample cannot currently be used together")
-      exit(0)
+      error("--approximate and --sample cannot currently be used together")
+      exit(12)
     if sample < 1:
       argparser.print_help()
-      warning("Must provide a sample size of two or more.")
-      exit(0)
+      error("Must provide a sample size of two or more.")
+      exit(12)
   else:
     if sample_prefix is not None:
       argparser.print_help()
-      warning("--sample-prefix only to be used with --sample")
-      exit(0)
+      error("--sample-prefix only to be used with --sample")
+      exit(12)
 
   if compilation_unit is None and len(archs) == 0 and not allarchs:
     argparser.print_help()
-    warning("No formulas found.  Download them from https://kmaxtools.opentheblackbox.net/formulas/ or see the README.md to generate them.\n")
-    exit(0)
+    error("No formulas found.  Download them from https://kmaxtools.opentheblackbox.net/formulas/ or see the README.md to generate them.\n")
+    exit(12)
 
   if not os.path.exists(formulas):
     error("No formulas found.  Download them from https://kmaxtools.opentheblackbox.net/formulas/ or see the README.md to generate them.\n")
