@@ -538,13 +538,15 @@ class Kbuild:
                     for condition, zcondition, verse in hoisted:
                         newcondition = conj(condition, subcondition)
                         newzcondition = zconj(zcondition, zsubcondition)
-                        
-                        newverse = list(verse)
-                        if isinstance(subverse, list):
-                            newverse += subverse
-                        else:
-                            newverse.append(subverse)
-                        newlist.append((newcondition, newzcondition, newverse))
+
+                        # filter infeasible combinations
+                        if not isfalse(newcondition, newzcondition):
+                            newverse = list(verse)
+                            if isinstance(subverse, list):
+                                newverse += subverse
+                            else:
+                                newverse.append(subverse)
+                            newlist.append((newcondition, newzcondition, newverse))
                 hoisted = newlist
             else:
                 for condition, zcondition, verse in hoisted:
