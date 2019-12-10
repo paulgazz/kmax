@@ -1,0 +1,10 @@
+# drivers/gpu/drm/amd/amdgpu/Makefile
+
+FULL_AMD_PATH=./
+
+# being in a presence condition context blows this up
+# ifneq ($(CONFIG_HSA_AMD),)
+# ifeq ($(CONFIG_HSA_AMD),y)
+AMDKFD_PATH := ../amdkfd
+include $(FULL_AMD_PATH)/amdkfd
+# endif
