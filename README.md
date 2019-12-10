@@ -189,7 +189,7 @@ e.g., `allnoconfig`, with the `--approximate` flag.
 
     Override the default formulas with the following:
 
-        klocalizer --kmax-formula kmax --kclause-formula kclause drivers/watchdog/cpwd.o
+        klocalizer --kmax-formula kmax --kclause-formulas kclause drivers/watchdog/cpwd.o
 
 - Generating multiple configurations
 
@@ -209,17 +209,21 @@ e.g., `allnoconfig`, with the `--approximate` flag.
 
 - Compilation unit not buildable.  There are several possible reasons:
 
-    1. While most compilation units can be built individually with make, some cannot.  In these cases, build the parent directory instead, e.g.,
+    1. The compilation unit has already been compiled.  First clean with
+       
+            make clean
+
+    2. While most compilation units can be built individually with make, some cannot.  In these cases, build the parent directory instead, e.g.,
     
-        klocalizer drivers/char/ipmi/ipmi_devintf.o  # finds it buildable in x86_64
-        make.cross ARCH=x86_64 olddefconfig
-        make.cross ARCH=x86_64 drivers/char/ipmi/
+            klocalizer drivers/char/ipmi/ipmi_devintf.o  # finds it buildable in x86_64
+            make.cross ARCH=x86_64 olddefconfig
+            make.cross ARCH=x86_64 drivers/char/ipmi/
         
-    2. The configuration causes the unit to be built, but it has a compile-time error.
+    3. The configuration causes the unit to be built, but it has a compile-time error.
     
-        klocalizer drivers/block/amiflop.o  # finds it buildable in 
-        make.cross ARCH=m68k olddefconfig
-        make.cross ARCH=m68k drivers/block/amiflop.o  # Makefile sees it, but causes compiler error.
+            klocalizer drivers/block/amiflop.o  # finds it buildable in 
+            make.cross ARCH=m68k olddefconfig
+            make.cross ARCH=m68k drivers/block/amiflop.o  # Makefile sees it, but causes compiler error.
         
     4. Klocalizer's formulas were wrong in some cases
 
@@ -232,8 +236,6 @@ e.g., `allnoconfig`, with the `--approximate` flag.
         klocalizer --allow-config-broken drivers/watchdog/pnx833x_wdt.o  # finds dependency on mips
         make.cross ARCH=mips olddefconfig
         make.cross ARCH=mips drivers/watchdog/pnx833x_wdt.o  # won't be included in the build, due to CONFIG_BROKEN
-
-- If there are no build errors, but the compilation unit does nto get compiled, it may already be compiled.  Be sure to clean object files
 
 ## Generating Formulas for Linux
 
