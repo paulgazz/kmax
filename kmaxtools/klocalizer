@@ -109,18 +109,8 @@ def get_kmax_constraints(kmax_formulas, kbuild_path, view=False):
   else:
     return None
 
-def print_model_as_config(model, fp=sys.stdout, kconfig_extract=None):
+def print_model_as_config(model, fp=sys.stdout, kconfig_types=None):
   info("Printing model as config file to \"%s\"." % ("stdout" if fp == sys.stdout else (fp.name)))
-
-  if kconfig_extract == None:
-    info("No kconfig_extract file available.  Assuming all configuration options are Boolean")
-    types = None
-  else:
-    types = {}
-    for kconfig_line in kconfig_extract:
-      # see docs/kconfig_extract_format.md for more info
-      if kconfig_line[0] == "config":
-        types[kconfig_line[1]] = kconfig_line[2]
 
   if model is not None:
     # print the model in .config format
@@ -136,21 +126,28 @@ def print_model_as_config(model, fp=sys.stdout, kconfig_extract=None):
           # placeholders. use defaults from kconfig instead. these
           # have their own dependencies but are not part of
           # constraints themselves.
-          if str_entry not in types:
-            warning("%s is not defined by Kconfig for this architecture." % (str_entry))
+          if kconfig_types is None:
+            # if no types provided, assume all are Boolean
             fp.write("%s=y\n" % (str_entry))
-          elif types[str_entry] == "bool" or types[str_entry] == "tristate":
+          elif str_entry not in kconfig_types:
+            if str_entry not in architecture_configs:
+              warning("%s is not defined by Kconfig for this architecture." % (str_entry))
+          elif kconfig_types[str_entry] == "bool" or kconfig_types[str_entry] == "tristate":
             fp.write("%s=y\n" % (str_entry))
-          elif types[str_entry] == "string":
+          elif kconfig_types[str_entry] == "string":
             fp.write("%s=\n" % (str_entry))
-          elif types[str_entry] == "number":
+          elif kconfig_types[str_entry] == "number":
             fp.write("%s=0\n" % (str_entry))
-          elif types[str_entry] == "hex":
+          elif kconfig_types[str_entry] == "hex":
             fp.write("%s=0x0\n" % (str_entry))
           else:
             assert(False)
         else:
-          fp.write("# %s is not set\n" % (str_entry))
+          if kconfig_types is None or str_entry in kconfig_types:
+            fp.write("# %s is not set\n" % (str_entry))
+          else:
+            if str_entry not in architecture_configs:
+              warning("%s is not defined by Kconfig for this architecture." % (str_entry))            
       # else:
       #   sys.stderr.write("omitting non-config var %s\n" % (str_entry))
   else:
@@ -552,6 +549,21 @@ if __name__ == '__main__':
     else:
       constraints = []
 
+      if arch is not None:
+        kconfig_extract = get_kconfig_extract(formulas, arch)
+      else:
+        kconfig_extract = None
+        
+      if kconfig_extract == None:
+        info("No kconfig_extract file available.  Assuming all configuration options are Boolean")
+        kconfig_types = None
+      else:
+        kconfig_types = {}
+        for kconfig_line in kconfig_extract:
+          # see docs/kconfig_extract_format.md for more info
+          if kconfig_line[0] == "config":
+            kconfig_types[kconfig_line[1]] = kconfig_line[2]
+
       if kmax_constraints:
         constraints.extend(kmax_constraints)
 
@@ -596,12 +608,8 @@ if __name__ == '__main__':
             model = approximate_model(approximate, constraints)
           if model is not None:
             info("Writing the configuration to %s" % (output_file))
-            if arch is not None:
-              kconfig_extract = get_kconfig_extract(formulas, arch)
-            else:
-              kconfig_extract = None
             with open(output_file, 'w') as config_fp:
-              print_model_as_config(model, config_fp, kconfig_extract)
+              print_model_as_config(model, config_fp, kconfig_types)
             if arch is not None:
               info("Generated configuration for %s" % (arch))
               info("Build with \"make.cross ARCH=%s olddefconfig; make.cross ARCH=%s clean %s\"." % (arch, arch, compilation_unit))
@@ -609,16 +617,12 @@ if __name__ == '__main__':
             exit(0)
         else:
           info("Generating %s configurations with prefix %s" % (str(sample), sample_prefix))
-          if arch is not None:
-            kconfig_extract = get_kconfig_extract(formulas, arch)
-          else:
-            kconfig_extract = None
           for config_i in range(0, sample):
             if config_i != 0:  # solver.check already called when checking sat above
               solver.check(constraints)
             config_filename = "%s%d" % (sample_prefix, config_i + 1)
             with open(config_filename, 'w') as config_fp:
-              print_model_as_config(solver.model(), config_fp, kconfig_extract)
+              print_model_as_config(solver.model(), config_fp, kconfig_types)
           exit(0)
   error("No satisfying configuration found.")
   exit(11)
