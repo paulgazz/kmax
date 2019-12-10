@@ -327,6 +327,10 @@ if __name__ == '__main__':
                          type=str,
                          default=None,
                          help="""The file containing the a pickled tuple with a mapping from configuration option to its formulas and a list of additional constraints.  This overrides --arch.""")
+  argparser.add_argument('--kconfig-extract',
+                         type=str,
+                         default=None,
+                         help="""The file containing the kconfig extract.  This must be accompanied by --kclause-formulas.""")
   argparser.add_argument('--constraints-file',
                          type=str,
                          help="""A text file containing ad-hoc constraints.  One configuration option name per line.  Prefix with ! to force it off; no prefix means force on.""")
@@ -388,6 +392,7 @@ if __name__ == '__main__':
   formulas = args.formulas
   kmax_file = args.kmax_formulas
   kclause_file = args.kclause_formulas
+  kconfig_extract_file = args.kconfig_extract
   archs = args.arch
   allarchs = args.all
   constraints_file = args.constraints_file
@@ -403,6 +408,16 @@ if __name__ == '__main__':
   random_seed = args.random_seed
   compilation_unit = args.compilation_unit
 
+  if kconfig_extract_file and not kclause_file:
+    argparser.print_help()
+    error("--kconfig-extract can only be used with --kclause-formulas")
+    exit(12)
+
+  if kclause_file and len(archs) > 0:
+    argparser.print_help()
+    error("Cannot provide --arch arguments when already providing an explicit --kclause-formulas argument")
+    exit(12)
+  
   if sample is not None:
     if sample_prefix is None:
       sample_prefix="config"
@@ -551,6 +566,8 @@ if __name__ == '__main__':
 
       if arch is not None:
         kconfig_extract = get_kconfig_extract(formulas, arch)
+      elif kconfig_extract_file is not None:
+        kconfig_extract = kconfig_extract_file
       else:
         kconfig_extract = None
         
