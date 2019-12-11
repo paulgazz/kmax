@@ -109,12 +109,12 @@ def get_kmax_constraints(kmax_formulas, kbuild_path, view=False):
   else:
     return None
 
+token_pattern = regex.compile("CONFIG_[A-Za-z0-9_]+")
 def print_model_as_config(model, fp=sys.stdout, kconfig_types=None):
   info("Printing model as config file to \"%s\"." % ("stdout" if fp == sys.stdout else (fp.name)))
 
   if model is not None:
     # print the model in .config format
-    token_pattern = regex.compile("CONFIG_[A-Za-z0-9_]+")
     for entry in model:
       str_entry = str(entry)
       matches = token_pattern.match(str_entry)
@@ -588,7 +588,7 @@ if __name__ == '__main__':
         if kconfig_types:
           for kmax_constraint in kmax_constraints:
             used_vars = z3.z3util.get_vars(kmax_constraint)
-            vars_not_in_arch = [ used_var for used_var in used_vars if str(used_var) not in kconfig_types.keys() and str(used_var).startswith("CONFIG_") and (kconfig_types[str(used_var)] == "bool" or kconfig_types[str(used_var)] == "tristate") ]
+            vars_not_in_arch = [ used_var for used_var in used_vars if str(used_var) not in kconfig_types.keys() and token_pattern.match(str(used_var)) ]
             for used_var in vars_not_in_arch:
               constraints.append(z3.Not(used_var))
 
