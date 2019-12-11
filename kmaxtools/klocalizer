@@ -584,11 +584,11 @@ if __name__ == '__main__':
       if kmax_constraints:
         # add the kmax constraints
         constraints.extend(kmax_constraints)
-        # disable any configuration options not defined in this architecture
+        # disable any Boolean configuration options not defined in this architecture
         if kconfig_types:
           for kmax_constraint in kmax_constraints:
             used_vars = z3.z3util.get_vars(kmax_constraint)
-            vars_not_in_arch = [ used_var for used_var in used_vars if str(used_var) not in kconfig_types.keys() ]
+            vars_not_in_arch = [ used_var for used_var in used_vars if str(used_var) not in kconfig_types.keys() and str(used_var).startswith("CONFIG_") and (kconfig_types[str(used_var)] == "bool" or kconfig_types[str(used_var)] == "tristate") ]
             for used_var in vars_not_in_arch:
               constraints.append(z3.Not(used_var))
 
