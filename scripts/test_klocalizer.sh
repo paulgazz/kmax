@@ -48,16 +48,16 @@ if [[ ${errcodekloc} -eq 0 ]]; then
   timeout 2m "${scripts_dir}/make.cross" $archvar "$target" >> build.txt 2>&1
   errcodemake=${?}
   tail -n1000 build.txt
-  if [[ ${errcodemake} -eq 0 ]]; then
-    grep "CC *$kbuild_path" build.txt
-    errcodegrep=${?}
-    if [[ ${errcodegrep} -eq 0 ]]; then
+  grep "CC *$kbuild_path" build.txt
+  errcodegrep=${?}
+  if [[ ${errcodegrep} -eq 0 ]]; then
+    if [[ ${errcodemake} -eq 0 ]]; then
       echo "PASS all $filename"
     else
-      echo "FAIL make.cross_missing $filename"
+      echo "PASS make.cross_error $filename"
     fi
   else
-    echo "FAIL make.cross_error $filename"
+    echo "FAIL make.cross_missing $filename"
   fi
 elif [[ ${errcodekloc} -eq 4 ]]; then
   echo "NONE kbuild_paths need to pass a full kbuild path"
