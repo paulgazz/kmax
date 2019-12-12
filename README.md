@@ -349,14 +349,20 @@ e.g., `allnoconfig`, with the `--approximate` flag.
             klocalizer drivers/char/ipmi/ipmi_devintf.o  # finds it buildable in x86_64
             make.cross ARCH=x86_64 olddefconfig
             make.cross ARCH=x86_64 drivers/char/ipmi/
+            
+    3. Composites do not correspond to source files and are not built directly via `make`.  Instead they are composed of other compilation units.  For instance, `drivers/block/zram/zram.o` is comprised of `zcomp.o` and `zram_drv.o`.  After finding a satisfying configuration, build the parent directory to see the source files that comprise it built.
+    
+            klocalizer --approximate .config drivers/block/zram/zram.o
+            make olddefconfig
+            make drivers/block/zram/
         
-    3. The configuration causes the unit to be built, but it has a compile-time error.
+    4. The configuration causes the unit to be built, but it has a compile-time error.
     
             klocalizer drivers/block/amiflop.o  # finds it buildable in 
             make.cross ARCH=m68k olddefconfig
             make.cross ARCH=m68k drivers/block/amiflop.o  # Makefile sees it, but causes compiler error.
         
-    4. Klocalizer's formulas were wrong in some cases
+    5. Klocalizer's formulas were wrong in some cases
 
 - If the unit's configuration constraints depend  on - `CONFIG_BROKEN`, then `klocalizer`, by default, which detect it and stop searching, because the compilation unit may not be (easily) compilable.
     
