@@ -1,2 +1,2 @@
 __title__ = "kmaxtools"
-__version__ = "2.0-rc19"
+__version__ = "2.0-rc20"
