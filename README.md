@@ -7,6 +7,10 @@
   - [Contributors](#contributors)
   - [Setup](#setup)
   - [Quick Start](#quick-start)
+  - [Use Cases](#use-cases)
+    - [A Compilation Unit not Built by `allyesconfig`](#a-compilation-unit-not-built-by-allyesconfig)
+    - [A Compilation Unit not Built by `defconfig` or `allnoconfig`](#a-compilation-unit-not-built-by-defconfig-or-allnoconfig)
+    - [An Architecture-Specific Compilation Unit](#an-architecture-specific-compilation-unit)
   - [Advanced Usage](#advanced-usage)
   - [Troubleshooting](#troubleshooting)
   - [Generating Formulas for Linux](#generating-formulas-for-linux)
@@ -119,6 +123,124 @@ Then build the compilation unit:
     make.cross ARCH=x86_64 drivers/usb/storage/alauda.o
 
 If you cannot get a configuration or it is still not buildable, see the [Troubleshooting](#troubleshooting) section.
+
+## Use Cases
+
+### A Compilation Unit not Built by `allyesconfig`
+
+While `allyesconfig` strives to enable all options, some have conflicting dependencies or are mutually exclusive choices.  For instance, `fs/squashfs/decompressor_multi.o` is not compiled when using `allyesconfig`:
+
+    make allyesconfig
+    make fs/squashfs/decompressor_multi.o
+    
+`make` fails:
+
+    make[3]: *** No rule to make target 'fs/squashfs/decompressor_multi.o'.  Stop.
+
+Let us take a look at the unit's Kbuild dependencies:
+
+    klocalizer --view fs/squashfs/decompressor_multi.o
+
+The output in part is
+
+    fs/squashfs/decompressor_multi.o
+    [And(CONFIG_SQUASHFS, CONFIG_SQUASHFS_DECOMP_MULTI)]
+
+The unit is not included in `allyesconfig` because it on both `CONFIG_SQUASHFS` and `CONFIG_SQUASHFS_DECOMP_MULTI`.  The latter is disabled by default, being mutually exclusive with `SQUASHFS_DECOMP_SINGLE` which is selected by allyesconfig:
+
+    make allyesconfig
+    egrep "(CONFIG_SQUASHFS|CONFIG_SQUASHFS_DECOMP_SINGLE|CONFIG_SQUASHFS_DECOMP_MULTI)( |=)" .config
+
+`grep` shows us the relevant settings:
+
+    CONFIG_SQUASHFS=y
+    CONFIG_SQUASHFS_DECOMP_SINGLE=y
+    # CONFIG_SQUASHFS_DECOMP_MULTI is not set
+
+`klocalizer` can find a configuration that includes the unit:
+
+    klocalizer fs/squashfs/decompressor_multi.o
+    egrep "(CONFIG_SQUASHFS|CONFIG_SQUASHFS_DECOMP_SINGLE|CONFIG_SQUASHFS_DECOMP_MULTI)( |=)" .config
+
+`grep` shows us what `klocalizer` set:
+
+    CONFIG_SQUASHFS=y
+    CONFIG_SQUASHFS_DECOMP_MULTI=y
+    # CONFIG_SQUASHFS_DECOMP_SINGLE is not set
+
+Finally, building the configuration 
+
+    make olddefconfig
+    make fs/squashfs/decompressor_multi.o
+
+gives us
+
+      CC      fs/squashfs/decompressor_multi.o
+
+
+### A Compilation Unit not Built by `defconfig` or `allnoconfig`
+
+A kernel user or developer may want a smaller kernel that includes a specific compilation unit, rather than having to build `allyesconfig`.  For instance, `drivers/infiniband/core/cgroup.o` is not built by default:
+
+    make defconfig
+    make drivers/infiniband/core/cgroup.o
+    
+The output contains
+
+    make[2]: *** No rule to make target 'drivers/infiniband/core/cgroup.o'.  Stop.
+
+`klocalizer` can look for a configuration containing the compilation unit that closely matches a given configuration without it by successively removing conflicting constraints until the configuration is valid:
+
+    make defconfig
+    klocalizer --approximate .config drivers/infiniband/core/cgroup.o
+
+Now when building the configuration, the compilation unit is included:
+
+    make olddefconfig
+    make drivers/infiniband/core/cgroup.o
+
+The output contains:
+
+      CC      drivers/infiniband/core/cgroup.o
+
+
+### An Architecture-Specific Compilation Unit
+
+Sometimes a compilation unit is only available for certain architectures.   Compiling `drivers/block/ps3disk.o` won't compile on an `x86` machine.
+
+    make allyesconfig
+    klocalizer drivers/block/ps3disk.o
+
+Its output contains
+
+    make[3]: *** No rule to make target 'drivers/block/ps3disk.o'.  Stop.
+
+`klocalizer --view drivers/block/ps3disk.o` shows us that it depends on `CONFIG_PS3_DISK`.  It turns out that this configuration option in turn depends on, among others options, the powerpc architecture.
+
+`klocalizer` can try the constraints from each architecture:
+
+    klocalizer drivers/block/ps3disk.o
+
+It tells us that `powerpc` is a satisfying architecture.  We can use `make.cross` to cross-compile for `powerpc`.
+
+    make.cross ARCH=powerpc olddefconfig
+    make.cross ARCH=powerpc drivers/block/ps3disk.o
+    
+Its output contains
+
+      CC      drivers/block/ps3disk.o
+
+We can combine several `klocalizer` features to build an `allnoconfig` kernel that adds in the `ps3disk.o` compilation unit and sets all `tristate` options to modules.
+    
+    make.cross ARCH=powerpc allnoconfig
+    klocalizer -a powerpc --match .config --modules --define CONFIG_MODULES drivers/block/ps3disk.o
+    make.cross ARCH=powerpc olddefconfig
+    make.cross ARCH=powerpc drivers/block/ps3disk.o
+
+Its output contains
+
+      CC [M]  drivers/block/ps3disk.o
+
 
 ## Advanced Usage
 
