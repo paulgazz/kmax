@@ -7,7 +7,7 @@
   - [Contributors](#contributors)
   - [Setup](#setup)
   - [Quick Start](#quick-start)
-  - [Advanced Uses](#advanced-uses)
+  - [Advanced Usage](#advanced-usage)
   - [Troubleshooting](#troubleshooting)
   - [Generating Formulas for Linux](#generating-formulas-for-linux)
   - [Kmax](#kmax)
@@ -120,7 +120,7 @@ Then build the compilation unit:
 
 If you cannot get a configuration or it is still not buildable, see the [Troubleshooting](#troubleshooting) section.
 
-## Advanced Uses
+## Advanced Usage
 
 By default, `klocalizer` checks each architecture's Kconfig
 constraints against the Kbuild constraints for the given compilation
@@ -165,7 +165,7 @@ unit.  The following are examples of how to customize this process.
 
         klocalizer --show-unsat-core -a x86_64 --undefine CONFIG_USB drivers/usb/storage/alauda.o  # no configuration possible because alauda depends on USB
 
-- Approximating a given configuration
+- Closely match a given configuration
 
 Klocalizer will attempt to match a given configuration, while still
 maintaing the configuration options necessary to build the given
@@ -178,12 +178,21 @@ e.g., `allnoconfig`, with the `--approximate` flag.
 
   klocalizer with specific file
 
-- View the Kbuild constraints
+- Viewing the Kbuild constraints
 
     View the Kbuild constraints for a compilation unit and each of
     its subdirectories with
 
         klocalizer --view-kbuild drivers/usb/storage/alauda.o
+
+- Building as modules instead of built-in
+
+    Use the `--modules` flag to set any tristate options to `m` instead of
+    `y`.  Be sure to enable the `CONFIG_MODULES` option as well.
+
+        klocalizer --modules --define CONFIG_MODULES drivers/usb/storage/alauda.o
+        make olddefconfig
+        make drivers/block/ps3disk.o
 
 - Using new formulas
 

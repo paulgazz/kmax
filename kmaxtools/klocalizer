@@ -110,7 +110,7 @@ def get_kmax_constraints(kmax_formulas, kbuild_path, view=False):
     return None
 
 token_pattern = regex.compile("CONFIG_[A-Za-z0-9_]+")
-def print_model_as_config(model, fp=sys.stdout, kconfig_types=None):
+def print_model_as_config(model, fp=sys.stdout, kconfig_types=None, modules=False):
   info("Printing model as config file to \"%s\"." % ("stdout" if fp == sys.stdout else (fp.name)))
 
   if model is not None:
@@ -132,8 +132,10 @@ def print_model_as_config(model, fp=sys.stdout, kconfig_types=None):
           elif str_entry not in kconfig_types:
             if str_entry not in architecture_configs:
               warning("%s is not defined by Kconfig for this architecture." % (str_entry))
-          elif kconfig_types[str_entry] == "bool" or kconfig_types[str_entry] == "tristate":
+          elif kconfig_types[str_entry] == "bool":
             fp.write("%s=y\n" % (str_entry))
+          elif kconfig_types[str_entry] == "tristate":
+            fp.write("%s=%s\n" % (str_entry, "y" if not modules else "m"))
           elif kconfig_types[str_entry] == "string":
             fp.write("%s=\n" % (str_entry))
           elif kconfig_types[str_entry] == "number":
@@ -352,6 +354,9 @@ if __name__ == '__main__':
                          '--match',
                          type=str,
                          help="""An existing .config file to use to try to match as closely as possible while still containing the desired objective.""")
+  argparser.add_argument('--modules',
+                         action="store_true",
+                         help="""Set tristate options to 'm' instead of 'y' to build as modules instead of built-ins.""")
   argparser.add_argument('-u',
                          '--show-unsat-core',
                          action="store_true",
@@ -401,6 +406,7 @@ if __name__ == '__main__':
   output_file = args.output
   show_unsat_core = args.show_unsat_core
   approximate = args.approximate
+  modules_arg = args.modules
   define = args.define
   undefine = args.undefine
   disable_config_broken = not args.allow_config_broken
@@ -636,7 +642,7 @@ if __name__ == '__main__':
           if model is not None:
             info("Writing the configuration to %s" % (output_file))
             with open(output_file, 'w') as config_fp:
-              print_model_as_config(model, config_fp, kconfig_types)
+              print_model_as_config(model, config_fp, kconfig_types, modules_arg)
             if arch is not None:
               info("Generated configuration for %s" % (arch))
               info("Build with \"make.cross ARCH=%s olddefconfig; make.cross ARCH=%s clean %s\"." % (arch, arch, compilation_unit))
@@ -649,7 +655,7 @@ if __name__ == '__main__':
               solver.check(constraints)
             config_filename = "%s%d" % (sample_prefix, config_i + 1)
             with open(config_filename, 'w') as config_fp:
-              print_model_as_config(solver.model(), config_fp, kconfig_types)
+              print_model_as_config(solver.model(), config_fp, kconfig_types, modules_arg)
           exit(0)
   error("No satisfying configuration found.")
   exit(11)

@@ -1845,13 +1845,30 @@ int main(int argc, char **argv)
       struct property *prop;
       int has_prompt;  // whether the user can select this in menuconf
       int has_env; // whether the user can set via an environment variable
+      char *typename;
       int is_string;
+      int is_bool;
 
       switch (sym->type) {
       case S_BOOLEAN:
         // fall through
       case S_TRISTATE:
-        printf("config %s%s bool\n", config_prefix, sym->name);
+
+        switch (sym->type) {
+        case S_BOOLEAN:
+          is_bool = true;
+          break;
+        case S_TRISTATE:
+          is_bool = false;
+          break;
+        default:
+          is_bool = true;
+          // should not reach here
+          break;
+        }
+
+        typename = is_bool ? "bool" : "tristate";
+        printf("config %s%s %s\n", config_prefix, sym->name, typename);
         // print prompt conditions, if any
         prop = NULL;
         has_prompt = false;
@@ -1915,7 +1932,7 @@ int main(int argc, char **argv)
           break;
         }
 
-        char *typename = is_string ? "string" : "number";
+        typename = is_string ? "string" : "number";
         
         printf("config %s%s %s\n", config_prefix, sym->name, typename);
         // print prompt conditions, if any
