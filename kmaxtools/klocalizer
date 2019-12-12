@@ -347,7 +347,9 @@ if __name__ == '__main__':
                          type=str,
                          default=".config",
                          help="""Name of the output .config file.  Defaults to .config.""")
-  argparser.add_argument('--approximate',
+  argparser.add_argument('-m',
+                         '--approximate',
+                         '--match',
                          type=str,
                          help="""An existing .config file to use to try to match as closely as possible while still containing the desired objective.""")
   argparser.add_argument('-u',
