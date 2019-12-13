@@ -342,8 +342,13 @@ if __name__ == '__main__':
                          default=[],
                          help="""Specify each architecture to try.  These archs will be tried first in order if --all is also given.  Defaults to all.  Available architectures: %s""" % (", ".join(architectures)))
   argparser.add_argument('--all',
+                         '--all-architectures',
                          action="store_true",
-                         help="""Check all architectures for a satisfying configuration.  This tries each architecture's formulas given in the --formulas folder.""")
+                         help="""Try all architectures for a satisfying configuration.  By default, klocalizer stops when a valid configuration is found.  Use --report-all-architectures to check each architecture instead of generating a configuration.""")
+  argparser.add_argument('--report-all',
+                         '--report-all-architectures',
+                         action="store_true",
+                         help="""Report the list of architectures in which there is a satisfying configuration for the given compilation unit(s)""")
   argparser.add_argument('-o',
                          '--output',
                          type=str,
@@ -402,6 +407,7 @@ if __name__ == '__main__':
   kconfig_extract_file = args.kconfig_extract
   archs = args.arch
   allarchs = args.all
+  reportallarchs = args.report_all
   constraints_file = args.constraints_file
   output_file = args.output
   show_unsat_core = args.show_unsat_core
@@ -425,6 +431,11 @@ if __name__ == '__main__':
     argparser.print_help()
     error("Cannot provide --arch arguments when already providing an explicit --kclause-formulas argument")
     exit(12)
+
+  if kclause_file and reportallarchs:
+    argparser.print_help()
+    error("Cannot use --report-all when providing an explicit --kclause-formulas argument.")
+    exit(12)
   
   if sample is not None:
     if sample_prefix is None:
@@ -436,6 +447,10 @@ if __name__ == '__main__':
     if sample < 1:
       argparser.print_help()
       error("Must provide a sample size of two or more.")
+      exit(12)
+    if reportallarchs:
+      argparser.print_help()
+      error("Cannot use --report-all when requesting a sample.")
       exit(12)
   else:
     if sample_prefix is not None:
@@ -562,6 +577,7 @@ if __name__ == '__main__':
     archlist = [None] + archlist
   assert(len(archlist) > 0)
   seen_unsat = False
+  sat_archs = []
   for arch in archlist:
     kclause_file = kclause_to_try[arch]
     if arch is not None:
@@ -635,27 +651,32 @@ if __name__ == '__main__':
           exit(10)
       else:
         info("The constraints are satisfiable.")
-        if not sample:
-          model = solver.model()
-          if approximate:
-            model = approximate_model(approximate, constraints)
-          if model is not None:
-            info("Writing the configuration to %s" % (output_file))
-            with open(output_file, 'w') as config_fp:
-              print_model_as_config(model, config_fp, kconfig_types, modules_arg)
-            if arch is not None:
-              info("Generated configuration for %s" % (arch))
-              info("Build with \"make.cross ARCH=%s olddefconfig; make.cross ARCH=%s clean %s\"." % (arch, arch, compilation_unit))
-              print(arch)
+        sat_archs.append(arch)
+        if not reportallarchs:
+          if not sample:
+            model = solver.model()
+            if approximate:
+              model = approximate_model(approximate, constraints)
+            if model is not None:
+              info("Writing the configuration to %s" % (output_file))
+              with open(output_file, 'w') as config_fp:
+                print_model_as_config(model, config_fp, kconfig_types, modules_arg)
+              if arch is not None:
+                info("Generated configuration for %s" % (arch))
+                info("Build with \"make.cross ARCH=%s olddefconfig; make.cross ARCH=%s clean %s\"." % (arch, arch, compilation_unit))
+                print(arch)
+              exit(0)
+          else:
+            info("Generating %s configurations with prefix %s" % (str(sample), sample_prefix))
+            for config_i in range(0, sample):
+              if config_i != 0:  # solver.check already called when checking sat above
+                solver.check(constraints)
+              config_filename = "%s%d" % (sample_prefix, config_i + 1)
+              with open(config_filename, 'w') as config_fp:
+                print_model_as_config(solver.model(), config_fp, kconfig_types, modules_arg)
             exit(0)
-        else:
-          info("Generating %s configurations with prefix %s" % (str(sample), sample_prefix))
-          for config_i in range(0, sample):
-            if config_i != 0:  # solver.check already called when checking sat above
-              solver.check(constraints)
-            config_filename = "%s%d" % (sample_prefix, config_i + 1)
-            with open(config_filename, 'w') as config_fp:
-              print_model_as_config(solver.model(), config_fp, kconfig_types, modules_arg)
-          exit(0)
+  if reportallarchs and len(sat_archs) > 0:
+    print("\n".join(sat_archs))
+    exit(0)
   error("No satisfying configuration found.")
   exit(11)
