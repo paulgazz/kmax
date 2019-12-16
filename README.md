@@ -126,7 +126,7 @@ If you cannot get a configuration or it is still not buildable, see the [Trouble
 
 ## Use Cases
 
-### A Compilation Unit not Built by `allyesconfig`
+### A compilation unit not built by allyesconfig
 
 While `allyesconfig` strives to enable all options, some have conflicting dependencies or are mutually exclusive choices.  For instance, `fs/squashfs/decompressor_multi.o` is not compiled when using `allyesconfig`:
 
@@ -178,7 +178,7 @@ gives us
       CC      fs/squashfs/decompressor_multi.o
 
 
-### A Compilation Unit not Built by `defconfig` or `allnoconfig`
+### A compilation unit not built by defconfig or allnoconfig
 
 A kernel user or developer may want a smaller kernel that includes a specific compilation unit, rather than having to build `allyesconfig`.  For instance, `drivers/infiniband/core/cgroup.o` is not built by default:
 
@@ -204,7 +204,7 @@ The output contains:
       CC      drivers/infiniband/core/cgroup.o
 
 
-### An Architecture-Specific Compilation Unit
+### An architecture-specific compilation unit not built by allyesconfig
 
 Sometimes a compilation unit is only available for certain architectures.   Compiling `drivers/block/ps3disk.o` won't compile on an `x86` machine.
 
@@ -242,6 +242,9 @@ Its output contains
       CC [M]  drivers/block/ps3disk.o
 
 
+### An Architecture-Specific Compilation Unit
+
+
 ## Advanced Usage
 
 By default, `klocalizer` checks each architecture's Kconfig
@@ -268,7 +271,11 @@ unit.  The following are examples of how to customize this process.
     generate an arbitrary configuration for that architecture.  Passing
     multiple architectures is not supported.
 
-        klocalizer -a x86_64
+        klocalizer -a x86_64 drivers/watchdog/cpwd.o
+
+- Finding all architectures in which the compilation can be configured
+
+    klocalizer --report-all 
 
 - Setting additional configuration options
 
