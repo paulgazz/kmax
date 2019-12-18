@@ -119,7 +119,7 @@ def print_model_as_config(model, fp=sys.stdout, kconfig_types=None, kconfig_visi
       str_entry = str(entry)
       matches = token_pattern.match(str_entry)
       if matches:
-        if str_entry in kconfig_visible:
+        if kconfig_visible is None or str_entry in kconfig_visible:
           # if str_entry not in kclause_constraints.keys():
           #   sys.stderr.write("warning: %s was not defined in the kconfig spec, but may be required for this unit.\n" % (str_entry))
           if model[entry]:
@@ -380,6 +380,9 @@ if __name__ == '__main__':
   argparser.add_argument('--allow-config-broken',
                          action="store_true",
                          help="""Allow CONFIG_BROKEN dependencies.""")
+  argparser.add_argument('--allow-non-visibles',
+                         action="store_true",
+                         help="""Allow non-visible Kconfig configuration options to be set in the resulting config file.  By default, they are removed.""")
   argparser.add_argument('--view-kbuild',
                          action="store_true",
                          help="""Just show the Kbuild constraints for the given compilation unit.  All other arguments are ignored.""")
@@ -417,6 +420,7 @@ if __name__ == '__main__':
   define = args.define
   undefine = args.undefine
   disable_config_broken = not args.allow_config_broken
+  allow_non_visibles = args.allow_non_visibles
   view_kbuild = args.view_kbuild
   sample = args.sample
   sample_prefix = args.sample_prefix
@@ -609,6 +613,8 @@ if __name__ == '__main__':
             kconfig_types[kconfig_line[1]] = kconfig_line[2]
           if kconfig_line[0] == "prompt":
             kconfig_visible.add(kconfig_line[1])
+        if allow_non_visibles:
+          kconfig_visible = None
 
       if kmax_constraints:
         # add the kmax constraints
