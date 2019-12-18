@@ -30,3 +30,4 @@ ${test_klocalizer} arch/x86/kernel/irq_32.o
 ${test_klocalizer} arch/x86/um/signal.o
 ${test_klocalizer} arch/x86/um/ptrace_64.o
 ${test_klocalizer} arch/x86/um/ptrace_32.o
+${test_klocalizer} drivers/edac/edac_pci.o
