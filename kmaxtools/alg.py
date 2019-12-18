@@ -206,7 +206,9 @@ class Kbuild:
             self.add_var(name, self.T, ZSolver.T, '=', value)
 
     def get_defined(self, variable, expected):
-        variable_name = "defined(" + variable + ")"
+        # variable_name = "defined(" + variable + ")"
+        # todo implement for tristate flag also, i.e., =y or =m and !=n
+        variable_name = variable
         bdd = self.get_bvars(variable_name).bdd
         zbdd = self.get_bvars(variable_name).zbdd
         
