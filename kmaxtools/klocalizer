@@ -398,7 +398,9 @@ if __name__ == '__main__':
   argparser.add_argument('--version',
                          action="store_true",
                          help="""Print the version number.""")
-  argparser.add_argument("compilation_unit", nargs='?', help="The path of the compilation unit (.o file) to generate a .config for, relative to the top of the source tree.")
+  argparser.add_argument("compilation_units",
+                         nargs='*',
+                         help="The path of the compilation unit (.o file) to generate a .config for, relative to the top of the source tree.")
   args = argparser.parse_args()
 
   if args.version:
@@ -425,7 +427,7 @@ if __name__ == '__main__':
   sample = args.sample
   sample_prefix = args.sample_prefix
   random_seed = args.random_seed
-  compilation_unit = args.compilation_unit
+  compilation_units = args.compilation_units
 
   if kconfig_extract_file and not kclause_file:
     argparser.print_help()
@@ -463,7 +465,7 @@ if __name__ == '__main__':
       error("--sample-prefix only to be used with --sample")
       exit(12)
 
-  if compilation_unit is None and len(archs) == 0 and not allarchs:
+  if len(compilation_units) == 0 and len(archs) == 0 and not allarchs:
     argparser.print_help()
     error("Please specify a compilation unit or an architecture to generate a satisfying configuration.\n")
     exit(12)
@@ -476,37 +478,47 @@ if __name__ == '__main__':
     kmax_file = os.path.join(formulas, "kmax")
   info("Kmax formula file: %s" % (kmax_file))
     
-  if compilation_unit is not None and not os.path.isfile(kmax_file):
+  if len(compilation_units) > 0 and not os.path.isfile(kmax_file):
     error("Cannot find kmax formulas file: %s" % (kmax_file))
     exit(2)
 
-  if compilation_unit is not None and not compilation_unit.endswith(".o"):
-    compilation_unit = os.path.splitext(compilation_unit)[0] + ".o"
-    warning("Forcing file extension to be .o, since lookup is by compilation unit: %s" % (compilation_unit))
+  if len(compilation_units) > 0:
+    new_compilation_units = []
+    for unit in compilation_units:
+      if not unit.endswith(".o"):
+        warning("Forcing file extension to be .o, since lookup is by compilation unit: %s" % (unit))
+        unit = os.path.splitext(unit)[0] + ".o"
+      new_compilation_units.append(unit)
+    compilation_units = new_compilation_units
 
-  if compilation_unit is not None:
+  if len(compilation_units) > 0:
     info("Reading kmax formulas.")
     kmax_formulas = unpickle_kmax_file(kmax_file)
-    if compilation_unit not in kmax_formulas.keys():
-      kbuild_paths = resolve_kbuild_path(kmax_formulas, compilation_unit)
-      if len(kbuild_paths) == 0:
-        error("No formula from kmax was found for the compilation unit: %s" % (compilation_unit))
-        exit(3)
-      elif len(kbuild_paths) > 1:
-        error("There are multiple compilation units that match.  Please provide one of the Kbuild paths from below.")
-        print("\n".join(kbuild_paths))
-        exit(4)
-      kbuild_path = kbuild_paths[0]
-      assert compilation_unit != kbuild_path
-      info("Using full path from Kbuild: %s" % (kbuild_path))
-      compilation_unit = kbuild_path
+    new_compilation_units = []
+    for unit in compilation_units:
+      if unit not in kmax_formulas.keys():
+        kbuild_paths = resolve_kbuild_path(kmax_formulas, unit)
+        if len(kbuild_paths) == 0:
+          error("No formula from kmax was found for the compilation unit: %s" % (unit))
+          exit(3)
+        elif len(kbuild_paths) > 1:
+          error("There are multiple compilation units that match %s.  Please provide one of the Kbuild paths from below." % (unit))
+          print("\n".join(kbuild_paths))
+          exit(4)
+        kbuild_path = kbuild_paths[0]
+        assert unit != kbuild_path
+        info("Using full path from Kbuild: %s" % (kbuild_path))
+        unit = kbuild_path
+      new_compilation_units.append(unit)
+    compilation_units = new_compilation_units
   else:
     kmax_formulas = None
     
   if view_kbuild:
-    if compilation_unit is not None:
-      info("The Kbuild constraints for %s:" % (compilation_unit))
-      get_kmax_constraints(kmax_formulas, compilation_unit, view=True)
+    if len(compilation_units) > 0:
+      for unit in compilation_units:
+        info("The Kbuild constraints for %s:" % (unit))
+        get_kmax_constraints(kmax_formulas, unit, view=True)
       exit(0)
     else:
       error("Please provide a compilation unit when using --view-kbuild.")
@@ -540,7 +552,7 @@ if __name__ == '__main__':
     error("No kclause files found.  Please check --formulas directory or use --kclause-formula explicitly.")
     info("Available architectures: %s""" % (", ".join(architectures)))
     exit(7)
-  elif not compilation_unit:
+  elif len(compilation_units) == 0:
     if len(kclause_to_try.keys()) == 1:
       info("No compilation unit given.  Generating configuration only based on kclause constraints.")
     elif len(kclause_to_try.keys()) > 1:
@@ -567,15 +579,19 @@ if __name__ == '__main__':
 
   # add kmax constraints
   kmax_constraints = None
-  if compilation_unit is not None:
-    kmax_constraints = get_kmax_constraints(kmax_formulas, compilation_unit)
-    if compilation_unit.startswith("arch/"):
-      # narrow the set of possible architectures
-      unit_arch = get_archs_from_subdir(compilation_unit)
-      archs = [ arch for arch in archs if arch in unit_arch ]
-      if len(archs) == 0:
-        error("Resolved compilation unit is architecture-specific, but its architecture is not available: %s" % (compilation_unit))
-        exit(9)
+  for unit in compilation_units:
+    if unit is not None:
+      if kmax_constraints == None:
+        kmax_constraints = get_kmax_constraints(kmax_formulas, unit)
+      else:
+        kmax_constraints.extend(get_kmax_constraints(kmax_formulas, unit))
+      if unit.startswith("arch/"):
+        # narrow the set of possible architectures
+        unit_arch = get_archs_from_subdir(unit)
+        archs = [ arch for arch in archs if arch in unit_arch ]
+        if len(archs) == 0:
+          error("Resolved compilation unit is architecture-specific, but its architecture is not available: %s" % (unit))
+          exit(9)
 
   archlist = [ arch for arch in archs if arch in kclause_to_try.keys() ]
   if None in kclause_to_try.keys():
@@ -674,7 +690,7 @@ if __name__ == '__main__':
                 print_model_as_config(model, config_fp, kconfig_types, kconfig_visible, modules_arg)
               if arch is not None:
                 info("Generated configuration for %s" % (arch))
-                info("Build with \"make.cross ARCH=%s olddefconfig; make.cross ARCH=%s clean %s\"." % (arch, arch, compilation_unit))
+                info("Build with \"make.cross ARCH=%s olddefconfig; make.cross ARCH=%s clean %s\"." % (arch, arch, " ".join(compilation_units)))
                 print(arch)
               exit(0)
           else:
