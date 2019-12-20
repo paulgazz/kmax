@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -x
-
 if [[ "${#}" < "1" ]]; then
   echo "USAGE: $(basename ${0}) compilation_unit [build_path] [kbuild_path]"
   echo "  compilation_unit  The name of the compilation unit to localize and compile."
@@ -9,6 +7,8 @@ if [[ "${#}" < "1" ]]; then
   echo "  kbuild_path       The path Kbuild follows to reach the source file."
   exit 1
 fi
+
+set -x
 
 scripts_dir="$(dirname $0)"
 
