@@ -177,7 +177,9 @@ def approximate_model(approximate, constraints):
     return solver.model()
   else:
     info("Approximating via unsat core approach.")
-    info("%d assumptions left to try removing." % (len(assumptions)), ending="\r")
+    total_assumptions_to_match = len(assumptions)
+    info("Total assumptions from config: %d" % (total_assumptions_to_match))
+    info("%d assumptions left to try removing." % (total_assumptions_to_match), ending="\r")
     while res == z3.unsat:
       core = solver.unsat_core()
       # remove all assumptions that in the core.  todo, try randomizing this or removing only some assumptions each iteration.
@@ -186,7 +188,8 @@ def approximate_model(approximate, constraints):
       res = solver.check(assumptions)
       core = solver.unsat_core()
       res = solver.check(assumptions)
-    info("\nFound satisfying config.")
+    info("\r")
+    info("Found satisfying config by removing %d assumptions." % (total_assumptions_to_match - len(assumptions)))
     return solver.model()
   
   # (2) soft assertion approach. (todo)
