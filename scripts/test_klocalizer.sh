@@ -26,16 +26,20 @@ else
 fi
 
 echo "$filename"
-/usr/bin/time klocalizer "${filename}" > archname.txt
+/usr/bin/time klocalizer "${filename}" > archname.txt 2> time.txt
 errcodekloc=${?}
+cat time.txt
 cat archname.txt
 if [[ $errcodekloc -eq 4 ]]; then
   grep "${kbuild_path}" archname.txt
   if [[ "${?}" -eq 0 ]]; then
-    /usr/bin/time klocalizer "${kbuild_path}" > archname.txt
+    /usr/bin/time klocalizer "${kbuild_path}" > archname.txt 2> time.txt
     errcodekloc=${?}
+    cat time.txt
+    cat archname.txt
   fi
 fi
+timetaken="$(cat time.txt | tail -n2 | head -n1 | cut -f1 -d" " )"
 if [[ ${errcodekloc} -eq 0 ]]; then
   arch=$(cat archname.txt)
   if [[ "${arch}" == "um32" ]]; then
@@ -43,26 +47,40 @@ if [[ ${errcodekloc} -eq 0 ]]; then
   else
     archvar="ARCH=$(cat archname.txt)"
   fi
-  timeout 30 "${scripts_dir}/make.cross" $archvar olddefconfig > build.txt 2>&1
+  cp .config .config.klocalizer
+  timeout 30 "${scripts_dir}/make.cross" -j 4 $archvar olddefconfig > build.txt 2>&1
   # "${scripts_dir}/make.cross" $archvar clean >> build.txt 2>&1
-  timeout 2m "${scripts_dir}/make.cross" $archvar "$target" >> build.txt 2>&1
+  timeout 2m "${scripts_dir}/make.cross" -j 4 $archvar "$target" >> build.txt 2>&1
   errcodemake=${?}
   tail -n1000 build.txt
   grep "CC *$kbuild_path" build.txt
   errcodegrep=${?}
   if [[ ${errcodegrep} -eq 0 ]]; then
     if [[ ${errcodemake} -eq 0 ]]; then
-      echo "PASS all $filename"
+      echo "PASS all $timetaken $filename $arch"
     else
-      echo "PASS make.cross_error $filename"
+      echo "PASS make.cross_error $timetaken $filename $arch"
     fi
   else
-    echo "FAIL make.cross_missing $filename"
+    # try ignoring errors while building
+    cp .config.klocalizer .config  # restore klocalizer .config again
+    timeout 30 "${scripts_dir}/make.cross" -j 4 $archvar olddefconfig > build.txt 2>&1
+    # "${scripts_dir}/make.cross" $archvar clean >> build.txt 2>&1
+    timeout 2m "${scripts_dir}/make.cross" -i -j 4 $archvar "$target" > build.txt 2>&1
+    errcodemake=${?}
+    tail -n1000 build.txt
+    grep "CC *$kbuild_path" build.txt
+    errcodegrep=${?}
+    if [[ ${errcodegrep} -eq 0 ]]; then
+      echo "PASS make.cross_ignored_errors $timetaken $filename $arch"
+    else
+      echo "FAIL make.cross_missing $timetaken $filename $arch"
+    fi
   fi
 elif [[ ${errcodekloc} -eq 4 ]]; then
   echo "NONE kbuild_paths need to pass a full kbuild path"
 elif [[ ${errcodekloc} -eq 10 ]]; then
-  echo "NONE CONFIG_BROKEN $filename"
+  echo "NONE CONFIG_BROKEN $timetaken $filename"
 else
-  echo "FAIL klocalizer $filename"
+  echo "FAIL klocalizer(${errcodekloc}) $timetaken $filename"
 fi
