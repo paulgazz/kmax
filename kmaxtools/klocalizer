@@ -103,11 +103,21 @@ def prefetch_kmax_constraints(kmax_cache, path):
         current_path = current_path + "/"
       if current_path not in kmax_cache.keys():
         # run kmax on the parent to find the constraint
-        command = ['kmax', '-z', parent_path]
-        info("Running kmax: %s" % (" ".join(command)))
-        output = subprocess.check_output(command, stderr=DEVNULL) # todo: save error output to a log
-        new_formulas = pickle.loads(output)
-        kmax_cache.update(new_formulas)
+        paths_to_try = []
+        path_to_kbuild = os.path.join(parent_path, "Kbuild")
+        path_to_makefile = os.path.join(parent_path, "Makefile")
+        if os.path.exists(path_to_kbuild):
+          paths_to_try.append(path_to_kbuild)
+        if os.path.exists(path_to_makefile):
+          paths_to_try.append(path_to_makefile)
+        if len(paths_to_try) == 0:
+          warning("There is no Kbuild Makefile in %s" % (parent_path))
+        for path_to_try in paths_to_try:
+          command = ['kmax', '-z', path_to_try]
+          info("Running kmax: %s" % (" ".join(command)))
+          output = subprocess.check_output(command, stderr=DEVNULL) # todo: save error output to a log
+          new_formulas = pickle.loads(output)
+          kmax_cache.update(new_formulas)
       if current_path in kmax_cache.keys():
         current_path_constraint = z3.parse_smt2_string(kmax_cache[current_path])
       else:
