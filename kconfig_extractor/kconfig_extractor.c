@@ -28,6 +28,7 @@
 #include <getopt.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <stdbool.h>
 
 #include "lkc.h"
 
@@ -1164,6 +1165,7 @@ void print_usage(void)
   printf("-p, --no-prefix\t\tdon't add the CONFIG_ prefix to vars\n");
   printf("-P, --set-prefix PREFIX\tuse a custom prefix instead of the CONFIG_ prefix for var names\n");
   printf("-D, --direct-dependencies-only\tno reverse dependencies in extract output\n");
+  printf("-o, --output\t\tfile to write extract to.  otherwise stdout.\n");
   printf("-v, --verbose\t\tverbose output\n");
   printf("-h, --help\t\tdisplay this help message\n");
   printf("\n");
@@ -1223,6 +1225,9 @@ int main(int argc, char **argv)
 	/* bindtextdomain(PACKAGE, LOCALEDIR); */
 	/* textdomain(PACKAGE); */
 
+  FILE *output_fp = stdout;
+  bool output_file_arg = false;
+  
   opterr = 0;
   while (1) {
     static struct option long_options[] = {
@@ -1255,6 +1260,7 @@ int main(int argc, char **argv)
       {"set-prefix", required_argument, 0, 'P'},
       {"direct-dependencies-only", no_argument, 0, 'D'},
       {"default-env", no_argument, 0, 'd'},
+      {"output", required_argument, 0, 'o'},
       {"put-env", required_argument, 0, 'e'},
       {"verbose", no_argument, 0, 'v'},
       {"help", no_argument, 0, 'h'},
@@ -1263,7 +1269,7 @@ int main(int argc, char **argv)
 
     int option_index = 0;
 
-    opt = getopt_long(argc, argv, "CpP:Dde:hf:a:v", long_options, &option_index);
+    opt = getopt_long(argc, argv, "CpP:Dde:o:hf:a:v", long_options, &option_index);
 
     if (-1 == opt)
       break;
@@ -1332,6 +1338,13 @@ int main(int argc, char **argv)
       break;
     case 'e':
       putenv(optarg);
+      break;
+    case 'o':
+      if ((output_fp = fopen(optarg, "w")) == NULL) {
+        fprintf(stderr, "can't open %s for writing\n", optarg);
+        exit(1);
+      }
+      output_file_arg = true;
       break;
     case 'v':
       verbose = true;
@@ -1837,7 +1850,7 @@ int main(int argc, char **argv)
     /* // feature model, necessary to create clauses for unconstrained */
     /* // configuration variables */
     /* #define SPECIAL_ROOT_NAME "SPECIAL_ROOT_VARIABLE" */
-    /* printf("bool %s\n", SPECIAL_ROOT_NAME); */
+    /* fprintf(output_fp, "bool %s\n", SPECIAL_ROOT_NAME); */
     for_all_symbols(i, sym) {
       if (!sym->name || strlen(sym->name) == 0)
         continue;
@@ -1868,42 +1881,42 @@ int main(int argc, char **argv)
         }
 
         typename = is_bool ? "bool" : "tristate";
-        printf("config %s%s %s\n", config_prefix, sym->name, typename);
+        fprintf(output_fp, "config %s%s %s\n", config_prefix, sym->name, typename);
         // print prompt conditions, if any
         prop = NULL;
         has_prompt = false;
         for_all_prompts(sym, prop) {
           if ((NULL != prop)) {
-            printf("prompt %s%s", config_prefix, sym->name);
-            printf(" (");
+            fprintf(output_fp, "prompt %s%s", config_prefix, sym->name);
+            fprintf(output_fp, " (");
             if (NULL != prop->visible.expr) {
-              print_python_expr(prop->visible.expr, stdout, E_NONE);
+              print_python_expr(prop->visible.expr, output_fp, E_NONE);
             } else {
-              printf("1");
+              fprintf(output_fp, "1");
             }
-            printf(")");
-            printf("\n");
+            fprintf(output_fp, ")");
+            fprintf(output_fp, "\n");
           }
           has_prompt = true;
         }
         /* has_env = sym_get_env_prop(sym) != NULL; */
         /* if (has_env) { */
-        /*   printf("env %s%s\n", config_prefix, sym->name); */
+        /*   fprintf(output_fp, "env %s%s\n", config_prefix, sym->name); */
         /* } */
         // print default values
         prop = NULL;
         for_all_defaults(sym, prop) {
           if ((NULL != prop) && (NULL != (prop->expr))) {
-            printf("def_bool %s%s ", config_prefix, sym->name);
-            print_python_expr(prop->expr, stdout, E_NONE);
-            printf("|(");
+            fprintf(output_fp, "def_bool %s%s ", config_prefix, sym->name);
+            print_python_expr(prop->expr, output_fp, E_NONE);
+            fprintf(output_fp, "|(");
             if (NULL != prop->visible.expr) {
-              print_python_expr(prop->visible.expr, stdout, E_NONE);
+              print_python_expr(prop->visible.expr, output_fp, E_NONE);
             } else {
-              printf("1");
+              fprintf(output_fp, "1");
             }
-            printf(")");
-            printf("\n");
+            fprintf(output_fp, ")");
+            fprintf(output_fp, "\n");
           }
         }
         break;
@@ -1934,27 +1947,27 @@ int main(int argc, char **argv)
 
         typename = is_string ? "string" : "number";
         
-        printf("config %s%s %s\n", config_prefix, sym->name, typename);
+        fprintf(output_fp, "config %s%s %s\n", config_prefix, sym->name, typename);
         // print prompt conditions, if any
         prop = NULL;
         has_prompt = false;
         for_all_prompts(sym, prop) {
           if ((NULL != prop)) {
-            printf("prompt %s%s", config_prefix, sym->name);
-            printf(" (");
+            fprintf(output_fp, "prompt %s%s", config_prefix, sym->name);
+            fprintf(output_fp, " (");
             if (NULL != prop->visible.expr) {
-              print_python_expr(prop->visible.expr, stdout, E_NONE);
+              print_python_expr(prop->visible.expr, output_fp, E_NONE);
             } else {
-              printf("1");
+              fprintf(output_fp, "1");
             }
-            printf(")");
-            printf("\n");
+            fprintf(output_fp, ")");
+            fprintf(output_fp, "\n");
           }
           has_prompt = true;
         }
         /* has_env = sym_get_env_prop(sym) != NULL; */
         /* if (has_env) { */
-        /*   printf("env %s%s\n", config_prefix, sym->name); */
+        /*   fprintf(output_fp, "env %s%s\n", config_prefix, sym->name); */
         /* } */
         // print default values
         prop = NULL;
@@ -1962,18 +1975,18 @@ int main(int argc, char **argv)
         for_all_defaults(sym, prop) {
           has_default = true;
           if ((NULL != prop) && (NULL != (prop->expr))) {
-            printf("def_nonbool %s%s ", config_prefix, sym->name);
-            /* if (is_string) printf("\""); */
-            print_python_expr(prop->expr, stdout, E_NONE);
-            /* if (is_string) printf("\""); */
-            printf("|(");
+            fprintf(output_fp, "def_nonbool %s%s ", config_prefix, sym->name);
+            /* if (is_string) fprintf(output_fp, "\""); */
+            print_python_expr(prop->expr, output_fp, E_NONE);
+            /* if (is_string) fprintf(output_fp, "\""); */
+            fprintf(output_fp, "|(");
             if (NULL != prop->visible.expr) {
-              print_python_expr(prop->visible.expr, stdout, E_NONE);
+              print_python_expr(prop->visible.expr, output_fp, E_NONE);
             } else {
-              printf("1");
+              fprintf(output_fp, "1");
             }
-            printf(")");
-            printf("\n");
+            fprintf(output_fp, ")");
+            fprintf(output_fp, "\n");
           }
         }
         break;
@@ -1996,7 +2009,7 @@ int main(int argc, char **argv)
 
     /*   if (sym->type == S_TRISTATE || sym->type == S_BOOLEAN) { */
     /*     if (! sym->dir_dep.expr) { */
-    /*       printf("clause -%s%s %s\n", config_prefix, sym->name, SPECIAL_ROOT_NAME); */
+    /*       fprintf(output_fp, "clause -%s%s %s\n", config_prefix, sym->name, SPECIAL_ROOT_NAME); */
     /*     } */
     /*   } */
     /* } */
@@ -2011,26 +2024,26 @@ int main(int argc, char **argv)
 
         prop = sym_get_choice_prop(sym);
 
-        printf("bool_choice");
+        fprintf(output_fp, "bool_choice");
         expr_list_for_each_sym(prop->expr, e, def_sym) {
-          printf(" %s%s", config_prefix, def_sym->name);  // any dependencies should be handled below with 'dep'
+          fprintf(output_fp, " %s%s", config_prefix, def_sym->name);  // any dependencies should be handled below with 'dep'
         }
-        printf("|(");
+        fprintf(output_fp, "|(");
         if ((NULL != sym->dir_dep.expr) && (NULL != sym->rev_dep.expr)) {
-          printf("(");
-          print_python_expr(sym->dir_dep.expr, stdout, E_NONE);
-          printf(") and (");
-          print_python_expr(sym->rev_dep.expr, stdout, E_NONE);
-          printf(")");
+          fprintf(output_fp, "(");
+          print_python_expr(sym->dir_dep.expr, output_fp, E_NONE);
+          fprintf(output_fp, ") and (");
+          print_python_expr(sym->rev_dep.expr, output_fp, E_NONE);
+          fprintf(output_fp, ")");
         } else if (NULL != sym->dir_dep.expr) {
-          print_python_expr(sym->dir_dep.expr, stdout, E_NONE);
+          print_python_expr(sym->dir_dep.expr, output_fp, E_NONE);
         } else if (NULL != sym->rev_dep.expr) {
-          print_python_expr(sym->rev_dep.expr, stdout, E_NONE);
+          print_python_expr(sym->rev_dep.expr, output_fp, E_NONE);
         } else {
-          printf("1");
+          fprintf(output_fp, "1");
         }
-        printf(")");
-        printf("\n");
+        fprintf(output_fp, ")");
+        fprintf(output_fp, "\n");
       }
       
       if (!sym->name || strlen(sym->name) == 0)
@@ -2044,9 +2057,9 @@ int main(int argc, char **argv)
         bool no_dependencies = true;
         if (sym->dir_dep.expr) {
           no_dependencies = false;
-          printf("dep %s%s (", config_prefix, sym->name);
-          print_python_expr(sym->dir_dep.expr, stdout, E_NONE);
-          printf(")\n");
+          fprintf(output_fp, "dep %s%s (", config_prefix, sym->name);
+          print_python_expr(sym->dir_dep.expr, output_fp, E_NONE);
+          fprintf(output_fp, ")\n");
         }
 
         if (enable_reverse_dependencies) {
@@ -2056,24 +2069,24 @@ int main(int argc, char **argv)
           /*   // the current var itself is the var doing the select */
           /*   // prop->expr is the variable being selected */
           /*   // prop->visible.expr is the "if ..." after the select */
-          /*   printf("select "); */
+          /*   fprintf(output_fp, "select "); */
           /*   // note: this assumes that prop->expr is only a single */
           /*   // variable name, which zconf.y guarantees */
-          /*   print_python_expr(prop->expr, stdout, E_NONE); */
-          /*   printf(" %s%s (", config_prefix, sym->name); */
+          /*   print_python_expr(prop->expr, output_fp, E_NONE); */
+          /*   fprintf(output_fp, " %s%s (", config_prefix, sym->name); */
           /*   if (NULL != prop->original_expr) { */
-          /*     print_python_expr(prop->original_expr, stdout, E_NONE); */
+          /*     print_python_expr(prop->original_expr, output_fp, E_NONE); */
           /*   } else { */
-          /*     printf("1"); */
+          /*     fprintf(output_fp, "1"); */
           /*   } */
-          /*   printf(")\n"); */
+          /*   fprintf(output_fp, ")\n"); */
           /* } */
 
           if (sym->rev_dep.expr) {
             no_dependencies = false;
-            printf("rev_dep %s%s (", config_prefix, sym->name);
-            print_python_expr(sym->rev_dep.expr, stdout, E_NONE);
-            printf(")\n");
+            fprintf(output_fp, "rev_dep %s%s (", config_prefix, sym->name);
+            print_python_expr(sym->rev_dep.expr, output_fp, E_NONE);
+            fprintf(output_fp, ")\n");
           }
         }
 
@@ -2082,11 +2095,11 @@ int main(int argc, char **argv)
             sym->type == S_HEX ||
             sym->type == S_STRING) {
           if (no_dependencies) {
-            printf("dep %s%s (1)\n", config_prefix, sym->name);
+            fprintf(output_fp, "dep %s%s (1)\n", config_prefix, sym->name);
           }
         }
       } else {
-        /* fprintf(stderr, "skipping %s\n", sym->name); */
+        /* ffprintf(output_fp, stderr, "skipping %s\n", sym->name); */
       }
     }
     break;
@@ -2098,6 +2111,11 @@ int main(int argc, char **argv)
     exit(1);
     break;
   }
+
+  if (output_file_arg) {
+    fflush(output_fp);
+    fclose(output_fp);
+  }    
 
   return 0;
 }
