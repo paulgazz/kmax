@@ -4,7 +4,7 @@ set -x
 
 test_klocalizer="bash $(dirname $0)/../../scripts/test_klocalizer.sh"
 
-kmlocalizer --version
+klocalizer --version
 
 ${test_klocalizer} drivers/usb/storage/alauda.o
 ${test_klocalizer} sound/soc/intel/boards/glk_rt5682_max98357a.o
