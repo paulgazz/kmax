@@ -546,6 +546,9 @@ if __name__ == '__main__':
         kmax_formulas = unpickle_kmax_file(kmax_cache_file)
       for unit in compilation_units:
         kmax_formulas = prefetch_kmax_constraints(kmax_formulas, unit)
+        if unit not in kmax_formulas.keys():
+          error("No formula from kmax was found for the compilation unit: %s" % (unit))
+          exit(3)
       with open(kmax_cache_file, 'w') as f:
         pickle.dump(kmax_formulas, f)
     else:
