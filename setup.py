@@ -11,6 +11,8 @@ def read(fname):
 about = {}
 exec(read(os.path.join("kmaxtools", "about.py")), about)
 
+kconfig_extractor = Extension('kconfig_extractor', [ 'kconfig_extractor/kconfig_extractor_extension.c', 'kconfig_extractor/confdata.c', 'kconfig_extractor/expr.c', 'kconfig_extractor/preprocess.c', 'kconfig_extractor/symbol.c', 'kconfig_extractor/lexer.lex.c', 'kconfig_extractor/parser.tab.c', 'kconfig_extractor/kconfig_extractor.c' ])
+
 setup(
     name = about['__title__'],
     version = about['__version__'],
@@ -23,6 +25,7 @@ setup(
     keywords = "makefile kconfig kbuild configurations kmax kclause klocalizer",
     url = "https://github.com/paulgazz/kmax",
     packages=['kmaxtools', 'pymake'],
+    ext_modules = [ kconfig_extractor ],
     classifiers=[
         "Development Status :: 4 - Beta",
         "Topic :: Utilities",
