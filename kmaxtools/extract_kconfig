@@ -1,0 +1,32 @@
+import kconfig_extractor
+import sys
+import argparse
+
+def get_srcarch(arch):
+  srcarch = {
+    "x86_64" : "x86",
+    "i386" : "x86",
+    "sparc64" : "sparc",
+    "sparc" : "sparc",
+    "sh64" : "sh",
+    "sh" : "sh",
+  }
+
+  if arch in srcarch.keys():
+    return srcarch[arch]
+  else:
+    return arch
+
+if __name__ == '__main__':
+  argparser = argparse.ArgumentParser()
+  argparser.add_argument("arch",
+                         help="The architecture to extract Kconfig for.")
+  argparser.add_argument("output",
+                         help="The output file to write to.")
+  args = argparser.parse_args()
+
+  arch = args.arch
+  output = args.output
+  srcarch = get_srcarch(arch)
+
+  kconfig_extractor.extract_kconfig(output, "ARCH=%s" % (arch), "SRCARCH=%s" % (srcarch))
