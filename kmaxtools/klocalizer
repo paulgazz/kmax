@@ -8,6 +8,12 @@ import regex
 import pickle
 import random
 import kmaxtools.about
+import subprocess
+
+try:
+  from subprocess import DEVNULL  # Python 3.
+except ImportError:
+  DEVNULL = open(os.devnull, 'wb')
 
 def info(msg, ending="\n"):
   sys.stderr.write("INFO: %s%s" % (msg, ending))
@@ -18,9 +24,8 @@ def warning(msg, ending="\n"):
 def error(msg, ending="\n"):
   sys.stderr.write("ERROR: %s%s" % (msg, ending))
 
-def get_kconfig_extract(formulas, arch):
+def get_kconfig_extract(kconfig_extract_file):
   """Return a list of lists, where each list is a line from the kconfig_extract, currently only the config lines.  See docs/kconfig_extract_format.md.  Returns None if no file is found."""
-  kconfig_extract_file = get_arch_kconfig_extract_file(formulas, arch)
   if not os.path.exists(kconfig_extract_file):
     warning("no kconfig_extract file found: %s", kconfig_extract_file)
     return None
@@ -84,6 +89,31 @@ def resolve_kbuild_path(kmax, compilation_unit):
       kbuild_paths.append(key)
   return kbuild_paths
 
+def prefetch_kmax_constraints(kmax_cache, path):
+  # add the condition for the compilation unit and each of its parent
+  # directories.  this assumes the path is relative.
+  if '/' in path:
+    elems = path.rsplit('/')
+    current_path = elems[0] + "/"
+    for i in range(1, len(elems)):
+      elem = elems[i]
+      parent_path = current_path  # trailing / is important for kbuild
+      current_path = os.path.join(parent_path, elem)
+      if i < len(elems) - 1:
+        current_path = current_path + "/"
+      if current_path not in kmax_cache.keys():
+        # run kmax on the parent to find the constraint
+        command = ['kmax', '-z', parent_path]
+        info("Running kmax: %s" % (" ".join(command)))
+        output = subprocess.check_output(command, stderr=DEVNULL) # todo: save error output to a log
+        new_formulas = pickle.loads(output)
+        kmax_cache.update(new_formulas)
+      if current_path in kmax_cache.keys():
+        current_path_constraint = z3.parse_smt2_string(kmax_cache[current_path])
+      else:
+        info("%s has no kmax formula, assuming it is unconstrained." % (current_path))
+  return kmax_cache
+
 def get_kmax_constraints(kmax_formulas, kbuild_path, view=False):
   if kbuild_path in kmax_formulas.keys():
     kmax_constraints = []
@@ -123,7 +153,7 @@ def print_model_as_config(model, fp=sys.stdout, kconfig_types=None, kconfig_visi
           # if str_entry not in kclause_constraints.keys():
           #   sys.stderr.write("warning: %s was not defined in the kconfig spec, but may be required for this unit.\n" % (str_entry))
           if model[entry]:
-            # todo: for non-boolen values, these are simplistic
+            # todo: for non-Boolean values, these are simplistic
             # placeholders. use defaults from kconfig instead. these
             # have their own dependencies but are not part of
             # constraints themselves.
@@ -474,16 +504,18 @@ if __name__ == '__main__':
     exit(12)
 
   if not os.path.exists(formulas):
-    error("No formulas found.  Download them from https://kmaxtools.opentheblackbox.net/formulas/ or see the README.md to generate them.\n")
-    exit(1)
+    error("No formulas found.  Generating them on demand.  They can also be downloaded from https://kmaxtools.opentheblackbox.net/formulas/ for some Linux versions.")
+    os.makedirs(formulas)
 
   if not kmax_file:
     kmax_file = os.path.join(formulas, "kmax")
   info("Kmax formula file: %s" % (kmax_file))
     
   if len(compilation_units) > 0 and not os.path.isfile(kmax_file):
-    error("Cannot find kmax formulas file: %s" % (kmax_file))
-    exit(2)
+    info("No prebuilt kmax formulas.  Running kmax on demand.")
+    kmax_on_demand = True
+  else:
+    kmax_on_demand = False
 
   if len(compilation_units) > 0:
     new_compilation_units = []
@@ -495,25 +527,37 @@ if __name__ == '__main__':
     compilation_units = new_compilation_units
 
   if len(compilation_units) > 0:
-    info("Reading kmax formulas.")
-    kmax_formulas = unpickle_kmax_file(kmax_file)
-    new_compilation_units = []
-    for unit in compilation_units:
-      if unit not in kmax_formulas.keys():
-        kbuild_paths = resolve_kbuild_path(kmax_formulas, unit)
-        if len(kbuild_paths) == 0:
-          error("No formula from kmax was found for the compilation unit: %s" % (unit))
-          exit(3)
-        elif len(kbuild_paths) > 1:
-          error("There are multiple compilation units that match %s.  Please provide one of the Kbuild paths from below." % (unit))
-          print("\n".join(kbuild_paths))
-          exit(4)
-        kbuild_path = kbuild_paths[0]
-        assert unit != kbuild_path
-        info("Using full path from Kbuild: %s" % (kbuild_path))
-        unit = kbuild_path
-      new_compilation_units.append(unit)
-    compilation_units = new_compilation_units
+    if kmax_on_demand:
+      kmax_formulas = {}
+      kmax_cache_file = os.path.join(formulas, "kmax_cache")
+      if not os.path.isfile(kmax_cache_file):
+        info("Creating kmax cache file: %s" % (kmax_cache_file))
+      else:
+        kmax_formulas = unpickle_kmax_file(kmax_cache_file)
+      for unit in compilation_units:
+        kmax_formulas = prefetch_kmax_constraints(kmax_formulas, unit)
+      with open(kmax_cache_file, 'w') as f:
+        pickle.dump(kmax_formulas, f)
+    else:
+      info("Reading kmax formulas.")
+      kmax_formulas = unpickle_kmax_file(kmax_file)
+      new_compilation_units = []
+      for unit in compilation_units:
+        if unit not in kmax_formulas.keys():
+          kbuild_paths = resolve_kbuild_path(kmax_formulas, unit)
+          if len(kbuild_paths) == 0:
+            error("No formula from kmax was found for the compilation unit: %s" % (unit))
+            exit(3)
+          elif len(kbuild_paths) > 1:
+            error("There are multiple compilation units that match %s.  Please provide one of the Kbuild paths from below." % (unit))
+            print("\n".join(kbuild_paths))
+            exit(4)
+          kbuild_path = kbuild_paths[0]
+          assert unit != kbuild_path
+          info("Using full path from Kbuild: %s" % (kbuild_path))
+          unit = kbuild_path
+        new_compilation_units.append(unit)
+      compilation_units = new_compilation_units
   else:
     kmax_formulas = None
     
@@ -543,13 +587,22 @@ if __name__ == '__main__':
     if allarchs:
       # add those not already requested by the user
       archs = archs + [ arch for arch in architectures if arch not in archs ]
+    # filter archs based on unit name
+    for unit in compilation_units:
+      if unit is not None:
+        if unit.startswith("arch/"):
+          # narrow the set of possible architectures
+          unit_arch = get_archs_from_subdir(unit)
+          archs = [ arch for arch in archs if arch in unit_arch ]
+          if len(archs) == 0:
+            error("Resolved compilation unit is architecture-specific, but its architecture is not available: %s" % (unit))
+            exit(9)
     info("Trying the following architectures: %s" % (" ".join(archs)))
     for arch in archs:
       arch_kclause = get_arch_kclause_file(formulas, arch)
-      if not os.path.isfile(arch_kclause):
-        info("Skipping %s, because no kclause found at %s." % (arch, arch_kclause))
-      else:
-        kclause_to_try[arch] = arch_kclause
+      # if not os.path.isfile(arch_kclause):
+      #   info("Generating kclause file on demand for %s, because no kclause found at %s." % (arch, arch_kclause))
+      kclause_to_try[arch] = arch_kclause
         
   if len(kclause_to_try.keys()) == 0:
     error("No kclause files found.  Please check --formulas directory or use --kclause-formula explicitly.")
@@ -588,13 +641,6 @@ if __name__ == '__main__':
         kmax_constraints = get_kmax_constraints(kmax_formulas, unit)
       else:
         kmax_constraints.extend(get_kmax_constraints(kmax_formulas, unit))
-      if unit.startswith("arch/"):
-        # narrow the set of possible architectures
-        unit_arch = get_archs_from_subdir(unit)
-        archs = [ arch for arch in archs if arch in unit_arch ]
-        if len(archs) == 0:
-          error("Resolved compilation unit is architecture-specific, but its architecture is not available: %s" % (unit))
-          exit(9)
 
   archlist = [ arch for arch in archs if arch in kclause_to_try.keys() ]
   if None in kclause_to_try.keys():
@@ -608,12 +654,43 @@ if __name__ == '__main__':
       info("Trying \"%s\"" % (arch))
     info("Kclause formulas file: %s" % (kclause_file))
     if not os.path.exists(kclause_file):
+      kclause_file_pending = kclause_file + ".pending"
+      if not os.path.exists(os.path.dirname(kclause_file)):
+        os.makedirs(os.path.dirname(kclause_file))
+      # todo, write stderr to log
+      info("Generating kclause formulas for %s." % (arch))
+      if not os.path.exists(get_arch_kconfig_extract_file(formulas, arch)):
+        # write to a temp file first, then move if successful
+        kconfig_extract_file_pending = get_arch_kconfig_extract_file(formulas, arch) + ".pending"
+        command = [ "extract_kconfig", arch, kconfig_extract_file_pending ]
+        info("Extracting Kconfig dependencies: %s" % (" ".join(command)))
+        try:
+          popen = subprocess.Popen(command)
+          popen.communicate()
+          if popen.returncode != 0:
+            error("Error running extract_kconfig: return code %d" % (popen.returncode))
+            exit(13)
+        except Exception as e:
+          error("Error running extract_kconfig: %s" % (str(e)))
+          exit(13)
+        os.rename(kconfig_extract_file_pending, get_arch_kconfig_extract_file(formulas, arch))
+      # run kclause
+      with open(kclause_file_pending, 'w') as kclause_outf:
+        with open(get_arch_kconfig_extract_file(formulas, arch), 'r') as extract_inf:
+          command = ["kclause", "--remove-orphaned-nonvisible" ]
+          info("Running kclause: %s < %s > %s" % (" ".join(command), extract_inf.name, kclause_outf.name))
+          info("This will take several minutes...")
+          popen = subprocess.Popen(command, stdin=extract_inf, stdout=kclause_outf, stderr=DEVNULL)
+          popen.communicate()
+          kclause_outf.flush()
+      os.rename(kclause_file_pending, kclause_file)
+    if not os.path.exists(kclause_file):
       error("Cannot find kclause formulas file: %s" % (kclause_file))
     else:
       constraints = []
 
       if arch is not None:
-        kconfig_extract = get_kconfig_extract(formulas, arch)
+        kconfig_extract = get_kconfig_extract(get_arch_kconfig_extract_file(formulas, arch))
       elif kconfig_extract_file is not None:
         kconfig_extract = kconfig_extract_file
       else:
