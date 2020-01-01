@@ -1,1 +1,3 @@
+include kconfig_extractor/menu.c
+include kconfig_extractor/util.c
 recursive-include kconfig_extractor *.h
