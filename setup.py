@@ -11,7 +11,7 @@ def read(fname):
 about = {}
 exec(read(os.path.join("kmaxtools", "about.py")), about)
 
-kconfig_extractor = Extension('kconfig_extractor', [ 'kconfig_extractor/kconfig_extractor_extension.c', 'kconfig_extractor/confdata.c', 'kconfig_extractor/expr.c', 'kconfig_extractor/preprocess.c', 'kconfig_extractor/symbol.c', 'kconfig_extractor/lexer.lex.c', 'kconfig_extractor/parser.tab.c', 'kconfig_extractor/kconfig_extractor.c' ])
+kconfig_extractor = Extension('kconfig_extractor', [ 'kconfig_extractor/kconfig_extractor_extension.c', 'kconfig_extractor/confdata.c', 'kconfig_extractor/expr.c', 'kconfig_extractor/preprocess.c', 'kconfig_extractor/symbol.c', 'kconfig_extractor/lexer.lex.c', 'kconfig_extractor/parser.tab.c', 'kconfig_extractor/kconfig_extractor.c'], include_dirs=['kconfig_extractor/'])
 
 setup(
     name = about['__title__'],
