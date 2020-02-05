@@ -93,7 +93,9 @@ There are two ways to install kmaxtools.
 
 The fastest way to get started is to use formulas already extracted for your version of Linux, which you can download here: <https://kmaxtools.opentheblackbox.net/formulas>
 
-    cd /path/to/linux/
+    wget https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.4.tar.xz
+    tar -xvf linux-5.4.tar.xz
+    cd linux-5.4/
     wget https://kmaxtools.opentheblackbox.net/formulas/kmax-formulas_linux-v5.4.tar.bz2
     tar -xvf kmax-formulas_linux-v5.4.tar.bz2
 
