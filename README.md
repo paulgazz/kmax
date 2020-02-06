@@ -410,7 +410,7 @@ architectures, as named in the arch/ directory.
 This will run Kmax on the example from the
 [paper](https://paulgazzillo.com/papers/esecfse17.pdf) on Kmax.
 
-    kmax tests/paper_example
+    kmax tests/kbuild_tests/paper_example
 
 This will output the list of configuration conditions for each compilation unit file in the example Kbuild file.  By default, Kmax to treat configuration options as Boolean options (as opposed to Kconfig tristate options).  Pass `-T` for experimental support for tristate.
 
