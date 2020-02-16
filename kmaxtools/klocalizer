@@ -151,7 +151,7 @@ def get_kmax_constraints(kmax_formulas, kbuild_path, view=False):
     return None
 
 token_pattern = regex.compile("CONFIG_[A-Za-z0-9_]+")
-def print_model_as_config(model, fp=sys.stdout, kconfig_types=None, kconfig_visible=None, kconfig_has_def_nonbool=None, modules=False):
+def print_model_as_config(model, fp=sys.stdout, kconfig_types=None, kconfig_visible=None, kconfig_has_def_nonbool=None, user_specified_option_names=None, modules=False):
   info("Printing model as config file to \"%s\"." % ("stdout" if fp == sys.stdout else (fp.name)))
 
   if model is not None:
@@ -171,8 +171,9 @@ def print_model_as_config(model, fp=sys.stdout, kconfig_types=None, kconfig_visi
             if kconfig_types is None:
               # if no types provided, assume all are Boolean
               fp.write("%s=y\n" % (str_entry))
-            elif kconfig_has_def_nonbool != None and str_entry in kconfig_has_def_nonbool:
-              # don't bother printing out non-Booleans that Kconfig will likely set to a default value
+            elif kconfig_has_def_nonbool != None and str_entry in kconfig_has_def_nonbool and str_entry not in user_specified_option_names:
+              # don't bother printing out non-Booleans that Kconfig will likely set to a default value, as long as they weren't set by the user-defined constraints
+              sys.stderr.write("ignored" + str_entry + "\n")
               pass
             elif str_entry not in kconfig_types:
               if str_entry not in architecture_configs:
@@ -265,21 +266,26 @@ ad_hoc_on_pattern = regex.compile("^(CONFIG_[A-Za-z0-9_]+)$")
 ad_hoc_off_pattern = regex.compile("^!(CONFIG_[A-Za-z0-9_]+)$")
 def get_ad_hoc_constraints(config_file):
   constraints = []
+  names = set()
   with open(config_file, 'r') as fp:
     lines = fp.readlines()
     for line in lines:
       line = line.strip()
       off = ad_hoc_off_pattern.match(line)
       if off:
-        constraint = z3.Not(z3.Bool(off.group(1)))
+        name = off.group(1)
+        constraint = z3.Not(z3.Bool(name))
         constraints.append(constraint)
+        names.add(name)
       else:
         on = ad_hoc_on_pattern.match(line)
         if on:
-          constraint = z3.Bool(on.group(1))
+          name = on.group(1)
+          constraint = z3.Bool(name)
           constraints.append(constraint)
+          names.add(name)
 
-    return constraints
+    return constraints, names
 
 # names of architectures corresponding to make and make.cross's ARCH variable
 architectures = ["i386", "x86_64", "alpha", "arc", "arm", "arm64", "c6x", "csky", "h8300", "hexagon", "ia64", "m68k", "microblaze", "mips", "nds32", "nios2", "openrisc", "parisc", "powerpc", "riscv", "s390", "sh", "sh64", "sparc", "sparc64", "um", "um32", "unicore32",  "xtensa"]
@@ -744,8 +750,12 @@ if __name__ == '__main__':
             for used_var in vars_not_in_arch:
               constraints.append(z3.Not(used_var))
 
+      user_specified_option_names = set()
+              
       if constraints_file:
-        constraints.extend(get_ad_hoc_constraints(constraints_file))
+        ad_hoc_constraints, ad_hoc_config_options = get_ad_hoc_constraints(constraints_file)
+        constraints.extend(ad_hoc_constraints)
+        user_specified_option_names.extend(ad_hoc_config_options)
 
       # add kclause constraints
       constraints.extend(get_kclause_constraints(kclause_file))
@@ -753,8 +763,10 @@ if __name__ == '__main__':
       # add user-specified constraints
       for user_define in define:
         constraints.append(z3.Bool(user_define))
+        user_specified_option_names.add(user_define)
       for user_undefine in undefine:
         constraints.append(z3.Not(z3.Bool(user_undefine)))
+        user_specified_option_names.add(user_undefine)
 
       if arch is not None:
         constraints.extend(get_arch_specific_constraints(arch, architecture_configs))
@@ -788,7 +800,7 @@ if __name__ == '__main__':
             if model is not None:
               info("Writing the configuration to %s" % (output_file))
               with open(output_file, 'w') as config_fp:
-                print_model_as_config(model, config_fp, kconfig_types, kconfig_visible, kconfig_has_def_nonbool, modules_arg)
+                print_model_as_config(model, config_fp, kconfig_types, kconfig_visible, kconfig_has_def_nonbool, user_specified_option_names, modules_arg)
               if arch is not None:
                 info("Generated configuration for %s" % (arch))
                 info("Build with \"make.cross ARCH=%s olddefconfig; make.cross ARCH=%s clean %s\"." % (arch, arch, " ".join(compilation_units)))
@@ -801,7 +813,7 @@ if __name__ == '__main__':
                 solver.check(constraints)
               config_filename = "%s%d" % (sample_prefix, config_i + 1)
               with open(config_filename, 'w') as config_fp:
-                print_model_as_config(solver.model(), config_fp, kconfig_types, kconfig_visible, kconfig_has_def_nonbool, modules_arg)
+                print_model_as_config(solver.model(), config_fp, kconfig_types, kconfig_visible, kconfig_has_def_nonbool, user_specified_option_names, modules_arg)
             exit(0)
   if reportallarchs and len(sat_archs) > 0:
     print("\n".join(sat_archs))
