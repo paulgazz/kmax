@@ -685,16 +685,16 @@ if __name__ == '__main__':
       if not os.path.exists(get_arch_kconfig_extract_file(formulas, arch)):
         # write to a temp file first, then move if successful
         kconfig_extract_file_pending = get_arch_kconfig_extract_file(formulas, arch) + ".pending"
-        command = [ "extract_kconfig", arch, kconfig_extract_file_pending ]
+        command = [ "kextractor", arch, kconfig_extract_file_pending ]
         info("Extracting Kconfig dependencies: %s" % (" ".join(command)))
         try:
           popen = subprocess.Popen(command)
           popen.communicate()
           if popen.returncode != 0:
-            error("Error running extract_kconfig: return code %d" % (popen.returncode))
+            error("Error running kextractor: return code %d" % (popen.returncode))
             exit(13)
         except Exception as e:
-          error("Error running extract_kconfig: %s" % (str(e)))
+          error("Error running kextractor: %s" % (str(e)))
           exit(13)
         os.rename(kconfig_extract_file_pending, get_arch_kconfig_extract_file(formulas, arch))
       # run kclause

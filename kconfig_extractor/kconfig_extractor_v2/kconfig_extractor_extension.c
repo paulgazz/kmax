@@ -17,7 +17,7 @@ static PyObject * extract_kconfig(PyObject *self, PyObject *args) {
   }
 
   const char *cargs[] = {
-    "kconfig_extractor", "--extract", "-o", outfile, "-e", arch, "-e", srcarch, "-e", "KERNELVERSION=kcu", "-e", "srctree=./", "-e", "CC=cc", "Kconfig"
+    "kconfig_extractor_v2", "--extract", "-o", outfile, "-e", arch, "-e", srcarch, "-e", "KERNELVERSION=kcu", "-e", "srctree=./", "-e", "CC=cc", "Kconfig"
   };
   
   int errcode = main(15, cargs);
@@ -28,17 +28,17 @@ static PyObject * extract_kconfig(PyObject *self, PyObject *args) {
 static char extract_kconfig_docs[] =
   "extract_kconfig( ): Extract Kconfig dependencies\n";
 
-static PyMethodDef kconfig_extractor_funcs[] = {
+static PyMethodDef kconfig_extractor_v2_funcs[] = {
   {"extract_kconfig", (PyCFunction)extract_kconfig, METH_VARARGS, extract_kconfig_docs},
   {NULL}
 };
 
-void initkconfig_extractor(void) {
+void initkconfig_extractor_v2(void) {
   PyObject *m;
   
-  m = Py_InitModule3("kconfig_extractor", kconfig_extractor_funcs,
+  m = Py_InitModule3("kconfig_extractor_v2", kconfig_extractor_v2_funcs,
                  "Extract Kconfig dependencies.");
-  ExtractorError = PyErr_NewException("kconfig_extractor.error", NULL, NULL);
+  ExtractorError = PyErr_NewException("kconfig_extractor_v2.error", NULL, NULL);
   Py_INCREF(ExtractorError);
   PyModule_AddObject(m, "error", ExtractorError);
 }
