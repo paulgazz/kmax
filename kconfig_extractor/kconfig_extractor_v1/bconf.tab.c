@@ -1,9 +1,8 @@
-/* A Bison parser, made by GNU Bison 3.4.1.  */
+/* A Bison parser, made by GNU Bison 3.0.4.  */
 
 /* Bison implementation for Yacc-like parsers in C
 
-   Copyright (C) 1984, 1989-1990, 2000-2015, 2018-2019 Free Software Foundation,
-   Inc.
+   Copyright (C) 1984, 1989-1990, 2000-2015 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -41,14 +40,11 @@
    define necessary library symbols; they are noted "INFRINGES ON
    USER NAME SPACE" below.  */
 
-/* Undocumented macros, especially those whose name start with YY_,
-   are private implementation details.  Do not rely on them.  */
-
 /* Identify Bison output.  */
 #define YYBISON 1
 
 /* Bison version.  */
-#define YYBISON_VERSION "3.4.1"
+#define YYBISON_VERSION "3.0.4"
 
 /* Skeleton name.  */
 #define YYSKELETON_NAME "yacc.c"
@@ -63,17 +59,38 @@
 #define YYPULL 1
 
 
+/* Substitute the variable and function names.  */
+#define yyparse         bconfparse
+#define yylex           bconflex
+#define yyerror         bconferror
+#define yydebug         bconfdebug
+#define yynerrs         bconfnerrs
+
+#define yylval          bconflval
+#define yychar          bconfchar
+
+/* Copy the first part of user declarations.  */
 
 
-/* First part of user prologue.  */
+/* Kmax                                                                   */
+/* Copyright (C) 2012-2015 Paul Gazzillo                                  */
+/*                                                                        */
+/* This program is free software: you can redistribute it and/or modify   */
+/* it under the terms of the GNU General Public License as published by   */
+/* the Free Software Foundation, either version 3 of the License, or      */
+/* (at your option) any later version.                                    */
+/*                                                                        */
+/* This program is distributed in the hope that it will be useful,        */
+/* but WITHOUT ANY WARRANTY; without even the implied warranty of         */
+/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          */
+/* GNU General Public License for more details.                           */
+/*                                                                        */
+/* You should have received a copy of the GNU General Public License      */
+/* along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
-
-#include <ctype.h>
-#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdbool.h>
 
 #include "lkc.h"
 
@@ -82,29 +99,102 @@
 #define PRINTD		0x0001
 #define DEBUG_PARSE	0x0002
 
-int cdebug = PRINTD;
+extern int cdebug;
 
-static void yyerror(const char *err);
-static void zconfprint(const char *err, ...);
-static void zconf_error(const char *err, ...);
-static bool zconf_endtoken(const char *tokenname,
-			   const char *expected_tokenname);
+extern char *filename;
+extern int bconflineno;
 
-struct symbol *symbol_hash[SYMBOL_HASHSIZE];
+extern int bconflex(void);
 
-static struct menu *current_menu, *current_entry;
+#define MAX_IF_DEPTH 100
+
+static struct expr *current_expr = NULL;
+static struct expr *if_stack[MAX_IF_DEPTH];
+static int if_index = 0;
+
+
+struct linked_list {
+  struct linked_list *next;
+  void *data;
+};
+
+
+void
+add_config_var(char *var, enum symbol_type stype, char *def, struct linked_list *dep_list)
+{
+  struct symbol *sym = sym_lookup(var, 0);
+  sym->flags |= SYMBOL_OPTIONAL;
+  menu_add_entry(sym);
+  printd(DEBUG_PARSE, "%s:%d:config %s\n", filename, bconflineno, var);
+  menu_set_type(stype);
+  printd(DEBUG_PARSE, "%s:%d:type(%u)\n",
+         filename, bconflineno,
+         stype);
+  if (NULL != def) {
+    menu_add_symbol(P_DEFAULT, sym_lookup(def, 0), NULL);
+    printd(DEBUG_PARSE, "%s:%d:default\n",
+           filename, bconflineno);
+  }
+  for (; NULL != dep_list; dep_list = dep_list->next) {
+    menu_add_dep(expr_alloc_symbol(sym_lookup((char *) dep_list->data, 0)));
+    printd(DEBUG_PARSE, "%s:%d:depends on %s\n", filename, bconflineno, dep_list->data);
+  }
+  menu_end_entry();
+  printd(DEBUG_PARSE, "%s:%d:endconfig\n", filename, bconflineno);
+}
+
+static void
+enter_if_branch(struct expr *expr)
+{
+  if (if_index >= MAX_IF_DEPTH)
+    bconferror("MAX_IF_DEPTH exceeded");
+
+  if_stack[if_index++] = current_expr;
+  current_expr = expr;
+
+	printd(DEBUG_PARSE, "%s:%d:if\n", filename, bconflineno);
+	menu_add_entry(NULL);
+	menu_add_dep(current_expr);
+  menu_add_menu();
+}
+
+static void
+enter_elif_branch(struct expr *expr)
+{
+  bconferror("not yet implemented");
+}
+
+static void
+enter_else_branch()
+{
+  menu_end_menu();
+  printd(DEBUG_PARSE, "%s:%d:endif\n", filename, bconflineno);
+
+  current_expr = expr_alloc_one(E_NOT, expr_copy(current_expr));
+
+	printd(DEBUG_PARSE, "%s:%d:if\n", filename, bconflineno);
+	menu_add_entry(NULL);
+	menu_add_dep(current_expr);
+  menu_add_menu();
+}
+
+static void
+exit_if_block(void)
+{
+  menu_end_menu();
+  printd(DEBUG_PARSE, "%s:%d:endif\n", filename, bconflineno);
+
+  current_expr = if_stack[--if_index];
+}
+
 
 
 
 # ifndef YY_NULLPTR
-#  if defined __cplusplus
-#   if 201103L <= __cplusplus
-#    define YY_NULLPTR nullptr
-#   else
-#    define YY_NULLPTR 0
-#   endif
+#  if defined __cplusplus && 201103L <= __cplusplus
+#   define YY_NULLPTR nullptr
 #  else
-#   define YY_NULLPTR ((void*)0)
+#   define YY_NULLPTR 0
 #  endif
 # endif
 
@@ -116,16 +206,13 @@ static struct menu *current_menu, *current_entry;
 # define YYERROR_VERBOSE 0
 #endif
 
-/* Use api.header.include to #include this header
-   instead of duplicating it here.  */
-#ifndef YY_YY_PARSER_TAB_H_INCLUDED
-# define YY_YY_PARSER_TAB_H_INCLUDED
+
 /* Debug traces.  */
 #ifndef YYDEBUG
 # define YYDEBUG 1
 #endif
 #if YYDEBUG
-extern int yydebug;
+extern int bconfdebug;
 #endif
 
 /* Token type.  */
@@ -133,84 +220,82 @@ extern int yydebug;
 # define YYTOKENTYPE
   enum yytokentype
   {
-    T_HELPTEXT = 258,
-    T_WORD = 259,
-    T_WORD_QUOTE = 260,
-    T_ALLNOCONFIG_Y = 261,
-    T_BOOL = 262,
-    T_CHOICE = 263,
-    T_CLOSE_PAREN = 264,
-    T_COLON_EQUAL = 265,
-    T_COMMENT = 266,
-    T_CONFIG = 267,
-    T_DEFAULT = 268,
-    T_DEFCONFIG_LIST = 269,
-    T_DEF_BOOL = 270,
-    T_DEF_TRISTATE = 271,
-    T_DEPENDS = 272,
-    T_ENDCHOICE = 273,
-    T_ENDIF = 274,
-    T_ENDMENU = 275,
-    T_HELP = 276,
-    T_HEX = 277,
-    T_IF = 278,
-    T_IMPLY = 279,
-    T_INT = 280,
-    T_MAINMENU = 281,
-    T_MENU = 282,
-    T_MENUCONFIG = 283,
-    T_MODULES = 284,
-    T_ON = 285,
-    T_OPEN_PAREN = 286,
-    T_OPTION = 287,
-    T_OPTIONAL = 288,
-    T_PLUS_EQUAL = 289,
-    T_PROMPT = 290,
-    T_RANGE = 291,
-    T_SELECT = 292,
-    T_SOURCE = 293,
-    T_STRING = 294,
-    T_TRISTATE = 295,
-    T_VISIBLE = 296,
-    T_EOL = 297,
-    T_ASSIGN_VAL = 298,
-    T_OR = 299,
-    T_AND = 300,
-    T_EQUAL = 301,
-    T_UNEQUAL = 302,
-    T_LESS = 303,
-    T_LESS_EQUAL = 304,
-    T_GREATER = 305,
-    T_GREATER_EQUAL = 306,
-    T_NOT = 307
+    IF = 258,
+    THEN = 259,
+    ELSE = 260,
+    ELIF = 261,
+    FI = 262,
+    MAINMENU_OPTION = 263,
+    MAINMENU_NAME = 264,
+    ENDMENU = 265,
+    HELP = 266,
+    READLN = 267,
+    COMMENT = 268,
+    DEFINE_BOOL = 269,
+    DEFINE_TRISTATE = 270,
+    BOOL = 271,
+    TRISTATE = 272,
+    DEP_TRISTATE = 273,
+    DEP_BOOL = 274,
+    DEP_MBOOL = 275,
+    DEFINE_INT = 276,
+    INT = 277,
+    DEFINE_HEX = 278,
+    HEX = 279,
+    DEFINE_STRING = 280,
+    STRING = 281,
+    CHOICE = 282,
+    CONFIG_VAR = 283,
+    WORD = 284,
+    NUMBER = 285,
+    STRING_CONST = 286,
+    TRISTATE_CONST = 287,
+    TEST_STREQ = 288,
+    TEST_STRNE = 289,
+    TEST_N = 290,
+    TEST_Z = 291,
+    TEST_EQ = 292,
+    TEST_NE = 293,
+    TEST_GE = 294,
+    TEST_GT = 295,
+    TEST_LE = 296,
+    TEST_LT = 297,
+    TEST_AND = 298,
+    TEST_OR = 299,
+    TEST_BANG = 300,
+    UNSET = 301,
+    NEWLINE = 302
   };
 #endif
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
+
 union YYSTYPE
 {
 
+
 	char *string;
-	struct symbol *symbol;
+  struct linked_list *list;
 	struct expr *expr;
-	struct menu *menu;
-	enum symbol_type type;
-	enum variable_flavor flavor;
+  struct symbol *symbol;
 
 
 };
+
 typedef union YYSTYPE YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define YYSTYPE_IS_DECLARED 1
 #endif
 
 
-extern YYSTYPE yylval;
+extern YYSTYPE bconflval;
 
-int yyparse (void);
+int bconfparse (void);
 
-#endif /* !YY_YY_PARSER_TAB_H_INCLUDED  */
+
+
+/* Copy the second part of user declarations.  */
 
 
 
@@ -233,13 +318,13 @@ typedef signed char yytype_int8;
 #ifdef YYTYPE_UINT16
 typedef YYTYPE_UINT16 yytype_uint16;
 #else
-typedef unsigned short yytype_uint16;
+typedef unsigned short int yytype_uint16;
 #endif
 
 #ifdef YYTYPE_INT16
 typedef YYTYPE_INT16 yytype_int16;
 #else
-typedef short yytype_int16;
+typedef short int yytype_int16;
 #endif
 
 #ifndef YYSIZE_T
@@ -251,7 +336,7 @@ typedef short yytype_int16;
 #  include <stddef.h> /* INFRINGES ON USER NAME SPACE */
 #  define YYSIZE_T size_t
 # else
-#  define YYSIZE_T unsigned
+#  define YYSIZE_T unsigned int
 # endif
 #endif
 
@@ -287,6 +372,15 @@ typedef short yytype_int16;
 # define YY_ATTRIBUTE_UNUSED YY_ATTRIBUTE ((__unused__))
 #endif
 
+#if !defined _Noreturn \
+     && (!defined __STDC_VERSION__ || __STDC_VERSION__ < 201112)
+# if defined _MSC_VER && 1200 <= _MSC_VER
+#  define _Noreturn __declspec (noreturn)
+# else
+#  define _Noreturn YY_ATTRIBUTE ((__noreturn__))
+# endif
+#endif
+
 /* Suppress unused-variable warnings by "using" E.  */
 #if ! defined lint || defined __GNUC__
 # define YYUSE(E) ((void) (E))
@@ -294,7 +388,7 @@ typedef short yytype_int16;
 # define YYUSE(E) /* empty */
 #endif
 
-#if defined __GNUC__ && ! defined __ICC && 407 <= __GNUC__ * 100 + __GNUC_MINOR__
+#if defined __GNUC__ && 407 <= __GNUC__ * 100 + __GNUC_MINOR__
 /* Suppress an incorrect diagnostic about yylval being uninitialized.  */
 # define YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN \
     _Pragma ("GCC diagnostic push") \
@@ -313,8 +407,6 @@ typedef short yytype_int16;
 # define YY_INITIAL_VALUE(Value) /* Nothing. */
 #endif
 
-
-#define YY_ASSERT(E) ((void) (0 && (E)))
 
 #if ! defined yyoverflow || YYERROR_VERBOSE
 
@@ -445,29 +537,29 @@ union yyalloc
 #endif /* !YYCOPY_NEEDED */
 
 /* YYFINAL -- State number of the termination state.  */
-#define YYFINAL  8
+#define YYFINAL  55
 /* YYLAST -- Last index in YYTABLE.  */
-#define YYLAST   187
+#define YYLAST   151
 
 /* YYNTOKENS -- Number of terminals.  */
-#define YYNTOKENS  53
+#define YYNTOKENS  48
 /* YYNNTS -- Number of nonterminals.  */
-#define YYNNTS  48
+#define YYNNTS  21
 /* YYNRULES -- Number of rules.  */
-#define YYNRULES  106
+#define YYNRULES  66
 /* YYNSTATES -- Number of states.  */
-#define YYNSTATES  186
+#define YYNSTATES  149
 
+/* YYTRANSLATE[YYX] -- Symbol number corresponding to YYX as returned
+   by yylex, with out-of-bounds checking.  */
 #define YYUNDEFTOK  2
-#define YYMAXUTOK   307
+#define YYMAXUTOK   302
 
-/* YYTRANSLATE(TOKEN-NUM) -- Symbol number corresponding to TOKEN-NUM
-   as returned by yylex, with out-of-bounds checking.  */
 #define YYTRANSLATE(YYX)                                                \
-  ((unsigned) (YYX) <= YYMAXUTOK ? yytranslate[YYX] : YYUNDEFTOK)
+  ((unsigned int) (YYX) <= YYMAXUTOK ? yytranslate[YYX] : YYUNDEFTOK)
 
 /* YYTRANSLATE[TOKEN-NUM] -- Symbol number corresponding to TOKEN-NUM
-   as returned by yylex.  */
+   as returned by yylex, without out-of-bounds checking.  */
 static const yytype_uint8 yytranslate[] =
 {
        0,     2,     2,     2,     2,     2,     2,     2,     2,     2,
@@ -500,24 +592,20 @@ static const yytype_uint8 yytranslate[] =
       15,    16,    17,    18,    19,    20,    21,    22,    23,    24,
       25,    26,    27,    28,    29,    30,    31,    32,    33,    34,
       35,    36,    37,    38,    39,    40,    41,    42,    43,    44,
-      45,    46,    47,    48,    49,    50,    51,    52
+      45,    46,    47
 };
 
 #if YYDEBUG
   /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_uint16 yyrline[] =
 {
-       0,   112,   112,   112,   116,   121,   123,   124,   125,   126,
-     127,   131,   132,   133,   134,   135,   136,   141,   148,   153,
-     160,   169,   171,   172,   173,   176,   184,   190,   200,   206,
-     212,   218,   223,   228,   235,   245,   250,   258,   261,   263,
-     264,   265,   268,   274,   281,   287,   295,   296,   297,   298,
-     301,   302,   305,   306,   307,   309,   311,   316,   324,   332,
-     337,   344,   349,   357,   360,   362,   363,   366,   375,   382,
-     385,   387,   392,   398,   416,   423,   430,   432,   437,   438,
-     441,   442,   443,   446,   447,   450,   451,   452,   453,   454,
-     455,   456,   457,   458,   459,   460,   464,   466,   467,   470,
-     471,   475,   478,   479,   480,   484,   485
+       0,   179,   179,   181,   184,   185,   188,   189,   190,   191,
+     192,   193,   197,   201,   205,   209,   213,   217,   221,   225,
+     230,   234,   239,   243,   247,   282,   283,   287,   288,   292,
+     293,   297,   303,   311,   313,   314,   317,   319,   319,   321,
+     323,   326,   326,   328,   330,   333,   333,   336,   337,   341,
+     342,   346,   347,   348,   368,   372,   373,   374,   375,   376,
+     377,   378,   379,   383,   384,   385,   386
 };
 #endif
 
@@ -526,27 +614,19 @@ static const yytype_uint16 yyrline[] =
    First, the terminals, then, starting at YYNTOKENS, nonterminals.  */
 static const char *const yytname[] =
 {
-  "$end", "error", "$undefined", "T_HELPTEXT", "T_WORD", "T_WORD_QUOTE",
-  "T_ALLNOCONFIG_Y", "T_BOOL", "T_CHOICE", "T_CLOSE_PAREN",
-  "T_COLON_EQUAL", "T_COMMENT", "T_CONFIG", "T_DEFAULT",
-  "T_DEFCONFIG_LIST", "T_DEF_BOOL", "T_DEF_TRISTATE", "T_DEPENDS",
-  "T_ENDCHOICE", "T_ENDIF", "T_ENDMENU", "T_HELP", "T_HEX", "T_IF",
-  "T_IMPLY", "T_INT", "T_MAINMENU", "T_MENU", "T_MENUCONFIG", "T_MODULES",
-  "T_ON", "T_OPEN_PAREN", "T_OPTION", "T_OPTIONAL", "T_PLUS_EQUAL",
-  "T_PROMPT", "T_RANGE", "T_SELECT", "T_SOURCE", "T_STRING", "T_TRISTATE",
-  "T_VISIBLE", "T_EOL", "T_ASSIGN_VAL", "T_OR", "T_AND", "T_EQUAL",
-  "T_UNEQUAL", "T_LESS", "T_LESS_EQUAL", "T_GREATER", "T_GREATER_EQUAL",
-  "T_NOT", "$accept", "input", "mainmenu_stmt", "stmt_list", "common_stmt",
-  "config_entry_start", "config_stmt", "menuconfig_entry_start",
-  "menuconfig_stmt", "config_option_list", "config_option", "choice",
-  "choice_entry", "choice_end", "choice_stmt", "choice_option_list",
-  "choice_option", "type", "logic_type", "default", "choice_block",
-  "if_entry", "if_end", "if_stmt", "menu", "menu_entry", "menu_end",
-  "menu_stmt", "menu_option_list", "source_stmt", "comment",
-  "comment_stmt", "comment_option_list", "help_start", "help", "depends",
-  "visible", "prompt_stmt_opt", "prompt", "end", "if_expr", "expr",
-  "nonconst_symbol", "symbol", "word_opt", "assignment_stmt", "assign_op",
-  "assign_val", YY_NULLPTR
+  "$end", "error", "$undefined", "IF", "THEN", "ELSE", "ELIF", "FI",
+  "MAINMENU_OPTION", "MAINMENU_NAME", "ENDMENU", "HELP", "READLN",
+  "COMMENT", "DEFINE_BOOL", "DEFINE_TRISTATE", "BOOL", "TRISTATE",
+  "DEP_TRISTATE", "DEP_BOOL", "DEP_MBOOL", "DEFINE_INT", "INT",
+  "DEFINE_HEX", "HEX", "DEFINE_STRING", "STRING", "CHOICE", "CONFIG_VAR",
+  "WORD", "NUMBER", "STRING_CONST", "TRISTATE_CONST", "TEST_STREQ",
+  "TEST_STRNE", "TEST_N", "TEST_Z", "TEST_EQ", "TEST_NE", "TEST_GE",
+  "TEST_GT", "TEST_LE", "TEST_LT", "TEST_AND", "TEST_OR", "TEST_BANG",
+  "UNSET", "NEWLINE", "$accept", "inputunit", "statement_list",
+  "statement", "tristate_value", "tristate_value_opt", "dep_list",
+  "min_max_opt", "if_block", "if_branch", "$@1", "elif_opt", "elif_branch",
+  "$@2", "else_opt", "else_branch", "$@3", "conditional_expression",
+  "term", "factor", "id", YY_NULLPTR
 };
 #endif
 
@@ -559,44 +639,39 @@ static const yytype_uint16 yytoknum[] =
      265,   266,   267,   268,   269,   270,   271,   272,   273,   274,
      275,   276,   277,   278,   279,   280,   281,   282,   283,   284,
      285,   286,   287,   288,   289,   290,   291,   292,   293,   294,
-     295,   296,   297,   298,   299,   300,   301,   302,   303,   304,
-     305,   306,   307
+     295,   296,   297,   298,   299,   300,   301,   302
 };
 # endif
 
-#define YYPACT_NINF -70
+#define YYPACT_NINF -100
 
 #define yypact_value_is_default(Yystate) \
-  (!!((Yystate) == (-70)))
+  (!!((Yystate) == (-100)))
 
-#define YYTABLE_NINF -4
+#define YYTABLE_NINF -1
 
 #define yytable_value_is_error(Yytable_value) \
   0
 
   /* YYPACT[STATE-NUM] -- Index in YYTABLE of the portion describing
      STATE-NUM.  */
-static const yytype_int16 yypact[] =
+static const yytype_int8 yypact[] =
 {
-      -3,    12,    43,   -70,    30,   -70,   -70,    23,   -70,    55,
-      27,    18,    40,    12,    68,     9,    12,    68,    12,   -70,
-     -70,   -70,   -70,   -70,   -70,   -70,   -70,   -70,   -70,   -70,
-     -70,   -70,   -70,   -70,   -70,   -70,   -70,   -70,    32,   -70,
-     -70,   -70,    36,   -70,    44,    45,   -70,    47,   -70,     9,
-       9,    31,   -70,   119,    52,    54,    60,   110,   110,   123,
-     101,    80,     4,    80,    92,   -70,   -70,    72,   -70,   -70,
-     -70,    26,   -70,   -70,     9,     9,    28,    28,    28,    28,
-      28,    28,   -70,   -70,   -70,   -70,   -70,   -70,   -70,    85,
-      74,   -70,    68,   -70,    33,    12,    28,    68,   -70,   -70,
-     -70,    12,   -70,     9,   125,   -70,   -70,    68,    91,    12,
-     -70,    12,   -70,   -70,    14,    95,    96,    99,   -70,   -70,
-     -70,   -70,   -70,   120,   -70,   -70,   -70,   -70,   -70,   -70,
-     -70,    77,   -70,   -70,   -70,   -70,   -70,   -70,   -70,     9,
-     -70,   120,   106,   111,   112,   120,    28,   120,   130,   120,
-       6,   -70,   120,   -70,   120,   133,   -70,   -70,   -70,     9,
-     134,   129,   136,   -70,   -70,   -70,   137,   120,   138,   -70,
-     -70,   139,   140,   141,   -70,    -8,   -70,   -70,   -70,   -70,
-     142,   -70,   -70,   -70,   -70,   -70
+       0,    26,   -23,     6,    -2,    24,    30,    31,    32,    39,
+      47,    51,    52,    55,    54,    57,    56,    58,    59,    62,
+    -100,    88,     0,  -100,  -100,  -100,  -100,    27,  -100,  -100,
+      49,    49,    26,    48,    50,  -100,     5,    53,    60,  -100,
+      61,     1,     1,    65,    66,    67,    68,    69,    70,    72,
+      73,    74,    75,    78,    63,  -100,  -100,    38,    76,    81,
+      82,    83,    84,    85,  -100,  -100,  -100,  -100,    26,    77,
+      26,    49,    49,  -100,  -100,  -100,  -100,  -100,    80,    86,
+       1,     1,     1,     1,     1,    87,    90,    89,    91,   -24,
+      93,  -100,  -100,    26,  -100,    98,  -100,  -100,  -100,  -100,
+    -100,  -100,  -100,    50,   112,  -100,  -100,  -100,  -100,  -100,
+    -100,    92,    94,  -100,     2,     3,     4,  -100,    96,  -100,
+      95,    97,    99,   100,     0,    48,   101,     0,  -100,  -100,
+    -100,  -100,  -100,  -100,   102,   103,  -100,  -100,  -100,  -100,
+       0,   104,  -100,     0,  -100,  -100,   113,     0,     0
 };
 
   /* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
@@ -604,151 +679,125 @@ static const yytype_int16 yypact[] =
      means the default is an error.  */
 static const yytype_uint8 yydefact[] =
 {
-       5,     0,     0,     5,     0,    78,    79,     0,     1,     0,
-       0,     0,    99,     0,     0,     0,     0,     0,     0,     6,
-      21,    13,    21,    14,    38,    55,     7,     5,    11,    64,
-       5,     8,    15,    70,    12,    16,     4,    10,     0,   103,
-     104,   102,   105,   100,     0,     0,    96,     0,    98,     0,
-       0,     0,    97,    85,     0,     0,     0,    18,    20,    35,
-       0,     0,    61,     0,    69,     9,   106,     0,    34,    68,
-      17,     0,    93,    57,     0,     0,     0,     0,     0,     0,
-       0,     0,    60,    19,    67,    50,    52,    53,    54,     0,
-       0,    48,     0,    47,     0,     0,     0,     0,    49,    51,
-      22,    76,    46,     0,     0,    24,    23,     0,     0,     0,
-      39,    76,    41,    40,     0,     0,     0,     0,    56,    37,
-      36,    59,    58,    83,    66,    65,    63,    62,    71,   101,
-      92,    94,    95,    90,    91,    86,    87,    88,    89,     0,
-      72,    83,     0,     0,     0,    83,     0,    83,     0,    83,
-      83,    73,    83,    44,    83,     0,    81,    82,    80,     0,
-       0,     0,     0,    33,    32,    31,     0,    83,     0,    25,
-      77,     0,     0,     0,    43,    84,    75,    74,    29,    26,
-       0,    28,    27,    45,    42,    30
+       2,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+       6,     0,     3,     4,    26,    39,    63,    66,    65,    64,
+       0,     0,     0,    37,    47,    49,    51,     0,     0,     9,
+       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,     1,     5,    43,     0,     0,
+       0,     0,     0,     0,    66,    55,    56,    52,     0,     0,
+       0,     0,     0,     7,     8,    10,    28,    27,     0,     0,
+      29,    29,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,    25,    45,     0,    40,     0,    44,    57,    58,    59,
+      60,    61,    62,    48,     0,    50,    53,    54,    11,    12,
+      30,     0,     0,    31,     0,     0,     0,    18,    33,    20,
+       0,     0,     0,     0,     0,    41,     0,     0,    13,    14,
+      15,    32,    16,    17,    34,     0,    21,    23,    22,    24,
+      46,     0,    36,    38,    35,    19,     0,     0,    42
 };
 
   /* YYPGOTO[NTERM-NUM].  */
-static const yytype_int16 yypgoto[] =
+static const yytype_int8 yypgoto[] =
 {
-     -70,   -70,   -70,    19,   126,   -70,   -70,   -70,   -70,   163,
-     -70,   -70,   -70,   -70,   -70,   -70,   -70,   -70,    93,   -70,
-     -70,   -70,   -70,   -70,   -70,   -70,   -70,   -70,   -70,   -70,
-     -70,   -70,   -70,   -70,   102,    42,   -70,    76,     2,   -57,
-      10,   -49,   -12,   -69,   -70,   -70,   -70,   -70
+    -100,  -100,   -99,   -22,   -40,    42,   -11,  -100,  -100,  -100,
+    -100,  -100,  -100,  -100,  -100,  -100,  -100,    35,    64,   -28,
+     -19
 };
 
   /* YYDEFGOTO[NTERM-NUM].  */
 static const yytype_int16 yydefgoto[] =
 {
-      -1,     2,     3,     4,    19,    20,    21,    22,    23,    57,
-     100,    24,    25,   119,    26,    59,   110,   101,   102,   103,
-      60,    27,   121,    28,    29,    30,   126,    31,    62,    32,
-      33,    34,    64,   104,   105,   106,   125,   148,   149,   120,
-     160,    51,    52,    53,    44,    35,    42,    67
+      -1,    21,    22,    23,   113,   111,   114,   135,    24,    25,
+      69,    57,    94,   141,    95,    96,   124,    33,    34,    35,
+      36
 };
 
   /* YYTABLE[YYPACT[STATE-NUM]] -- What to do in state STATE-NUM.  If
      positive, shift that token.  If negative, reduce the rule whose
      number is the opposite.  If YYTABLE_NINF, syntax error.  */
-static const yytype_int16 yytable[] =
+static const yytype_uint8 yytable[] =
 {
-      71,    72,    47,     7,   122,    55,   127,   133,   134,   135,
-     136,   137,   138,    46,    48,    45,     5,     6,    54,    38,
-      56,    89,     9,     1,    39,   131,   132,   146,    39,   159,
-      -3,    10,    46,    48,    11,   130,    74,    75,    12,   142,
-      49,    13,    14,     8,    43,   123,    61,   143,    40,    63,
-      74,    75,    40,    15,   150,    -2,    10,    16,    17,    11,
-      41,    50,   144,    12,    41,    36,    13,    14,    18,    37,
-      74,    75,    46,    73,    65,    74,    75,   167,    15,    66,
-     141,    10,    16,    17,    11,   147,    68,    69,    12,    70,
-     161,    13,    14,    18,    82,   152,    83,   145,   115,   116,
-     117,   113,    84,    15,   124,   114,   128,    16,    17,    89,
-     175,   154,    13,    14,   129,   139,   140,    85,    18,   115,
-     116,   117,    75,    86,    15,    87,    88,    89,   151,    17,
-      85,    90,    91,   153,    92,    93,   107,   156,   157,    18,
-      89,   158,    94,   159,    90,    95,    96,    97,   163,    98,
-      99,   162,   111,   164,   165,   166,   108,   168,   109,   170,
-     171,   112,   172,    99,   173,    76,    77,    78,    79,    80,
-      81,   177,   169,    74,    75,   174,   176,   180,   178,   179,
-     181,   182,   183,   184,   185,    58,   118,   155
+      56,    78,    79,     1,    67,   121,    37,   122,     2,     3,
+       4,    65,    66,     5,     6,     7,     8,     9,    10,    11,
+      12,    13,    14,    15,    16,   140,    17,    18,   143,    76,
+      76,    76,    76,    77,    77,    77,    77,    38,    71,    72,
+     110,   110,   105,    92,    93,    39,    19,    20,   148,   130,
+     132,   133,   106,   107,    26,    40,    27,    28,    29,    41,
+      42,    30,    31,    43,    58,    59,    60,    61,    62,    63,
+      44,    32,   115,   116,   131,   131,   131,    26,    45,    64,
+      28,    29,    46,    47,    48,    49,    50,    51,    55,    52,
+      53,    54,    68,    70,    80,    81,    82,    83,    84,    85,
+      73,    86,    87,    88,    89,   126,    97,    74,    75,    90,
+      91,    98,    99,   100,   101,   102,   127,   147,    56,   118,
+     120,    56,   123,   112,   104,   134,    56,   108,   125,     0,
+       0,   144,   103,   109,   117,     0,   119,     0,     0,   128,
+       0,   129,   136,     0,   137,     0,   138,   139,   142,     0,
+     145,   146
 };
 
-static const yytype_uint8 yycheck[] =
+static const yytype_int16 yycheck[] =
 {
-      49,    50,    14,     1,    61,    17,    63,    76,    77,    78,
-      79,    80,    81,     4,     5,    13,     4,     5,    16,     1,
-      18,    17,     3,    26,    10,    74,    75,    96,    10,    23,
-       0,     1,     4,     5,     4,     9,    44,    45,     8,     6,
-      31,    11,    12,     0,     4,    41,    27,    14,    34,    30,
-      44,    45,    34,    23,   103,     0,     1,    27,    28,     4,
-      46,    52,    29,     8,    46,    42,    11,    12,    38,    42,
-      44,    45,     4,    42,    42,    44,    45,   146,    23,    43,
-      92,     1,    27,    28,     4,    97,    42,    42,     8,    42,
-     139,    11,    12,    38,    42,   107,    42,    95,    18,    19,
-      20,    59,    42,    23,    62,     4,    64,    27,    28,    17,
-     159,   109,    11,    12,    42,    30,    42,     7,    38,    18,
-      19,    20,    45,    13,    23,    15,    16,    17,     3,    28,
-       7,    21,    22,    42,    24,    25,    13,    42,    42,    38,
-      17,    42,    32,    23,    21,    35,    36,    37,    42,    39,
-      40,   141,    59,    42,    42,   145,    33,   147,    35,   149,
-     150,    59,   152,    40,   154,    46,    47,    48,    49,    50,
-      51,    42,    42,    44,    45,    42,    42,   167,    42,    42,
-      42,    42,    42,    42,    42,    22,    60,   111
+      22,    41,    42,     3,    32,    29,    29,    31,     8,     9,
+      10,    30,    31,    13,    14,    15,    16,    17,    18,    19,
+      20,    21,    22,    23,    24,   124,    26,    27,   127,    28,
+      28,    28,    28,    32,    32,    32,    32,    31,    33,    34,
+      80,    81,    70,     5,     6,    47,    46,    47,   147,    47,
+      47,    47,    71,    72,    28,    31,    30,    31,    32,    29,
+      29,    35,    36,    31,    37,    38,    39,    40,    41,    42,
+      31,    45,    83,    84,   114,   115,   116,    28,    31,    30,
+      31,    32,    31,    31,    29,    31,    29,    31,     0,    31,
+      31,    29,    44,    43,    29,    29,    29,    29,    29,    29,
+      47,    29,    29,    29,    29,     7,    30,    47,    47,    31,
+      47,    30,    30,    30,    30,    30,     4,     4,   140,    29,
+      29,   143,    29,    81,    47,    29,   148,    47,    93,    -1,
+      -1,    29,    68,    47,    47,    -1,    47,    -1,    -1,    47,
+      -1,    47,    47,    -1,    47,    -1,    47,    47,    47,    -1,
+      47,    47
 };
 
   /* YYSTOS[STATE-NUM] -- The (internal number of the) accessing
      symbol of state STATE-NUM.  */
 static const yytype_uint8 yystos[] =
 {
-       0,    26,    54,    55,    56,     4,     5,    91,     0,    56,
-       1,     4,     8,    11,    12,    23,    27,    28,    38,    57,
-      58,    59,    60,    61,    64,    65,    67,    74,    76,    77,
-      78,    80,    82,    83,    84,    98,    42,    42,     1,    10,
-      34,    46,    99,     4,    97,    91,     4,    95,     5,    31,
-      52,    94,    95,    96,    91,    95,    91,    62,    62,    68,
-      73,    56,    81,    56,    85,    42,    43,   100,    42,    42,
-      42,    94,    94,    42,    44,    45,    46,    47,    48,    49,
-      50,    51,    42,    42,    42,     7,    13,    15,    16,    17,
-      21,    22,    24,    25,    32,    35,    36,    37,    39,    40,
-      63,    70,    71,    72,    86,    87,    88,    13,    33,    35,
-      69,    71,    87,    88,     4,    18,    19,    20,    57,    66,
-      92,    75,    92,    41,    88,    89,    79,    92,    88,    42,
-       9,    94,    94,    96,    96,    96,    96,    96,    96,    30,
-      42,    95,     6,    14,    29,    91,    96,    95,    90,    91,
-      94,     3,    95,    42,    91,    90,    42,    42,    42,    23,
-      93,    94,    93,    42,    42,    42,    93,    96,    93,    42,
-      93,    93,    93,    93,    42,    94,    42,    42,    42,    42,
-      93,    42,    42,    42,    42,    42
+       0,     3,     8,     9,    10,    13,    14,    15,    16,    17,
+      18,    19,    20,    21,    22,    23,    24,    26,    27,    46,
+      47,    49,    50,    51,    56,    57,    28,    30,    31,    32,
+      35,    36,    45,    65,    66,    67,    68,    29,    31,    47,
+      31,    29,    29,    31,    31,    31,    31,    31,    29,    31,
+      29,    31,    31,    31,    29,     0,    51,    59,    37,    38,
+      39,    40,    41,    42,    30,    68,    68,    67,    44,    58,
+      43,    33,    34,    47,    47,    47,    28,    32,    52,    52,
+      29,    29,    29,    29,    29,    29,    29,    29,    29,    29,
+      31,    47,     5,     6,    60,    62,    63,    30,    30,    30,
+      30,    30,    30,    66,    47,    67,    68,    68,    47,    47,
+      52,    53,    53,    52,    54,    54,    54,    47,    29,    47,
+      29,    29,    31,    29,    64,    65,     7,     4,    47,    47,
+      47,    52,    47,    47,    29,    55,    47,    47,    47,    47,
+      50,    61,    47,    50,    29,    47,    47,     4,    50
 };
 
   /* YYR1[YYN] -- Symbol number of symbol that rule YYN derives.  */
 static const yytype_uint8 yyr1[] =
 {
-       0,    53,    54,    54,    55,    56,    56,    56,    56,    56,
-      56,    57,    57,    57,    57,    57,    57,    58,    59,    60,
-      61,    62,    62,    62,    62,    63,    63,    63,    63,    63,
-      63,    63,    63,    63,    64,    65,    66,    67,    68,    68,
-      68,    68,    69,    69,    69,    69,    70,    70,    70,    70,
-      71,    71,    72,    72,    72,    73,    73,    74,    75,    76,
-      77,    78,    79,    80,    81,    81,    81,    82,    83,    84,
-      85,    85,    86,    87,    88,    89,    90,    90,    91,    91,
-      92,    92,    92,    93,    93,    94,    94,    94,    94,    94,
-      94,    94,    94,    94,    94,    94,    95,    96,    96,    97,
-      97,    98,    99,    99,    99,   100,   100
+       0,    48,    49,    49,    50,    50,    51,    51,    51,    51,
+      51,    51,    51,    51,    51,    51,    51,    51,    51,    51,
+      51,    51,    51,    51,    51,    51,    51,    52,    52,    53,
+      53,    54,    54,    55,    55,    55,    56,    58,    57,    59,
+      59,    61,    60,    62,    62,    64,    63,    65,    65,    66,
+      66,    67,    67,    67,    67,    67,    67,    67,    67,    67,
+      67,    67,    67,    68,    68,    68,    68
 };
 
   /* YYR2[YYN] -- Number of symbols on the right hand side of rule YYN.  */
 static const yytype_uint8 yyr2[] =
 {
-       0,     2,     2,     1,     3,     0,     2,     2,     2,     4,
-       3,     1,     1,     1,     1,     1,     1,     3,     2,     3,
-       2,     0,     2,     2,     2,     3,     4,     4,     4,     4,
-       5,     3,     3,     3,     3,     2,     1,     3,     0,     2,
-       2,     2,     4,     3,     2,     4,     1,     1,     1,     1,
-       1,     1,     1,     1,     1,     0,     2,     3,     1,     3,
-       3,     2,     1,     3,     0,     2,     2,     3,     3,     2,
-       0,     2,     2,     2,     4,     3,     0,     2,     1,     1,
-       2,     2,     2,     0,     2,     1,     3,     3,     3,     3,
-       3,     3,     3,     2,     3,     3,     1,     1,     1,     0,
-       1,     4,     1,     1,     1,     0,     1
+       0,     2,     0,     1,     1,     2,     1,     3,     3,     2,
+       3,     4,     4,     5,     5,     5,     5,     5,     4,     6,
+       4,     5,     5,     5,     5,     3,     1,     1,     1,     0,
+       1,     1,     2,     0,     1,     2,     5,     0,     6,     0,
+       2,     0,     6,     0,     1,     0,     3,     1,     3,     1,
+       3,     1,     2,     3,     3,     2,     2,     3,     3,     3,
+       3,     3,     3,     1,     1,     1,     1
 };
 
 
@@ -764,22 +813,22 @@ static const yytype_uint8 yyr2[] =
 
 #define YYRECOVERING()  (!!yyerrstatus)
 
-#define YYBACKUP(Token, Value)                                    \
-  do                                                              \
-    if (yychar == YYEMPTY)                                        \
-      {                                                           \
-        yychar = (Token);                                         \
-        yylval = (Value);                                         \
-        YYPOPSTACK (yylen);                                       \
-        yystate = *yyssp;                                         \
-        goto yybackup;                                            \
-      }                                                           \
-    else                                                          \
-      {                                                           \
-        yyerror (YY_("syntax error: cannot back up")); \
-        YYERROR;                                                  \
-      }                                                           \
-  while (0)
+#define YYBACKUP(Token, Value)                                  \
+do                                                              \
+  if (yychar == YYEMPTY)                                        \
+    {                                                           \
+      yychar = (Token);                                         \
+      yylval = (Value);                                         \
+      YYPOPSTACK (yylen);                                       \
+      yystate = *yyssp;                                         \
+      goto yybackup;                                            \
+    }                                                           \
+  else                                                          \
+    {                                                           \
+      yyerror (YY_("syntax error: cannot back up")); \
+      YYERROR;                                                  \
+    }                                                           \
+while (0)
 
 /* Error token number */
 #define YYTERROR        1
@@ -819,37 +868,37 @@ do {                                                                      \
 } while (0)
 
 
-/*-----------------------------------.
-| Print this symbol's value on YYO.  |
-`-----------------------------------*/
+/*----------------------------------------.
+| Print this symbol's value on YYOUTPUT.  |
+`----------------------------------------*/
 
 static void
-yy_symbol_value_print (FILE *yyo, int yytype, YYSTYPE const * const yyvaluep)
+yy_symbol_value_print (FILE *yyoutput, int yytype, YYSTYPE const * const yyvaluep)
 {
-  FILE *yyoutput = yyo;
-  YYUSE (yyoutput);
+  FILE *yyo = yyoutput;
+  YYUSE (yyo);
   if (!yyvaluep)
     return;
 # ifdef YYPRINT
   if (yytype < YYNTOKENS)
-    YYPRINT (yyo, yytoknum[yytype], *yyvaluep);
+    YYPRINT (yyoutput, yytoknum[yytype], *yyvaluep);
 # endif
   YYUSE (yytype);
 }
 
 
-/*---------------------------.
-| Print this symbol on YYO.  |
-`---------------------------*/
+/*--------------------------------.
+| Print this symbol on YYOUTPUT.  |
+`--------------------------------*/
 
 static void
-yy_symbol_print (FILE *yyo, int yytype, YYSTYPE const * const yyvaluep)
+yy_symbol_print (FILE *yyoutput, int yytype, YYSTYPE const * const yyvaluep)
 {
-  YYFPRINTF (yyo, "%s %s (",
+  YYFPRINTF (yyoutput, "%s %s (",
              yytype < YYNTOKENS ? "token" : "nterm", yytname[yytype]);
 
-  yy_symbol_value_print (yyo, yytype, yyvaluep);
-  YYFPRINTF (yyo, ")");
+  yy_symbol_value_print (yyoutput, yytype, yyvaluep);
+  YYFPRINTF (yyoutput, ")");
 }
 
 /*------------------------------------------------------------------.
@@ -883,7 +932,7 @@ do {                                                            \
 static void
 yy_reduce_print (yytype_int16 *yyssp, YYSTYPE *yyvsp, int yyrule)
 {
-  unsigned long yylno = yyrline[yyrule];
+  unsigned long int yylno = yyrline[yyrule];
   int yynrhs = yyr2[yyrule];
   int yyi;
   YYFPRINTF (stderr, "Reducing stack by rule %d (line %lu):\n",
@@ -894,7 +943,7 @@ yy_reduce_print (yytype_int16 *yyssp, YYSTYPE *yyvsp, int yyrule)
       YYFPRINTF (stderr, "   $%d = ", yyi + 1);
       yy_symbol_print (stderr,
                        yystos[yyssp[yyi + 1 - yynrhs]],
-                       &yyvsp[(yyi + 1) - (yynrhs)]
+                       &(yyvsp[(yyi + 1) - (yynrhs)])
                                               );
       YYFPRINTF (stderr, "\n");
     }
@@ -998,10 +1047,7 @@ yytnamerr (char *yyres, const char *yystr)
           case '\\':
             if (*++yyp != '\\')
               goto do_not_strip_quotes;
-            else
-              goto append;
-
-          append:
+            /* Fall through.  */
           default:
             if (yyres)
               yyres[yyn] = *yyp;
@@ -1019,7 +1065,7 @@ yytnamerr (char *yyres, const char *yystr)
   if (! yyres)
     return yystrlen (yystr);
 
-  return (YYSIZE_T) (yystpcpy (yyres, yystr) - yyres);
+  return yystpcpy (yyres, yystr) - yyres;
 }
 # endif
 
@@ -1097,10 +1143,10 @@ yysyntax_error (YYSIZE_T *yymsg_alloc, char **yymsg,
                 yyarg[yycount++] = yytname[yyx];
                 {
                   YYSIZE_T yysize1 = yysize + yytnamerr (YY_NULLPTR, yytname[yyx]);
-                  if (yysize <= yysize1 && yysize1 <= YYSTACK_ALLOC_MAXIMUM)
-                    yysize = yysize1;
-                  else
+                  if (! (yysize <= yysize1
+                         && yysize1 <= YYSTACK_ALLOC_MAXIMUM))
                     return 2;
+                  yysize = yysize1;
                 }
               }
         }
@@ -1112,7 +1158,6 @@ yysyntax_error (YYSIZE_T *yymsg_alloc, char **yymsg,
       case N:                               \
         yyformat = S;                       \
       break
-    default: /* Avoid compiler warnings. */
       YYCASE_(0, YY_("syntax error"));
       YYCASE_(1, YY_("syntax error, unexpected %s"));
       YYCASE_(2, YY_("syntax error, unexpected %s, expecting %s"));
@@ -1124,10 +1169,9 @@ yysyntax_error (YYSIZE_T *yymsg_alloc, char **yymsg,
 
   {
     YYSIZE_T yysize1 = yysize + yystrlen (yyformat);
-    if (yysize <= yysize1 && yysize1 <= YYSTACK_ALLOC_MAXIMUM)
-      yysize = yysize1;
-    else
+    if (! (yysize <= yysize1 && yysize1 <= YYSTACK_ALLOC_MAXIMUM))
       return 2;
+    yysize = yysize1;
   }
 
   if (*yymsg_alloc < yysize)
@@ -1174,38 +1218,7 @@ yydestruct (const char *yymsg, int yytype, YYSTYPE *yyvaluep)
   YY_SYMBOL_PRINT (yymsg, yytype, yyvaluep, yylocationp);
 
   YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
-  switch (yytype)
-    {
-    case 65: /* choice_entry  */
-      {
-	fprintf(stderr, "%s:%d: missing end statement for this entry\n",
-		((*yyvaluep).menu)->file->name, ((*yyvaluep).menu)->lineno);
-	if (current_menu == ((*yyvaluep).menu))
-		menu_end_menu();
-}
-        break;
-
-    case 74: /* if_entry  */
-      {
-	fprintf(stderr, "%s:%d: missing end statement for this entry\n",
-		((*yyvaluep).menu)->file->name, ((*yyvaluep).menu)->lineno);
-	if (current_menu == ((*yyvaluep).menu))
-		menu_end_menu();
-}
-        break;
-
-    case 78: /* menu_entry  */
-      {
-	fprintf(stderr, "%s:%d: missing end statement for this entry\n",
-		((*yyvaluep).menu)->file->name, ((*yyvaluep).menu)->lineno);
-	if (current_menu == ((*yyvaluep).menu))
-		menu_end_menu();
-}
-        break;
-
-      default:
-        break;
-    }
+  YYUSE (yytype);
   YY_IGNORE_MAYBE_UNINITIALIZED_END
 }
 
@@ -1284,33 +1297,23 @@ yyparse (void)
   yychar = YYEMPTY; /* Cause a token to be read.  */
   goto yysetstate;
 
-
 /*------------------------------------------------------------.
-| yynewstate -- push a new state, which is found in yystate.  |
+| yynewstate -- Push a new state, which is found in yystate.  |
 `------------------------------------------------------------*/
-yynewstate:
+ yynewstate:
   /* In all cases, when you get here, the value and location stacks
      have just been pushed.  So pushing a state here evens the stacks.  */
   yyssp++;
 
-
-/*--------------------------------------------------------------------.
-| yynewstate -- set current state (the top of the stack) to yystate.  |
-`--------------------------------------------------------------------*/
-yysetstate:
-  YYDPRINTF ((stderr, "Entering state %d\n", yystate));
-  YY_ASSERT (0 <= yystate && yystate < YYNSTATES);
-  *yyssp = (yytype_int16) yystate;
+ yysetstate:
+  *yyssp = yystate;
 
   if (yyss + yystacksize - 1 <= yyssp)
-#if !defined yyoverflow && !defined YYSTACK_RELOCATE
-    goto yyexhaustedlab;
-#else
     {
       /* Get the current used size of the three stacks, in elements.  */
-      YYSIZE_T yysize = (YYSIZE_T) (yyssp - yyss + 1);
+      YYSIZE_T yysize = yyssp - yyss + 1;
 
-# if defined yyoverflow
+#ifdef yyoverflow
       {
         /* Give user a chance to reallocate the stack.  Use copies of
            these so that the &'s don't force the real ones into
@@ -1326,10 +1329,14 @@ yysetstate:
                     &yyss1, yysize * sizeof (*yyssp),
                     &yyvs1, yysize * sizeof (*yyvsp),
                     &yystacksize);
+
         yyss = yyss1;
         yyvs = yyvs1;
       }
-# else /* defined YYSTACK_RELOCATE */
+#else /* no yyoverflow */
+# ifndef YYSTACK_RELOCATE
+      goto yyexhaustedlab;
+# else
       /* Extend the stack our own way.  */
       if (YYMAXDEPTH <= yystacksize)
         goto yyexhaustedlab;
@@ -1345,33 +1352,35 @@ yysetstate:
           goto yyexhaustedlab;
         YYSTACK_RELOCATE (yyss_alloc, yyss);
         YYSTACK_RELOCATE (yyvs_alloc, yyvs);
-# undef YYSTACK_RELOCATE
+#  undef YYSTACK_RELOCATE
         if (yyss1 != yyssa)
           YYSTACK_FREE (yyss1);
       }
 # endif
+#endif /* no yyoverflow */
 
       yyssp = yyss + yysize - 1;
       yyvsp = yyvs + yysize - 1;
 
       YYDPRINTF ((stderr, "Stack size increased to %lu\n",
-                  (unsigned long) yystacksize));
+                  (unsigned long int) yystacksize));
 
       if (yyss + yystacksize - 1 <= yyssp)
         YYABORT;
     }
-#endif /* !defined yyoverflow && !defined YYSTACK_RELOCATE */
+
+  YYDPRINTF ((stderr, "Entering state %d\n", yystate));
 
   if (yystate == YYFINAL)
     YYACCEPT;
 
   goto yybackup;
 
-
 /*-----------.
 | yybackup.  |
 `-----------*/
 yybackup:
+
   /* Do appropriate processing given the current state.  Read a
      lookahead token if we need one and don't already have one.  */
 
@@ -1429,6 +1438,7 @@ yybackup:
   YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
   *++yyvsp = yylval;
   YY_IGNORE_MAYBE_UNINITIALIZED_END
+
   goto yynewstate;
 
 
@@ -1443,7 +1453,7 @@ yydefault:
 
 
 /*-----------------------------.
-| yyreduce -- do a reduction.  |
+| yyreduce -- Do a reduction.  |
 `-----------------------------*/
 yyreduce:
   /* yyn is the number of a rule to reduce with.  */
@@ -1463,400 +1473,356 @@ yyreduce:
   YY_REDUCE_PRINT (yyn);
   switch (yyn)
     {
-  case 4:
+        case 11:
+
     {
-	menu_add_prompt(P_MENU, (yyvsp[-1].string), NULL);
-}
+      add_config_var((yyvsp[-2].string), S_BOOLEAN, (yyvsp[-1].string), NULL);
+    }
+
     break;
 
-  case 9:
-    { zconf_error("unknown statement \"%s\"", (yyvsp[-2].string)); }
+  case 12:
+
+    {
+      add_config_var((yyvsp[-2].string), S_TRISTATE, (yyvsp[-1].string), NULL);
+    }
+
     break;
 
-  case 10:
-    { zconf_error("invalid statement"); }
+  case 13:
+
+    {
+      add_config_var((yyvsp[-2].string), S_BOOLEAN, (yyvsp[-1].string), NULL);
+    }
+
+    break;
+
+  case 14:
+
+    {
+      add_config_var((yyvsp[-2].string), S_TRISTATE, (yyvsp[-1].string), NULL);
+    }
+
+    break;
+
+  case 15:
+
+    {
+      add_config_var((yyvsp[-2].string), S_TRISTATE, NULL, (yyvsp[-1].list));
+    }
+
+    break;
+
+  case 16:
+
+    {
+      add_config_var((yyvsp[-2].string), S_BOOLEAN, NULL, (yyvsp[-1].list));
+    }
+
     break;
 
   case 17:
+
     {
-	(yyvsp[-1].symbol)->flags |= SYMBOL_OPTIONAL;
-	menu_add_entry((yyvsp[-1].symbol));
-	printd(DEBUG_PARSE, "%s:%d:config %s\n", zconf_curname(), zconf_lineno(), (yyvsp[-1].symbol)->name);
-}
+      add_config_var((yyvsp[-2].string), S_BOOLEAN, NULL, (yyvsp[-1].list));
+    }
+
     break;
 
   case 18:
+
     {
-	printd(DEBUG_PARSE, "%s:%d:endconfig\n", zconf_curname(), zconf_lineno());
-}
+      add_config_var((yyvsp[-2].string), S_INT, (yyvsp[-1].string), NULL);
+    }
+
     break;
 
   case 19:
+
     {
-	(yyvsp[-1].symbol)->flags |= SYMBOL_OPTIONAL;
-	menu_add_entry((yyvsp[-1].symbol));
-	printd(DEBUG_PARSE, "%s:%d:menuconfig %s\n", zconf_curname(), zconf_lineno(), (yyvsp[-1].symbol)->name);
-}
+      // ignores min max option
+      add_config_var((yyvsp[-3].string), S_INT, (yyvsp[-2].string), NULL);
+    }
+
     break;
 
   case 20:
+
     {
-	if (current_entry->prompt)
-		current_entry->prompt->type = P_MENU;
-	else
-		zconfprint("warning: menuconfig statement without prompt");
-	printd(DEBUG_PARSE, "%s:%d:endconfig\n", zconf_curname(), zconf_lineno());
-}
+      add_config_var((yyvsp[-2].string), S_HEX, (yyvsp[-1].string), NULL);
+    }
+
     break;
 
-  case 25:
+  case 21:
+
     {
-	menu_set_type((yyvsp[-2].type));
-	printd(DEBUG_PARSE, "%s:%d:type(%u)\n",
-		zconf_curname(), zconf_lineno(),
-		(yyvsp[-2].type));
-}
+      add_config_var((yyvsp[-2].string), S_HEX, (yyvsp[-1].string), NULL);
+    }
+
     break;
 
-  case 26:
+  case 22:
+
     {
-	menu_add_prompt(P_PROMPT, (yyvsp[-2].string), (yyvsp[-1].expr));
-	printd(DEBUG_PARSE, "%s:%d:prompt\n", zconf_curname(), zconf_lineno());
-}
+      add_config_var((yyvsp[-2].string), S_STRING, (yyvsp[-1].string), NULL);
+    }
+
+    break;
+
+  case 23:
+
+    {
+      add_config_var((yyvsp[-2].string), S_STRING, (yyvsp[-1].string), NULL);
+    }
+
+    break;
+
+  case 24:
+
+    {
+      char *t;
+      int entry;
+
+      struct symbol *sym = sym_lookup(NULL, SYMBOL_CHOICE);
+      sym->flags |= SYMBOL_AUTO;
+      menu_add_entry(sym);
+      menu_add_expr(P_CHOICE, NULL, NULL);
+      printd(DEBUG_PARSE, "%s:%d:choice\n", filename, bconflineno);
+
+      menu_add_menu();
+
+      t = strtok((yyvsp[-2].string), " \t\n");
+      entry = 0;
+      while (NULL != t) {
+        if (1 == entry) { // choice string contains description/config var pairs
+          struct symbol *sym = sym_lookup(t, 0);
+          sym->flags |= SYMBOL_OPTIONAL;
+          menu_add_entry(sym);
+          printd(DEBUG_PARSE, "%s:%d:config %s\n", filename, bconflineno, t);
+          menu_set_type(S_BOOLEAN);
+          printd(DEBUG_PARSE, "%s:%d:type(%u)\n",
+                 filename, bconflineno,
+                 S_BOOLEAN);
+          menu_end_entry();
+          printd(DEBUG_PARSE, "%s:%d:endconfig\n", filename, bconflineno);
+        }
+        t = strtok(NULL, " \t\n");
+        entry = (entry + 1) % 2;
+      }
+
+      menu_end_menu();
+      printd(DEBUG_PARSE, "%s:%d:endchoice\n", filename, bconflineno);
+    }
+
     break;
 
   case 27:
-    {
-	menu_add_expr(P_DEFAULT, (yyvsp[-2].expr), (yyvsp[-1].expr));
-	if ((yyvsp[-3].type) != S_UNKNOWN)
-		menu_set_type((yyvsp[-3].type));
-	printd(DEBUG_PARSE, "%s:%d:default(%u)\n",
-		zconf_curname(), zconf_lineno(),
-		(yyvsp[-3].type));
-}
+
+    { (yyval.string) = (yyvsp[0].string); }
+
     break;
 
   case 28:
-    {
-	menu_add_symbol(P_SELECT, (yyvsp[-2].symbol), (yyvsp[-1].expr));
-	printd(DEBUG_PARSE, "%s:%d:select\n", zconf_curname(), zconf_lineno());
-}
+
+    { (yyval.string) = (yyvsp[0].string); }
+
     break;
 
   case 29:
-    {
-	menu_add_symbol(P_IMPLY, (yyvsp[-2].symbol), (yyvsp[-1].expr));
-	printd(DEBUG_PARSE, "%s:%d:imply\n", zconf_curname(), zconf_lineno());
-}
+
+    { (yyval.string) = NULL; }
+
     break;
 
   case 30:
-    {
-	menu_add_expr(P_RANGE, expr_alloc_comp(E_RANGE,(yyvsp[-3].symbol), (yyvsp[-2].symbol)), (yyvsp[-1].expr));
-	printd(DEBUG_PARSE, "%s:%d:range\n", zconf_curname(), zconf_lineno());
-}
+
+    { (yyval.string) = (yyvsp[0].string); }
+
     break;
 
   case 31:
+
     {
-	menu_add_option_modules();
-}
+      (yyval.list) = malloc(sizeof(struct linked_list));
+      (yyval.list)->next = NULL;
+      (yyval.list)->data = (yyvsp[0].string);
+    }
+
     break;
 
   case 32:
-    {
-	menu_add_option_defconfig_list();
-}
-    break;
 
-  case 33:
     {
-	menu_add_option_allnoconfig_y();
-}
-    break;
+      (yyval.list) = malloc(sizeof(struct linked_list));
+      (yyval.list)->next = (yyvsp[-1].list);
+      (yyval.list)->data = (yyvsp[0].string);
+    }
 
-  case 34:
-    {
-	struct symbol *sym = sym_lookup((yyvsp[-1].string), SYMBOL_CHOICE);
-	sym->flags |= SYMBOL_NO_WRITE;
-	menu_add_entry(sym);
-	menu_add_expr(P_CHOICE, NULL, NULL);
-	free((yyvsp[-1].string));
-	printd(DEBUG_PARSE, "%s:%d:choice\n", zconf_curname(), zconf_lineno());
-}
-    break;
-
-  case 35:
-    {
-	(yyval.menu) = menu_add_menu();
-}
     break;
 
   case 36:
-    {
-	if (zconf_endtoken((yyvsp[0].string), "choice")) {
-		menu_end_menu();
-		printd(DEBUG_PARSE, "%s:%d:endchoice\n", zconf_curname(), zconf_lineno());
-	}
-}
+
+    { exit_if_block(); }
+
     break;
 
-  case 42:
-    {
-	menu_add_prompt(P_PROMPT, (yyvsp[-2].string), (yyvsp[-1].expr));
-	printd(DEBUG_PARSE, "%s:%d:prompt\n", zconf_curname(), zconf_lineno());
-}
+  case 37:
+
+    { enter_if_branch((yyvsp[0].expr)); }
+
     break;
 
-  case 43:
-    {
-	menu_set_type((yyvsp[-2].type));
-	printd(DEBUG_PARSE, "%s:%d:type(%u)\n",
-	       zconf_curname(), zconf_lineno(), (yyvsp[-2].type));
-}
-    break;
+  case 41:
 
-  case 44:
-    {
-	current_entry->sym->flags |= SYMBOL_OPTIONAL;
-	printd(DEBUG_PARSE, "%s:%d:optional\n", zconf_curname(), zconf_lineno());
-}
+    { enter_elif_branch((yyvsp[0].expr)); }
+
     break;
 
   case 45:
-    {
-	menu_add_symbol(P_DEFAULT, (yyvsp[-2].symbol), (yyvsp[-1].expr));
-	printd(DEBUG_PARSE, "%s:%d:default\n",
-	       zconf_curname(), zconf_lineno());
-}
+
+    { enter_else_branch(); }
+
     break;
 
   case 47:
-    { (yyval.type) = S_INT; }
+
+    { (yyval.expr) = (yyvsp[0].expr); }
+
     break;
 
   case 48:
-    { (yyval.type) = S_HEX; }
+
+    { (yyval.expr) = expr_alloc_two(E_OR, (yyvsp[-2].expr), (yyvsp[0].expr)); }
+
     break;
 
   case 49:
-    { (yyval.type) = S_STRING; }
+
+    { (yyval.expr) = (yyvsp[0].expr); }
+
     break;
 
   case 50:
-    { (yyval.type) = S_BOOLEAN; }
+
+    { (yyval.expr) = expr_alloc_two(E_AND, (yyvsp[-2].expr), (yyvsp[0].expr)); }
+
     break;
 
   case 51:
-    { (yyval.type) = S_TRISTATE; }
+
+    { (yyval.expr) = expr_alloc_symbol((yyvsp[0].symbol)); }
+
     break;
 
   case 52:
-    { (yyval.type) = S_UNKNOWN; }
+
+    { (yyval.expr) = expr_alloc_one(E_NOT, (yyvsp[0].expr)); }
+
     break;
 
   case 53:
-    { (yyval.type) = S_BOOLEAN; }
+
+    {
+      if (strlen((yyvsp[0].symbol)->name) == 1) {
+        switch ((yyvsp[0].symbol)->name[0]) {
+        case 'y':
+          // Fall through
+        case 'm':
+          (yyval.expr) = expr_alloc_symbol((yyvsp[-2].symbol));
+          break;
+        case 'n':
+          (yyval.expr) = expr_alloc_symbol((yyvsp[-2].symbol));
+          break;
+        default:
+          (yyval.expr) = expr_alloc_comp(E_EQUAL, (yyvsp[-2].symbol), (yyvsp[0].symbol));
+          break;
+        }
+      } else {
+        (yyval.expr) = expr_alloc_comp(E_EQUAL, (yyvsp[-2].symbol), (yyvsp[0].symbol));
+      }
+    }
+
     break;
 
   case 54:
-    { (yyval.type) = S_TRISTATE; }
+
+    {
+      (yyval.expr) = expr_alloc_comp(E_UNEQUAL, (yyvsp[-2].symbol), (yyvsp[0].symbol));
+    }
+
+    break;
+
+  case 55:
+
+    { (yyval.expr) = expr_alloc_one(E_NOT, expr_alloc_symbol((yyvsp[0].symbol))); }
+
+    break;
+
+  case 56:
+
+    { bconferror("not yet implemented"); }
+
     break;
 
   case 57:
-    {
-	printd(DEBUG_PARSE, "%s:%d:if\n", zconf_curname(), zconf_lineno());
-	menu_add_entry(NULL);
-	menu_add_dep((yyvsp[-1].expr));
-	(yyval.menu) = menu_add_menu();
-}
+
+    { bconferror("not yet implemented"); }
+
     break;
 
   case 58:
-    {
-	if (zconf_endtoken((yyvsp[0].string), "if")) {
-		menu_end_menu();
-		printd(DEBUG_PARSE, "%s:%d:endif\n", zconf_curname(), zconf_lineno());
-	}
-}
+
+    { bconferror("not yet implemented"); }
+
+    break;
+
+  case 59:
+
+    { bconferror("not yet implemented"); }
+
     break;
 
   case 60:
-    {
-	menu_add_entry(NULL);
-	menu_add_prompt(P_MENU, (yyvsp[-1].string), NULL);
-	printd(DEBUG_PARSE, "%s:%d:menu\n", zconf_curname(), zconf_lineno());
-}
+
+    { bconferror("not yet implemented"); }
+
     break;
 
   case 61:
-    {
-	(yyval.menu) = menu_add_menu();
-}
+
+    { bconferror("not yet implemented"); }
+
     break;
 
   case 62:
-    {
-	if (zconf_endtoken((yyvsp[0].string), "menu")) {
-		menu_end_menu();
-		printd(DEBUG_PARSE, "%s:%d:endmenu\n", zconf_curname(), zconf_lineno());
-	}
-}
+
+    { bconferror("not yet implemented"); }
+
     break;
 
-  case 67:
-    {
-	printd(DEBUG_PARSE, "%s:%d:source %s\n", zconf_curname(), zconf_lineno(), (yyvsp[-1].string));
-	zconf_nextfile((yyvsp[-1].string));
-	free((yyvsp[-1].string));
-}
+  case 63:
+
+    { (yyval.symbol) = sym_lookup((yyvsp[0].string), 0); }
+
     break;
 
-  case 68:
-    {
-	menu_add_entry(NULL);
-	menu_add_prompt(P_COMMENT, (yyvsp[-1].string), NULL);
-	printd(DEBUG_PARSE, "%s:%d:comment\n", zconf_curname(), zconf_lineno());
-}
+  case 64:
+
+    { (yyval.symbol) = sym_lookup((yyvsp[0].string), 0); }
+
     break;
 
-  case 72:
-    {
-	printd(DEBUG_PARSE, "%s:%d:help\n", zconf_curname(), zconf_lineno());
-	zconf_starthelp();
-}
+  case 65:
+
+    { (yyval.symbol) = sym_lookup((yyvsp[0].string), SYMBOL_CONST); }
+
     break;
 
-  case 73:
-    {
-	if (current_entry->help) {
-		free(current_entry->help);
-		zconfprint("warning: '%s' defined with more than one help text -- only the last one will be used",
-			   current_entry->sym->name ?: "<choice>");
-	}
+  case 66:
 
-	/* Is the help text empty or all whitespace? */
-	if ((yyvsp[0].string)[strspn((yyvsp[0].string), " \f\n\r\t\v")] == '\0')
-		zconfprint("warning: '%s' defined with blank help text",
-			   current_entry->sym->name ?: "<choice>");
+    { (yyval.symbol) = sym_lookup((yyvsp[0].string), 0); }
 
-	current_entry->help = (yyvsp[0].string);
-}
-    break;
-
-  case 74:
-    {
-	menu_add_dep((yyvsp[-1].expr));
-	printd(DEBUG_PARSE, "%s:%d:depends on\n", zconf_curname(), zconf_lineno());
-}
-    break;
-
-  case 75:
-    {
-	menu_add_visibility((yyvsp[-1].expr));
-}
-    break;
-
-  case 77:
-    {
-	menu_add_prompt(P_PROMPT, (yyvsp[-1].string), (yyvsp[0].expr));
-}
-    break;
-
-  case 80:
-    { (yyval.string) = "menu"; }
-    break;
-
-  case 81:
-    { (yyval.string) = "choice"; }
-    break;
-
-  case 82:
-    { (yyval.string) = "if"; }
-    break;
-
-  case 83:
-    { (yyval.expr) = NULL; }
-    break;
-
-  case 84:
-    { (yyval.expr) = (yyvsp[0].expr); }
-    break;
-
-  case 85:
-    { (yyval.expr) = expr_alloc_symbol((yyvsp[0].symbol)); }
-    break;
-
-  case 86:
-    { (yyval.expr) = expr_alloc_comp(E_LTH, (yyvsp[-2].symbol), (yyvsp[0].symbol)); }
-    break;
-
-  case 87:
-    { (yyval.expr) = expr_alloc_comp(E_LEQ, (yyvsp[-2].symbol), (yyvsp[0].symbol)); }
-    break;
-
-  case 88:
-    { (yyval.expr) = expr_alloc_comp(E_GTH, (yyvsp[-2].symbol), (yyvsp[0].symbol)); }
-    break;
-
-  case 89:
-    { (yyval.expr) = expr_alloc_comp(E_GEQ, (yyvsp[-2].symbol), (yyvsp[0].symbol)); }
-    break;
-
-  case 90:
-    { (yyval.expr) = expr_alloc_comp(E_EQUAL, (yyvsp[-2].symbol), (yyvsp[0].symbol)); }
-    break;
-
-  case 91:
-    { (yyval.expr) = expr_alloc_comp(E_UNEQUAL, (yyvsp[-2].symbol), (yyvsp[0].symbol)); }
-    break;
-
-  case 92:
-    { (yyval.expr) = (yyvsp[-1].expr); }
-    break;
-
-  case 93:
-    { (yyval.expr) = expr_alloc_one(E_NOT, (yyvsp[0].expr)); }
-    break;
-
-  case 94:
-    { (yyval.expr) = expr_alloc_two(E_OR, (yyvsp[-2].expr), (yyvsp[0].expr)); }
-    break;
-
-  case 95:
-    { (yyval.expr) = expr_alloc_two(E_AND, (yyvsp[-2].expr), (yyvsp[0].expr)); }
-    break;
-
-  case 96:
-    { (yyval.symbol) = sym_lookup((yyvsp[0].string), 0); free((yyvsp[0].string)); }
-    break;
-
-  case 98:
-    { (yyval.symbol) = sym_lookup((yyvsp[0].string), SYMBOL_CONST); free((yyvsp[0].string)); }
-    break;
-
-  case 99:
-    { (yyval.string) = NULL; }
-    break;
-
-  case 101:
-    { variable_add((yyvsp[-3].string), (yyvsp[-1].string), (yyvsp[-2].flavor)); free((yyvsp[-3].string)); free((yyvsp[-1].string)); }
-    break;
-
-  case 102:
-    { (yyval.flavor) = VAR_RECURSIVE; }
-    break;
-
-  case 103:
-    { (yyval.flavor) = VAR_SIMPLE; }
-    break;
-
-  case 104:
-    { (yyval.flavor) = VAR_APPEND; }
-    break;
-
-  case 105:
-    { (yyval.string) = xstrdup(""); }
     break;
 
 
@@ -1885,13 +1851,14 @@ yyreduce:
   /* Now 'shift' the result of the reduction.  Determine what state
      that goes to, based on the state we popped back to and the rule
      number reduced by.  */
-  {
-    const int yylhs = yyr1[yyn] - YYNTOKENS;
-    const int yyi = yypgoto[yylhs] + *yyssp;
-    yystate = (0 <= yyi && yyi <= YYLAST && yycheck[yyi] == *yyssp
-               ? yytable[yyi]
-               : yydefgoto[yylhs]);
-  }
+
+  yyn = yyr1[yyn];
+
+  yystate = yypgoto[yyn - YYNTOKENS] + *yyssp;
+  if (0 <= yystate && yystate <= YYLAST && yycheck[yystate] == *yyssp)
+    yystate = yytable[yystate];
+  else
+    yystate = yydefgoto[yyn - YYNTOKENS];
 
   goto yynewstate;
 
@@ -1974,10 +1941,12 @@ yyerrlab:
 | yyerrorlab -- error raised explicitly by YYERROR.  |
 `---------------------------------------------------*/
 yyerrorlab:
-  /* Pacify compilers when the user code never invokes YYERROR and the
-     label yyerrorlab therefore never appears in user code.  */
-  if (0)
-    YYERROR;
+
+  /* Pacify compilers like GCC when the user code never invokes
+     YYERROR and the label yyerrorlab therefore never appears in user
+     code.  */
+  if (/*CONSTCOND*/ 0)
+     goto yyerrorlab;
 
   /* Do not reclaim the symbols of the rule whose action triggered
      this YYERROR.  */
@@ -2039,14 +2008,12 @@ yyacceptlab:
   yyresult = 0;
   goto yyreturn;
 
-
 /*-----------------------------------.
 | yyabortlab -- YYABORT comes here.  |
 `-----------------------------------*/
 yyabortlab:
   yyresult = 1;
   goto yyreturn;
-
 
 #if !defined yyoverflow || YYERROR_VERBOSE
 /*-------------------------------------------------.
@@ -2058,10 +2025,6 @@ yyexhaustedlab:
   /* Fall through.  */
 #endif
 
-
-/*-----------------------------------------------------.
-| yyreturn -- parsing is finished, return the result.  |
-`-----------------------------------------------------*/
 yyreturn:
   if (yychar != YYEMPTY)
     {
@@ -2093,245 +2056,67 @@ yyreturn:
 }
 
 
-void conf_parse(const char *name)
+
+#include "bconf.lex.c"
+
+char *filename;
+
+bconf_parse(char *file)
 {
 	struct symbol *sym;
 	int i;
 
-	zconf_initscan(name);
+#ifdef TRACE_BISON
+  yydebug = 1;
+#endif //TRACE_BISON
+#ifdef TRACE_ZCONF
+  cdebug = 2;
+#endif //TRACE_ZCONF
+  bconfin = fopen(file, "r");
+  filename = file;
+  bconflineno = 1;
 
+	sym_init();
 	_menu_init();
+	modules_sym = sym_lookup(NULL, 0);
+	modules_sym->type = S_BOOLEAN;
+	modules_sym->flags |= SYMBOL_AUTO;
+	rootmenu.prompt = menu_add_prompt(P_MENU, "Linux Kernel Configuration", NULL);
 
-	if (getenv("ZCONF_DEBUG"))
-		yydebug = 1;
-	yyparse();
+	/* if (getenv("ZCONF_DEBUG")) */
+	/* 	zconfdebug = 1; */
+  bconfparse();
+	if (!modules_sym->prop) {
+		struct property *prop;
 
-	/* Variables are expanded in the parse phase. We can free them here. */
-	variable_all_del();
-
-	if (yynerrs)
-		exit(1);
-	if (!modules_sym)
-		modules_sym = sym_find( "n" );
-
-	if (!menu_has_prompt(&rootmenu)) {
-		current_entry = &rootmenu;
-		menu_add_prompt(P_MENU, "Main menu", NULL);
+		prop = prop_alloc(P_DEFAULT, modules_sym);
+		prop->expr = expr_alloc_symbol(sym_lookup("MODULES", 0));
 	}
+
+	rootmenu.prompt->text = _(rootmenu.prompt->text);
+	rootmenu.prompt->text = sym_expand_string_value(rootmenu.prompt->text);
 
 	menu_finalize(&rootmenu);
-	for_all_symbols(i, sym) {
-		if (sym_check_deps(sym))
-			yynerrs++;
-	}
-	if (yynerrs)
-		exit(1);
-	sym_set_change_count(1);
+	/* for_all_symbols(i, sym) { */
+	/* 	if (sym_check_deps(sym)) */
+  /*     exit(1); */
+  /* } */
+	/* sym_set_change_count(1); */
 }
 
-static bool zconf_endtoken(const char *tokenname,
-			   const char *expected_tokenname)
+bconf_test_lexer(char *file)
 {
-	if (strcmp(tokenname, expected_tokenname)) {
-		zconf_error("unexpected '%s' within %s block",
-			    tokenname, expected_tokenname);
-		yynerrs++;
-		return false;
-	}
-	if (current_menu->file != current_file) {
-		zconf_error("'%s' in different file than '%s'",
-			    tokenname, expected_tokenname);
-		fprintf(stderr, "%s:%d: location of the '%s'\n",
-			current_menu->file->name, current_menu->lineno,
-			expected_tokenname);
-		yynerrs++;
-		return false;
-	}
-	return true;
+  int t;
+
+  bconfin = fopen(file, "r");
+  filename = file;
+  bconflineno = 1;
+  while (t = bconflex()) {
+    printf("%s: %s\n", yytname[t - 255], bconftext);
+  }
 }
 
-static void zconfprint(const char *err, ...)
-{
-	va_list ap;
-
-	fprintf(stderr, "%s:%d: ", zconf_curname(), zconf_lineno());
-	va_start(ap, err);
-	vfprintf(stderr, err, ap);
-	va_end(ap);
-	fprintf(stderr, "\n");
+bconferror(char *msg) {
+  fprintf(stderr, "error:%s:%d: %s\n", filename, bconflineno, msg);
+  exit(1);
 }
-
-static void zconf_error(const char *err, ...)
-{
-	va_list ap;
-
-	yynerrs++;
-	fprintf(stderr, "%s:%d: ", zconf_curname(), zconf_lineno());
-	va_start(ap, err);
-	vfprintf(stderr, err, ap);
-	va_end(ap);
-	fprintf(stderr, "\n");
-}
-
-static void yyerror(const char *err)
-{
-	fprintf(stderr, "%s:%d: %s\n", zconf_curname(), zconf_lineno() + 1, err);
-}
-
-static void print_quoted_string(FILE *out, const char *str)
-{
-	const char *p;
-	int len;
-
-	putc('"', out);
-	while ((p = strchr(str, '"'))) {
-		len = p - str;
-		if (len)
-			fprintf(out, "%.*s", len, str);
-		fputs("\\\"", out);
-		str = p + 1;
-	}
-	fputs(str, out);
-	putc('"', out);
-}
-
-static void print_symbol(FILE *out, struct menu *menu)
-{
-	struct symbol *sym = menu->sym;
-	struct property *prop;
-
-	if (sym_is_choice(sym))
-		fprintf(out, "\nchoice\n");
-	else
-		fprintf(out, "\nconfig %s\n", sym->name);
-	switch (sym->type) {
-	case S_BOOLEAN:
-		fputs("  bool\n", out);
-		break;
-	case S_TRISTATE:
-		fputs("  tristate\n", out);
-		break;
-	case S_STRING:
-		fputs("  string\n", out);
-		break;
-	case S_INT:
-		fputs("  integer\n", out);
-		break;
-	case S_HEX:
-		fputs("  hex\n", out);
-		break;
-	default:
-		fputs("  ???\n", out);
-		break;
-	}
-	for (prop = sym->prop; prop; prop = prop->next) {
-		if (prop->menu != menu)
-			continue;
-		switch (prop->type) {
-		case P_PROMPT:
-			fputs("  prompt ", out);
-			print_quoted_string(out, prop->text);
-			if (!expr_is_yes(prop->visible.expr)) {
-				fputs(" if ", out);
-				expr_fprint(prop->visible.expr, out);
-			}
-			fputc('\n', out);
-			break;
-		case P_DEFAULT:
-			fputs( "  default ", out);
-			expr_fprint(prop->expr, out);
-			if (!expr_is_yes(prop->visible.expr)) {
-				fputs(" if ", out);
-				expr_fprint(prop->visible.expr, out);
-			}
-			fputc('\n', out);
-			break;
-		case P_CHOICE:
-			fputs("  #choice value\n", out);
-			break;
-		case P_SELECT:
-			fputs( "  select ", out);
-			expr_fprint(prop->expr, out);
-			fputc('\n', out);
-			break;
-		case P_IMPLY:
-			fputs( "  imply ", out);
-			expr_fprint(prop->expr, out);
-			fputc('\n', out);
-			break;
-		case P_RANGE:
-			fputs( "  range ", out);
-			expr_fprint(prop->expr, out);
-			fputc('\n', out);
-			break;
-		case P_MENU:
-			fputs( "  menu ", out);
-			print_quoted_string(out, prop->text);
-			fputc('\n', out);
-			break;
-		case P_SYMBOL:
-			fputs( "  symbol ", out);
-			fprintf(out, "%s\n", prop->sym->name);
-			break;
-		default:
-			fprintf(out, "  unknown prop %d!\n", prop->type);
-			break;
-		}
-	}
-	if (menu->help) {
-		int len = strlen(menu->help);
-		while (menu->help[--len] == '\n')
-			menu->help[len] = 0;
-		fprintf(out, "  help\n%s\n", menu->help);
-	}
-}
-
-void zconfdump(FILE *out)
-{
-	struct property *prop;
-	struct symbol *sym;
-	struct menu *menu;
-
-	menu = rootmenu.list;
-	while (menu) {
-		if ((sym = menu->sym))
-			print_symbol(out, menu);
-		else if ((prop = menu->prompt)) {
-			switch (prop->type) {
-			case P_COMMENT:
-				fputs("\ncomment ", out);
-				print_quoted_string(out, prop->text);
-				fputs("\n", out);
-				break;
-			case P_MENU:
-				fputs("\nmenu ", out);
-				print_quoted_string(out, prop->text);
-				fputs("\n", out);
-				break;
-			default:
-				;
-			}
-			if (!expr_is_yes(prop->visible.expr)) {
-				fputs("  depends ", out);
-				expr_fprint(prop->visible.expr, out);
-				fputc('\n', out);
-			}
-		}
-
-		if (menu->list)
-			menu = menu->list;
-		else if (menu->next)
-			menu = menu->next;
-		else while ((menu = menu->parent)) {
-			if (menu->prompt && menu->prompt->type == P_MENU)
-				fputs("\nendmenu\n", out);
-			if (menu->next) {
-				menu = menu->next;
-				break;
-			}
-		}
-	}
-}
-
-#include "util.c"
-#include "menu.c"

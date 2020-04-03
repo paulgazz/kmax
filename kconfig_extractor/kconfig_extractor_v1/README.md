@@ -10,43 +10,20 @@ made:
 
         bool searched;
         bool depends;
-3. In `expr.h`, `struct property` is given an extra field in order to
+3. 	In `expr.h`, `struct_property` is given an extra field in order to
        save a select's original dependency `if` dependency, if any.
 
         struct expr *original_expr;
 
-    This is used in conjunction with a change in `menu.c`'s
-    `menu_add_prop` that saves the original visible expression after
-    parsing the select line.
-    
-    Insert the following into the function `menu_add_prop`:
+    This is used in conjunction with a change in `menu.c` that saves
+    the original original after parsing the select line.
     
           if (P_SELECT == type) {
             // hang on to the original for kmax
             prop->original_expr = prop->visible.expr;
           }
-          
-    Right after 
-    
-        struct property *prop = prop_alloc(type, current_entry->sym);
-
-        prop->menu = current_entry;
-        prop->expr = expr;
-        prop->visible.expr = dep;
-        //insert it here
 
     The reason this is done is to avoid clause blowup in dimacs due to
     a config's entire dependencies between conjoined with select's
     `if` dependencies.  Our Boolean formulae already account for
     dependencies and don't need them on the select.
-
-4. Add an undeclared symbol type so that we can distinguish between
-   configs that haven't been declared and default values on unknown
-   type.
-
-        // expr.h
-        enum symbol_type {
-          S_UNKNOWN, S_BOOLEAN, S_TRISTATE, S_INT, S_HEX, S_STRING, S_UNDECLARED
-        };
-
-

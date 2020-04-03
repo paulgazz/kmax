@@ -14,27 +14,32 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-CPROGS := kconfig_extractor 
-SRC = confdata.c expr.c preprocess.c symbol.c lexer.lex.c parser.tab.c kconfig_extractor.c
-OBJ = $(SRC:%.c=%.o)
+CPROGS := check_dep
+# GENERATED := zconf.hash.c zconf.tab.c zconf.lex.c
+GENERATED := zconf.tab.c zconf.lex.c
 
 .PHONY: all clean configure clobber check-dep
 
-all: $(OBJ) $(GENERATED) $(CPROGS)
+all: $(GENERATED) $(CPROGS)
 
-parser.tab.o: parser.tab.c lexer.lex.c util.c confdata.c expr.c symbol.c menu.c lkc.h
+zconf.tab.o: zconf.tab.c zconf.hash.c zconf.lex.c util.c confdata.c expr.c symbol.c menu.c lkc.h
 
-kconfig_extractor: $(OBJ)
+bconf.tab.o: bconf.tab.c bconf.lex.c
+
+check_dep: check_dep.o zconf.tab.o bconf.tab.o
 	$(CC) $(CFLAGS) -o $@ $^
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-parser.tab.c: parser.y
-	bison -o parser.tab.c --defines=parser.tab.h -t -l parser.y
+zconf.hash.c: zconf.gperf
+	gperf -t --output-file $@ -a -C -E -g -k '1,3,$$' -p -t $<
 
-lexer.lex.c: lexer.l
-	flex -o lexer.lex.c -L lexer.l
+%.tab.c: %.y
+	bison -l -b $* -p $* -t $<
+
+%.lex.c: %.l
+	flex -o $@ $<
 
 clean:
 	$(RM) $(CPROGS) *.o

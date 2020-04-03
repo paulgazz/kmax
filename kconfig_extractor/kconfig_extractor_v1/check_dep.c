@@ -28,7 +28,6 @@
 #include <getopt.h>
 #include <sys/stat.h>
 #include <sys/time.h>
-#include <stdbool.h>
 
 #include "lkc.h"
 
@@ -60,7 +59,7 @@ enum {
   A_AUTOCONF_FREE,
   A_AUTOCONF_FEATURE_MODEL,
   A_AUTOCONF_CNF,
-  A_EXTRACT,
+  A_DIMACS,
   A_SEARCH,
   A_DEPSYM,
   A_IDEPSYM,
@@ -100,7 +99,7 @@ bool idepsym(struct symbol *);
 bool idepsym_expr(struct expr *);
 bool is_symbol(struct symbol *);
 
-/* extern void bconf_parse(char *file); */
+extern void bconf_parse(char *file);
 extern int expr_compare_type(enum expr_type t1, enum expr_type t2);
 
 /*
@@ -175,7 +174,7 @@ bool find_dep(struct expr *e, char *name)
 
   default:
     fprintf(stderr, "error: invalid expression type\n");
-    /* exit(1); */
+    exit(1);
 	}
 }
 
@@ -326,6 +325,7 @@ void print_python_symbol_detail(FILE *out, struct symbol *sym, bool force_naked)
     } else if (strcmp(sym->name, "n") == 0) {
       fprintf(out, "0");
     } else if (S_UNKNOWN == sym->type) {
+      /* fprintf(out, "0"); */
       fprintf(out, "\"%s\"", sym->name);
     } else {
       if (! force_naked) {
@@ -429,26 +429,6 @@ void print_python_expr(struct expr *e, FILE *out, enum expr_type prevtoken)
     fprintf(out, " and ");
     print_python_expr(e->right.expr, out, E_AND);
 		break;
-	case E_LTH:
-    print_python_symbol(out, e->left.sym);
-    fprintf(out, " < ");
-    print_python_symbol(out, e->right.sym);
-		break;
-	case E_LEQ:
-    print_python_symbol(out, e->left.sym);
-    fprintf(out, " <= ");
-    print_python_symbol(out, e->right.sym);
-		break;
-	case E_GTH:
-    print_python_symbol(out, e->left.sym);
-    fprintf(out, " > ");
-    print_python_symbol(out, e->right.sym);
-		break;
-	case E_GEQ:
-    print_python_symbol(out, e->left.sym);
-    fprintf(out, " >= ");
-    print_python_symbol(out, e->right.sym);
-		break;
 	case E_LIST:
     // TODO: this will break python parser
     //E_LIST is created in menu_finalize and is related to <choice>
@@ -468,8 +448,9 @@ void print_python_expr(struct expr *e, FILE *out, enum expr_type prevtoken)
 		break;
 	/* default: */
 	/*   { */
-	/* 	fprintf(stderr, "fatal: unknown expression type", e->type); */
-  /*   exit(1); */
+	/* 	char buf[32]; */
+	/* 	sprintf(buf, "<unknown type %d>", e->type); */
+	/* 	fn(data, NULL, buf); */
 	/* 	break; */
 	/*   } */
 	}
@@ -764,6 +745,7 @@ void write_config(bool (*in_config)(struct symbol *))
       continue;
 
     switch (sym->type) {
+    case S_OTHER:
     case S_UNKNOWN:
       break;
     case S_STRING:
@@ -934,7 +916,7 @@ void print_deps_expr(struct expr *e)
 
   default:
     fprintf(stderr, "error: invalid expression type\n");
-    /* exit(1); */
+    exit(1);
 	}
 }
 
@@ -995,7 +977,7 @@ bool defdeps_expr(struct expr *e)
 
   default:
     fprintf(stderr, "error: invalid expression type\n");
-    /* exit(1); */
+    exit(1);
 	}
 }
 
@@ -1061,7 +1043,7 @@ bool depsym_expr(struct expr *e)
 
   default:
     fprintf(stderr, "error: invalid expression type\n");
-    /* exit(1); */
+    exit(1);
 	}
 }
 
@@ -1126,7 +1108,7 @@ bool idepsym_expr(struct expr *e)
 
   default:
     fprintf(stderr, "error: invalid expression type\n");
-    /* exit(1); */
+    exit(1);
 	}
 }
 
@@ -1164,8 +1146,7 @@ void print_usage(void)
   printf("-a, --forceoffall file\tturn off all vars in file\n");
   printf("-p, --no-prefix\t\tdon't add the CONFIG_ prefix to vars\n");
   printf("-P, --set-prefix PREFIX\tuse a custom prefix instead of the CONFIG_ prefix for var names\n");
-  printf("-D, --direct-dependencies-only\tno reverse dependencies in extract output\n");
-  printf("-o, --output\t\tfile to write extract to.  otherwise stdout.\n");
+  printf("-D, --direct-dependencies-only\tno reverse dependencies in dimacs output\n");
   printf("-v, --verbose\t\tverbose output\n");
   printf("-h, --help\t\tdisplay this help message\n");
   printf("\n");
@@ -1192,8 +1173,8 @@ void print_usage(void)
          "print all defaults and config vars that only depend on defaults\n");
   printf("--symdeps\t"
          "for each config var, list the config vars on which it depends\n");
-  printf("--extract\t"
-         "extract constraints in kclause format\n");
+  printf("--dimacs\t"
+         "output constraints in dimacs format\n");
   printf("--autoconf-free\t"
          "print booleans and tristates as free vars in autoconf.h format\n");
   printf("--autoconf-feature-model\t"
@@ -1221,13 +1202,9 @@ int main(int argc, char **argv)
     print_usage();
 
 	setlocale(LC_ALL, "");
-#define LOCALEDIR "/usr/share/locale"
-	/* bindtextdomain(PACKAGE, LOCALEDIR); */
-	/* textdomain(PACKAGE); */
+	bindtextdomain(PACKAGE, LOCALEDIR);
+	textdomain(PACKAGE);
 
-  FILE *output_fp = stdout;
-  bool output_file_arg = false;
-  
   opterr = 0;
   while (1) {
     static struct option long_options[] = {
@@ -1251,7 +1228,7 @@ int main(int argc, char **argv)
       {"autoconf-free", no_argument, &action, A_AUTOCONF_FREE},
       {"autoconf-feature-model", no_argument, &action, A_AUTOCONF_FEATURE_MODEL},
       {"autoconf-cnf", no_argument, &action, A_AUTOCONF_CNF},
-      {"extract", no_argument, &action, A_EXTRACT},
+      {"dimacs", no_argument, &action, A_DIMACS},
       {"search", required_argument, &action, A_SEARCH},
       {"deps", required_argument, &action ,A_DEPS},
       {"dump", no_argument, &action ,A_DUMP},
@@ -1260,7 +1237,6 @@ int main(int argc, char **argv)
       {"set-prefix", required_argument, 0, 'P'},
       {"direct-dependencies-only", no_argument, 0, 'D'},
       {"default-env", no_argument, 0, 'd'},
-      {"output", required_argument, 0, 'o'},
       {"put-env", required_argument, 0, 'e'},
       {"verbose", no_argument, 0, 'v'},
       {"help", no_argument, 0, 'h'},
@@ -1269,7 +1245,7 @@ int main(int argc, char **argv)
 
     int option_index = 0;
 
-    opt = getopt_long(argc, argv, "CpP:Dde:o:hf:a:v", long_options, &option_index);
+    opt = getopt_long(argc, argv, "CpP:Dde:hf:a:v", long_options, &option_index);
 
     if (-1 == opt)
       break;
@@ -1339,13 +1315,6 @@ int main(int argc, char **argv)
     case 'e':
       putenv(optarg);
       break;
-    case 'o':
-      if ((output_fp = fopen(optarg, "w")) == NULL) {
-        fprintf(stderr, "can't open %s for writing\n", optarg);
-        exit(1);
-      }
-      output_file_arg = true;
-      break;
     case 'v':
       verbose = true;
       break;
@@ -1376,11 +1345,11 @@ int main(int argc, char **argv)
   else
     kconfig = "Kconfig";
 
-  /* if (bconf_parser) { */
-  /*   bconf_parse(kconfig); */
-  /* } else { */
+  if (bconf_parser) {
+    bconf_parse(kconfig);
+  } else {
     conf_parse(kconfig);
-  /* } */
+  }
 
   switch (action) {
   case A_SEARCH:
@@ -1429,7 +1398,7 @@ int main(int argc, char **argv)
     for_all_symbols(i, sym)
       idepsym(sym);
     write_config(idepsym);
-    /* if (!bconf_parser) file_write_dep("include/config/auto.conf.cmd"); */
+    if (!bconf_parser) file_write_dep("include/config/auto.conf.cmd");
     break;
   case A_EVERYNO:
     write_config(never);
@@ -1834,8 +1803,8 @@ int main(int argc, char **argv)
       }
     }
     break;
-  case A_EXTRACT:
-    // don't worry about selectability for extract
+  case A_DIMACS:
+    // don't worry about selectability for dimacs
     /* for_all_symbols(i, sym) { */
     /*   sym->searched = false; */
     /*   sym->depends = false; */
@@ -1845,12 +1814,12 @@ int main(int argc, char **argv)
     /*   idepsym(sym); */
 
 
-    // let kclause.py do this
+    // let dimacs.py do this
     /* // emit the boolean/tristate symbols.  add one for the root of the */
     /* // feature model, necessary to create clauses for unconstrained */
     /* // configuration variables */
     /* #define SPECIAL_ROOT_NAME "SPECIAL_ROOT_VARIABLE" */
-    /* fprintf(output_fp, "bool %s\n", SPECIAL_ROOT_NAME); */
+    /* printf("bool %s\n", SPECIAL_ROOT_NAME); */
     for_all_symbols(i, sym) {
       if (!sym->name || strlen(sym->name) == 0)
         continue;
@@ -1858,65 +1827,48 @@ int main(int argc, char **argv)
       struct property *prop;
       int has_prompt;  // whether the user can select this in menuconf
       int has_env; // whether the user can set via an environment variable
-      char *typename;
       int is_string;
-      int is_bool;
 
       switch (sym->type) {
       case S_BOOLEAN:
         // fall through
       case S_TRISTATE:
-
-        switch (sym->type) {
-        case S_BOOLEAN:
-          is_bool = true;
-          break;
-        case S_TRISTATE:
-          is_bool = false;
-          break;
-        default:
-          is_bool = true;
-          // should not reach here
-          break;
-        }
-
-        typename = is_bool ? "bool" : "tristate";
-        fprintf(output_fp, "config %s%s %s\n", config_prefix, sym->name, typename);
+        printf("config %s%s bool\n", config_prefix, sym->name);
         // print prompt conditions, if any
         prop = NULL;
         has_prompt = false;
         for_all_prompts(sym, prop) {
           if ((NULL != prop)) {
-            fprintf(output_fp, "prompt %s%s", config_prefix, sym->name);
-            fprintf(output_fp, " (");
+            printf("prompt %s%s", config_prefix, sym->name);
+            printf(" (");
             if (NULL != prop->visible.expr) {
-              print_python_expr(prop->visible.expr, output_fp, E_NONE);
+              print_python_expr(prop->visible.expr, stdout, E_NONE);
             } else {
-              fprintf(output_fp, "1");
+              printf("1");
             }
-            fprintf(output_fp, ")");
-            fprintf(output_fp, "\n");
+            printf(")");
+            printf("\n");
           }
           has_prompt = true;
         }
-        /* has_env = sym_get_env_prop(sym) != NULL; */
-        /* if (has_env) { */
-        /*   fprintf(output_fp, "env %s%s\n", config_prefix, sym->name); */
-        /* } */
+        has_env = sym_get_env_prop(sym) != NULL;
+        if (has_env) {
+          printf("env %s%s\n", config_prefix, sym->name);
+        }
         // print default values
         prop = NULL;
         for_all_defaults(sym, prop) {
           if ((NULL != prop) && (NULL != (prop->expr))) {
-            fprintf(output_fp, "def_bool %s%s ", config_prefix, sym->name);
-            print_python_expr(prop->expr, output_fp, E_NONE);
-            fprintf(output_fp, "|(");
+            printf("def_bool %s%s ", config_prefix, sym->name);
+            print_python_expr(prop->expr, stdout, E_NONE);
+            printf(" (");
             if (NULL != prop->visible.expr) {
-              print_python_expr(prop->visible.expr, output_fp, E_NONE);
+              print_python_expr(prop->visible.expr, stdout, E_NONE);
             } else {
-              fprintf(output_fp, "1");
+              printf("1");
             }
-            fprintf(output_fp, ")");
-            fprintf(output_fp, "\n");
+            printf(")");
+            printf("\n");
           }
         }
         break;
@@ -1945,52 +1897,54 @@ int main(int argc, char **argv)
           break;
         }
 
-        typename = is_string ? "string" : "number";
+        char *typename = is_string ? "string" : "number";
         
-        fprintf(output_fp, "config %s%s %s\n", config_prefix, sym->name, typename);
+        printf("config %s%s %s\n", config_prefix, sym->name, typename);
         // print prompt conditions, if any
         prop = NULL;
         has_prompt = false;
         for_all_prompts(sym, prop) {
           if ((NULL != prop)) {
-            fprintf(output_fp, "prompt %s%s", config_prefix, sym->name);
-            fprintf(output_fp, " (");
+            printf("prompt %s%s", config_prefix, sym->name);
+            printf(" (");
             if (NULL != prop->visible.expr) {
-              print_python_expr(prop->visible.expr, output_fp, E_NONE);
+              print_python_expr(prop->visible.expr, stdout, E_NONE);
             } else {
-              fprintf(output_fp, "1");
+              printf("1");
             }
-            fprintf(output_fp, ")");
-            fprintf(output_fp, "\n");
+            printf(")");
+            printf("\n");
           }
           has_prompt = true;
         }
-        /* has_env = sym_get_env_prop(sym) != NULL; */
-        /* if (has_env) { */
-        /*   fprintf(output_fp, "env %s%s\n", config_prefix, sym->name); */
-        /* } */
+        has_env = sym_get_env_prop(sym) != NULL;
+        if (has_env) {
+          printf("env %s%s\n", config_prefix, sym->name);
+        }
         // print default values
         prop = NULL;
         bool has_default = false;
         for_all_defaults(sym, prop) {
           has_default = true;
           if ((NULL != prop) && (NULL != (prop->expr))) {
-            fprintf(output_fp, "def_nonbool %s%s ", config_prefix, sym->name);
-            /* if (is_string) fprintf(output_fp, "\""); */
-            print_python_expr(prop->expr, output_fp, E_NONE);
-            /* if (is_string) fprintf(output_fp, "\""); */
-            fprintf(output_fp, "|(");
+            printf("def_nonbool %s%s ", config_prefix, sym->name);
+            /* if (is_string) printf("\""); */
+            print_python_expr(prop->expr, stdout, E_NONE);
+            /* if (is_string) printf("\""); */
+            printf("|(");
             if (NULL != prop->visible.expr) {
-              print_python_expr(prop->visible.expr, output_fp, E_NONE);
+              print_python_expr(prop->visible.expr, stdout, E_NONE);
             } else {
-              fprintf(output_fp, "1");
+              printf("1");
             }
-            fprintf(output_fp, ")");
-            fprintf(output_fp, "\n");
+            printf(")");
+            printf("\n");
           }
         }
         break;
       case S_UNKNOWN:
+        // fall through
+      case S_OTHER:
         // fall through
       default:
         // can't deal with this
@@ -1999,9 +1953,9 @@ int main(int argc, char **argv)
     }
 
     // TODO: check whether tristate's actually test for =m or =y alone
-    // and add these variables
+    // and add these dimacs variables
 
-    // let kclause.py handle special root var
+    // let dimacs.py handle special root var
     /* // print clauses for all unconstrained config vars
     /* for_all_symbols(i, sym) { */
     /*   if (!sym->name || strlen(sym->name) == 0) */
@@ -2009,7 +1963,7 @@ int main(int argc, char **argv)
 
     /*   if (sym->type == S_TRISTATE || sym->type == S_BOOLEAN) { */
     /*     if (! sym->dir_dep.expr) { */
-    /*       fprintf(output_fp, "clause -%s%s %s\n", config_prefix, sym->name, SPECIAL_ROOT_NAME); */
+    /*       printf("clause -%s%s %s\n", config_prefix, sym->name, SPECIAL_ROOT_NAME); */
     /*     } */
     /*   } */
     /* } */
@@ -2024,26 +1978,26 @@ int main(int argc, char **argv)
 
         prop = sym_get_choice_prop(sym);
 
-        fprintf(output_fp, "bool_choice");
+        printf("bool_choice");
         expr_list_for_each_sym(prop->expr, e, def_sym) {
-          fprintf(output_fp, " %s%s", config_prefix, def_sym->name);  // any dependencies should be handled below with 'dep'
+          printf(" %s%s", config_prefix, def_sym->name);  // any dependencies should be handled below with 'dep'
         }
-        fprintf(output_fp, "|(");
+        printf("|(");
         if ((NULL != sym->dir_dep.expr) && (NULL != sym->rev_dep.expr)) {
-          fprintf(output_fp, "(");
-          print_python_expr(sym->dir_dep.expr, output_fp, E_NONE);
-          fprintf(output_fp, ") and (");
-          print_python_expr(sym->rev_dep.expr, output_fp, E_NONE);
-          fprintf(output_fp, ")");
+          printf("(");
+          print_python_expr(sym->dir_dep.expr, stdout, E_NONE);
+          printf(") and (");
+          print_python_expr(sym->rev_dep.expr, stdout, E_NONE);
+          printf(")");
         } else if (NULL != sym->dir_dep.expr) {
-          print_python_expr(sym->dir_dep.expr, output_fp, E_NONE);
+          print_python_expr(sym->dir_dep.expr, stdout, E_NONE);
         } else if (NULL != sym->rev_dep.expr) {
-          print_python_expr(sym->rev_dep.expr, output_fp, E_NONE);
+          print_python_expr(sym->rev_dep.expr, stdout, E_NONE);
         } else {
-          fprintf(output_fp, "1");
+          printf("1");
         }
-        fprintf(output_fp, ")");
-        fprintf(output_fp, "\n");
+        printf(")");
+        printf("\n");
       }
       
       if (!sym->name || strlen(sym->name) == 0)
@@ -2057,9 +2011,9 @@ int main(int argc, char **argv)
         bool no_dependencies = true;
         if (sym->dir_dep.expr) {
           no_dependencies = false;
-          fprintf(output_fp, "dep %s%s (", config_prefix, sym->name);
-          print_python_expr(sym->dir_dep.expr, output_fp, E_NONE);
-          fprintf(output_fp, ")\n");
+          printf("dep %s%s (", config_prefix, sym->name);
+          print_python_expr(sym->dir_dep.expr, stdout, E_NONE);
+          printf(")\n");
         }
 
         if (enable_reverse_dependencies) {
@@ -2069,24 +2023,24 @@ int main(int argc, char **argv)
           /*   // the current var itself is the var doing the select */
           /*   // prop->expr is the variable being selected */
           /*   // prop->visible.expr is the "if ..." after the select */
-          /*   fprintf(output_fp, "select "); */
+          /*   printf("select "); */
           /*   // note: this assumes that prop->expr is only a single */
           /*   // variable name, which zconf.y guarantees */
-          /*   print_python_expr(prop->expr, output_fp, E_NONE); */
-          /*   fprintf(output_fp, " %s%s (", config_prefix, sym->name); */
+          /*   print_python_expr(prop->expr, stdout, E_NONE); */
+          /*   printf(" %s%s (", config_prefix, sym->name); */
           /*   if (NULL != prop->original_expr) { */
-          /*     print_python_expr(prop->original_expr, output_fp, E_NONE); */
+          /*     print_python_expr(prop->original_expr, stdout, E_NONE); */
           /*   } else { */
-          /*     fprintf(output_fp, "1"); */
+          /*     printf("1"); */
           /*   } */
-          /*   fprintf(output_fp, ")\n"); */
+          /*   printf(")\n"); */
           /* } */
 
           if (sym->rev_dep.expr) {
             no_dependencies = false;
-            fprintf(output_fp, "rev_dep %s%s (", config_prefix, sym->name);
-            print_python_expr(sym->rev_dep.expr, output_fp, E_NONE);
-            fprintf(output_fp, ")\n");
+            printf("rev_dep %s%s (", config_prefix, sym->name);
+            print_python_expr(sym->rev_dep.expr, stdout, E_NONE);
+            printf(")\n");
           }
         }
 
@@ -2095,11 +2049,11 @@ int main(int argc, char **argv)
             sym->type == S_HEX ||
             sym->type == S_STRING) {
           if (no_dependencies) {
-            fprintf(output_fp, "dep %s%s (1)\n", config_prefix, sym->name);
+            printf("dep %s%s (1)\n", config_prefix, sym->name);
           }
         }
       } else {
-        /* ffprintf(output_fp, stderr, "skipping %s\n", sym->name); */
+        /* fprintf(stderr, "skipping %s\n", sym->name); */
       }
     }
     break;
@@ -2111,11 +2065,6 @@ int main(int argc, char **argv)
     exit(1);
     break;
   }
-
-  if (output_file_arg) {
-    fflush(output_fp);
-    fclose(output_fp);
-  }    
 
   return 0;
 }
