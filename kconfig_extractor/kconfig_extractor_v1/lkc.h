@@ -24,6 +24,7 @@ extern "C" {
 #include "lkc_proto.h"
 
 #define SRCTREE "srctree"
+#define PATH_MAX 256
 
 #ifndef PACKAGE
 #define PACKAGE "linux"

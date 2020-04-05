@@ -4,7 +4,8 @@
 build/
 kmaxtools.egg-info/
 dist/
-
+linux-4.0*
+linux-5.4*
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

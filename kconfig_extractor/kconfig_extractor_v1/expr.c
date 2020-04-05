@@ -889,7 +889,7 @@ static enum string_value_kind expr_parse_string(const char *str,
 	char *tail;
 	enum string_value_kind kind;
 
-	errno = 0;
+	int errno = 0;
 	switch (type) {
 	case S_BOOLEAN:
 	case S_TRISTATE:
