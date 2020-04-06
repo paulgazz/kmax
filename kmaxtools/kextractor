@@ -26,13 +26,19 @@ if __name__ == '__main__':
                          help="The architecture to extract Kconfig for.")
   argparser.add_argument("output",
                          help="The output file to write to.")
+  argparser.add_argument("kconfig_version",
+                         help="v1 = old kconfig parser", action='store_true')
   args = argparser.parse_args()
+
+#TODO: figure out python argparser library; how to add
+# another command line argument "v1"
 
   arch = args.arch
   output = args.output
+  kconfig_version = args.kconfig_version
   srcarch = get_srcarch(arch)
 
-if isOldLinux:
+if kconfig_version is not None:
   kconfig_extractor_v1.extract_kconfig(output, "ARCH=%s" % (arch), "SRCARCH=%s" % (srcarch))
 else:
   kconfig_extractor_v2.extract_kconfig(output, "ARCH=%s" % (arch), "SRCARCH=%s" % (srcarch))
