@@ -38,7 +38,7 @@ if __name__ == '__main__':
   kconfig_version = args.kconfig_version
   srcarch = get_srcarch(arch)
 
-if kconfig_version is not None:
-  kconfig_extractor_v1.extract_kconfig(output, "ARCH=%s" % (arch), "SRCARCH=%s" % (srcarch))
-else:
-  kconfig_extractor_v2.extract_kconfig(output, "ARCH=%s" % (arch), "SRCARCH=%s" % (srcarch))
+#if kconfig_version is not None:
+##  kconfig_extractor_v1.extract_kconfig(output, "ARCH=%s" % (arch), "SRCARCH=%s" % (srcarch))
+#else:
+kconfig_extractor_v2.extract_kconfig(output, "ARCH=%s" % (arch), "SRCARCH=%s" % (srcarch))
