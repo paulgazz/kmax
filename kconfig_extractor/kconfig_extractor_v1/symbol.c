@@ -29,6 +29,7 @@ struct symbol symbol_yes = {
 	.flags = SYMBOL_VALID,
 };
 
+static struct menu *menu;
 struct symbol *sym_defconfig_list;
 struct symbol *modules_sym;
 tristate modules_val;
@@ -1391,12 +1392,12 @@ static void prop_add_env(const char *env)
 	struct property *prop;
 	char *p;
 
-	sym = current_entry->sym;
+	sym = menu->sym;
 	sym->flags |= SYMBOL_AUTO;
 	for_all_properties(sym, prop, P_ENV) {
 		sym2 = prop_get_symbol(prop);
 		if (strcmp(sym2->name, env))
-			menu_warn(current_entry, "redefining environment symbol from %s",
+			menu_warn(menu, "redefining environment symbol from %s",
 				  sym2->name);
 		return;
 	}
@@ -1411,5 +1412,5 @@ static void prop_add_env(const char *env)
 	if (p)
 		sym_add_default(sym, p);
 	else
-		menu_warn(current_entry, "environment variable %s undefined", env);
+		menu_warn(menu, "environment variable %s undefined", env);
 }
