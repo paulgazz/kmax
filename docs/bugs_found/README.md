@@ -1,3 +1,19 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+
+- [Bugs Found by Kmax Tools](#bugs-found-by-kmax-tools)
+  - [Linux kernel](#linux-kernel)
+    - [Missing dependency for the MAX77650 MFD driver](#missing-dependency-for-the-max77650-mfd-driver)
+      - [Description](#description)
+      - [History](#history)
+  - [axTLS](#axtls)
+    - [Header compile issue when "Create Language Bindings" is used](#header-compile-issue-when-create-language-bindings-is-used)
+      - [Description](#description-1)
+      - [History](#history-1)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Bugs Found by Kmax Tools
 
 ## Linux kernel

@@ -8,8 +8,9 @@
   - [Setup](#setup)
   - [Quick Start](#quick-start)
   - [Use Cases](#use-cases)
-    - [A Compilation Unit not Built by `allyesconfig`](#a-compilation-unit-not-built-by-allyesconfig)
-    - [A Compilation Unit not Built by `defconfig` or `allnoconfig`](#a-compilation-unit-not-built-by-defconfig-or-allnoconfig)
+    - [A compilation unit not built by allyesconfig](#a-compilation-unit-not-built-by-allyesconfig)
+    - [A compilation unit not built by defconfig or allnoconfig](#a-compilation-unit-not-built-by-defconfig-or-allnoconfig)
+    - [An architecture-specific compilation unit not built by allyesconfig](#an-architecture-specific-compilation-unit-not-built-by-allyesconfig)
     - [An Architecture-Specific Compilation Unit](#an-architecture-specific-compilation-unit)
   - [Advanced Usage](#advanced-usage)
   - [Troubleshooting](#troubleshooting)
@@ -22,6 +23,7 @@
     - [Building kconfig_extract](#building-kconfig_extract)
     - [Other uses](#other-uses)
       - [Get a list of all visible configs](#get-a-list-of-all-visible-configs)
+  - [Bugs Found by Kmax Tools](#bugs-found-by-kmax-tools)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
