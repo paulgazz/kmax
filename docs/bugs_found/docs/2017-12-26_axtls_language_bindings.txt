@@ -1,0 +1,54 @@
+From: paul@pgazz.com
+To: camster444@gmail.com
+Subject: bug in axtls configuration
+Date: Tue, 26 Dec 2017 10:51:25 -0500
+
+Dear Cameron,
+
+I am working with a colleague on a tool that automatically generates
+valid Kconfig configurations, and when building some of these for axtls
+, I encountered a bug.  On a Linux distribution, I ran "make
+menuconfig" and selected the following options:
+
+  SSL Library ---> Mode ---> Server only - no verification
+  Language Bindings ---> Create language bindings
+
+When running make I get the following error:
+
+make[1]: Entering directory '/home/paul/src/axtls-code/ssl'
+cc -I../config -I../ssl -I../crypto -Wall -Wstrict-prototypes -Wshadow
+-fPIC  -O3     -c -o tls1.o tls1.c
+tls1.c:2418:24: error: conflicting types for ‘ssl_client_new’
+ EXP_FUNC SSL * STDCALL ssl_client_new(SSL_CTX *ssl_ctx, int client_fd,
+const
+                        ^~~~~~~~~~~~~~
+In file included from tls1.c:40:0:
+ssl.h:280:24: note: previous declaration of ‘ssl_client_new’ was here
+ EXP_FUNC SSL * STDCALL ssl_client_new(SSL_CTX *ssl_ctx, int client_fd,
+const uint8_t *session_id, uint8_t sess_id_size, SSL_EXTENSIONS*
+ssl_ext);
+                        ^~~~~~~~~~~~~~
+Seems like the function definition was modified in ssl.h but not in
+tls1.c.
+
+Here is a patch that would fix it:
+
+Index: ssl/tls1.c
+===================================================================
+--- ssl/tls1.c  (revision 277)
++++ ssl/tls1.c  (working copy)
+@@ -2416,7 +2416,7 @@
+ #ifdef CONFIG_BINDINGS
+ #if !defined(CONFIG_SSL_ENABLE_CLIENT)
+ EXP_FUNC SSL * STDCALL ssl_client_new(SSL_CTX *ssl_ctx, int client_fd,
+const
+-        uint8_t *session_id, uint8_t sess_id_size)
++        uint8_t *session_id, uint8_t sess_id_size, SSL_EXTENSIONS*
+ssl_ext)
+ {
+     printf("%s", unsupported_str);
+     return NULL;
+
+Best,
+Paul Gazzillo
+https://paulgazzillo.com

@@ -479,3 +479,7 @@ Then, from the root of a Linux source tree, run the following:
     
     # the visibles should be a subset of the configs
     diff configs.txt visible.txt  | grep ">"
+
+## Bugs Found by Kmax Tools
+
+Please see this [list](docs/bugs_found/README.md).
