@@ -194,7 +194,7 @@ def print_model_as_config(model, fp=sys.stdout, kconfig_types=None, kconfig_visi
               fp.write("# %s is not set\n" % (str_entry))
             else:
               if str_entry not in architecture_configs:
-                warning("%s is not defined by Kconfig for this architecture." % (str_entry))            
+                warning("%s is not defined by Kconfig for this architecture." % (str_entry))
       # else:
       #   sys.stderr.write("omitting non-config var %s\n" % (str_entry))
   else:
@@ -448,6 +448,9 @@ if __name__ == '__main__':
   argparser.add_argument("--random-seed",
                          type=int,
                          help="""The random seed for the solver's model generation.""")
+  argparser.add_argument("--dont-compile",
+                         action="store_true",
+                         help="""Inverse the z3 formula of the compilation unit (.o file) when generating .config""")
   argparser.add_argument('--version',
                          action="store_true",
                          help="""Print the version number.""")
@@ -481,6 +484,7 @@ if __name__ == '__main__':
   sample_prefix = args.sample_prefix
   random_seed = args.random_seed
   compilation_units = args.compilation_units
+  dont_compile = args.dont_compile
 
   if kconfig_extract_file and not kclause_file:
     argparser.print_help()
@@ -496,7 +500,7 @@ if __name__ == '__main__':
     argparser.print_help()
     error("Cannot use --report-all when providing an explicit --kclause-formulas argument.")
     exit(12)
-  
+
   if sample is not None:
     if sample_prefix is None:
       sample_prefix="config"
@@ -530,7 +534,7 @@ if __name__ == '__main__':
   if not kmax_file:
     kmax_file = os.path.join(formulas, "kmax")
   info("Kmax formula file: %s" % (kmax_file))
-    
+
   if len(compilation_units) > 0 and not os.path.isfile(kmax_file):
     info("No prebuilt kmax formulas.  Running kmax on demand.")
     kmax_on_demand = True
@@ -583,7 +587,7 @@ if __name__ == '__main__':
       compilation_units = new_compilation_units
   else:
     kmax_formulas = None
-    
+
   if view_kbuild:
     if len(compilation_units) > 0:
       for unit in compilation_units:
@@ -626,7 +630,7 @@ if __name__ == '__main__':
       # if not os.path.isfile(arch_kclause):
       #   info("Generating kclause file on demand for %s, because no kclause found at %s." % (arch, arch_kclause))
       kclause_to_try[arch] = arch_kclause
-        
+
   if len(kclause_to_try.keys()) == 0:
     error("No kclause files found.  Please check --formulas directory or use --kclause-formula explicitly.")
     info("Available architectures: %s""" % (", ".join(architectures)))
@@ -661,7 +665,12 @@ if __name__ == '__main__':
   for unit in compilation_units:
     if unit is not None:
       if kmax_constraints == None:
-        kmax_constraints = get_kmax_constraints(kmax_formulas, unit)
+        if dont_compile:
+              kmax_constraints = [z3.Not(c) for c in get_kmax_constraints(kmax_formulas, unit)]
+        else:
+          kmax_constraints = get_kmax_constraints(kmax_formulas, unit)
+      elif dont_compile:
+        kmax_constraints.extend([z3.Not(c) for c in get_kmax_constraints(kmax_formulas, unit)])
       else:
         kmax_constraints.extend(get_kmax_constraints(kmax_formulas, unit))
 
@@ -718,7 +727,7 @@ if __name__ == '__main__':
         kconfig_extract = kconfig_extract_file
       else:
         kconfig_extract = None
-        
+
       if kconfig_extract == None:
         info("No kconfig_extract file available.  Assuming all configuration options are Boolean")
         kconfig_types = None
