@@ -17,10 +17,10 @@ static PyObject * extract_kconfig(PyObject *self, PyObject *args) {
   }
 
   const char *cargs[] = {
-    "kconfig_extractor", "--extract", "-o", outfile, "-e", arch, "-e", srcarch, "-e", "KERNELVERSION=kcu", "-e", "srctree=./", "-e", "CC=cc", "Kconfig"
+    "kconfig_extractor", "--extract", "-o", outfile, "-e", arch, "-e", srcarch, "-e", "KERNELVERSION=kcu", "-e", "srctree=./", "-e", "CC=cc", "-e", "LD=ld", "Kconfig"
   };
   
-  int errcode = main(15, cargs);
+  int errcode = main(16, cargs);
 
   return Py_BuildValue("i", errcode);
 }
