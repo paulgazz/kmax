@@ -15,7 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 CPROGS := kconfig_extractor 
-SRC = confdata.c expr.c preprocess.c symbol.c lexer.lex.c parser.tab.c kconfig_extractor.c
+SRC = confdata.c expr.c preprocess.c symbol.c lexer.lex.c parser.tab.c kconfig_extractor.c util.c
 OBJ = $(SRC:%.c=%.o)
 
 .PHONY: all clean configure clobber check-dep
