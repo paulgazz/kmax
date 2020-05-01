@@ -14,8 +14,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-CPROGS := kconfig_extractor 
-SRC = confdata.c expr.c preprocess.c symbol.c lexer.lex.c parser.tab.c kconfig_extractor.c util.c
+CPROGS := kextractor 
+SRC = confdata.c expr.c preprocess.c symbol.c lexer.lex.c parser.tab.c kextractor.c util.c
 OBJ = $(SRC:%.c=%.o)
 
 .PHONY: all clean configure clobber check-dep
@@ -24,7 +24,7 @@ all: $(OBJ) $(GENERATED) $(CPROGS)
 
 parser.tab.o: parser.tab.c lexer.lex.c util.c confdata.c expr.c symbol.c menu.c lkc.h
 
-kconfig_extractor: $(OBJ)
+kextractor: $(OBJ)
 	$(CC) $(CFLAGS) -o $@ $^
 
 %.o: %.c

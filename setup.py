@@ -11,7 +11,7 @@ def read(fname):
 about = {}
 exec(read(os.path.join("kmaxtools", "about.py")), about)
 
-kconfig_extractor = Extension('kconfig_extractor', [ 'kconfig_extractor/kconfig_extractor_extension.c', 'kconfig_extractor/kconfig_extractor.c', 'kconfig_extractor/confdata.c', 'kconfig_extractor/expr.c', 'kconfig_extractor/preprocess.c', 'kconfig_extractor/lexer.lex.c', 'kconfig_extractor/parser.tab.c', 'kconfig_extractor/symbol.c', 'kconfig_extractor/util.c'], include_dirs=['kconfig_extractor/'])
+kextractor = Extension('kextractor', [ 'kextractor/kextractor_extension.c', 'kextractor/kextractor.c', 'kextractor/confdata.c', 'kextractor/expr.c', 'kextractor/preprocess.c', 'kextractor/lexer.lex.c', 'kextractor/parser.tab.c', 'kextractor/symbol.c', 'kextractor/util.c'], include_dirs=['kextractor/'])
 
 setup(
     name = about['__title__'],
@@ -25,13 +25,13 @@ setup(
     keywords = "makefile kconfig kbuild configurations kmax kclause klocalizer",
     url = "https://github.com/paulgazz/kmax",
     packages=['kmaxtools', 'pymake'],
-    ext_modules = [ kconfig_extractor ],
+    ext_modules = [ kextractor ],
     classifiers=[
         "Development Status :: 4 - Beta",
         "Topic :: Utilities",
         "License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)",
     ],
-    scripts=['kmaxtools/kmax', 'kmaxtools/kmaxall', 'kmaxtools/kclause', 'kmaxtools/klocalizer', 'kmaxtools/extract_kconfig'],
+    scripts=['kmaxtools/kmax', 'kmaxtools/kmaxall', 'kmaxtools/kclause', 'kmaxtools/klocalizer', 'kmaxtools/kextract'],
     install_requires=[
         'enum34',
         'regex',
