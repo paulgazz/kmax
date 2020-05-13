@@ -24,14 +24,14 @@ def warning(msg, ending="\n"):
 def error(msg, ending="\n"):
   sys.stderr.write("ERROR: %s%s" % (msg, ending))
 
-def get_kconfig_extract(kconfig_extract_file):
-  """Return a list of lists, where each list is a line from the kconfig_extract, currently only the config lines.  See docs/kconfig_extract_format.md.  Returns None if no file is found."""
-  if not os.path.exists(kconfig_extract_file):
-    warning("no kconfig_extract file found: %s", kconfig_extract_file)
+def get_kextract(kextract_file):
+  """Return a list of lists, where each list is a line from the kextract, currently only the config lines.  See docs/kextract_format.md.  Returns None if no file is found."""
+  if not os.path.exists(kextract_file):
+    warning("no kextract file found: %s" % (kextract_file))
     return None
   else:
     lists = []
-    with open(kconfig_extract_file, 'r') as fp:
+    with open(kextract_file, 'r') as fp:
       for line in fp:
         line = line.strip()
         lists.append(line.split())
@@ -331,8 +331,8 @@ def get_arch_kclause_subdir(formulas, arch):
 def get_arch_kclause_file(formulas, arch):
   return os.path.join(get_arch_kclause_subdir(formulas, arch), "kclause")
 
-def get_arch_kconfig_extract_file(formulas, arch):
-  return os.path.join(get_arch_kclause_subdir(formulas, arch), "kconfig_extract")
+def get_arch_kextract_file(formulas, arch):
+  return os.path.join(get_arch_kclause_subdir(formulas, arch), "kextract")
 
 def get_arch_specific_constraints(arch, architecture_configs):
   if arch == "x86_64":
@@ -383,7 +383,7 @@ if __name__ == '__main__':
                          type=str,
                          default=None,
                          help="""The file containing the a pickled tuple with a mapping from configuration option to its formulas and a list of additional constraints.  This overrides --arch.""")
-  argparser.add_argument('--kconfig-extract',
+  argparser.add_argument('--kextract',
                          type=str,
                          default=None,
                          help="""The file containing the kconfig extract.  This must be accompanied by --kclause-formulas.""")
@@ -463,7 +463,7 @@ if __name__ == '__main__':
   formulas = args.formulas
   kmax_file = args.kmax_formulas
   kclause_file = args.kclause_formulas
-  kconfig_extract_file = args.kconfig_extract
+  kextract_file = args.kextract
   archs = args.arch
   allarchs = args.all
   reportallarchs = args.report_all
@@ -482,9 +482,9 @@ if __name__ == '__main__':
   random_seed = args.random_seed
   compilation_units = args.compilation_units
 
-  if kconfig_extract_file and not kclause_file:
+  if kextract_file and not kclause_file:
     argparser.print_help()
-    error("--kconfig-extract can only be used with --kclause-formulas")
+    error("--kextract can only be used with --kclause-formulas")
     exit(12)
 
   if kclause_file and len(archs) > 0:
@@ -682,10 +682,10 @@ if __name__ == '__main__':
         os.makedirs(os.path.dirname(kclause_file))
       # todo, write stderr to log
       info("Generating kclause formulas for %s." % (arch))
-      if not os.path.exists(get_arch_kconfig_extract_file(formulas, arch)):
+      if not os.path.exists(get_arch_kextract_file(formulas, arch)):
         # write to a temp file first, then move if successful
-        kconfig_extract_file_pending = get_arch_kconfig_extract_file(formulas, arch) + ".pending"
-        command = [ "kextract", arch, kconfig_extract_file_pending ]
+        kextract_file_pending = get_arch_kextract_file(formulas, arch) + ".pending"
+        command = [ "kextract", arch, kextract_file_pending ]
         info("Extracting Kconfig dependencies: %s" % (" ".join(command)))
         try:
           popen = subprocess.Popen(command)
@@ -696,10 +696,10 @@ if __name__ == '__main__':
         except Exception as e:
           error("Error running kextract: %s" % (str(e)))
           exit(13)
-        os.rename(kconfig_extract_file_pending, get_arch_kconfig_extract_file(formulas, arch))
+        os.rename(kextract_file_pending, get_arch_kextract_file(formulas, arch))
       # run kclause
       with open(kclause_file_pending, 'w') as kclause_outf:
-        with open(get_arch_kconfig_extract_file(formulas, arch), 'r') as extract_inf:
+        with open(get_arch_kextract_file(formulas, arch), 'r') as extract_inf:
           command = ["kclause", "--remove-orphaned-nonvisible" ]
           info("Running kclause: %s < %s > %s" % (" ".join(command), extract_inf.name, kclause_outf.name))
           info("This will take several minutes...")
@@ -713,14 +713,14 @@ if __name__ == '__main__':
       constraints = []
 
       if arch is not None:
-        kconfig_extract = get_kconfig_extract(get_arch_kconfig_extract_file(formulas, arch))
-      elif kconfig_extract_file is not None:
-        kconfig_extract = kconfig_extract_file
+        kextract = get_kextract(get_arch_kextract_file(formulas, arch))
+      elif kextract_file is not None:
+        kextract = kextract_file
       else:
-        kconfig_extract = None
+        kextract = None
         
-      if kconfig_extract == None:
-        info("No kconfig_extract file available.  Assuming all configuration options are Boolean")
+      if kextract == None:
+        info("No kextract file available.  Assuming all configuration options are Boolean")
         kconfig_types = None
         kconfig_visible = None
         kconfig_has_def_nonbool = None
@@ -728,8 +728,8 @@ if __name__ == '__main__':
         kconfig_types = {}
         kconfig_visible = set()
         kconfig_has_def_nonbool = set()
-        for kconfig_line in kconfig_extract:
-          # see docs/kconfig_extract_format.md for more info
+        for kconfig_line in kextract:
+          # see docs/kextract_format.md for more info
           if kconfig_line[0] == "config":
             kconfig_types[kconfig_line[1]] = kconfig_line[2]
           if kconfig_line[0] == "prompt":
