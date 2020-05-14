@@ -41,7 +41,7 @@ the following tools:
   given compilation unit.  It uses the logical models from `kclause` and `kmax`
 - `kclause` "compiles"
   [Kconfig](https://www.kernel.org/doc/html/latest/kbuild/kconfig-language.html)
-  constraints into logical formulas.  `kconfig_extractor` uses Linux's
+  constraints into logical formulas.  `kextractor` uses Linux's
   own Kconfig parser to perform an extraction of the syntax of
   configuration option names, types, dependencies, etc.
 - `kmax` collects configuration information from [Kbuild
@@ -451,23 +451,23 @@ Kmax includes a Makefile hack to get all the top-level Linux directories.  Combi
 
 Kclause extracts a logical model from Kconfig.  It works in two stages:
 
-1. The `kconfig_extractor` tool uses the Kconfig parser shipped with Linux to extract configuration variables dependencies to an intermediate language.
+1. The `kextractor` tool uses the Kconfig parser shipped with Linux to extract configuration variables dependencies to an intermediate language.
 
 2. The `kclause` tool takes this intermediate language and generates a z3 formula.
 
 
-First compile `kconfig_extractor`
+First compile `kextractor`
 
-    make -C kconfig_extractor
+    make -C kextractor
 
 Then, from the root of a Linux source tree, run the following:
 
-    /path/to/kmax/kconfig_extractor/kconfig_extractor --extract -e ARCH=x86_64 -e SRCARCH=x86 -e KERNELVERSION=kcu -e srctree=./ -e CC=cc Kconfig > kconfig_extract
+    /path/to/kmax/kextractor/kextractor --extract -e ARCH=x86_64 -e SRCARCH=x86 -e KERNELVERSION=kcu -e srctree=./ -e CC=cc Kconfig > kconfig_extract
     kclause --remove-orphaned-nonvisible < kconfig_extract > kclause
 
 ### Building kconfig_extract
 
-    make -C /path/to/kmax/kconfig_extractor/
+    make -C /path/to/kmax/kextractor/
 
 ### Other uses
 
