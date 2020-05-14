@@ -438,7 +438,7 @@ unmatched_units.difference_update(generated_c_files)
 # cache the list of working kbuild files
 if args.excludes_file != None:
   with open(args.excludes_file, "w") as f:
-    pickle.dump(excludes, f)
+    pickle.dump(excludes, f, 0)
 
 print_set(toplevel_dirs, "toplevel_dirs")  # list of directories started from
 print_set(all_c_files, "all_c_files")  # all .c files in used and visited subdirectories
