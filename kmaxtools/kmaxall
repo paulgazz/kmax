@@ -31,7 +31,10 @@ if __name__ == '__main__':
   import fnmatch
   import argparse
   import subprocess
-  import cPickle as pickle
+  try:
+      import cPickle as pickle
+  except ImportError:  #Python3
+      import pickle
   import time
   import z3
   import kmaxtools.about
@@ -62,8 +65,8 @@ if __name__ == '__main__':
 
   def print_set(s, name):
     for elem in s:
-      print name,elem
-    print "size",name,len(s)
+      print(name,elem)
+    print("size",name,len(s))
 
   argparser = argparse.ArgumentParser(
       formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -177,7 +180,7 @@ if __name__ == '__main__':
           sub_pc = subdir_pcs[subsubpath].strip()
           if sub_pc != "1":
             pc = pc + " && " + sub_pc
-      print "full_pc {} {}".format(path, pc)
+      print("full_pc {} {}".format(path, pc))
     sys.exit(0)
   
   if len(args.makefile) == 0:
@@ -282,9 +285,9 @@ if __name__ == '__main__':
       if args.get_presence_conditions:
         # print presence condition information
         for unit_name, pc in new_unit_pcs.iteritems():
-          print "unit_pc", unit_name, pc
+          print("unit_pc", unit_name, pc)
         for subdir_name, pc in new_subdir_pcs.iteritems():
-          print "subdir_pc", subdir_name, pc
+          print("subdir_pc", subdir_name, pc)
 
     # (new_compilation_units,
     #  new_library_units,
@@ -384,7 +387,7 @@ if __name__ == '__main__':
     print_set(clean_files, "clean_files")
     print_set(c_file_targets, "c_file_targets")
     print_set(broken, "broken")
-    print "running_time", time.time() - starting_time
+    print("running_time", time.time() - starting_time)
     exit(0)
 
   sys.stderr.write("aggregating and analyzing covering_set data")
@@ -576,4 +579,4 @@ if __name__ == '__main__':
   print_set(unexpanded_extra_targets, "unexpanded_extra_targets")
   print_set(unexpanded_subdirectories, "unexpanded_subdirectories")
   print_set(broken, "broken")
-  print "running_time", time.time() - starting_time
+  print("running_time", time.time() - starting_time)

@@ -25,7 +25,10 @@ import re
 import fnmatch
 import argparse
 import subprocess
-import cPickle as pickle
+try:
+    import cPickle as pickle
+except ImportError:  #Python3
+    import pickle
 import time
 
 import kmaxtools.vcommon as CM

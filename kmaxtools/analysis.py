@@ -3,7 +3,10 @@ import os
 import pdb
 trace = pdb.set_trace
 import z3
-import cPickle as pickle
+try:
+    import cPickle as pickle
+except ImportError:  #Python3
+    import pickle
 import sys
 
 import kmaxtools.vcommon as CM
