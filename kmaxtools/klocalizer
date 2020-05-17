@@ -703,7 +703,7 @@ if __name__ == '__main__':
           command = ["kclause", "--remove-orphaned-nonvisible" ]
           info("Running kclause: %s < %s > %s" % (" ".join(command), extract_inf.name, kclause_outf.name))
           info("This will take several minutes...")
-          popen = subprocess.Popen(command, stdin=extract_inf, stdout=kclause_outf, stderr=DEVNULL)
+          popen = subprocess.Popen(command, stdin=extract_inf, stdout=kclause_outf) #, stderr=DEVNULL)
           popen.communicate()
           kclause_outf.flush()
       os.rename(kclause_file_pending, kclause_file)
