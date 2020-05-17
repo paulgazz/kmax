@@ -4,6 +4,8 @@ import ast
 import z3
 import regex
 
+# Documentation of ast and the visitors: https://greentreesnakes.readthedocs.io/en/latest/nodes.html
+
 t_simplify = z3.Tactic('ctx-solver-simplify')
 t_tseitin = z3.Tactic('tseitin-cnf-core')
 identifier_pattern = regex.compile("^[A-Za-z0-9_]+$") # config var names can start with numbers, see kconfig/lexer.l
@@ -93,6 +95,24 @@ class Converter(ast.NodeVisitor):
     value = node.value
     result = glean_unknown_symbol(value)
     # sys.stderr.write("result const: %s\n" % (result))
+    if result is not None:
+      node.z3 = result
+    else:
+      print(traceback.format_exc())
+      sys.stderr.write("error: cannot process value \"%s\"\n" % (value))
+      exit(1)
+      node.z3 = None
+
+  def visit_Num(self, node):  # deprecated since 3.8, replaced by constant
+    num = node.n
+    if num == 0:
+      node.z3 = z3.BoolVal(False)
+    else:
+      node.z3 = z3.BoolVal(True)
+
+  def visit_Str(self, node):  # deprecated since 3.8, replaced by constant
+    value = node.s
+    result = glean_unknown_symbol(value)
     if result is not None:
       node.z3 = result
     else:
@@ -191,7 +211,6 @@ def get_identifiers(expr):
   return visitor.result()
 
 def convert_to_z3(expr):
-  # print("JFLDSJFKLSDJKL")
   # print(expr)
   try:
     tree = ast.parse(expr)
