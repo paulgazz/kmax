@@ -166,10 +166,10 @@ def itermakefilechars(d, offset, tokenlist, it, ignorecomments=False):
             # multiple backslashes before a hash are unescaped, halving their total number
             if l % 2:
                 # found a comment
-                yield starttext + token[:(l - 1) / 2], None, None, None
+                yield starttext + token[:int((l - 1) / 2)], None, None, None
                 return
             else:
-                yield starttext + token[-l / 2:], None, None, mend
+                yield starttext + token[int(-l / 2):], None, None, mend
         elif token in tokenlist or (token[0] == '$' and '$' in tokenlist):
             yield starttext, token, mstart, mend
         else:

@@ -19,8 +19,6 @@
 if __name__ == '__main__':
   import os
   import sys
-  import compiler
-  import ast
   import traceback
   import argparse
   from collections import defaultdict
@@ -89,6 +87,8 @@ if __name__ == '__main__':
     exit(0)
     
   debug = args.debug
+  quiet = False  # to be implemented for quieter output
+  show_warnings = False  # to be implemented for checker output
   debug_expressions = args.debug_expressions
   remove_true_clauses = True
   deduplicate_clauses = True
@@ -229,7 +229,7 @@ if __name__ == '__main__':
   # print convert_to_cnf("a or b or c or d or f")
   # exit(1)
 
-  sys.stderr.write("collect clauses\n")
+  sys.stderr.write("[STEP 1/3] reading kextract file\n")
   for line in sys.stdin:
     if debug: sys.stderr.write("started %s\n" % (line))
     instr, data = line.strip().split(" ", 1)
@@ -247,7 +247,7 @@ if __name__ == '__main__':
     elif (instr == "prompt"):
       varname, condition = data.split(" ", 1)
       if varname in prompt_lines:
-        sys.stderr.write("found duplicate prompt for %s. currently unsupported\n" % (varname))
+        if show_warnings: sys.stderr.write("found duplicate prompt for %s. currently unsupported\n" % (varname))
       has_prompt.add(varname)
       prompt_lines[varname] = condition
     elif (instr == "env"):
@@ -335,6 +335,7 @@ if __name__ == '__main__':
       sys.stderr.write("unsupported instruction: %s\n" % (line))
       exit(1)
     if debug: sys.stderr.write("done %s\n" % (line))
+  sys.stderr.write("[STEP 1/3] finished reading kextract file\n")
 
   # the names of configuration variables that have dependencies, either
   # direct or reverse
@@ -514,7 +515,18 @@ if __name__ == '__main__':
     convert_and_add_clause("<CHOICE>", final_expression)
 
   # generate clauses for dependencies and defaults
-  for var in set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(selects.keys())).union(set(def_bool_lines.keys())).union(set(prompt_lines.keys())):
+  if not quiet: sys.stderr.write("generating clauses for dependencies")
+  configuration_options_to_translate = set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(selects.keys())).union(set(def_bool_lines.keys())).union(set(prompt_lines.keys()))
+  num_vars = len(configuration_options_to_translate)
+  processing = 0
+  last_status_line_size = 0
+  for var in configuration_options_to_translate:
+    processing = processing + 1
+    if not quiet and not debug:
+      translation_status = "[STEP 2/3] translated %d/%d configuration option dependencies: %s" % (processing, num_vars, var)
+      sys.stderr.write("%s\r" % (" " * last_status_line_size))
+      sys.stderr.write("%s\r" % (translation_status))
+      last_status_line_size = len(translation_status)
     if debug: sys.stderr.write("processing %s\n" % (var))
     # get direct dependencies
     if var in dep_exprs.keys():
@@ -647,10 +659,10 @@ if __name__ == '__main__':
         if args.remove_bad_selects:
           # restrict reverse dependencies to variables that are not
           # user-visible and have no dependencies.
-          sys.stderr.write("warning: removing bad select statements for %s.  this is the expression: %s\n" % (var, rev_dep_expr))
+          if show_warnings: sys.stderr.write("warning: removing bad select statements for %s.  this is the expression: %s\n" % (var, rev_dep_expr))
           rev_dep_expr = None
         else:
-          sys.stderr.write("warning: found bad select statement(s) for %s\n" % (var))
+          if show_warnings: sys.stderr.write("warning: found bad select statement(s) for %s\n" % (var))
 
     # collect boolean default expression
     if var in def_bool_lines.keys():
@@ -738,7 +750,7 @@ if __name__ == '__main__':
             visible_expr = "(1)"
 
           if args.include_bool_defaults and var in def_bool_lines.keys():
-            sys.stderr.write("warning: defaults are ignored for visibles, because they are user-selectable: %s\n" % (var))
+            if show_warnings: sys.stderr.write("warning: defaults are ignored for visibles, because they are user-selectable: %s\n" % (var))
 
           # # V -> (E | A) and A -> V, where E is direct dep, and A is reverse dep
 
@@ -914,10 +926,10 @@ if __name__ == '__main__':
         # nonboolean constraints and there is no way for the user to
         # directly modify these.
         nonbools_nonvisibles.add(var)
-        sys.stderr.write("warning: no support for nonvisible nonbools: %s\n" % (var))
+        if show_warnings: sys.stderr.write("warning: no support for nonvisible nonbools: %s\n" % (var))
       else:  # var is visible
         if rev_dep_expr != None:
-          sys.stderr.write("warning: no support for reverse dependencies on nonbooleans: %s\n" % (var))
+          if show_warnings: sys.stderr.write("warning: no support for reverse dependencies on nonbooleans: %s\n" % (var))
         # include the prompt condition as part of the dependency
         if prompt_expr != None and dep_expr != None:
           dep_expr = conjunction(prompt_expr, dep_expr)
@@ -936,12 +948,15 @@ if __name__ == '__main__':
     else:
       assert True
 
-  sys.stderr.write("converting constraints to smtlib2 format and collecting variable usage information\n")
+  if not quiet and not debug:
+    sys.stderr.write("%s\r" % (" " * last_status_line_size))
+    sys.stderr.write("[STEP 2/3] translated %d/%d configuration option dependencies\n" % (processing, num_vars))
+  
   used_vars = set()
   num_vars = len(z3_clauses.keys())
   processing = 1
   for var in z3_clauses.keys():
-    sys.stderr.write("processing %d/%d configuration options\r" % (processing, num_vars))
+    if not quiet: sys.stderr.write("[STEP 3/3] converted %d/%d constraints to smtlib2 format\r" % (processing, num_vars))
     processing += 1
     # for clause in z3_clauses[var]:
     #   used = z3.z3util.get_vars(clause)
@@ -952,11 +967,13 @@ if __name__ == '__main__':
       s.add(z3_clause)
       return s.to_smt2()
     z3_clauses[var] = [ convert_to_smtlib2(clause) for clause in z3_clauses[var] ]
-  sys.stderr.write("\n")
-  sys.stderr.write("pickling the map\n")
+  if not quiet: sys.stderr.write("\n")
+  if not quiet: sys.stderr.write("[STEP 3/3] pickling the map\n")
   # used_vars = [ var for var in used_vars if var.startswith("CONFIG_") ]
-  # print(pickle.dumps((z3_clauses, defined_vars, used_vars)))
-  print(pickle.dumps(z3_clauses))
+  # pickle.dump((z3_clauses, defined_vars, used_vars), fp, 0)
+  fp = os.fdopen(sys.stdout.fileno(), 'wb')
+  pickle.dump(z3_clauses, fp, 0)
+  if not quiet: sys.stderr.write("[STEP 3/3] done \n")
 
   # quit and don't do dimacs clause processing
   exit(1)
@@ -983,14 +1000,14 @@ if __name__ == '__main__':
 
   if debug: sys.stderr.write("filtering vars\n")
   keep_vars = filter(lambda var: not remove_condition(var), varnums.keys())
-  keep_varnums = filter(lambda (name, num): name in keep_vars, sorted(varnums.items(), key=lambda tup: tup[1]))
+  keep_varnums = filter(lambda name, num: name in keep_vars, sorted(varnums.items(), key=lambda tup: tup[1]))
 
   for var in varnums.keys():
     if var not in has_prompt and var in bools and var not in has_defaults and var not in has_selects:
       if args.remove_orphaned_nonvisibles:
-        sys.stderr.write("warning: remove orphaned nonvisible variables: %s\n" % (var))
+        if show_warnings: sys.stderr.write("warning: remove orphaned nonvisible variables: %s\n" % (var))
       else:
-        sys.stderr.write("warning: %s is an orphaned nonvisible variable\n" % (var))
+        if show_warnings: sys.stderr.write("warning: %s is an orphaned nonvisible variable\n" % (var))
 
   if debug: sys.stderr.write("renumbering\n")
   # renumber variables
@@ -1062,7 +1079,7 @@ if __name__ == '__main__':
   # emit dimacs format
   def print_dimacs(varnum_map, clause_list):
     if args.comment_format_v2:
-      print "c format kmax_kconfig_v2"
+      print("c format kmax_kconfig_v2")
       comment_prefix = "c kconfig_variable"
     else:
       comment_prefix = "c"
@@ -1083,20 +1100,20 @@ if __name__ == '__main__':
           typename = "string" if nonbool_types[varname] == "string" else "int"
         else:
           typename = "nonbool"
-        print "%s %d %s %s%s" % (comment_prefix, varnum_map[varname], varname, typename, defaultval)
+        print("%s %d %s %s%s" % (comment_prefix, varnum_map[varname], varname, typename, defaultval))
       else:
         if varname in choice_vars:
-          print "%s %d %s choice_bool" % (comment_prefix, varnum_map[varname], varname)
+          print("%s %d %s choice_bool" % (comment_prefix, varnum_map[varname], varname))
         elif varname in has_prompt:
-          print "%s %d %s bool" % (comment_prefix, varnum_map[varname], varname)
+          print("%s %d %s bool" % (comment_prefix, varnum_map[varname], varname))
         elif varname in ghost_bools.keys():
           nonbool_var, defval = ghost_bools[varname]
-          print "%s %d %s ghost_bool %s %s" % (comment_prefix, varnum_map[varname], varname, nonbool_var, defval)
+          print("%s %d %s ghost_bool %s %s" % (comment_prefix, varnum_map[varname], varname, nonbool_var, defval))
         else:
-          print "%s %d %s hidden_bool" % (comment_prefix, varnum_map[varname], varname)
-    print "p cnf %d %d" % (len(varnum_map), len(clause_list))
+          print("%s %d %s hidden_bool" % (comment_prefix, varnum_map[varname], varname))
+    print("p cnf %d %d" % (len(varnum_map), len(clause_list)))
     for clause in clause_list:
-      print clause
+      print(clause)
 
   if debug: sys.stderr.write("printing dimacs file\n")
   print_dimacs(varnums, string_clauses)

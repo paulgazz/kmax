@@ -157,7 +157,7 @@ class Results:
                 solver = z3.Solver()
                 solver.add(self.presence_conditions[filename])
                 z3_pcs[filename] = solver.to_smt2()
-            return pickle.dumps(z3_pcs)
+            return pickle.dumps(z3_pcs, 0).decode()
         else:
             f = lambda k, s: "{}: {}".format(k, ', '.join(s) if details else len(s))
             delim = '\n' if details else ', '

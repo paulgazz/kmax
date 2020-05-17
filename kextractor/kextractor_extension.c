@@ -5,7 +5,16 @@
 
 int main(int, char **);
 
-static PyObject *ExtractorError;
+struct module_state {
+  PyObject *ExtractorError;
+};
+
+#if PY_MAJOR_VERSION >= 3
+#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
+#else
+#define GETSTATE(m) (&_state)
+static struct module_state _state;
+#endif
 
 static PyObject * kextract(PyObject *self, PyObject *args) {
   const char *outfile;
@@ -33,12 +42,62 @@ static PyMethodDef kextractor_funcs[] = {
   {NULL}
 };
 
-void initkextractor(void) {
-  PyObject *m;
+#if PY_MAJOR_VERSION >= 3
+
+static int kextractor_traverse(PyObject *m, visitproc visit, void *arg) {
+    Py_VISIT(GETSTATE(m)->ExtractorError);
+    return 0;
+}
+
+static int kextractor_clear(PyObject *m) {
+    Py_CLEAR(GETSTATE(m)->ExtractorError);
+    return 0;
+}
+
+
+static struct PyModuleDef kextractordef = {
+        PyModuleDef_HEAD_INIT,
+        "kextractor",
+        NULL,
+        sizeof(struct module_state),
+        kextractor_funcs,
+        NULL,
+        kextractor_traverse,
+        kextractor_clear,
+        NULL
+};
+
+#define INITERROR return NULL
+
+PyMODINIT_FUNC
+PyInit_kextractor(void)
+
+#else
+#define INITERROR return
+
+void initkextractor(void)
+#endif
+{
+#if PY_MAJOR_VERSION >= 3
+    PyObject *module = PyModule_Create(&kextractordef);
+#else
+    PyObject *module = Py_InitModule3("kextractor", kextractor_funcs,
+                                      "Extract Kconfig dependencies.");
+#endif
+
+  if (module == NULL)
+    INITERROR;
+  struct module_state *st = GETSTATE(module);
   
-  m = Py_InitModule3("kextractor", kextractor_funcs,
-                 "Extract Kconfig dependencies.");
-  ExtractorError = PyErr_NewException("kextractor.error", NULL, NULL);
-  Py_INCREF(ExtractorError);
-  PyModule_AddObject(m, "error", ExtractorError);
+  st->ExtractorError = PyErr_NewException("kextractor.error", NULL, NULL);
+  if (st->ExtractorError == NULL) {
+      Py_DECREF(module);
+      INITERROR;
+  }
+  Py_INCREF(st->ExtractorError);
+  PyModule_AddObject(module, "error", st->ExtractorError);
+
+#if PY_MAJOR_VERSION >= 3
+    return module;
+#endif
 }

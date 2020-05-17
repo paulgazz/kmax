@@ -38,7 +38,7 @@ def get_kextract(kextract_file):
       return lists
   
 def get_kclause_constraints(kclause_file):
-  with open(kclause_file, 'r') as fp:
+  with open(kclause_file, 'rb') as fp:
     # kclause, defined_vars, used_vars = pickle.load(fp)
     kclause = pickle.load(fp)
 
@@ -54,7 +54,7 @@ def get_kclause_constraints(kclause_file):
     return constraints
 
 def unpickle_kmax_file(kmax_file):
-  with open(kmax_file, 'r') as fp:
+  with open(kmax_file, 'rb') as fp:
     kmax = pickle.load(fp)
     return kmax
 
@@ -559,8 +559,8 @@ if __name__ == '__main__':
         if unit not in kmax_formulas.keys():
           error("No formula from kmax was found for the compilation unit: %s" % (unit))
           exit(3)
-      with open(kmax_cache_file, 'w') as f:
-        pickle.dump(kmax_formulas, f)
+      with open(kmax_cache_file, 'wb') as f:
+        pickle.dump(kmax_formulas, f, 0)
     else:
       info("Reading kmax formulas.")
       kmax_formulas = unpickle_kmax_file(kmax_file)
@@ -703,7 +703,7 @@ if __name__ == '__main__':
           command = ["kclause", "--remove-orphaned-nonvisible" ]
           info("Running kclause: %s < %s > %s" % (" ".join(command), extract_inf.name, kclause_outf.name))
           info("This will take several minutes...")
-          popen = subprocess.Popen(command, stdin=extract_inf, stdout=kclause_outf, stderr=DEVNULL)
+          popen = subprocess.Popen(command, stdin=extract_inf, stdout=kclause_outf) #, stderr=DEVNULL)
           popen.communicate()
           kclause_outf.flush()
       os.rename(kclause_file_pending, kclause_file)

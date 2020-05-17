@@ -3,7 +3,10 @@ import os
 import pdb
 trace = pdb.set_trace
 import z3
-import cPickle as pickle
+try:
+    import cPickle as pickle
+except ImportError:  #Python3
+    import pickle
 import sys
 
 import kmaxtools.vcommon as CM
@@ -190,7 +193,7 @@ class FileAnalysis:
         # # cache the list of working kbuild files
         # if args.excludes_file != None:
         #   with open(args.excludes_file, "w") as f:
-        #     pickle.dump(excludes, f)
+        #     pickle.dump(excludes, f, 0)
 
         #print_set(toplevel_dirs, "toplevel_dirs")  # list of directories started from
         print_set(all_c_files, "all_c_files")  # all .c files in used and visited subdirs
@@ -581,7 +584,7 @@ class FileAnalysis:
 #                      self.c_file_targets,
 #                      self.subdirectories,
 #                      self.composites,
-#                      self.presence_conditions), sys.stdout)
+#                      self.presence_conditions), sys.stdout, 0)
         
 #         # #print 'world', self.results.subdir_pcs, self.subdir_pcs
         
@@ -706,7 +709,7 @@ class FileAnalysis:
 #         # # # cache the list of working kbuild files
 #         # # if args.excludes_file != None:
 #         # #   with open(args.excludes_file, "w") as f:
-#         # #     pickle.dump(excludes, f)
+#         # #     pickle.dump(excludes, f, 0)
 
 #         # mlog.info("results01:\n{}".format(self.results))
 

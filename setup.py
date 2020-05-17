@@ -39,4 +39,5 @@ setup(
         'dd',
         'networkx==2.2', # for dd to work on python2
     ],
+    use_2to3=True,
 )
