@@ -289,7 +289,7 @@ This will output the list of configuration conditions for each compilation unit 
     unit_pc tests/kbuild/probe_32.o (CONFIG_A && CONFIG_B)
     unit_pc tests/kbuild/probe_64.o ((! CONFIG_A) && CONFIG_B)
 
-The `unit_pc` lines have the [format](docs/unit_pc.md) of compilation unit name followed by the Boolean expression, in C-style syntax.  The Boolean expression describes the constraints that must be satisfied for the compilation unit to be included.  Use `-z` to emit the z3 formulas in smtlib2 format.
+The `unit_pc` lines have the [format](kmax_format.md) of compilation unit name followed by the Boolean expression, in C-style syntax.  The Boolean expression describes the constraints that must be satisfied for the compilation unit to be included.  Use `-z` to emit the z3 formulas in smtlib2 format.
 
 ### Example on Linux
 
