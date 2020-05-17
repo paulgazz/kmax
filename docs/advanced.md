@@ -24,6 +24,17 @@
 
 # Advanced Usage
 
+## Install from Repository
+
+    git clone https://github.com/paulgazz/kmax.git
+    cd kmax
+    sudo python3 setup.py install
+
+Or install for development, which obviates the need to rereun setup.py
+when making changes to the code:
+
+    sudo python3 setup.py develop
+
 ## Annotated Example
 
 `klocalizer` can generate formulas on-demand or use formulas already
