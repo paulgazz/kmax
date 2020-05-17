@@ -14,8 +14,9 @@
 
 ## Getting Started
 
-Install via `pip3` for python 3.X or `pip` for python 2.X:
+Install `pip3`, Linux's build dependencies, and `kmaxtools`:
 
+    sudo apt install -y python3-pip flex bison bc libssl-dev
     sudo pip3 install kmaxtools
 
 Download the Linux source:
@@ -28,15 +29,22 @@ Run `klocalizer`
     cd linux-5.4/
     klocalizer drivers/usb/storage/alauda.o
 
-Build the resulting `.config` file with [make.cross](https://github.com/fengguang/lkp-tests/blob/master/sbin/make.cross):
+Build the `.config` file made by `klocalizer`:
 
-    make.cross ARCH=x86_64 olddefconfig; make.cross ARCH=x86_64 clean drivers/usb/storage/alauda.o
+    make ARCH=x86_64 olddefconfig
+    make ARCH=x86_64 clean drivers/usb/storage/alauda.o
 
-## Upgrading `kmaxtools`
+## Cross-Compiling
 
-Use the `-U` flag to `pip3`/`pip`:
+Get `make.cross`:
 
-    sudo pip install -U kmaxtools
+    sudo apt install -y xz-utils lftp
+    wget https://raw.githubusercontent.com/fengguang/lkp-tests/master/sbin/make.cross
+
+Run `klocalizer` with a different architecture:
+
+    klocalizer -a powerpc drivers/block/ps3disk.o
+    bash make.cross ARCH=powerpc olddefconfig; bash make.cross ARCH=powerpc clean drivers/block/ps3disk.o
 
 ## Additional Documentation
 
