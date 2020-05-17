@@ -1,3 +1,26 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+
+- [Advanced Usage](#advanced-usage)
+  - [Use Cases](#use-cases)
+    - [A compilation unit not built by allyesconfig](#a-compilation-unit-not-built-by-allyesconfig)
+    - [A compilation unit not built by defconfig or allnoconfig](#a-compilation-unit-not-built-by-defconfig-or-allnoconfig)
+    - [An architecture-specific compilation unit not built by allyesconfig](#an-architecture-specific-compilation-unit-not-built-by-allyesconfig)
+  - [Klocalizer](#klocalizer)
+    - [Troubleshooting](#troubleshooting)
+  - [Generating Formulas for Linux](#generating-formulas-for-linux)
+  - [Kmax](#kmax)
+    - [Simple example](#simple-example)
+    - [Example on Linux](#example-on-linux)
+  - [Kclause](#kclause)
+    - [Example](#example)
+    - [Building kconfig_extract](#building-kconfig_extract)
+    - [Other uses](#other-uses)
+      - [Get a list of all visible configs](#get-a-list-of-all-visible-configs)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Advanced Usage
 
 ## Use Cases

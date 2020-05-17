@@ -3,27 +3,13 @@
 
 
 - [The Kmax Tool Suite](#the-kmax-tool-suite)
-  - [Tools](#tools)
-  - [Contributors](#contributors)
-  - [Setup](#setup)
+  - [Getting Started](#getting-started)
+  - [Upgrading `kmaxtools`](#upgrading-kmaxtools)
+  - [Additional Documentation](#additional-documentation)
+  - [Tool Overview](#tool-overview)
+    - [Contributors](#contributors)
+  - [Install from Repository](#install-from-repository)
   - [Quick Start](#quick-start)
-  - [Use Cases](#use-cases)
-    - [A compilation unit not built by allyesconfig](#a-compilation-unit-not-built-by-allyesconfig)
-    - [A compilation unit not built by defconfig or allnoconfig](#a-compilation-unit-not-built-by-defconfig-or-allnoconfig)
-    - [An architecture-specific compilation unit not built by allyesconfig](#an-architecture-specific-compilation-unit-not-built-by-allyesconfig)
-    - [An Architecture-Specific Compilation Unit](#an-architecture-specific-compilation-unit)
-  - [Advanced Usage](#advanced-usage)
-  - [Troubleshooting](#troubleshooting)
-  - [Generating Formulas for Linux](#generating-formulas-for-linux)
-  - [Kmax](#kmax)
-    - [Simple example](#simple-example)
-    - [Example on Linux](#example-on-linux)
-  - [Kclause](#kclause)
-    - [Example](#example)
-    - [Building kconfig_extract](#building-kconfig_extract)
-    - [Other uses](#other-uses)
-      - [Get a list of all visible configs](#get-a-list-of-all-visible-configs)
-  - [Bugs Found by Kmax Tools](#bugs-found-by-kmax-tools)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
