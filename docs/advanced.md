@@ -3,6 +3,7 @@
 
 
 - [Advanced Usage](#advanced-usage)
+  - [Install from Repository](#install-from-repository)
   - [Annotated Example](#annotated-example)
   - [Use Cases](#use-cases)
     - [A compilation unit not built by allyesconfig](#a-compilation-unit-not-built-by-allyesconfig)

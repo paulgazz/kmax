@@ -6,9 +6,6 @@
   - [Getting Started](#getting-started)
   - [Upgrading `kmaxtools`](#upgrading-kmaxtools)
   - [Additional Documentation](#additional-documentation)
-  - [Tool Overview](#tool-overview)
-    - [Contributors](#contributors)
-  - [Install from Repository](#install-from-repository)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
