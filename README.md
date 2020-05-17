@@ -9,7 +9,6 @@
   - [Tool Overview](#tool-overview)
     - [Contributors](#contributors)
   - [Install from Repository](#install-from-repository)
-  - [Quick Start](#quick-start)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -83,40 +82,3 @@ the following tools:
     git clone https://github.com/paulgazz/kmax.git
     cd kmax
     sudo python3 setup.py install
-
-## Quick Start
-
-The fastest way to get started is to use formulas already extracted for your version of Linux, which you can download here: <https://kmaxtools.opentheblackbox.net/formulas>
-
-    wget https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.4.tar.xz
-    tar -xvf linux-5.4.tar.xz
-    cd linux-5.4/
-    wget https://kmaxtools.opentheblackbox.net/formulas/kmax-formulas_linux-v5.4.tar.bz2
-    tar -xvf kmax-formulas_linux-v5.4.tar.bz2
-
-This contains a `.kmax` directory containing the Kconfig and Kbuild
-formulas for each architecture.  If a version is not available
-[here](https://kmaxtools.opentheblackbox.net/formulas) submit an issue to request
-the formulas be generated and uplodated or see below for directions on
-generating these formulas.
-
-Run klocalizer for a given compilation unit, e.g.,
-
-    klocalizer drivers/usb/storage/alauda.o
-
-This will search each architecture for constraint satisfiability,
-stopping once one is found (or no architecture's constraints are
-satisfiable).  `klocalizer` writes this configuration to `.config` and
-prints the architectures, e.g., `x86_64`, to standard out.
-
-To build the compilation unit using the generated `.config`, use
-[make.cross](https://github.com/fengguang/lkp-tests/blob/master/sbin/make.cross).
-First set any defaults for the `.config` file:
-
-    make.cross ARCH=x86_64 olddefconfig
-
-Then build the compilation unit:
-
-    make.cross ARCH=x86_64 drivers/usb/storage/alauda.o
-
-If you cannot get a configuration or it is still not buildable, see the [Troubleshooting](#troubleshooting) section.
