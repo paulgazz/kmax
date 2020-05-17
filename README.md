@@ -48,8 +48,8 @@ Run `klocalizer` with a different architecture:
 
 ## Additional Documentation
 
-[Overview](docs/overview.md)
+[Overview](https://github.com/paulgazz/kmax/blob/master/docs/overview.md)
 
-[Advanced Usage](docs/advanced.md)
+[Advanced Usage](https://github.com/paulgazz/kmax/blob/master/docs/advanced.md)
 
-[Bugs Found by `kmaxtools`](docs/bugs_found.md)
+[Bugs Found by `kmaxtools`](https://github.com/paulgazz/kmax/blob/master/docs/bugs_found.md)
