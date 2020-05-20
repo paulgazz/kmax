@@ -13,6 +13,8 @@ exec(read(os.path.join("kmaxtools", "about.py")), about)
 
 kextractor = Extension('kextractor', [ 'kextractors/kextractor/kextractor_extension.c', 'kextractors/kextractor/kextractor.c', 'kextractors/kextractor/confdata.c', 'kextractors/kextractor/expr.c', 'kextractors/kextractor/preprocess.c', 'kextractors/kextractor/lexer.lex.c', 'kextractors/kextractor/parser.tab.c', 'kextractors/kextractor/symbol.c', 'kextractors/kextractor/util.c'], include_dirs=['kextractors/kextractor/'])
 
+kextractor_3_19 = Extension('kextractor_3_19', [ 'kextractors/kextractor-3.19/kextractor_extension.c', 'kextractors/kextractor-3.19/kextractor.c', 'kextractors/kextractor-3.19/bconf.tab.c', 'kextractors/kextractor-3.19/zconf.tab.c'], include_dirs=['kextractors/kextractor-3.19/'])
+
 kextractor_4_12_8 = Extension('kextractor_4_12_8', [ 'kextractors/kextractor-4.12.8/kextractor_extension.c', 'kextractors/kextractor-4.12.8/kextractor.c', 'kextractors/kextractor-4.12.8/bconf.tab.c', 'kextractors/kextractor-4.12.8/zconf.tab.c'], include_dirs=['kextractors/kextractor-4.12.8/'])
 
 setup(
@@ -27,7 +29,7 @@ setup(
     keywords = "makefile kconfig kbuild configurations kmax kclause klocalizer",
     url = "https://github.com/paulgazz/kmax",
     packages=['kmaxtools', 'pymake'],
-    ext_modules = [ kextractor, kextractor_4_12_8 ],
+    ext_modules = [ kextractor, kextractor_3_19, kextractor_4_12_8 ],
     classifiers=[
         "Development Status :: 4 - Beta",
         "Topic :: Utilities",

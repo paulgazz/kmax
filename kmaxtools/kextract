@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import kextractor
+import kextractor_3_19
 import kextractor_4_12_8
 import sys
 import argparse
@@ -21,7 +22,7 @@ def get_srcarch(arch):
     return arch
 
 if __name__ == '__main__':
-  module_versions = [ "latest", "4.12.8" ]
+  module_versions = [ "latest", "3.19", "4.12.8" ]
   available_versions = "Available versions are %s." % (", ".join(module_versions))
 
   argparser = argparse.ArgumentParser()
@@ -52,6 +53,8 @@ if __name__ == '__main__':
 
   if modver == module_versions[0]:
     kextractor.kextract(output, "ARCH=%s" % (arch), "SRCARCH=%s" % (srcarch))
+  elif modver == module_versions[1]:
+    kextractor_3_19.kextract(output, "ARCH=%s" % (arch), "SRCARCH=%s" % (srcarch))
   elif modver == module_versions[1]:
     kextractor_4_12_8.kextract(output, "ARCH=%s" % (arch), "SRCARCH=%s" % (srcarch))
   else:
