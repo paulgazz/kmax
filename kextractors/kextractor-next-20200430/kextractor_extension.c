@@ -37,51 +37,51 @@ static PyObject * kextract(PyObject *self, PyObject *args) {
 static char kextract_docs[] =
   "kextract( ): Extract Kconfig dependencies\n";
 
-static PyMethodDef kextractor_funcs[] = {
+static PyMethodDef kextractor_next_20200430_funcs[] = {
   {"kextract", (PyCFunction)kextract, METH_VARARGS, kextract_docs},
   {NULL}
 };
 
 #if PY_MAJOR_VERSION >= 3
 
-static int kextractor_traverse(PyObject *m, visitproc visit, void *arg) {
+static int kextractor_next_20200430_traverse(PyObject *m, visitproc visit, void *arg) {
     Py_VISIT(GETSTATE(m)->ExtractorError);
     return 0;
 }
 
-static int kextractor_clear(PyObject *m) {
+static int kextractor_next_20200430_clear(PyObject *m) {
     Py_CLEAR(GETSTATE(m)->ExtractorError);
     return 0;
 }
 
 
-static struct PyModuleDef kextractordef = {
+static struct PyModuleDef kextractor_next_20200430def = {
         PyModuleDef_HEAD_INIT,
-        "kextractor",
+        "kextractor_next_20200430",
         NULL,
         sizeof(struct module_state),
-        kextractor_funcs,
+        kextractor_next_20200430_funcs,
         NULL,
-        kextractor_traverse,
-        kextractor_clear,
+        kextractor_next_20200430_traverse,
+        kextractor_next_20200430_clear,
         NULL
 };
 
 #define INITERROR return NULL
 
 PyMODINIT_FUNC
-PyInit_kextractor(void)
+PyInit_kextractor_next_20200430(void)
 
 #else
 #define INITERROR return
 
-void initkextractor(void)
+void initkextractor_next_20200430(void)
 #endif
 {
 #if PY_MAJOR_VERSION >= 3
-    PyObject *module = PyModule_Create(&kextractordef);
+    PyObject *module = PyModule_Create(&kextractor_next_20200430def);
 #else
-    PyObject *module = Py_InitModule3("kextractor", kextractor_funcs,
+    PyObject *module = Py_InitModule3("kextractor_next_20200430", kextractor_next_20200430_funcs,
                                       "Extract Kconfig dependencies.");
 #endif
 
@@ -89,7 +89,7 @@ void initkextractor(void)
     INITERROR;
   struct module_state *st = GETSTATE(module);
   
-  st->ExtractorError = PyErr_NewException("kextractor.error", NULL, NULL);
+  st->ExtractorError = PyErr_NewException("kextractor_next_20200430.error", NULL, NULL);
   if (st->ExtractorError == NULL) {
       Py_DECREF(module);
       INITERROR;

@@ -1,3 +1,22 @@
-include kextractor/menu.c
-include kextractor/util.c
-recursive-include kextractor *.h
+recursive-include kextractors *.h
+
+include kextractors/kextractor-next-20200430/menu.c
+include kextractors/kextractor-next-20200430/util.c
+
+include kextractors/kextractor-3.19/bconf.lex.c
+include kextractors/kextractor-3.19/confdata.c
+include kextractors/kextractor-3.19/expr.c
+include kextractors/kextractor-3.19/menu.c
+include kextractors/kextractor-3.19/symbol.c
+include kextractors/kextractor-3.19/util.c
+include kextractors/kextractor-3.19/zconf.hash.c
+include kextractors/kextractor-3.19/zconf.lex.c
+
+include kextractors/kextractor-4.12.8/bconf.lex.c
+include kextractors/kextractor-4.12.8/confdata.c
+include kextractors/kextractor-4.12.8/expr.c
+include kextractors/kextractor-4.12.8/menu.c
+include kextractors/kextractor-4.12.8/symbol.c
+include kextractors/kextractor-4.12.8/util.c
+include kextractors/kextractor-4.12.8/zconf.hash.c
+include kextractors/kextractor-4.12.8/zconf.lex.c

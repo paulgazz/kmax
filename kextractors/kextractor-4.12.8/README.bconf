@@ -1,0 +1,36 @@
+DESCRIPTION
+-----------
+
+bconf is the name I give the pre-Kconfig configuration system for
+Linux.  It is written in bash, hence the b in bconf as opposed to
+zconf.  bconf is implemented with a script called Configure, found in
+the scripts/ directory or the root directory (depending on the Linux
+version).
+
+Configure defines a set of functions that Kconfig seems to have
+derived its constructs from, e.g., define_bool defines a new
+configuration variable of type bool.  The config.in script calls these
+functions and uses bash's test, [ ], to declare configuration
+variables and their dependencies.  The config.in scripts apparently
+use a very restricted subset of bash, therefore bconf implements only
+this subset, while regarding the special function names, e.g.,
+define_bool, as reserved words in the bconf grammar.
+
+NOTES
+-----
+
+- bconf seems to only use test, [ ], and not the expanded ksh-style
+conditionals, [[ ]], which allow more complex conditional expressions.
+
+DEBUGGING
+---------
+The following C flags will turn on various debugging output.
+
+-DTRACE_LEXER
+  Trace bconf config.in file entries and exits
+
+-DTRACE_BISON
+  Trace the bconf grammar with bison's yydebug
+
+-DTRACE_ZCONF
+  Trace zconf method calls
