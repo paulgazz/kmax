@@ -2,3 +2,11 @@ recursive-include kextractors *.h
 
 include kextractors/kextractor/menu.c
 include kextractors/kextractor/util.c
+include kextractors/kextractor-4.12.8/bconf.lex.c
+include kextractors/kextractor-4.12.8/confdata.c
+include kextractors/kextractor-4.12.8/expr.c
+include kextractors/kextractor-4.12.8/menu.c
+include kextractors/kextractor-4.12.8/symbol.c
+include kextractors/kextractor-4.12.8/util.c
+include kextractors/kextractor-4.12.8/zconf.hash.c
+include kextractors/kextractor-4.12.8/zconf.lex.c
