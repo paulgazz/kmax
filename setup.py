@@ -11,7 +11,7 @@ def read(fname):
 about = {}
 exec(read(os.path.join("kmaxtools", "about.py")), about)
 
-kextractor = Extension('kextractor', [ 'kextractor/kextractor_extension.c', 'kextractor/kextractor.c', 'kextractor/confdata.c', 'kextractor/expr.c', 'kextractor/preprocess.c', 'kextractor/lexer.lex.c', 'kextractor/parser.tab.c', 'kextractor/symbol.c', 'kextractor/util.c'], include_dirs=['kextractor/'])
+kextractor = Extension('kextractor', [ 'kextractors/kextractor/kextractor_extension.c', 'kextractors/kextractor/kextractor.c', 'kextractors/kextractor/confdata.c', 'kextractors/kextractor/expr.c', 'kextractors/kextractor/preprocess.c', 'kextractors/kextractor/lexer.lex.c', 'kextractors/kextractor/parser.tab.c', 'kextractors/kextractor/symbol.c', 'kextractors/kextractor/util.c'], include_dirs=['kextractors/kextractor/'])
 
 setup(
     name = about['__title__'],

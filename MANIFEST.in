@@ -1,3 +1,4 @@
-include kextractor/menu.c
-include kextractor/util.c
-recursive-include kextractor *.h
+recursive-include kextractors *.h
+
+include kextractors/kextractor/menu.c
+include kextractors/kextractor/util.c
