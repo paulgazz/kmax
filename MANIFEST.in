@@ -1,7 +1,7 @@
 recursive-include kextractors *.h
 
-include kextractors/kextractor/menu.c
-include kextractors/kextractor/util.c
+include kextractors/kextractor-next-20200430/menu.c
+include kextractors/kextractor-next-20200430/util.c
 
 include kextractors/kextractor-3.19/bconf.lex.c
 include kextractors/kextractor-3.19/confdata.c

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import kextractor
+import kextractor_next_20200430
 import kextractor_3_19
 import kextractor_4_12_8
 import sys
@@ -22,11 +22,17 @@ def get_srcarch(arch):
     return arch
 
 if __name__ == '__main__':
-  module_versions = [ "latest", "3.19", "4.12.8" ]
-  available_versions = "Available versions are %s." % (", ".join(module_versions))
+  module_versions = {}
+
+  latest_module = "next-20200430"
+  module_versions["next-20200430"] = kextractor_next_20200430
+  module_versions[ "3.19"] = kextractor_3_19
+  module_versions["4.12.8"] = kextractor_4_12_8
+
+  available_versions = "Available versions: %s" % (", ".join(module_versions.keys()))
 
   argparser = argparse.ArgumentParser()
-  argparser.add_argument('--module',
+  argparser.add_argument('--module-version',
                          type=str,
                          default="latest",
                          help="""Specify the version of the Kconfig parser to use.  Defaults to \"latest\".  %s.""" % (available_versions))
@@ -43,19 +49,16 @@ if __name__ == '__main__':
     print("%s %s" % (kmaxtools.about.__title__, kmaxtools.about.__version__))
     exit(0)
 
-  modver = args.module
+  module_version = args.module_version
   arch = args.arch
   output = args.output
   srcarch = get_srcarch(arch)
 
-  if modver not in module_versions:
-    sys.err.write("Invalid module version \"%s\".  %s." % (modver, available_versions))
+  if module_version == "latest":
+    module_version = latest_module
 
-  if modver == module_versions[0]:
-    kextractor.kextract(output, "ARCH=%s" % (arch), "SRCARCH=%s" % (srcarch))
-  elif modver == module_versions[1]:
-    kextractor_3_19.kextract(output, "ARCH=%s" % (arch), "SRCARCH=%s" % (srcarch))
-  elif modver == module_versions[1]:
-    kextractor_4_12_8.kextract(output, "ARCH=%s" % (arch), "SRCARCH=%s" % (srcarch))
-  else:
-    assert(False)
+  if module_version not in module_versions.keys():
+    sys.stderr.write("Invalid module version \"%s\".  %s.\n" % (module_version, available_versions))
+    exit(1)
+
+  module_versions[module_version].kextract(output, "ARCH=%s" % (arch), "SRCARCH=%s" % (srcarch))
