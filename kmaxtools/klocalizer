@@ -16,7 +16,7 @@ except ImportError:
   DEVNULL = open(os.devnull, 'wb')
 
 def info(msg, ending="\n"):
-  sys.stderr.write("INFO: %s%s" % (msg, ending))
+  if not quiet: sys.stderr.write("INFO: %s%s" % (msg, ending))
 
 def warning(msg, ending="\n"):
   sys.stderr.write("WARNING: %s%s" % (msg, ending))
@@ -448,6 +448,10 @@ if __name__ == '__main__':
   argparser.add_argument("--random-seed",
                          type=int,
                          help="""The random seed for the solver's model generation.""")
+  argparser.add_argument('-q',
+                         '--quiet',
+                         action="store_true",
+                         help="""Quiet mode prints no messages to stderr.""")
   argparser.add_argument('--version',
                          action="version",
                          version="%s %s" % (kmaxtools.about.__title__, kmaxtools.about.__version__),
@@ -478,6 +482,7 @@ if __name__ == '__main__':
   sample_prefix = args.sample_prefix
   random_seed = args.random_seed
   compilation_units = args.compilation_units
+  quiet = args.quiet
 
   if kextract_file and not kclause_file:
     argparser.print_help()
@@ -521,7 +526,7 @@ if __name__ == '__main__':
     exit(12)
 
   if not os.path.exists(formulas):
-    error("No formulas found.  Generating them on demand.  They can also be downloaded from https://kmaxtools.opentheblackbox.net/formulas/ for some Linux versions.")
+    warning("No formulas found.  Generating them on demand.  They can also be downloaded from https://kmaxtools.opentheblackbox.net/formulas/ for some Linux versions.")
     os.makedirs(formulas)
 
   if not kmax_file:
@@ -698,6 +703,7 @@ if __name__ == '__main__':
       with open(kclause_file_pending, 'w') as kclause_outf:
         with open(get_arch_kextract_file(formulas, arch), 'r') as extract_inf:
           command = ["kclause", "--remove-orphaned-nonvisible" ]
+          if quiet: command.append("--quiet")
           info("Running kclause: %s < %s > %s" % (" ".join(command), extract_inf.name, kclause_outf.name))
           info("This will take several minutes...")
           popen = subprocess.Popen(command, stdin=extract_inf, stdout=kclause_outf) #, stderr=DEVNULL)
