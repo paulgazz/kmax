@@ -755,7 +755,7 @@ if __name__ == '__main__':
       if constraints_file:
         ad_hoc_constraints, ad_hoc_config_options = get_ad_hoc_constraints(constraints_file)
         constraints.extend(ad_hoc_constraints)
-        user_specified_option_names.extend(ad_hoc_config_options)
+        user_specified_option_names.add(ad_hoc_config_options)
 
       # add kclause constraints
       constraints.extend(get_kclause_constraints(kclause_file))
