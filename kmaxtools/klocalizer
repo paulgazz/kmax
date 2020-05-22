@@ -449,16 +449,13 @@ if __name__ == '__main__':
                          type=int,
                          help="""The random seed for the solver's model generation.""")
   argparser.add_argument('--version',
-                         action="store_true",
+                         action="version",
+                         version="%s %s" % (kmaxtools.about.__title__, kmaxtools.about.__version__),
                          help="""Print the version number.""")
   argparser.add_argument("compilation_units",
                          nargs='*',
                          help="The path of the compilation unit (.o file) to generate a .config for, relative to the top of the source tree.")
   args = argparser.parse_args()
-
-  if args.version:
-    print("%s %s" % (kmaxtools.about.__title__, kmaxtools.about.__version__))
-    exit(0)
   
   formulas = args.formulas
   kmax_file = args.kmax_formulas

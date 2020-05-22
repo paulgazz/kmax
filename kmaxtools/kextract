@@ -5,6 +5,7 @@ import kextractor_3_19
 import kextractor_4_12_8
 import sys
 import argparse
+import kmaxtools.about
 
 def get_srcarch(arch):
   srcarch = {
@@ -41,13 +42,10 @@ if __name__ == '__main__':
   argparser.add_argument("output",
                          help="The output file to write to.")
   argparser.add_argument('--version',
-                         action="store_true",
+                         action="version",
+                         version="%s %s" % (kmaxtools.about.__title__, kmaxtools.about.__version__),
                          help="""Print the version number.""")
   args = argparser.parse_args()
-
-  if args.version:
-    print("%s %s" % (kmaxtools.about.__title__, kmaxtools.about.__version__))
-    exit(0)
 
   module_version = args.module_version
   arch = args.arch

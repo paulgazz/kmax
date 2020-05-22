@@ -136,14 +136,11 @@ if __name__ == '__main__':
                          help="""\
   collect per-file constraints as a pickled dictionary from names to smtlib2 expressions""")
   argparser.add_argument('--version',
-                         action="store_true",
+                         action="version",
+                         version="%s %s" % (kmaxtools.about.__title__, kmaxtools.about.__version__),
                          help="""Print the version number.""")
 
   args = argparser.parse_args()
-
-  if args.version:
-    print("%s %s" % (kmaxtools.about.__title__, kmaxtools.about.__version__))
-    exit(0)
     
   if args.aggregate:
     # aggregate per-file constraints in the unit_pc format

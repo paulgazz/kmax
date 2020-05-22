@@ -78,14 +78,11 @@ if __name__ == '__main__':
                          action="store_true",
                          help="""add extra formatting information to dimacs comments to distinguish them from normal comments""")
   argparser.add_argument('--version',
-                         action="store_true",
+                         action="version",
+                         version="%s %s" % (kmaxtools.about.__title__, kmaxtools.about.__version__),
                          help="""Print the version number.""")
   args = argparser.parse_args()
 
-  if args.version:
-    print("%s %s" % (kmaxtools.about.__title__, kmaxtools.about.__version__))
-    exit(0)
-    
   debug = args.debug
   quiet = False  # to be implemented for quieter output
   show_warnings = False  # to be implemented for checker output
