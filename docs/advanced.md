@@ -192,6 +192,10 @@ Its output contains
 
       CC [M]  drivers/block/ps3disk.o
 
+## Using merge_config.sh instead of olddefconfig
+
+    ./scripts/kconfig/merge_config.sh -n partialconfigfile > mergeout
+
 
 ## Klocalizer
 
