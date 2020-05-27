@@ -61,7 +61,7 @@ if [[ ${errcodekloc} -eq 0 ]]; then
   timeout 2m "${scripts_dir}/make.cross" -j 4 $archvar "$target" >> build.txt 2>&1
   errcodemake=${?}
   tail -n1000 build.txt
-  grep "CC *$kbuild_path" build.txt
+  egrep "(CC|CC [M]) *$kbuild_path" build.txt
   errcodegrep=${?}
   if [[ ${errcodegrep} -eq 0 ]]; then
     if [[ ${errcodemake} -eq 0 ]]; then
@@ -77,7 +77,7 @@ if [[ ${errcodekloc} -eq 0 ]]; then
     timeout 2m "${scripts_dir}/make.cross" -i -j 4 $archvar "$target" > build.txt 2>&1
     errcodemake=${?}
     tail -n1000 build.txt
-    grep "CC *$kbuild_path" build.txt
+    egrep "(CC|CC [M]) *$kbuild_path" build.txt
     errcodegrep=${?}
     if [[ ${errcodegrep} -eq 0 ]]; then
       echo "PASS make.cross_ignored_errors $timetaken $filename $arch $config_klocalizer $numremoved"
