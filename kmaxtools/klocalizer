@@ -174,7 +174,7 @@ def print_model_as_config(model, fp=sys.stdout, kconfig_types=None, kconfig_visi
             elif kconfig_has_def_nonbool != None and str_entry in kconfig_has_def_nonbool and str_entry not in user_specified_option_names:
               # don't bother printing out non-Booleans that Kconfig will likely set to a default value, as long as they weren't set by the user-defined constraints
               pass
-            elif str_entry not in kconfig_types:
+            elif str_entry not in kconfig_types.keys():
               if str_entry not in architecture_configs:
                 warning("%s is not defined by Kconfig for this architecture." % (str_entry))
             elif kconfig_types[str_entry] == "bool":
@@ -190,7 +190,7 @@ def print_model_as_config(model, fp=sys.stdout, kconfig_types=None, kconfig_visi
             else:
               assert(False)
           else:
-            if kconfig_types is None or str_entry in kconfig_types:
+            if kconfig_types is None or str_entry in kconfig_types.keys():
               fp.write("# %s is not set\n" % (str_entry))
             else:
               if str_entry not in architecture_configs:
@@ -227,7 +227,7 @@ def approximate_model(approximate, constraints, user_constraints=[]):
     while res == z3.unsat:
       core = solver.unsat_core()
       # remove all assumptions that in the core, except those specifically given as user-constraints.  potential optmization: try randomizing this or removing only some assumptions each iteration.
-      print(core)
+      # print(core)
       assumptions = [ assumption for assumption in assumptions if assumption not in core or assumption in user_constraints ]
       info(len(assumptions), ending="\r")
       res = solver.check(assumptions)
@@ -758,7 +758,7 @@ if __name__ == '__main__':
       if constraints_file:
         ad_hoc_constraints, ad_hoc_config_options = get_ad_hoc_constraints(constraints_file)
         constraints.extend(ad_hoc_constraints)
-        user_specified_option_names.add(ad_hoc_config_options)
+        user_specified_option_names.update(ad_hoc_config_options)
 
       # add kclause constraints
       constraints.extend(get_kclause_constraints(kclause_file))
