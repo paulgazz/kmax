@@ -1,0 +1,92 @@
+#!/usr/bin/env python
+
+import sys
+import os
+import argparse
+import z3
+import regex
+import random
+import subprocess
+import kmaxtools.about
+from kmaxtools.common import get_kmax_constraints, unpickle_kmax_file, info
+try:
+  from functools import reduce # python 3
+except ImportError:
+  reduce = reduce # reduce is built-in to python 2
+
+kmaxtools.common.quiet = True
+  
+def warning(msg, ending="\n"):
+  sys.stderr.write("WARNING: %s%s" % (msg, ending))
+
+def error(msg, ending="\n"):
+  sys.stderr.write("ERROR: %s%s" % (msg, ending))
+
+if __name__ == '__main__':    
+  argparser = argparse.ArgumentParser()
+  argparser.add_argument('--formulas',
+                         type=str,
+                         default=".kmax/",
+                         help="""Path to the formulas which contain one kmax file for all compilation units and one directory for each architecture containing kclause files.  Defaults to \".kmax/\"""")
+  argparser.add_argument('--kmax-formulas',
+                         type=str,
+                         default=None,
+                         help="""The file containing the Kbuild constraints as a pickled dictionary from compilation unit to formula.  Defaults to \"kmax\" in the --formulas directory.""")
+  argparser.add_argument('--kclause-formulas',
+                         type=str,
+                         default=None,
+                         help="""The file containing the a pickled tuple with a mapping from configuration option to its formulas and a list of additional constraints.  This overrides --arch.""")
+  argparser.add_argument('--kconfig-extract',
+                         type=str,
+                         default=None,
+                         help="""The file containing the kconfig extract.  This must be accompanied by --kclause-formulas.""")
+  argparser.add_argument('--version',
+                         action="store_true",
+                         help="""Print the version number.""")
+  argparser.add_argument('--show-constraints',
+                         action="store_true",
+                         help="""Show constraints next to each compilation unit's name.""")
+  argparser.add_argument('--view-kbuild',
+                         action="store_true",
+                         help="""Show Kbuild constraints for each element of the path.""")
+  argparser.add_argument("pathprefixes",
+                         nargs='*',
+                         help="The path prefix of the compilation units to retrieve kmax formulas from.")
+  args = argparser.parse_args()
+
+  if args.version:
+    print("%s %s" % (kmaxtools.about.__title__, kmaxtools.about.__version__))
+    exit(0)
+  
+  formulas = args.formulas
+  kmax_file = args.kmax_formulas
+  path_prefixes = args.pathprefixes
+  view_kbuild = args.view_kbuild
+  show_constraints = args.show_constraints
+
+  if not kmax_file:
+    kmax_file = os.path.join(formulas, "kmax")
+  info("Kmax formula file: %s" % (kmax_file))
+  
+  kmax_formulas = unpickle_kmax_file(kmax_file)
+
+  units = kmax_formulas.keys()
+  if len(path_prefixes) > 0:
+    units_to_print = filter(lambda unit: reduce(lambda x, y: x or unit.startswith(y), path_prefixes, False), units)
+  else: # no filters
+    units_to_print = units
+
+  if not show_constraints:
+    print("\n".join(units_to_print))
+  else:
+
+    def z3_astref_to_string(astref):
+      result = str(astref)
+      return result
+
+    formulas = {}
+    for unit in units_to_print:
+      constraints = get_kmax_constraints(kmax_formulas, unit, view=view_kbuild)
+      constraint = z3.simplify(reduce(lambda x, y: z3.And(x,y), constraints, z3.BoolVal(True)))
+      output = "%s %s" % (unit, z3_astref_to_string(constraint))
+      print(output)
