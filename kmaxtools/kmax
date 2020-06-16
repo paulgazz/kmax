@@ -54,10 +54,9 @@ if __name__ == '__main__':
        help="""\
     recursively enter subdirectories""")
 
-    ag('-C',
-       '--config-vars',
+    ag('--unselectable',
        type=str,
-       help="""the name of a KConfigData file containing configuration variable data""")
+       help="""the name of a file containing a list of unselectable configuration options.  these options will be treated as always disabled.""")
 
     ag('-D',
        '--define',
@@ -114,6 +113,10 @@ if __name__ == '__main__':
     kmaxtools.settings.unit_pc_format = args.unit_pc_format
     kmaxtools.settings.defines = args.define
     kmaxtools.settings.output_smtlib2 = args.output_smtlib2
+
+    if args.unselectable:
+        with open(args.unselectable, "rb") as f:
+            kmaxtools.settings.unselectable = [ x.strip() for x in f.readlines() ]
 
     # case_study = args.case_study
     # if not case_study:

@@ -250,9 +250,16 @@ class Kbuild:
                 #varbdd = self.bvars[name].bdd
                 v = self.get_bvars(name).bdd
                 zv = self.get_bvars(name).zbdd
-            
-                return Multiverse([ CondDef(v, zv, 'y'),
-                                    CondDef(neg(v), z3.Not(zv), None) ])
+
+                # if a list of free options was given on the
+                # command-line, then only allow those options to be
+                # free variables, otherwise the configuration option
+                # is always disabled.
+                if kmaxtools.settings.unselectable != None and name in kmaxtools.settings.unselectable:
+                    return Multiverse([ CondDef(self.T, ZSolver.T, None) ])
+                else:
+                    return Multiverse([ CondDef(v, zv, 'y'),
+                                        CondDef(neg(v), z3.Not(zv), None) ])
             else:
                 # TODO don't use 'm' for truly boolean config vars
                 equals_y = self.get_bvars(name + "=y").bdd

@@ -86,6 +86,9 @@ if __name__ == '__main__':
                          action='append',
                          help="""\
   define a make variable""")
+  argparser.add_argument('--unselectable',
+                         type=str,
+                         help="""the name of a file containing a list of unselectable configuration options.  these options will be treated as always disabled.""")
   argparser.add_argument('-x',
                          '--excludes-file',
                          help="""\
@@ -229,6 +232,10 @@ if __name__ == '__main__':
     if args.define != None:
       for define in args.define:
         covering_set_args.append("-D" + define)
+
+    if args.unselectable != None:
+      covering_set_args.append("--unselectable")
+      covering_set_args.append(args.unselectable)
 
     if args.config_vars:
       covering_set_args.append("-C" + args.config_vars)
