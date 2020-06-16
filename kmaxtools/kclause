@@ -27,6 +27,7 @@ if __name__ == '__main__':
   import z3
   import z3.z3printer
   from kmaxtools import expression_converter
+  from kmaxtools import find_selectable
   import pickle
   import kmaxtools.about
 
@@ -84,6 +85,12 @@ if __name__ == '__main__':
   argparser.add_argument('--comment-format-v2',
                          action="store_true",
                          help="""add extra formatting information to dimacs comments to distinguish them from normal comments""")
+  argparser.add_argument('--selectable',
+                         action="store_true",
+                         help="""list the selectable options as the output.  performs no transformation to logic and ignores all other options.""")
+  argparser.add_argument('--unselectable',
+                         action="store_true",
+                         help="""list the unselectable options as the output.  performs no transformation to logic and ignores all other options.""")
   argparser.add_argument('--version',
                          action="version",
                          version="%s %s" % (kmaxtools.about.__title__, kmaxtools.about.__version__),
@@ -94,10 +101,18 @@ if __name__ == '__main__':
   quiet = args.quiet  # to be implemented for quieter output
   show_warnings = args.verbose  # to be implemented for checker output
   debug_expressions = args.debug_expressions
+  unselectable = args.unselectable
+  selectable = args.selectable
   remove_true_clauses = True
   deduplicate_clauses = True
 
-  root_var = "SPECIAL_ROOT_VARIABLE"
+  if unselectable or selectable:
+    # don't do output, which won't make much sense for --(un)selectable
+    quiet = True
+
+  if selectable and unselectable:
+    sys.stderr.write("only one of --selectable or --unselectable may be specified\n")
+    exit(1)
 
   z3_clauses = {}
 
@@ -340,6 +355,29 @@ if __name__ == '__main__':
       exit(1)
     if debug: sys.stderr.write("done %s\n" % (line))
   if not quiet: sys.stderr.write("[STEP 1/3] finished reading kextract file\n")
+
+  if unselectable or selectable:
+    # this algorithm finds the set of options that can never be
+    # selected.  it is a reimplementation of the kmax FSE 2017
+    # heuristic.  it is overapproximate, since it assumes no
+    # dependencies means it is selectable.  unselectable options are
+    # those that are never defined and depend only on options that are
+    # not unselectable.  a more precise version would just use the
+    # logical formulas to determine this.
+    sys.stderr.write("[STEP 1/1] finding unselectable configuration options\n")
+
+    find_selectable_object = find_selectable.FindSelectable(dep_exprs, rev_dep_exprs)
+    selectable_options = find_selectable_object.get_selectable(set(bools).union(set(nonbools)))
+
+    if unselectable:
+      selectability = False
+    elif selectable:
+      selectability = True
+    else:
+      assert(False)
+      
+    print("\n".join([ option for option in selectable_options.keys() if selectable_options[option] == selectability ]))
+    exit(0)
 
   # the names of configuration variables that have dependencies, either
   # direct or reverse
