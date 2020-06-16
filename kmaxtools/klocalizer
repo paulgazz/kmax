@@ -9,6 +9,7 @@ import pickle
 import random
 import kmaxtools.about
 import subprocess
+from kmaxtools.common import get_kmax_constraints, unpickle_kmax_file
 
 try:
   from subprocess import DEVNULL  # Python 3.
@@ -52,11 +53,6 @@ def get_kclause_constraints(kclause_file):
         constraints.extend(z3_clause)
 
     return constraints
-
-def unpickle_kmax_file(kmax_file):
-  with open(kmax_file, 'rb') as fp:
-    kmax = pickle.load(fp)
-    return kmax
 
 def get_resolved_to_kbuild_map(kmax):
   # resolve all kbuild paths to file names, remove ../ relative
@@ -124,31 +120,6 @@ def prefetch_kmax_constraints(kmax_cache, path):
       else:
         info("%s has no kmax formula, assuming it is unconstrained." % (current_path))
   return kmax_cache
-
-def get_kmax_constraints(kmax_formulas, kbuild_path, view=False):
-  if kbuild_path in kmax_formulas.keys():
-    kmax_constraints = []
-    # add the condition for the compilation unit and each of its parent directories
-    comp_unit_constraint = z3.parse_smt2_string(kmax_formulas[kbuild_path])
-    kmax_constraints.extend(comp_unit_constraint)
-    if view:
-      print("%s\n%s\n" % (kbuild_path, comp_unit_constraint))
-    if '/' in kbuild_path:
-      subpath, basename = kbuild_path.rsplit('/', 1)
-      elems = subpath.rsplit('/')
-      for i in range(0, len(elems)):
-        subarray = elems[0:(len(elems) - i)]
-        subsubpath = '/'.join(subarray) + "/"
-        if subsubpath in kmax_formulas.keys():
-          subsubpath_constraint = z3.parse_smt2_string(kmax_formulas[subsubpath])
-          kmax_constraints.extend(subsubpath_constraint)
-          if view:
-            print("%s\n%s\n" % (subsubpath, subsubpath_constraint))
-        else:
-          info("%s has no kmax formula, assuming it is unconstrained." % (subsubpath))
-    return kmax_constraints
-  else:
-    return None
 
 token_pattern = regex.compile("CONFIG_[A-Za-z0-9_]+")
 def print_model_as_config(model, fp=sys.stdout, kconfig_types=None, kconfig_visible=None, kconfig_has_def_nonbool=None, user_specified_option_names=None, modules=False):
