@@ -151,14 +151,8 @@ class Results:
         self.presence_conditions = {}
 
     def __str__(self, details=False):
-        if kmaxtools.settings.output_smtlib2:
-            z3_pcs = {}
-            for filename in self.presence_conditions.keys():
-                solver = z3.Solver()
-                solver.add(self.presence_conditions[filename])
-                z3_pcs[filename] = solver.to_smt2()
-            return pickle.dumps(z3_pcs, 0).decode()
-        else:
+        if kmaxtools.settings.output_unit_pc_format:
+            # legacy output format
             f = lambda k, s: "{}: {}".format(k, ', '.join(s) if details else len(s))
             delim = '\n' if details else ', '
             ss = delim.join(f(k, s) for k, s in self.__dict__.iteritems() if s)
@@ -169,6 +163,27 @@ class Results:
             # if self.subdir_pcs:
             #     ss += '\n{} subdir pcs: \n{}'.format(len(self.subdir_pcs), self.pc_str(self.subdir_pcs))
             return ss
+        elif kmaxtools.settings.output_all_unit_types:
+            all_units = (
+                self.presence_conditions.keys(), # compilation_units
+                self.library_units,
+                self.hostprog_units,
+                self.unconfigurable_units,
+                self.extra_targets,
+                self.clean_files,
+                self.c_file_targets,
+                self.composites
+                )
+            return pickle.dumps(all_units, 0).decode()
+        elif kmaxtools.settings.output_smtlib2:
+            z3_pcs = {}
+            for filename in self.presence_conditions.keys():
+                solver = z3.Solver()
+                solver.add(self.presence_conditions[filename])
+                z3_pcs[filename] = solver.to_smt2()
+            return pickle.dumps(z3_pcs, 0).decode()
+        else:
+            assert(False)
     
     def pc_str(self, s):
         return '\n'.join("{}. {}: {}, {}".format(i, v, f, z3.simplify(g))

@@ -43,6 +43,11 @@ if __name__ == '__main__':
        default=True,
        help="""Pickle a dictionary mapping names to z3's smtlib2 format.  Defaults to on.""")
     
+    ag('-a',
+       '--output-all-unit-types',
+       action="store_true",
+       help="""Output all kinds of units found, including compilation units, library units, hostprogs, unconfigurable units, extra targets, clean files, C file targets, and composites.  This is used to help with completeness checking.""")
+    
     ag('-u',
        '--output-unit-pc-format',
        action="store_true",
@@ -106,10 +111,12 @@ if __name__ == '__main__':
         kmaxtools.settings.do_boolean_configs = args.boolean_configs
     kmaxtools.settings.defines = args.define
     kmaxtools.settings.output_smtlib2 = args.output_smtlib2
+    kmaxtools.settings.output_all_unit_types = args.output_all_unit_types
 
     if args.output_unit_pc_format:
         kmaxtools.settings.output_unit_pc_format = True
         kmaxtools.settings.output_smtlib2 = False
+        kmaxtools.settings.output_all_unit_types = False
     
     if args.unselectable:
         with open(args.unselectable, "rb") as f:
