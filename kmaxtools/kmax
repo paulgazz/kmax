@@ -40,7 +40,13 @@ if __name__ == '__main__':
     ag('-z',
        '--output-smtlib2',
        action="store_true",
-       help="""Pickle a dictionary mapping names to z3's smtlib2 format""")
+       default=True,
+       help="""Pickle a dictionary mapping names to z3's smtlib2 format.  Defaults to on.""")
+    
+    ag('-u',
+       '--output-unit-pc-format',
+       action="store_true",
+       help="""Output the legacy unit_pc text format.""")
     
     ag('-t',
        '--table',
@@ -76,11 +82,6 @@ if __name__ == '__main__':
        help="""\
     Treat all Boolean configuration variables as tri-state variables""")
 
-    ag('--unit-pc-format',
-       action="store_true",
-       help="""\
-    Output presence conditions in the original Kmax unit_pc format""")
-
     ag('--version',
        action="version",
        version="%s %s" % (kmaxtools.about.__title__, kmaxtools.about.__version__),
@@ -103,10 +104,13 @@ if __name__ == '__main__':
     kmaxtools.settings.do_recursive = args.recursive
     if not args.tristate_configs:
         kmaxtools.settings.do_boolean_configs = args.boolean_configs
-    kmaxtools.settings.unit_pc_format = args.unit_pc_format
     kmaxtools.settings.defines = args.define
     kmaxtools.settings.output_smtlib2 = args.output_smtlib2
 
+    if args.output_unit_pc_format:
+        kmaxtools.settings.output_unit_pc_format = True
+        kmaxtools.settings.output_smtlib2 = False
+    
     if args.unselectable:
         with open(args.unselectable, "rb") as f:
             kmaxtools.settings.unselectable = [ x.strip() for x in f.readlines() ]
