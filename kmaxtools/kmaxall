@@ -104,7 +104,11 @@ if __name__ == '__main__':
                          action="store_true",
                          default=True,
                          help="""\
-  collect per-file constraints as a pickled dictionary from names to smtlib2 expressions.  On by default.""")
+  Collect per-file constraints as a pickled dictionary from names to smtlib2 expressions.  On by default.""")
+  argparser.add_argument('-a',
+                         '--output-all-unit-types',
+                         action="store_true",
+                         help="""Output all kinds of units found, including compilation units, library units, hostprogs, unconfigurable units, extra targets, clean files, C file targets, and composites.  This is used to help with completeness checking.""")
   argparser.add_argument('--version',
                          action="version",
                          version="%s %s" % (kmaxtools.about.__title__, kmaxtools.about.__version__),
@@ -125,7 +129,7 @@ if __name__ == '__main__':
         excludes = pickle.load(f)
 
   z3_pcs = {}
-  # compilation_units = set() # now found 
+  compilation_units = set()
   subdirectories = set()
   library_units = set()
   hostprog_units = set()
@@ -137,6 +141,7 @@ if __name__ == '__main__':
   pending_subdirectories = set()
   broken = set()
 
+  # compilation_units, # updated with units
   # library_units,     # updated with lib units
   # hostprog_units,    # updated with hostprog units
   # unconfigurable_units,    # updated with
@@ -184,7 +189,12 @@ if __name__ == '__main__':
     if args.tristate_configs:
       covering_set_args.append("-T")
 
-    covering_set_args.append("-z")
+    if args.output_all_unit_types:
+      covering_set_args.append("-a")
+    elif args.z3:
+      covering_set_args.append("-z")
+    else:
+      assert(False)
 
     covering_set_args.append(kbuild_dir)
 
@@ -201,40 +211,41 @@ if __name__ == '__main__':
 
     excludes.add(kbuild_dir)
 
-    if True:
-      new_z3_pcs = pickle.loads(out)
-    else:
-      pass
-      # get z3 pcs and the other kinds of compilationunits
-      # new_z3_pcs = ...
-      # new_library_units = ...
+
+    if args.output_all_unit_types:
+      (new_compilation_units,
+       new_library_units,
+       new_hostprog_units,
+       new_unconfigurable_units,
+       new_extra_targets,
+       new_clean_files,
+       new_c_file_targets,
+       new_composites) = pickle.loads(out)
       
-    new_pending_subdirectories = []
-    for filename in new_z3_pcs:
-      if filename.endswith("/"):
-        new_pending_subdirectories.append(filename)
-    z3_pcs.update(new_z3_pcs)
+      new_pending_subdirectories = []
+      for filename in new_compilation_units:
+        if filename.endswith("/"):
+          new_pending_subdirectories.append(filename)
 
-    # (new_compilation_units,
-    #  new_library_units,
-    #  new_hostprog_units,
-    #  new_unconfigurable_units,
-    #  new_extra_targets,
-    #  new_clean_files,
-    #  new_c_file_targets,
-    #  new_pending_subdirectories,
-    #  new_composites,
-    #  new_unit_pcs,
-    #  new_subdir_pcs) = pickle.loads(out)
+      compilation_units.update(new_compilation_units)
+      library_units.update(new_library_units)
+      hostprog_units.update(new_hostprog_units)
+      unconfigurable_units.update(new_unconfigurable_units)
+      extra_targets.update(new_extra_targets)
+      clean_files.update(new_clean_files)
+      c_file_targets.update(new_c_file_targets)
+      composites.update(new_composites)
+      
+    elif args.z3:
+      new_z3_pcs = pickle.loads(out)
+      new_pending_subdirectories = []
+      for filename in new_z3_pcs:
+        if filename.endswith("/"):
+          new_pending_subdirectories.append(filename)
+      z3_pcs.update(new_z3_pcs)
+    else:
+      assert(False)
 
-    # compilation_units.update(new_compilation_units)
-    # library_units.update(new_library_units)
-    # hostprog_units.update(new_hostprog_units)
-    # unconfigurable_units.update(new_unconfigurable_units)
-    # extra_targets.update(new_extra_targets)
-    # clean_files.update(new_clean_files)
-    # c_file_targets.update(new_c_file_targets)
-    # composites.update(new_composites)
 
     return new_pending_subdirectories
 
@@ -272,8 +283,23 @@ if __name__ == '__main__':
     subdirectories.update(pending_subdirectories)
     pending_subdirectories.update(covering_set(pending_subdirectories.pop()))
 
+
   fp = os.fdopen(sys.stdout.fileno(), 'wb')
-  pickle.dump(z3_pcs, fp, 0)
+  if args.output_all_unit_types:
+    all_units = (compilation_units,
+             library_units,
+             hostprog_units,
+             unconfigurable_units,
+             extra_targets,
+             clean_files,
+             c_file_targets,
+             composites)
+    pickle.dump(all_units, fp, 0)
+  elif args.z3:
+    pickle.dump(z3_pcs, fp, 0)
+  else:
+    assert(False)
+    
   exit(0)
 
   # replace contents below with pickling the non-compilation-unit sets
