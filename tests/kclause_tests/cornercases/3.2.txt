@@ -1,0 +1,9 @@
+config MODULES
+	bool "A simple variable"
+
+config UNNAMED_VAR
+	bool " Enable third state"
+	option modules
+
+config TRISTATE_VAR
+	tristate "A tristate variable"

@@ -1,0 +1,17 @@
+config VAR
+	bool "Not nested Variable "
+
+choice
+	bool "Choice"
+	config VAL_1
+		bool "Value 1"
+
+	config VAL_2
+		bool "Value 2"
+
+		if VAR
+			config SUB_VAL
+				bool "Dead Sub Value"
+				depends on VAL_2
+		endif
+endchoice

@@ -1,0 +1,10 @@
+config CONST_FALSE
+	def_bool n
+
+config VAR1
+	bool " Selecting variable"
+	select VAR2
+
+config VAR2
+	bool "Selected variable"
+	depends on CONST_FALSE

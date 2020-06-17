@@ -1,0 +1,3 @@
+config VAR
+	bool "A variable"
+	depends on NOT_EXISTING

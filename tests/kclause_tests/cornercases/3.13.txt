@@ -1,0 +1,10 @@
+choice
+	bool
+		default BOOL_VAL1
+
+	config BOOL_VAL1
+		bool " 1nd Boolean Value "
+
+	config BOOL_VAL2
+		bool " 2nd Boolean Value "
+endchoice

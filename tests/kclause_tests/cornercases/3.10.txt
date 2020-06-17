@@ -1,0 +1,12 @@
+choice
+	bool "A structured Choice"
+
+	config VAL_1
+		bool " Value 1"
+	config VAL_2
+		bool " Value 2"
+
+	config SUB_VAL
+		bool "A sub value"
+		depends on VAL_2
+endchoice
