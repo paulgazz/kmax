@@ -22,7 +22,6 @@ if __name__ == '__main__':
     import argparse    
     from kmaxtools.vcommon import getLogLevel , getLogger
     import kmaxtools.settings
-    import kmaxtools.analysis
     import kmaxtools.about
 
     aparser = argparse.ArgumentParser("find interactions from Kbuild Makefiles")
@@ -77,12 +76,6 @@ if __name__ == '__main__':
        help="""\
     Treat all Boolean configuration variables as tri-state variables""")
 
-    ag('-F',
-       '--file-analysis',
-       action="store_true",
-       help="""\
-    Also perform C file analysis""")
-
     ag('--unit-pc-format',
        action="store_true",
        help="""\
@@ -118,27 +111,6 @@ if __name__ == '__main__':
         with open(args.unselectable, "rb") as f:
             kmaxtools.settings.unselectable = [ x.strip() for x in f.readlines() ]
 
-    # case_study = args.case_study
-    # if not case_study:
-    #     inp = args.makefile
-    #     print inp
-    #     myAnalysis = kmaxtools.analysis.GeneralAnalysis(inp)
-    # else:
-    #     case_study = case_study.lower()
-    #     inp = args.makefile[0]
-
-    #     if case_study == "busybox":
-    #         kmaxtools.settings.do_boolean_configs = True
-    #         myAnalysis = kmaxtools.analysis.BusyboxCaseStudy(inp)
-    #         kmaxtools.settings.do_recursive = True
-    #     elif case_study == "linux":
-    #         kmaxtools.settings.do_boolean_configs = True
-    #         inp = args.makefile
-    #         myAnalysis = kmaxtools.analysis.LinuxCaseStudy(inp)
-    #         kmaxtools.settings.do_recursive = False
-    #     elif case_study == "tests":
-    #         myAnalysis = kmaxtools.analysis.Tests(inp)
-
     inp = args.makefile
     mlog.info("processing {}\n".format(inp))
 
@@ -146,7 +118,3 @@ if __name__ == '__main__':
     myrun = Run()
     myrun.run(inp)
     print(myrun.results)
-
-    if args.file_analysis:
-        from kmaxtools.analysis import FileAnalysis
-        FileAnalysis.analyze(myrun.results)
