@@ -163,11 +163,19 @@ class Kbuild:
 
         return '\n'.join(ss)
     
-    def get_presence_conditions(self, vars, pcs, cond, zcond):
+    def get_presence_conditions(self, vars, pcs, cond, zcond, visited=set()):
         names = set()
         for var in vars:
             if var in self.variables.keys():
                 names = names.union(self.get_var_equiv_set(var))
+
+        # ignore undefined vars
+        names = [ name for name in names if name in self.variables.keys() ]
+
+        # prevent cycles, e.g., linux-3.19/net/mac80211/Makefile
+        names = [ name for name in names if name not in visited ]
+        for name in names: visited.add(name)
+        
         while len(names) > 0:
             name = names.pop()
             # print name
@@ -195,7 +203,11 @@ class Kbuild:
                             # $(obj)/,,$(@:.o=-y)))), $^)
                             composite_variable1 = token[:-2] + "-objs"
                             composite_variable2 = token[:-2] + "-y"
-                            self.get_presence_conditions([ composite_variable1, composite_variable2 ], pcs, and_cond, and_zcond)
+                            # expand the variables for the composite unit, in case it has recursively-expanded variables, e.g., linux-3.19/fs/ramfs/Makefile
+                            self.process_stmts(parser.parsestring("SPECIAL-composite := $(%s) $(%s)" % (composite_variable1, composite_variable2),
+                                                                    "composite"),
+                                                 self.T, ZSolver.T)
+                            self.get_presence_conditions([ "SPECIAL-composite", composite_variable1, composite_variable2 ], pcs, and_cond, and_zcond, visited)
 
     def add_definitions(self, defines):
         if not defines:
