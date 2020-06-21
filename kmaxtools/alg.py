@@ -477,18 +477,19 @@ class Kbuild:
         return Multiverse(hoisted_results)
         
     def process_fun_SubstitutionRef(self, function):
-        raise NotImplementedError
-
         from_values = self.mk_Multiverse(self.process_expansion(function.substfrom))
         to_values = self.mk_Multiverse(self.process_expansion(function.substto))
         name = self.mk_Multiverse(self.process_expansion(function.vname))
 
         # first expand the variable
         in_values = []
-        for name_cond, name_value in name:
+        print(name)
+        for name_cond, name_zcond, name_value in name:
             expanded_name = self.process_variableref(name_value)
-            for (expanded_cond, expanded_value) in expanded_name:
-                in_values.append( (conj(name_cond, expanded_cond), expanded_value) )
+            for (expanded_cond, expanded_zcond, expanded_value) in expanded_name:
+                resulting_cond = conj(name_cond, expanded_cond)
+                resulting_zcond = zconj(name_zcond, expanded_zcond)
+                in_values.append( (resulting_cond, resulting_zcond, expanded_value) )
 
         # then do patsubst
         hoisted_arguments = tuple((s, r, d)
@@ -497,8 +498,9 @@ class Kbuild:
                                   for d in in_values)
 
         hoisted_results = []
-        for (c1, s), (c2, r), (c3, d) in hoisted_arguments:
+        for (c1, zcond1, s), (c2, zcond2, r), (c3, zcond3, d) in hoisted_arguments:
             instance_condition = conj(c1, conj(c2, c3))
+            instance_zcondition = zconj(zcond1, zconj(zcond2, zcond3))
             if instance_condition != self.F:
                 if r == None: r = ""  # Fixes bug in net/l2tp/Makefile
                 if r"%" not in s:
@@ -512,7 +514,7 @@ class Kbuild:
                     instance_result = None
                 else:
                     instance_result = " ".join([re.sub(pattern, replacement, d_token) for d_token in d.split()])
-                hoisted_results.append((instance_condition, instance_result))
+                hoisted_results.append((instance_condition, instance_zcondition, instance_result))
 
         return Multiverse(hoisted_results)
         
