@@ -1251,6 +1251,10 @@ class Run:
             presence_conditions = {}
             kbuild.get_presence_conditions(unconfigurable_variables, presence_conditions, kbuild.T, ZSolver.T)
             self.results.units_by_type['unconfigurable_units'] = kbuild.deduplicate_and_add_path(presence_conditions, path).keys()
+
+        if kmaxtools.settings.do_table:
+            mlog.info(kbuild.getSymbTable(printCond=kbuild.bdd_to_str))
+
         #clean up
         bdd_destroy()
         
