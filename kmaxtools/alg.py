@@ -254,21 +254,19 @@ class Kbuild:
         #     # TODO user-defined
         #     return Multiverse([ (self.T, "x86") ])
         elif name == "CONFIG_WORD_SIZE":
-
-            raise NotImplementedError
             # TODO get defaults from Kconfig files
-            return Multiverse([ (self.bvars["CONFIG_WORD_SIZE=32"].bdd, "32"),
-                                (self.bvars["CONFIG_WORD_SIZE=64"].bdd, "64") ])
+            bv32 = self.get_bvars("CONFIG_WORD_SIZE=32")
+            bv64 = self.get_bvars("CONFIG_WORD_SIZE=64")
+            return Multiverse([ CondDef(bv32.bdd, bv32.zbdd, "32"),
+                                CondDef(bv64.bdd, bv64.zbdd, "64") ])
 
         elif name not in self.variables and name == "MMU":
-            raise NotImplementedError
-        
             # TODO get globals from arch Makefiles
-            is_defined = self.get_defined("CONFIG_MMU", True)
-            not_defined = self.get_defined("CONFIG_MMU", False)
+            is_defined, zis_defined = self.get_defined("CONFIG_MMU", True)
+            not_defined, znot_defined = self.get_defined("CONFIG_MMU", False)
 
-            return Multiverse([ (is_defined, ''),
-                                (not_defined, '-nommu') ])
+            return Multiverse([ CondDef(is_defined, zis_defined, ''),
+                                CondDef(not_defined, znot_defined, '-nommu') ])
 
         elif name.startswith("CONFIG_"):
             if kmaxtools.settings.do_boolean_configs:
@@ -508,7 +506,6 @@ class Kbuild:
 
         # first expand the variable
         in_values = []
-        print(name)
         for name_cond, name_zcond, name_value in name:
             expanded_name = self.process_variableref(name_value)
             for (expanded_cond, expanded_zcond, expanded_value) in expanded_name:
