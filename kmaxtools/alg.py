@@ -210,6 +210,18 @@ class Kbuild:
                                                  and_cond, and_zcond)
                             self.get_presence_conditions([ special_composite, composite_variable1, composite_variable2 ], pcs, and_cond, and_zcond, visited)
 
+    def deduplicate_and_add_path(self, presence_conditions, path=None, updated_presence_conditions = None):
+        if updated_presence_conditions is None:
+            updated_presence_conditions = {}
+        for token in presence_conditions:
+            # resolve any uses of ../ or ./
+            filename = os.path.join(path, token)
+            if filename not in updated_presence_conditions.keys():
+                updated_presence_conditions[filename] = presence_conditions[token]
+            else:
+                updated_presence_conditions[filename] = zdisj(updated_presence_conditions[filename], presence_conditions[token])
+        return updated_presence_conditions
+
     def add_definitions(self, defines):
         if not defines:
             return
