@@ -1182,34 +1182,19 @@ class Run:
         # self.check_unexpanded_vars(kbuild.variables.keys(), "variable name")
 
         presence_conditions = {}
-        kbuild.get_presence_conditions([ "obj-y", "obj-m", "lib-y", "lib-m", "SPECIAL-obj-simple" ], presence_conditions, kbuild.T, ZSolver.T)
-        for token in presence_conditions:
-            # resolve any uses of ../ or ./
-            filename = os.path.join(path, token)
-            if filename not in self.results.presence_conditions.keys():
-                self.results.presence_conditions[filename] = presence_conditions[token]
-            else:
-                self.results.presence_conditions[filename] = zdisj(self.results.presence_conditions[filename], presence_conditions[token])
+        kbuild.get_presence_conditions([ "obj-y", "obj-m", "lib-y", "lib-m", "SPECIAL-obj-simple", "SPECIAL-lib-simple" ], presence_conditions, kbuild.T, ZSolver.T)
+        self.results.presence_conditions = kbuild.deduplicate_and_add_path(presence_conditions, path)
 
         presence_conditions = {}
         kbuild.get_presence_conditions([ "core-y", "core-m",
                                          "drivers-y", "drivers-m", "net-y", "net-m", "libs-y",
                                          "libs-m", "head-y", "head-m", "SPECIAL-core-simple"], presence_conditions,
                                        kbuild.T, ZSolver.T)
-        for token in presence_conditions:
-            filename = token
-            if filename not in self.results.presence_conditions.keys():
-                self.results.presence_conditions[filename] = presence_conditions[token]
-            else:
-                self.results.presence_conditions[filename] = zdisj(self.results.presence_conditions[filename], presence_conditions[token])
+        self.results.presence_conditions = kbuild.deduplicate_and_add_path(presence_conditions, "", self.results.presence_conditions)
 
-        # removed because this method for getting presence conditions is obsolete
-        # def _f(d, s):
-        #     for name, (cond, zcond) in d.iteritems():
-        #         s.add((os.path.normpath(os.path.join(path, name)), kbuild.bdd_to_str(cond), zcond))
-
-        # _f(kbuild.unit_pc, unit_pcs)
-        # _f(kbuild.subdir_pc, subdir_pcs)
+        presence_conditions = {}
+        kbuild.get_presence_conditions([ "subdir-y", "subdir-m", "SPECIAL-subdir-simple" ], presence_conditions, kbuild.T, ZSolver.T)
+        subdirs = kbuild.deduplicate_and_add_path(presence_conditions, path).keys()
 
         #clean up
         bdd_destroy()
