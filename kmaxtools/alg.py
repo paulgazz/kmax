@@ -204,10 +204,11 @@ class Kbuild:
                             composite_variable1 = token[:-2] + "-objs"
                             composite_variable2 = token[:-2] + "-y"
                             # expand the variables for the composite unit, in case it has recursively-expanded variables, e.g., linux-3.19/fs/ramfs/Makefile
-                            self.process_stmts(parser.parsestring("SPECIAL-composite := $(%s) $(%s)" % (composite_variable1, composite_variable2),
+                            special_composite = "SPECIAL-composite-%s" % (token[:-2])
+                            self.process_stmts(parser.parsestring("%s := $(%s) $(%s)" % (special_composite, composite_variable1, composite_variable2),
                                                                     "composite"),
-                                                 self.T, ZSolver.T)
-                            self.get_presence_conditions([ "SPECIAL-composite", composite_variable1, composite_variable2 ], pcs, and_cond, and_zcond, visited)
+                                                 and_cond, and_zcond)
+                            self.get_presence_conditions([ special_composite, composite_variable1, composite_variable2 ], pcs, and_cond, and_zcond, visited)
 
     def add_definitions(self, defines):
         if not defines:
