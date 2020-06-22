@@ -1064,7 +1064,9 @@ class Run:
         kbuild.process_stmts(stmts, kbuild.T, ZSolver.T)
         # SPECIAL-obj-simple uses a simply-expanded variable to expand obj-y in case obj-y is recursively-expanded, which means the variables haven't been expanded in obj-y yet, e.g., ptrace_$(BITS)
         kbuild.process_stmts(parser.parsestring("SPECIAL-obj-simple := $(obj-y) $(obj-m)", makefile.name), kbuild.T, ZSolver.T)
+        kbuild.process_stmts(parser.parsestring("SPECIAL-lib-simple := $(lib-y) $(lib-m)", makefile.name), kbuild.T, ZSolver.T)
         kbuild.process_stmts(parser.parsestring("SPECIAL-core-simple := $(core-y) $(core-m) $(drivers-y) $(drivers-m) $(net-y) $(net-m) $(libs-y) $(libs-m) $(head-y) $(head-m)", makefile.name), kbuild.T, ZSolver.T)
+        kbuild.process_stmts(parser.parsestring("SPECIAL-subdir-simple := $(subdir-y) $(subdir-m)", makefile.name), kbuild.T, ZSolver.T)
         
         # # composites = self.results.composites  # need to modify get_presence_conditions to support this
         # # library_units = self.results.library_units  # folded into presence_conditions now
