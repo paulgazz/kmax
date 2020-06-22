@@ -1196,6 +1196,61 @@ class Run:
         kbuild.get_presence_conditions([ "subdir-y", "subdir-m", "SPECIAL-subdir-simple" ], presence_conditions, kbuild.T, ZSolver.T)
         subdirs = kbuild.deduplicate_and_add_path(presence_conditions, path).keys()
 
+        if kmaxtools.settings.output_all_unit_types:
+            self.results.units_by_type['subdirs'] = subdirs
+
+            # mapping from unit type name to structure holding them
+            self.results.units_by_type['compilation_units'] = self.results.presence_conditions.keys()
+
+            kbuild.process_stmts(parser.parsestring("SPECIAL-extra := $(extra-y)", makefile.name), kbuild.T, ZSolver.T)
+            presence_conditions = {}
+            kbuild.get_presence_conditions([ "SPECIAL-extra", "extra-y" ], presence_conditions, kbuild.T, ZSolver.T)
+            self.results.units_by_type['extra'] = kbuild.deduplicate_and_add_path(presence_conditions, path).keys()
+
+            kbuild.process_stmts(parser.parsestring("SPECIAL-hostprogs := $(hostprogs-y) $(hostprogs-m) $(host-progs) $(always)", makefile.name), kbuild.T, ZSolver.T)
+            presence_conditions = {}
+            kbuild.get_presence_conditions([ "SPECIAL-hostprogs", "hostprogs-y", "hostprogs-m", "host-progs", "always" ], presence_conditions, kbuild.T, ZSolver.T)
+            self.results.units_by_type['hostprog_units'] = kbuild.deduplicate_and_add_path(presence_conditions, path).keys()
+
+            kbuild.process_stmts(parser.parsestring("SPECIAL-targets := $(targets)", makefile.name), kbuild.T, ZSolver.T)
+            presence_conditions = {}
+            kbuild.get_presence_conditions([ "SPECIAL-targets", "targets" ], presence_conditions, kbuild.T, ZSolver.T)
+            self.results.units_by_type['targets'] = kbuild.deduplicate_and_add_path(presence_conditions, path).keys()
+
+            kbuild.process_stmts(parser.parsestring("SPECIAL-clean-files := $(clean-files)", makefile.name), kbuild.T, ZSolver.T)
+            presence_conditions = {}
+            kbuild.get_presence_conditions([ "SPECIAL-clean-files", "clean-files" ], presence_conditions, kbuild.T, ZSolver.T)
+            self.results.units_by_type['clean_files'] = kbuild.deduplicate_and_add_path(presence_conditions, path).keys()
+
+            # finds compilation units in obj-, lib-.  such units were
+            # specified to be buildable, but the configuration options
+            # controlling them are always off, so they are orphaned.
+            # example: linux-3.19/samples/bpf/Makefile dummy.o
+            unconfigurable_prefixes = set([ "obj-$", "lib-$", "hostprogs-$" ])
+            # for cset in (composites, hostprog_composites):
+            #     for c in cset:
+            #         c = os.path.basename(c)
+            #         if c.endswith(".o"):
+            #             c = c[:-2]
+            #         unconfigurable_prefixes.add(c + "-$")
+            unconfigurable_variables = set([])
+            for x in kbuild.variables:
+                for p in unconfigurable_prefixes:
+                    if x.startswith(p) and \
+                            not x.endswith("-") and \
+                            not x.endswith("-y") and \
+                            not x.endswith("-m") and \
+                            not x.endswith("-objs") and \
+                            x != "host-progs":
+                        unconfigurable_variables.add(x)
+                    elif x.startswith(p[:-1]) and x.endswith("-"):
+                        # also look in variables resulting from expansion of
+                        # undefined config var
+                        unconfigurable_variables.add(x)
+
+            presence_conditions = {}
+            kbuild.get_presence_conditions(unconfigurable_variables, presence_conditions, kbuild.T, ZSolver.T)
+            self.results.units_by_type['unconfigurable_units'] = kbuild.deduplicate_and_add_path(presence_conditions, path).keys()
         #clean up
         bdd_destroy()
         
