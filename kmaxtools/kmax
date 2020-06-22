@@ -58,12 +58,6 @@ if __name__ == '__main__':
        action="store_true",
        help="""show symbol table entries""")
     
-    ag('-r',
-       '--recursive',
-       action="store_true",
-       help="""\
-    recursively enter subdirectories""")
-
     ag('--unselectable',
        type=str,
        help="""the name of a file containing a list of unselectable configuration options.  these options will be treated as always disabled.""")
@@ -106,7 +100,6 @@ if __name__ == '__main__':
         mlog.warn("DEBUG MODE ON. Can be slow! (Use python -O ... for optimization)")
 
     kmaxtools.settings.do_table = args.table
-    kmaxtools.settings.do_recursive = args.recursive
     if not args.tristate_configs:
         kmaxtools.settings.do_boolean_configs = args.boolean_configs
     kmaxtools.settings.defines = args.define

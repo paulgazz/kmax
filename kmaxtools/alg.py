@@ -1047,8 +1047,9 @@ class Run:
             makefile = subdirs.pop()
             mlog.info("processing makefile: {}".format(makefile))            
             subdirs_ = self.extract(makefile)
-            if kmaxtools.settings.do_recursive:
-                subdirs = subdirs.union(subdirs_)
+            # # TODO: support recursive application of kmax when subdir-y is used, updating the current path, e.g., arch/arm64/boot/dts/amd/Makefile uses var from parent arch/arm64/boot/dts/Makefile
+            # if kmaxtools.settings.do_recursive:
+            #     subdirs = subdirs.union(subdirs_)
 
     def extract(self, path):
         makefile = self.get_makefile(path)
