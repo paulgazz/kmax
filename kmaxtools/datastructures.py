@@ -1,3 +1,4 @@
+import sys
 import pickle
 import pdb
 trace = pdb.set_trace
@@ -136,18 +137,7 @@ class BoolVar(tuple):
 
 class Results:
     def __init__(self):
-        self.subdirs = set()
-        self.compilation_units = set()
-        self.library_units = set()
-        self.composites = set()
-        self.hostprog_units = set()
-        self.hostprog_composites = set()
-        self.unconfigurable_units = set()
-        self.extra_targets = set()
-        self.clean_files = set()
-        self.c_file_targets = set()
-        # self.unit_pcs = set()
-        # self.subdir_pcs = set()
+        self.units_by_type = {}
         self.presence_conditions = {}
 
     def __str__(self, details=False):
@@ -164,17 +154,13 @@ class Results:
             #     ss += '\n{} subdir pcs: \n{}'.format(len(self.subdir_pcs), self.pc_str(self.subdir_pcs))
             return ss
         elif kmaxtools.settings.output_all_unit_types:
-            all_units = (
-                self.presence_conditions.keys(), # compilation_units
-                self.library_units,
-                self.hostprog_units,
-                self.unconfigurable_units,
-                self.extra_targets,
-                self.clean_files,
-                self.c_file_targets,
-                self.composites
-                )
-            return pickle.dumps(all_units, 0).decode()
+            for unit_type in self.units_by_type:
+                sys.stderr.write(unit_type)
+                sys.stderr.write("\n")
+                sys.stderr.write("\n".join(self.units_by_type[unit_type]))
+                sys.stderr.write("\n")
+                sys.stderr.write("\n")
+            return pickle.dumps(self.units_by_type, 0).decode()
         elif kmaxtools.settings.output_smtlib2:
             z3_pcs = {}
             for filename in self.presence_conditions.keys():
