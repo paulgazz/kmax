@@ -41,6 +41,10 @@ if __name__ == '__main__':
                          help="The architecture to extract Kconfig for.")
   argparser.add_argument("output",
                          help="The output file to write to.")
+  argparser.add_argument("kconfigfilename",
+                         nargs="?",
+                         default="Kconfig",
+                         help="The name of the Kconfig file.")
   argparser.add_argument('--version',
                          action="version",
                          version="%s %s" % (kmaxtools.about.__title__, kmaxtools.about.__version__),
@@ -51,6 +55,7 @@ if __name__ == '__main__':
   arch = args.arch
   output = args.output
   srcarch = get_srcarch(arch)
+  kconfigfilename = args.kconfigfilename
 
   if module_version == "latest":
     module_version = latest_module
@@ -59,4 +64,4 @@ if __name__ == '__main__':
     sys.stderr.write("Invalid module version \"%s\".  %s.\n" % (module_version, available_versions))
     exit(1)
 
-  module_versions[module_version].kextract(output, "ARCH=%s" % (arch), "SRCARCH=%s" % (srcarch))
+  module_versions[module_version].kextract(output, "ARCH=%s" % (arch), "SRCARCH=%s" % (srcarch), kconfigfilename)

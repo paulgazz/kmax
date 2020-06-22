@@ -20,16 +20,17 @@ static PyObject * kextract(PyObject *self, PyObject *args) {
   const char *outfile;
   const char *arch;
   const char *srcarch;
+  const char *kconfigfilename;
 
-  if (!PyArg_ParseTuple(args, "s|s|s", &outfile, &arch, &srcarch)) {
+  if (!PyArg_ParseTuple(args, "s|s|s|s", &outfile, &arch, &srcarch, &kconfigfilename)) {
     return NULL;
   }
 
   const char *cargs[] = {
-    "kextractor", "--extract", "-o", outfile, "-e", arch, "-e", srcarch, "-e", "KERNELVERSION=kcu", "-e", "srctree=./", "-e", "CC=cc", "-e", "LD=ld", "Kconfig"
+    "kextractor", "--extract", "-o", outfile, "-e", arch, "-e", srcarch, "-e", "KERNELVERSION=kcu", "-e", "srctree=./", "-e", "CC=cc", "-e", "LD=ld", kconfigfilename
   };
   
-  int errcode = main(16, cargs);
+  int errcode = main(17, cargs);
 
   return Py_BuildValue("i", errcode);
 }
