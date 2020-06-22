@@ -128,18 +128,9 @@ if __name__ == '__main__':
       with open(args.excludes_file, "r") as f:
         excludes = pickle.load(f)
 
-  z3_pcs = {}
-  compilation_units = set()
-  subdirectories = set()
-  library_units = set()
-  hostprog_units = set()
-  unconfigurable_units = set()
-  extra_targets = set()
-  clean_files = set()
-  c_file_targets = set()
-  composites = set()
-  pending_subdirectories = set()
-  broken = set()
+  # aggregates of the repeated calls kmax output
+  z3_pcs = {}  # for --z3
+  units_by_type = {}  # for output-all-unit-types
 
   # compilation_units, # updated with units
   # library_units,     # updated with lib units
@@ -152,7 +143,11 @@ if __name__ == '__main__':
   # composites,        # updated with composites
   # broken):           # updated with kbuild files that
   #                    # break kmax
-  
+
+  subdirectories = set()
+  pending_subdirectories = set()
+  broken = set()
+
   def covering_set(kbuild_dir):        # src directory to process
     """Call the covering set program to find the list of compilation
     units and subdirectories added by the makefile in kbuild_dir"""
@@ -206,6 +201,9 @@ if __name__ == '__main__':
     out, err = p.communicate()
 
     if p.returncode != 0:
+      sys.stderr.write("ERROR(kmax): %s\n" % (kbuild_dir))
+
+    if p.returncode != 0:
       broken.add(kbuild_dir)
       return set()
 
@@ -213,28 +211,18 @@ if __name__ == '__main__':
 
 
     if args.output_all_unit_types:
-      (new_compilation_units,
-       new_library_units,
-       new_hostprog_units,
-       new_unconfigurable_units,
-       new_extra_targets,
-       new_clean_files,
-       new_c_file_targets,
-       new_composites) = pickle.loads(out)
-      
+      new_units_by_type = pickle.loads(out)
+
       new_pending_subdirectories = []
-      for filename in new_compilation_units:
+      for filename in new_units_by_type['compilation_units']:
         if filename.endswith("/"):
           new_pending_subdirectories.append(filename)
 
-      compilation_units.update(new_compilation_units)
-      library_units.update(new_library_units)
-      hostprog_units.update(new_hostprog_units)
-      unconfigurable_units.update(new_unconfigurable_units)
-      extra_targets.update(new_extra_targets)
-      clean_files.update(new_clean_files)
-      c_file_targets.update(new_c_file_targets)
-      composites.update(new_composites)
+      for unit_type in new_units_by_type:
+        if unit_type not in units_by_type:
+          units_by_type[unit_type] = set(new_units_by_type[unit_type])
+        else:
+          units_by_type[unit_type].update(set(new_units_by_type[unit_type]))
       
     elif args.z3:
       new_z3_pcs = pickle.loads(out)
@@ -286,15 +274,14 @@ if __name__ == '__main__':
 
   fp = os.fdopen(sys.stdout.fileno(), 'wb')
   if args.output_all_unit_types:
-    all_units = (compilation_units,
-             library_units,
-             hostprog_units,
-             unconfigurable_units,
-             extra_targets,
-             clean_files,
-             c_file_targets,
-             composites)
-    pickle.dump(all_units, fp, 0)
+    if False:
+      for unit_type in units_by_type:
+          sys.stderr.write(unit_type)
+          sys.stderr.write("\n")
+          sys.stderr.write("\n".join(units_by_type[unit_type]))
+          sys.stderr.write("\n")
+          sys.stderr.write("\n")
+    pickle.dump(units_by_type, fp, 0)
   elif args.z3:
     pickle.dump(z3_pcs, fp, 0)
   else:
