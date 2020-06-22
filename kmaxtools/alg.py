@@ -1066,123 +1066,118 @@ class Run:
         kbuild.process_stmts(parser.parsestring("SPECIAL-obj-simple := $(obj-y) $(obj-m)", makefile.name), kbuild.T, ZSolver.T)
         kbuild.process_stmts(parser.parsestring("SPECIAL-core-simple := $(core-y) $(core-m) $(drivers-y) $(drivers-m) $(net-y) $(net-m) $(libs-y) $(libs-m) $(head-y) $(head-m)", makefile.name), kbuild.T, ZSolver.T)
         
-        subdirs = self.results.subdirs
-        compilation_units = self.results.compilation_units
-        composites = self.results.composites
-        library_units = self.results.library_units
-        hostprog_composites = self.results.hostprog_composites
-        hostprog_units = self.results.hostprog_units
-        unconfigurable_units = self.results.unconfigurable_units
-        # unit_pcs = self.results.unit_pcs
-        # subdir_pcs = self.results.subdir_pcs
-        clean_files = self.results.clean_files
+        # # composites = self.results.composites  # need to modify get_presence_conditions to support this
+        # # library_units = self.results.library_units  # folded into presence_conditions now
+        # # hostprog_composites = self.results.hostprog_composites  # need to modify get_presence_conditions to support this
+        # extra_targets = self.results.extra_targets
+        # hostprog_units = self.results.hostprog_units
+        # clean_files = self.results.clean_files
+        # # unconfigurable_units = self.results.unconfigurable_units
+        # # c_file_targets = self.results.c_file_targets
 
-        pending_vars = set(
-            ["obj-y", "obj-m",
-             "core-y", "core-m", "drivers-y", "drivers-m",
-             "net-y", "net-m", "libs-y", "libs-m", "head-y",
-             "head-m", "SPECIAL-obj-simple", "SPECIAL-core-simple"])
+        # pending_vars = set(
+        #     ["obj-y", "obj-m",
+        #      "core-y", "core-m", "drivers-y", "drivers-m",
+        #      "net-y", "net-m", "libs-y", "libs-m", "head-y",
+        #      "head-m", "SPECIAL-obj-simple", "SPECIAL-core-simple"])
              
-        self.collect_units(kbuild,
-                           path,
-                           pending_vars,
-                           compilation_units,
-                           subdirs,
-                           composites)
+        # self.collect_units(kbuild,
+        #                    path,
+        #                    pending_vars,
+        #                    compilation_units,
+        #                    subdirs,
+        #                    composites)
 
-        for v in set([ "subdir-y", "subdir-m" ]):
-            for u in kbuild.split_defs(v):
-                subdirs.add(os.path.join(path, u))
+        # # this may need to be integrated into the previous collect_units
+        # for v in set([ "subdir-y", "subdir-m" ]):
+        #     for u in kbuild.split_defs(v):
+        #         subdirs.add(os.path.join(path, u))
 
-        self.collect_units(kbuild,
-                           path,
-                           set(["lib-y", "lib-m" ]),
-                           library_units,
-                           subdirs,
-                           composites)
+        # self.collect_units(kbuild,
+        #                    path,
+        #                    set(["lib-y", "lib-m" ]),
+        #                    library_units,
+        #                    subdirs,
+        #                    composites)
 
-        pending_hostprog_composites = set()
-        for v in set([ "hostprogs-y", "hostprogs-m", "host-progs", "always" ]):
-            for u in kbuild.split_defs(v):
-                composite_name = u + "-objs"
-                unit_name = os.path.join(path, u)
-                if composite_name in kbuild.variables:
-                    pending_hostprog_composites.add(composite_name)
-                    hostprog_composites.add(unit_name)
-                else:
-                    hostprog_units.add(unit_name)
+        # pending_hostprog_composites = set()
+        # for v in set([ "hostprogs-y", "hostprogs-m", "host-progs", "always" ]):
+        #     for u in kbuild.split_defs(v):
+        #         composite_name = u + "-objs"
+        #         unit_name = os.path.join(path, u)
+        #         if composite_name in kbuild.variables:
+        #             pending_hostprog_composites.add(composite_name)
+        #             hostprog_composites.add(unit_name)
+        #         else:
+        #             hostprog_units.add(unit_name)
 
-        if pending_hostprog_composites:
-            raise NotImplementedError
-            self.collect_units(kbuild,
-                               path,
-                               pending_hostprog_composites,
-                               hostprog_units,
-                               None,
-                               hostprog_composites)
+        # if pending_hostprog_composites:
+        #     raise NotImplementedError
+        #     self.collect_units(kbuild,
+        #                        path,
+        #                        pending_hostprog_composites,
+        #                        hostprog_units,
+        #                        None,
+        #                        hostprog_composites)
 
-        # todo: collect non-kbuild object files to replicate prior analyses
+        # # todo: collect non-kbuild object files to replicate prior analyses
         # for v in set([ "targets", "extra-y" ]):
         #     for u in kbuild.split_defs(v):
         #         unit_name = os.path.join(path, u)
         #         if unit_name.endswith(".o"):
-        #             raise NotImplementedError
-        #             # extra_targets.add(unit_name)
+        #             extra_targets.add(unit_name)
 
         # for u in kbuild.split_defs("targets"):
         #     if u.endswith(".c"):
-        #         raise NotImplementedError
-        #         #c_file_targets.add(os.path.join(obj, u))
+        #         # c_file_targets.add(os.path.join(obj, u))
+        #         c_file_targets.add(os.path.join(path, u))
 
         # for u in kbuild.split_defs("clean-files"):
         #     clean_files.add(os.path.join(path, u))
-            
 
-        # look for variables starting with obj-, lib-, hostprogs-,
-        # compositename-, or hostprog-compositename-.  doesn't account for
-        # composites in the unconfigurable variables
-        unconfigurable_prefixes = set([ "obj-$", "lib-$", "hostprogs-$" ])
-        for cset in (composites, hostprog_composites):
-            for c in cset:
-                c = os.path.basename(c)
-                if c.endswith(".o"):
-                    c = c[:-2]
-                unconfigurable_prefixes.add(c + "-$")
-        unconfigurable_variables = set([])
-        for x in kbuild.variables:
-            for p in unconfigurable_prefixes:
-                if x.startswith(p) and \
-                        not x.endswith("-") and \
-                        not x.endswith("-y") and \
-                        not x.endswith("-m") and \
-                        not x.endswith("-objs") and \
-                        x != "host-progs":
-                    unconfigurable_variables.add(x)
-                elif x.startswith(p[:-1]) and x.endswith("-"):
-                    # also look in variables resulting from expansion of
-                    # undefined config var
-                    unconfigurable_variables.add(x)
-        self.collect_units(kbuild,
-                           path,
-                           unconfigurable_variables,
-                           unconfigurable_units,
-                           unconfigurable_units,
-                           unconfigurable_units)
+        # # look for variables starting with obj-, lib-, hostprogs-,
+        # # compositename-, or hostprog-compositename-.  doesn't account for
+        # # composites in the unconfigurable variables
+        # unconfigurable_prefixes = set([ "obj-$", "lib-$", "hostprogs-$" ])
+        # for cset in (composites, hostprog_composites):
+        #     for c in cset:
+        #         c = os.path.basename(c)
+        #         if c.endswith(".o"):
+        #             c = c[:-2]
+        #         unconfigurable_prefixes.add(c + "-$")
+        # unconfigurable_variables = set([])
+        # for x in kbuild.variables:
+        #     for p in unconfigurable_prefixes:
+        #         if x.startswith(p) and \
+        #                 not x.endswith("-") and \
+        #                 not x.endswith("-y") and \
+        #                 not x.endswith("-m") and \
+        #                 not x.endswith("-objs") and \
+        #                 x != "host-progs":
+        #             unconfigurable_variables.add(x)
+        #         elif x.startswith(p[:-1]) and x.endswith("-"):
+        #             # also look in variables resulting from expansion of
+        #             # undefined config var
+        #             unconfigurable_variables.add(x)
+        # self.collect_units(kbuild,
+        #                    path,
+        #                    unconfigurable_variables,
+        #                    unconfigurable_units,
+        #                    unconfigurable_units,
+        #                    unconfigurable_units)
 
-        # subtract out compilation units that are configurable
-        unconfigurable_units.difference_update(compilation_units)
-        unconfigurable_units.difference_update(library_units)
-        unconfigurable_units.difference_update(composites)
-        unconfigurable_units.difference_update(subdirs)
+        # # subtract out compilation units that are configurable
+        # unconfigurable_units.difference_update(compilation_units)
+        # unconfigurable_units.difference_update(library_units)
+        # unconfigurable_units.difference_update(composites)
+        # unconfigurable_units.difference_update(subdirs)
 
-        # look for variable expansions or function calls in
-        # compilation_units, subdirs, and variable names
-        self.check_unexpanded_vars(compilation_units, "compilation unit")
-        self.check_unexpanded_vars(subdirs, "subdirectory")
-        self.check_unexpanded_vars(kbuild.variables.keys(), "variable name")
 
-        if kmaxtools.settings.do_table:
-            mlog.info(kbuild.getSymbTable(printCond=kbuild.bdd_to_str))
+        # # look for variable expansions or function calls in
+        # # compilation_units, subdirs, and variable names
+        # self.check_unexpanded_vars(compilation_units, "compilation unit")
+        # self.check_unexpanded_vars(subdirs, "subdirectory")
+        # self.check_unexpanded_vars(kbuild.variables.keys(), "variable name")
 
         presence_conditions = {}
         kbuild.get_presence_conditions([ "obj-y", "obj-m", "lib-y", "lib-m", "SPECIAL-obj-simple" ], presence_conditions, kbuild.T, ZSolver.T)
@@ -1236,97 +1231,97 @@ class Run:
 
         return makefile
 
-    @classmethod
-    def collect_units(cls,
-                      kbuild,            # current kbuild instance
-                      path,               # current path
-                      pending_vars, # variables to extract from, gets emptied
-                      compilation_units, # adds units to this set
-                      subdirs,    # adds subdir to this set
-                      composites):  # save pcs from these variables
+    # @classmethod
+    # def collect_units(cls,
+    #                   kbuild,            # current kbuild instance
+    #                   path,               # current path
+    #                   pending_vars, # variables to extract from, gets emptied
+    #                   compilation_units, # adds units to this set
+    #                   subdirs,    # adds subdir to this set
+    #                   composites):  # save pcs from these variables
 
-        """fixed-point algorithm that adds composites and stops when no
-        more variables to look at are available"""
+    #     """fixed-point algorithm that adds composites and stops when no
+    #     more variables to look at are available"""
 
-        assert isinstance(kbuild, Kbuild), kbuild
-        assert path is None or path is "" or os.path.isdir(path), path
-        assert isinstance(compilation_units, set), compilation_units
-        assert isinstance(subdirs, set), subdirs
-        assert isinstance(composites, set), composites
+    #     assert isinstance(kbuild, Kbuild), kbuild
+    #     assert path is None or path is "" or os.path.isdir(path), path
+    #     assert isinstance(compilation_units, set), compilation_units
+    #     assert isinstance(subdirs, set), subdirs
+    #     assert isinstance(composites, set), composites
 
-        equiv_sets = [kbuild.get_var_equiv_set(v) for v in pending_vars]
-        equiv_vars = set.union(*equiv_sets) if equiv_sets else set()
-        pending_vars |= equiv_vars
+    #     equiv_sets = [kbuild.get_var_equiv_set(v) for v in pending_vars]
+    #     equiv_vars = set.union(*equiv_sets) if equiv_sets else set()
+    #     pending_vars |= equiv_vars
 
-        processed_vars = set()        
-        while pending_vars:
-            pending_var = pending_vars.pop()
-            processed_vars.add(pending_var)
+    #     processed_vars = set()        
+    #     while pending_vars:
+    #         pending_var = pending_vars.pop()
+    #         processed_vars.add(pending_var)
 
-            values = kbuild.split_defs(pending_var)
-            for elem in values:
-                cls.collect_defs(elem, kbuild, path,
-                                 compilation_units,
-                                 subdirs, composites, 
-                                 processed_vars, pending_vars)
+    #         values = kbuild.split_defs(pending_var)
+    #         for elem in values:
+    #             cls.collect_defs(elem, kbuild, path,
+    #                              compilation_units,
+    #                              subdirs, composites, 
+    #                              processed_vars, pending_vars)
                 
-    @classmethod
-    def collect_defs(cls, elem,
-                     kbuild,
-                     path,
-                     compilation_units,
-                     subdirs,
-                     composites,
-                     processed_vars,
-                     pending_vars):
+    # @classmethod
+    # def collect_defs(cls, elem,
+    #                  kbuild,
+    #                  path,
+    #                  compilation_units,
+    #                  subdirs,
+    #                  composites,
+    #                  processed_vars,
+    #                  pending_vars):
 
-        unit_name = os.path.normpath(os.path.join(path, elem))
-        if elem.endswith(".o") and unit_name not in compilation_units:
-            # Expand composites
-            if (elem[:-2] + "-objs") in kbuild.variables or \
-                (elem[:-2] + "-y") in kbuild.variables:
-                # scripts/Makefile.build use the -objs and -y
-                # suffix to define composites $($(subst
-                # $(obj)/,,$(@:.o=-objs))) $($(subst
-                # $(obj)/,,$(@:.o=-y)))), $^)
-                composite_variable1 = elem[:-2] + "-objs"
-                composite_variable2 = elem[:-2] + "-y"
+    #     unit_name = os.path.normpath(os.path.join(path, elem))
+    #     if elem.endswith(".o") and unit_name not in compilation_units:
+    #         # Expand composites
+    #         if (elem[:-2] + "-objs") in kbuild.variables or \
+    #             (elem[:-2] + "-y") in kbuild.variables:
+    #             # scripts/Makefile.build use the -objs and -y
+    #             # suffix to define composites $($(subst
+    #             # $(obj)/,,$(@:.o=-objs))) $($(subst
+    #             # $(obj)/,,$(@:.o=-y)))), $^)
+    #             composite_variable1 = elem[:-2] + "-objs"
+    #             composite_variable2 = elem[:-2] + "-y"
 
-                if composite_variable1 not in processed_vars and \
-                        composite_variable2 not in processed_vars:
-                    composites.add(unit_name)
-                    pending_vars.update(kbuild.get_var_equiv_set(composite_variable1))
-                    pending_vars.update(kbuild.get_var_equiv_set(composite_variable2))
-                    # if (elem not in kbuild.token_pc):
-                    #     raise NotImplementedError
-                    #     kbuild.token_pc[elem] = (kbuild.T, ZSolver.T)
-                    # kbuild.composite_pc[elem] = kbuild.token_pc[elem]
+    #             if composite_variable1 not in processed_vars and \
+    #                     composite_variable2 not in processed_vars:
+    #                 composites.add(unit_name)
+    #                 pending_vars.update(kbuild.get_var_equiv_set(composite_variable1))
+    #                 pending_vars.update(kbuild.get_var_equiv_set(composite_variable2))
+    #                 # if (elem not in kbuild.token_pc):
+    #                 #     raise NotImplementedError
+    #                 #     kbuild.token_pc[elem] = (kbuild.T, ZSolver.T)
+    #                 # kbuild.composite_pc[elem] = kbuild.token_pc[elem]
 
-                if os.path.isfile(unit_name[:-2] + ".c") or os.path.isfile(unit_name[:-2] + ".S"): 
-                    compilation_units.add(unit_name)
-                    # if (elem not in kbuild.token_pc): 
-                    #     kbuild.token_pc[elem] = (kbuild.T, ZSolver.T)
-                    # kbuild.unit_pc[elem] = kbuild.token_pc[elem]
-            else:
-                compilation_units.add(unit_name)
-                # if (elem not in kbuild.token_pc):
-                #     kbuild.token_pc[elem] = (kbuild.T, ZSolver.T)
-                # kbuild.unit_pc[elem] = kbuild.token_pc[elem]
+    #             if os.path.isfile(unit_name[:-2] + ".c") or os.path.isfile(unit_name[:-2] + ".S"): 
+    #                 compilation_units.add(unit_name)
+    #                 # if (elem not in kbuild.token_pc): 
+    #                 #     kbuild.token_pc[elem] = (kbuild.T, ZSolver.T)
+    #                 # kbuild.unit_pc[elem] = kbuild.token_pc[elem]
+    #         else:
+    #             compilation_units.add(unit_name)
+    #             # if (elem not in kbuild.token_pc):
+    #             #     kbuild.token_pc[elem] = (kbuild.T, ZSolver.T)
+    #             # kbuild.unit_pc[elem] = kbuild.token_pc[elem]
 
-        elif elem.endswith("/"):
-            # scripts/Makefile.lib takes anything that
-            # ends in a forward slash as a subdir
-            # $(patsubst %/,%,$(filter %/, $(obj-y)))
-            new_dir = elem
-            if not new_dir.startswith('/'):
-                new_dir = os.path.join(path, new_dir)
+    #     elif elem.endswith("/"):
+    #         # scripts/Makefile.lib takes anything that
+    #         # ends in a forward slash as a subdir
+    #         # $(patsubst %/,%,$(filter %/, $(obj-y)))
+    #         new_dir = elem
+    #         if not new_dir.startswith('/'):
+    #             new_dir = os.path.join(path, new_dir)
 
-            if os.path.isdir(new_dir):
-                subdirs.add(new_dir)
+    #         if os.path.isdir(new_dir):
+    #             subdirs.add(new_dir)
 
-            # if elem not in kbuild.token_pc:
-            #     kbuild.token_pc[elem] = kbuild.T
-            # kbuild.subdir_pc[elem] = kbuild.token_pc[elem]
+    #         # if elem not in kbuild.token_pc:
+    #         #     kbuild.token_pc[elem] = kbuild.T
+    #         # kbuild.subdir_pc[elem] = kbuild.token_pc[elem]
     
     @classmethod
     def check_unexpanded_vars(cls, l, desc):
