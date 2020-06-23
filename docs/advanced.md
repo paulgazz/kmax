@@ -393,6 +393,13 @@ Kmax includes a Makefile hack to get all the top-level Linux directories.  Combi
 
     kmaxall -g $(make CC=cc ARCH=x86 -f /path/to/kmax/scripts/makefile_override alldirs) | tee kmax
 
+### Using `kreader` to Print Kmax Results
+
+kreader drivers/usb/storage/alauda.o kernel/trace/trace_i
+
+kreader --kmax-formula .kmax/kclause/x86_64/kmax drivers/ | grep "\.o$" | wc -l
+kreader --kmax-formula .kmax/kclause/arm/kmax drivers/ | grep "\.o$"| wc -l
+
 ## Kclause
 
 ### Example
