@@ -6,7 +6,6 @@ for dir in .kmax/kclause/*; do
   echo "processing ${dir}"
   arch="$(basename ${dir})"
   unselectable="${dir}/unselectable"
-  outfile="${dir}/kmax"
   if [[ ! -f "${unselectable}" ]]; then
     echo "\"${unselectable}\" not found.  please run selectable.sh first on the formulas."
   else
@@ -19,7 +18,11 @@ for dir in .kmax/kclause/*; do
     else
       srcarch="$arch"
     fi
-    /usr/bin/time kmaxall --unselectable "${unselectable}" -z arch/${srcarch} block certs crypto drivers fs init ipc kernel lib mm net samples security sound usr virt  > "${outfile}.pending"
-    mv "${outfile}.pending" "${outfile}"
+    if [[ "$arch" == "um" ]]; then
+      extra_args=" -DOS=Linux "
+    fi
+    outfile="${dir}/units"
+    # around linux 5
+    /usr/bin/time kmaxall --output-all-unit-types --unselectable "${unselectable}" arch/${srcarch} block certs crypto drivers fs init ipc kernel lib mm net samples security sound usr virt  > "${outfile}.pending"
   fi
 done
