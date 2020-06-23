@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <malloc.h>
 
 int main(int, char **);
 
@@ -14,23 +15,41 @@ struct module_state {
 #else
 #define GETSTATE(m) (&_state)
 static struct module_state _state;
+#define PyBytes_AsString PyString_AsString  // changed name in python 3
 #endif
 
 static PyObject * kextract(PyObject *self, PyObject *args) {
-  const char *outfile;
-  const char *arch;
-  const char *srcarch;
-  const char *kconfigfilename;
+  PyObject *list_arg;
+  Py_ssize_t list_size;
+  char **cargs;
+  int num_args;
+  int cargs_idx;
 
-  if (!PyArg_ParseTuple(args, "s|s|s|s", &outfile, &arch, &srcarch, &kconfigfilename)) {
+  if (!PyArg_ParseTuple(args, "O", &list_arg)) {
     return NULL;
   }
 
-  const char *cargs[] = {
-    "kextractor", "--extract", "-o", outfile, "-e", arch, "-e", srcarch, "-e", "KERNELVERSION=kcu", "-e", "srctree=./", "-e", "CC=cc", "-e", "LD=ld", kconfigfilename
-  };
+  if (! PyList_Check(list_arg)) {
+    PyErr_SetString(PyExc_TypeError,"Non-numeric argument.");
+    return NULL;
+  }
+
+  list_size = PyList_Size(list_arg);
+  num_args = list_size + 1;  // add one for the argv[0] to main of kextractor
+  cargs = malloc(num_args * sizeof(char *));
+
+  cargs_idx = 0;
+  cargs[cargs_idx] = "kextractor";
+  cargs_idx++;
+
+  for (Py_ssize_t elem_idx = 0; elem_idx < list_size; elem_idx++) {
+    char *elem_object = PyList_GetItem(list_arg, elem_idx);
+    char *elem_string = PyBytes_AsString(elem_object);  // will throw type error if not string
+    cargs[cargs_idx] = elem_string;
+    cargs_idx++;
+  }
   
-  int errcode = main(17, cargs);
+  int errcode = main(num_args, cargs);
 
   return Py_BuildValue("i", errcode);
 }

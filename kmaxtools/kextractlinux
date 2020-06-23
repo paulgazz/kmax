@@ -1,0 +1,63 @@
+#!/usr/bin/env python
+
+# This is a wrapper for kextract that uses preset options for Linux
+
+import kextractor_next_20200430
+import kextractor_3_19
+import kextractor_4_12_8
+import sys
+import argparse
+import kmaxtools.about
+import kmaxtools.kextractcommon
+
+def get_srcarch(arch):
+  srcarch = {
+    "x86_64" : "x86",
+    "i386" : "x86",
+    "sparc64" : "sparc",
+    "sparc" : "sparc",
+    "sh64" : "sh",
+    "sh" : "sh",
+  }
+  if arch in srcarch.keys():
+    return srcarch[arch]
+  else:
+    return arch
+
+if __name__ == '__main__':
+  available_versions = "Available versions: %s" % (", ".join(kmaxtools.kextractcommon.module_versions.keys()))
+
+  argparser = argparse.ArgumentParser()
+  argparser.add_argument('--module-version',
+                         type=str,
+                         default="latest",
+                         help="""Specify the version of the Kconfig parser to use.  Defaults to \"latest\".  %s.""" % (available_versions))
+  argparser.add_argument("arch",
+                         help="The architecture to extract Kconfig for.")
+  argparser.add_argument("output",
+                         help="The output file to write to.")
+  argparser.add_argument("kconfigfilename",
+                         nargs="?",
+                         default="Kconfig",
+                         help="The name of the Kconfig file.")
+  argparser.add_argument('--version',
+                         action="version",
+                         version="%s %s" % (kmaxtools.about.__title__, kmaxtools.about.__version__),
+                         help="""Print the version number.""")
+  args = argparser.parse_args()
+
+  module_version = args.module_version
+  arch = args.arch
+  output = args.output
+  srcarch = get_srcarch(arch)
+  kconfigfilename = args.kconfigfilename
+
+  if module_version == "latest":
+    module_version = kmaxtools.kextractcommon.latest_module
+
+  if module_version not in kmaxtools.kextractcommon.module_versions.keys():
+    sys.stderr.write("Invalid module version \"%s\".  %s.\n" % (module_version, available_versions))
+    exit(1)
+
+  args = [ "--extract", "-o", output, "-e", "ARCH=%s" % (arch), "-e", "SRCARCH=%s" % (srcarch), "-e", "KERNELVERSION=kcu", "-e", "srctree=./", "-e", "CC=cc", "-e", "LD=ld", kconfigfilename ]
+  kmaxtools.kextractcommon.kextract(module_version, args)

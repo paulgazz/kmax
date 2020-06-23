@@ -1,67 +1,50 @@
 #!/usr/bin/env python
 
-import kextractor_next_20200430
-import kextractor_3_19
-import kextractor_4_12_8
+# This is a wrapper for the kextract C extensions that allows you to
+# choose which kextract extension version to use.
+
 import sys
 import argparse
 import kmaxtools.about
-
-def get_srcarch(arch):
-  srcarch = {
-    "x86_64" : "x86",
-    "i386" : "x86",
-    "sparc64" : "sparc",
-    "sparc" : "sparc",
-    "sh64" : "sh",
-    "sh" : "sh",
-  }
-
-  if arch in srcarch.keys():
-    return srcarch[arch]
-  else:
-    return arch
+import kmaxtools.kextractcommon
 
 if __name__ == '__main__':
-  module_versions = {}
 
-  latest_module = "next-20200430"
-  module_versions["next-20200430"] = kextractor_next_20200430
-  module_versions["3.19"] = kextractor_3_19
-  module_versions["4.12.8"] = kextractor_4_12_8
+  usage = """\
+kextract [--module-version version] arg1 arg2 ...
 
-  available_versions = "Available versions: %s" % (", ".join(module_versions.keys()))
+\t--module-version version\tSpecify the version of the Kconfig parser to use.  Defaults to \"latest\".  %s.
 
-  argparser = argparse.ArgumentParser()
-  argparser.add_argument('--module-version',
-                         type=str,
-                         default="latest",
-                         help="""Specify the version of the Kconfig parser to use.  Defaults to \"latest\".  %s.""" % (available_versions))
-  argparser.add_argument("arch",
-                         help="The architecture to extract Kconfig for.")
-  argparser.add_argument("output",
-                         help="The output file to write to.")
-  argparser.add_argument("kconfigfilename",
-                         nargs="?",
-                         default="Kconfig",
-                         help="The name of the Kconfig file.")
-  argparser.add_argument('--version',
-                         action="version",
-                         version="%s %s" % (kmaxtools.about.__title__, kmaxtools.about.__version__),
-                         help="""Print the version number.""")
-  args = argparser.parse_args()
+Kmax Tools %s
+""" % (kmaxtools.about.__version__, kmaxtools.kextractcommon.available_versions)
 
-  module_version = args.module_version
-  arch = args.arch
-  output = args.output
-  srcarch = get_srcarch(arch)
-  kconfigfilename = args.kconfigfilename
+  args = sys.argv
 
+  # remove program name
+  args = args[1:]
+  
+  if len(args) == 0:
+    sys.stderr.write(usage)
+    exit(0)
+
+  module_version = "latest"
+  if args[0] == "--module-version":
+    args = args[1:]
+    if len(args) == 0:
+      sys.stderr.write(usage)
+      exit(0)
+    module_version = args[0]
+    args = args[1:]
+
+  if len(args) == 0:
+    sys.stderr.write(usage)
+    exit(0)
+    
   if module_version == "latest":
-    module_version = latest_module
+    module_version = kmaxtools.kextractcommon.latest_module
 
-  if module_version not in module_versions.keys():
+  if module_version not in kmaxtools.kextractcommon.module_versions.keys():
     sys.stderr.write("Invalid module version \"%s\".  %s.\n" % (module_version, available_versions))
     exit(1)
 
-  module_versions[module_version].kextract(output, "ARCH=%s" % (arch), "SRCARCH=%s" % (srcarch), kconfigfilename)
+  kmaxtools.kextractcommon.kextract(module_version, args)
