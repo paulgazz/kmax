@@ -5,6 +5,8 @@ import regex
 
 # Documentation of ast and the visitors: https://greentreesnakes.readthedocs.io/en/latest/nodes.html
 
+int_pattern = regex.compile("^[0-9]+$")
+
 # This class is part of the selectable algorith, described in the FindSelectable class
 class SelectableVisitor(ast.NodeVisitor):
   def __init__(self, find_selectable):
@@ -54,10 +56,22 @@ class SelectableVisitor(ast.NodeVisitor):
       assert(False)
 
   def visit_Constant(self, node):
-    node.selectable = False
+    value = node.value
+    if int_pattern.match(value):
+      num = int(value)
+      if num == 0:
+        node.selectable = False
+      else:
+        node.selectable = True
+    else:
+      node.selectable = False
 
   def visit_Num(self, node):  # deprecated since 3.8, replaced by constant
-    node.selectable = False
+    num = node.n
+    if num == 0:
+      node.selectable = False
+    else:
+      node.selectable = True
 
   def visit_Str(self, node):  # deprecated since 3.8, replaced by constant
     node.selectable = False
