@@ -658,7 +658,7 @@ if __name__ == '__main__':
       if not os.path.exists(get_arch_kextract_file(formulas, arch)):
         # write to a temp file first, then move if successful
         kextract_file_pending = get_arch_kextract_file(formulas, arch) + ".pending"
-        command = [ "kextract", arch, kextract_file_pending ]
+        command = [ "kextractlinux", arch, kextract_file_pending ]
         info("Extracting Kconfig dependencies: %s" % (" ".join(command)))
         try:
           popen = subprocess.Popen(command)
