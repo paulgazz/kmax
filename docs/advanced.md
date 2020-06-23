@@ -353,6 +353,71 @@ architectures, as named in the arch/ directory.
     /usr/bin/time bash /path/to/kmax/scripts/kclauselinux.sh
     bash /path/to/kmax/scripts/packageformulaslinux.sh
     
+## Generating Formulas for BusyBox
+
+Get the BusyBox source:
+
+    git clone https://git.busybox.net/busybox
+    cd busybox
+    git checkout 1_28_0   # or whatever version you need
+
+Prepare directories for formulas:
+
+    mkdir .kmax/
+
+Get the Kconfig constraint formulas:
+
+    kextract --module-version 3.19 --extract Config.in > .kmax/kextract
+    kclause --remove-orphaned-nonvisible < .kmax/kextract > .kmax/kclause
+
+The number of dictionary entries will be fewer than the total number
+of configuration options, because this map only stores configuration
+options that have dependencies.  Options without dependencies will not
+have a dictionary key (although they may be used in the dependencies
+of other options).
+
+Get the Kbuild file constraint formulas:
+
+    kmaxall $(find | grep "Kbuild$" | cut -c3-) | tee .kmax/kmax
+
+### Test out `klocalizer` on BusyBox
+
+Unlike Linux, BusyBox will build a `.o` with `make`, even if it is not configured in, e.g., 
+
+    make clean
+    make allnoconfig
+    make coreutils/fsync.o
+    
+This will compile `coreutils/fsync.o` even though it wouldn't have been built with `make`, e.g.,
+
+    make clean
+    make allnoconfig
+    make
+    
+The `coreutils/fsync.o` file should not exist
+
+    $ ls coreutils/fsync.o
+    ls: cannot access 'coreutils/fsync.o': No such file or directory
+
+Here is how to use `klocalizer` to create a config that includes `coreutils/fsync.o`
+
+    make clean
+    make allnoconfig
+    mv .config allnoconfig
+    klocalizer --approximate allnoconfig coreutils/fsync.o  # produces .config file that builds fsync.o
+    yes "" | make oldconfig  # to accept default values for other options
+    make
+
+The `coreutils/fsync.o` file should now be there
+
+    $ ls coreutils/fsync.o
+    coreutils/fsync.o
+
+The reason for approximating `allnoconfig` is to avoid adding
+configuration options that may break the build on certain systems.
+Using `yes ""` accepts any default values of options not forced by
+constraints.
+
 ## Kmax
 
 ### Simple example
