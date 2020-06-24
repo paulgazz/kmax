@@ -69,25 +69,11 @@ if __name__ == '__main__':
                          help="""\
   provides the excludes filename for reading and writing subdirectories that run \
   without error""")
-  argparser.add_argument('-c',
-                         '--correlate-c-files',
-                         action="store_true",
-                         help="""\
-  find corresponding .c files for the compilation units""")
   argparser.add_argument('-C',
                          '--config-vars',
                          type=str,
                          help="""the name of a KConfigData file containing \
   configuration variable data""")
-  argparser.add_argument('--no-aggregation',
-                         action="store_true",
-                         help="""\
-  only perform Kbuild evaluation, no aggregation and analysis""")
-  argparser.add_argument('-g',
-                         '--get-presence-conditions',
-                         action="store_true",
-                         help="""\
-  get presence conditions for each compilation units""")
   argparser.add_argument('-B',
                          '--boolean-configs',
                          action="store_true",
