@@ -32,56 +32,59 @@ from pathlib import Path
 # explanations for 3.19
 explanations_by_version = {
   "3.19" : {
-    'orphaned':    [ 'arch/alpha/lib/stacktrace.c',
-                     'arch/cris/arch-v10/lib/dmacopy.c',
-                     'arch/frv/kernel/irq-mb93093.c',
-                     'arch/arm/mach-msm/board-sapphire.c',
-                     'arch/arm/mach-omap2/prcm_mpu44xx.c',
-                     'arch/arm/mach-omap2/prminst44xx.c',
-                     'arch/arm/mach-omap2/vc44xx_data.c',
-                     'arch/arm/mach-omap2/vp44xx_data.c',
-                     'arch/mips/mti-sead3/sead3-i2c-drv.c',
-                     'arch/mn10300/unit-asb2305/pci-iomap.c',
-                     'arch/powerpc/platforms/cell/spufs/spu_restore.c',
-                     'arch/powerpc/platforms/cell/spufs/spu_save.c',
-                     'arch/x86/vdso/vdso32/vdso-fakesections.c',
-                     'drivers/gpu/drm/exynos/exynos_drm_connector.c',
-                     'drivers/infiniband/hw/cxgb3/cxio_dbg.c',
-                     'drivers/macintosh/nvram.c',
-                     'drivers/media/pci/cx18/cx18-alsa-mixer.c',
-                     'drivers/media/pci/cx25821/cx25821-audio-upstream.c',
-                     'drivers/media/pci/ivtv/ivtv-alsa-mixer.c',
-                     'drivers/media/pci/mantis/mantis_vp3028.c',
-                     'drivers/net/wireless/rtlwifi/btcoexist/halbtc8192e2ant.c',
-                     'drivers/net/wireless/rtlwifi/btcoexist/halbtc8723b1ant.c',
-                     'drivers/net/wireless/rtlwifi/btcoexist/halbtc8821a1ant.c',
-                     'drivers/net/wireless/rtlwifi/btcoexist/halbtc8821a2ant.c',
-                     'drivers/virtio/config.c',
-                     'sound/isa/gus/gus_instr.c',
-                     'sound/soc/codecs/sirf-audio-codec.c',
-                     'arch/cris/arch-v10/lib/old_checksum.c',
-                     'drivers/scsi/aic7xxx/aiclib.c',
-                     'arch/powerpc/math-emu/udivmodti4.c',
-                     'drivers/parisc/ccio-rm-dma.c', # commented out
-                     'lib/inflate.c', # doesn't appear in lib/Makefile
+    'orphaned': [
+      'arch/alpha/lib/stacktrace.c',
+      'arch/cris/arch-v10/lib/dmacopy.c',
+      'arch/frv/kernel/irq-mb93093.c',
+      'arch/arm/mach-msm/board-sapphire.c',
+      'arch/arm/mach-omap2/prcm_mpu44xx.c',
+      'arch/arm/mach-omap2/prminst44xx.c',
+      'arch/arm/mach-omap2/vc44xx_data.c',
+      'arch/arm/mach-omap2/vp44xx_data.c',
+      'arch/mips/mti-sead3/sead3-i2c-drv.c',
+      'arch/mn10300/unit-asb2305/pci-iomap.c',
+      'arch/powerpc/platforms/cell/spufs/spu_restore.c',
+      'arch/powerpc/platforms/cell/spufs/spu_save.c',
+      'arch/x86/vdso/vdso32/vdso-fakesections.c',
+      'drivers/gpu/drm/exynos/exynos_drm_connector.c',
+      'drivers/infiniband/hw/cxgb3/cxio_dbg.c',
+      'drivers/macintosh/nvram.c',
+      'drivers/media/pci/cx18/cx18-alsa-mixer.c',
+      'drivers/media/pci/cx25821/cx25821-audio-upstream.c',
+      'drivers/media/pci/ivtv/ivtv-alsa-mixer.c',
+      'drivers/media/pci/mantis/mantis_vp3028.c',
+      'drivers/net/wireless/rtlwifi/btcoexist/halbtc8192e2ant.c',
+      'drivers/net/wireless/rtlwifi/btcoexist/halbtc8723b1ant.c',
+      'drivers/net/wireless/rtlwifi/btcoexist/halbtc8821a1ant.c',
+      'drivers/net/wireless/rtlwifi/btcoexist/halbtc8821a2ant.c',
+      'drivers/virtio/config.c',
+      'sound/isa/gus/gus_instr.c',
+      'sound/soc/codecs/sirf-audio-codec.c',
+      'arch/cris/arch-v10/lib/old_checksum.c',
+      'drivers/scsi/aic7xxx/aiclib.c',
+      'arch/powerpc/math-emu/udivmodti4.c',
+      'drivers/parisc/ccio-rm-dma.c', # commented out
+      'lib/inflate.c', # doesn't appear in lib/Makefile
     ],
-    'helpers':     [ 'drivers/vhost/test.c', # test program
-                     'arch/powerpc/kernel/systbl_chk.c', # helper program
-                     'net/netfilter/nft_expr_template.c', # template
-                     'kernel/bounds.c', # generator
-                     'arch/mn10300/lib/ashrdi3.c', # used to create asm file
-                     'arch/mn10300/lib/lshrdi3.c', # used to create asm file
-                     'lib/raid6/test/test.c', # test program
-                     'drivers/scsi/aic7xxx/aicasm/aicasm.c', # assembler for aic7xxx scsi host firmware adapter
-                     'drivers/scsi/aic7xxx/aicasm/aicasm_symbol.c',
-                     'drivers/staging/iio/Documentation/generic_buffer.c', # test code
-                     'drivers/staging/iio/Documentation/iio_event_monitor.c', # test code
-                     'drivers/staging/iio/Documentation/lsiio.c', # tools
-                     'arch/ia64/scripts/check-model.c', # helper
+    'helpers': [
+      'drivers/vhost/test.c', # test program
+      'arch/powerpc/kernel/systbl_chk.c', # helper program
+      'net/netfilter/nft_expr_template.c', # template
+      'kernel/bounds.c', # generator
+      'arch/mn10300/lib/ashrdi3.c', # used to create asm file
+      'arch/mn10300/lib/lshrdi3.c', # used to create asm file
+      'lib/raid6/test/test.c', # test program
+      'drivers/scsi/aic7xxx/aicasm/aicasm.c', # assembler for aic7xxx scsi host firmware adapter
+      'drivers/scsi/aic7xxx/aicasm/aicasm_symbol.c',
+      'drivers/staging/iio/Documentation/generic_buffer.c', # test code
+      'drivers/staging/iio/Documentation/iio_event_monitor.c', # test code
+      'drivers/staging/iio/Documentation/lsiio.c', # tools
+      'arch/ia64/scripts/check-model.c', # helper
     ],
-    'make_target': [ 'arch/tile/kernel/vdso/vgettimeofday.c', # make target of different name
-                     'arch/arm64/crypto/aes-glue.c', # make target of different name
-                     'arch/ia64/kernel/nr-irqs.c', # uses make target
+    'make_target': [
+      'arch/tile/kernel/vdso/vgettimeofday.c', # make target of different name
+      'arch/arm64/crypto/aes-glue.c', # make target of different name
+      'arch/ia64/kernel/nr-irqs.c', # uses make target
     ],
     'unconfigurable': [
       "drivers/acpi/acpica/hwtimer.c", 
@@ -91,13 +94,46 @@ explanations_by_version = {
       "drivers/acpi/acpica/utprint.c", 
       "drivers/acpi/acpica/uttrack.c", 
       "drivers/acpi/acpica/utuuid.c"
-    ]
-    # 'staging'  : [ 'drivers/staging/comedi/drivers/addi-data/hwdrv_apci1500.c',
-    #                'drivers/staging/comedi/drivers/addi-data/hwdrv_apci1564.c',
-    #                'drivers/staging/comedi/drivers/addi-data/hwdrv_apci3501.c',
-    #                '',
-    #              ] + list(compilation_units['unidentified_staging_c_files']),
+    ],
+    # 'staging' : [
+    #   'drivers/staging/comedi/drivers/addi-data/hwdrv_apci1500.c',
+    #   'drivers/staging/comedi/drivers/addi-data/hwdrv_apci1564.c',
+    #   'drivers/staging/comedi/drivers/addi-data/hwdrv_apci3501.c',
+    # ] + list(compilation_units['unidentified_staging_c_files']),
   },
+  "5.7.5" : {
+    'orphaned': [
+      'arch/alpha/lib/stacktrace.c',
+      'arch/powerpc/platforms/cell/spufs/spu_restore.c',
+      'arch/powerpc/platforms/cell/spufs/spu_save.c',
+      'arch/powerpc/math-emu/udivmodti4.c',
+    ],
+    'helpers': [
+      'drivers/vhost/test.c', # test program
+      'kernel/bounds.c', # generator
+      'lib/raid6/test/test.c', # test program
+      'drivers/scsi/aic7xxx/aicasm/aicasm.c', # assembler for aic7xxx scsi host firmware adapter
+      'drivers/scsi/aic7xxx/aicasm/aicasm_symbol.c',
+      'arch/ia64/scripts/check-model.c', # helper
+    ],
+    'make_target': [  # done
+      'arch/arm64/crypto/aes-glue.c', # make target of different name
+      'arch/ia64/kernel/nr-irqs.c', # uses make target
+    ],
+    'unconfigurable': [ # done
+      "drivers/acpi/acpica/hwtimer.c", 
+      "drivers/acpi/acpica/nsdumpdv.c", 
+      "drivers/acpi/acpica/utcache.c", 
+      "drivers/acpi/acpica/utprint.c", 
+      "drivers/acpi/acpica/uttrack.c", 
+      "drivers/acpi/acpica/utuuid.c"
+    ],
+    # 'staging' : [
+    #   'drivers/staging/comedi/drivers/addi-data/hwdrv_apci1500.c',
+    #   'drivers/staging/comedi/drivers/addi-data/hwdrv_apci1564.c',
+    #   'drivers/staging/comedi/drivers/addi-data/hwdrv_apci3501.c',
+    # ] + list(compilation_units['unidentified_staging_c_files']),
+  }
 }
 
 # explanations_table = [
@@ -155,9 +191,14 @@ def resolve_path(path):
 
 if __name__ == '__main__':    
   version = "3.19"
-  explanations = explanations_by_version[version]
   per_arch_units = True
   disable_slow_stuff = False
+
+  # version = "5.7.5"
+  # per_arch_units = False
+  # disable_slow_stuff = False
+
+  explanations = explanations_by_version[version]
 
   if per_arch_units:
     units_files = glob.glob(".kmax/kclause/*/units")
@@ -165,10 +206,10 @@ if __name__ == '__main__':
     # remove prereq in arch/arm/Makefile and arch/mips/Makefile
     units_files = [ ".kmax/units" ]
 
-    # kmaxall -a -DARCH=blackfin arch/blackfin/Makefile > units_blackfin
-    # replace shell call to define OS with Linux in arch/um/Makefile
-    # kmaxall -DOS=Linux -a arch/um/ > units_um
-    units_files.extend( ["units_blackfin", "units_um" ] )
+  # # kmaxall -a -DARCH=blackfin arch/blackfin/Makefile > units_blackfin
+  # # replace shell call to define OS with Linux in arch/um/Makefile
+  # # kmaxall -DOS=Linux -a arch/um/ > units_um
+  # units_files.extend( ["units_blackfin", "units_um" ] )
 
   units_by_type = {}
   for units_file in units_files:
