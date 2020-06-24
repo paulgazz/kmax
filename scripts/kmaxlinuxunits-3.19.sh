@@ -4,8 +4,8 @@ set -x
 
 kmaxall --version
 
-# # remove prereq usage in arch/arm/Makefile and arch/mips/Makefile to get top-level directories
-# /usr/bin/time kmaxall -a $(find arch/ -maxdepth 1 -mindepth 1 | egrep -v ".gitignore|Kconfig") block certs crypto drivers fs init ipc kernel lib mm net samples security sound usr virt > .kmax/units.pending1
+# remove prereq usage in arch/arm/Makefile and arch/mips/Makefile to get top-level directories
+/usr/bin/time kmaxall -a $(find arch/ -maxdepth 1 -mindepth 1 | egrep -v ".gitignore|Kconfig") block certs crypto drivers fs init ipc kernel lib mm net samples security sound usr virt > .kmax/units.pending1
 
 # add blackfin results which need ARCH set to get top-level directories
 /usr/bin/time kmaxall -F .kmax/units.pending1 -a -DARCH=blackfin arch/blackfin/Makefile > .kmax/units.pending2
