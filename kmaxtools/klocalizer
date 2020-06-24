@@ -419,6 +419,9 @@ if __name__ == '__main__':
   argparser.add_argument("--random-seed",
                          type=int,
                          help="""The random seed for the solver's model generation.""")
+  argparser.add_argument("--exclude-compilation-units",
+                         action="store_true",
+                         help="""Invert the z3 formula of the compilation unit (.o file) when generating .config""")
   argparser.add_argument('-q',
                          '--quiet',
                          action="store_true",
@@ -453,6 +456,7 @@ if __name__ == '__main__':
   sample_prefix = args.sample_prefix
   random_seed = args.random_seed
   compilation_units = args.compilation_units
+  dont_compile = args.exclude_compilation_units
   quiet = args.quiet
 
   if kextract_file and not kclause_file:
@@ -634,7 +638,12 @@ if __name__ == '__main__':
   for unit in compilation_units:
     if unit is not None:
       if kmax_constraints == None:
-        kmax_constraints = get_kmax_constraints(kmax_formulas, unit)
+        if dont_compile:
+              kmax_constraints = [z3.Not(c) for c in get_kmax_constraints(kmax_formulas, unit)]
+        else:
+          kmax_constraints = get_kmax_constraints(kmax_formulas, unit)
+      elif dont_compile:
+        kmax_constraints.extend([z3.Not(c) for c in get_kmax_constraints(kmax_formulas, unit)])
       else:
         kmax_constraints.extend(get_kmax_constraints(kmax_formulas, unit))
 
