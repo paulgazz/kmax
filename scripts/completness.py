@@ -190,26 +190,29 @@ def resolve_path(path):
   return resolved
 
 if __name__ == '__main__':    
-  version = "3.19"
-  per_arch_units = True
   disable_slow_stuff = False
 
-  # version = "5.7.5"
-  # per_arch_units = False
-  # disable_slow_stuff = False
+  available_versions = "Available Linux versions: %s\n" % (" ".join(explanations_by_version.keys()))
+  
+  if len(sys.argv) < 2:
+    sys.stderr.write("USAGE: python3 completeness.py linux_version\n\n  %s" % (available_versions))
+    exit(0)
+  else:
+    version = sys.argv[1]
+    if version not in explanations_by_version.keys():
+      sys.stderr.write("ERROR: invalid version.  %s" % (available_versions))
+      exit(1)
 
   explanations = explanations_by_version[version]
 
-  if per_arch_units:
-    units_files = glob.glob(".kmax/kclause/*/units")
+  if version == "3.19":
+    # for 3.19, we run kmax one arch at-a-time to repeat the FSE17 experiment
+    units_files = ".kmax/kclause/*/units"
   else:
-    # remove prereq in arch/arm/Makefile and arch/mips/Makefile
-    units_files = [ ".kmax/units" ]
+    # other versions can just use a single kmax file that contains all archs
+    units_files = ".kmax/units"
 
-  # # kmaxall -a -DARCH=blackfin arch/blackfin/Makefile > units_blackfin
-  # # replace shell call to define OS with Linux in arch/um/Makefile
-  # # kmaxall -DOS=Linux -a arch/um/ > units_um
-  # units_files.extend( ["units_blackfin", "units_um" ] )
+  units_files = glob.glob(units_files)
 
   units_by_type = {}
   for units_file in units_files:
