@@ -95,6 +95,9 @@ if __name__ == '__main__':
                          '--output-all-unit-types',
                          action="store_true",
                          help="""Output all kinds of units found, including compilation units, library units, hostprogs, unconfigurable units, extra targets, clean files, C file targets, and composites.  This is used to help with completeness checking.""")
+  argparser.add_argument('-F',
+                         '--existing-results-file',
+                         help="""Take the output from a prior run of kmaxall.  kmaxall will add new data to these prior results.""")
   argparser.add_argument('--version',
                          action="version",
                          version="%s %s" % (kmaxtools.about.__title__, kmaxtools.about.__version__),
@@ -117,6 +120,15 @@ if __name__ == '__main__':
   # aggregates of the repeated calls kmax output
   z3_pcs = {}  # for --z3
   units_by_type = {}  # for output-all-unit-types
+
+  if args.existing_results_file:
+    with open(args.existing_results_file , "r") as f:
+      if args.output_all_unit_types:
+        units_by_type = pickle.load(f)
+      elif args.z3:
+        z3_pcs = pickle.load(f)
+      else:
+        assert(False)
 
   # compilation_units, # updated with units
   # library_units,     # updated with lib units
@@ -257,16 +269,8 @@ if __name__ == '__main__':
     subdirectories.update(pending_subdirectories)
     pending_subdirectories.update(covering_set(pending_subdirectories.pop()))
 
-
   fp = os.fdopen(sys.stdout.fileno(), 'wb')
   if args.output_all_unit_types:
-    if False:
-      for unit_type in units_by_type:
-          sys.stderr.write(unit_type)
-          sys.stderr.write("\n")
-          sys.stderr.write("\n".join(units_by_type[unit_type]))
-          sys.stderr.write("\n")
-          sys.stderr.write("\n")
     pickle.dump(units_by_type, fp, 0)
   elif args.z3:
     pickle.dump(z3_pcs, fp, 0)
