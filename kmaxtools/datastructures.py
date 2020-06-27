@@ -153,23 +153,25 @@ class Results:
             # if self.subdir_pcs:
             #     ss += '\n{} subdir pcs: \n{}'.format(len(self.subdir_pcs), self.pc_str(self.subdir_pcs))
             return ss
-        elif kmaxtools.settings.output_all_unit_types:
-            for unit_type in self.units_by_type:
-                sys.stderr.write(unit_type)
-                sys.stderr.write("\n")
-                sys.stderr.write("\n".join(self.units_by_type[unit_type]))
-                sys.stderr.write("\n")
-                sys.stderr.write("\n")
-            return pickle.dumps(self.units_by_type, 0).decode()
-        elif kmaxtools.settings.output_smtlib2:
+        else:
             z3_pcs = {}
             for filename in self.presence_conditions.keys():
                 solver = z3.Solver()
                 solver.add(self.presence_conditions[filename])
                 z3_pcs[filename] = solver.to_smt2()
-            return pickle.dumps(z3_pcs, 0).decode()
-        else:
-            assert(False)
+            if kmaxtools.settings.output_all_unit_types:
+                self.units_by_type['presence_conditions'] = z3_pcs
+                # for unit_type in self.units_by_type:
+                #     sys.stderr.write(unit_type)
+                #     sys.stderr.write("\n")
+                #     sys.stderr.write("\n".join(self.units_by_type[unit_type]))
+                #     sys.stderr.write("\n")
+                #     sys.stderr.write("\n")
+                return pickle.dumps(self.units_by_type, 0).decode()
+            elif kmaxtools.settings.output_smtlib2:
+                return pickle.dumps(z3_pcs, 0).decode()
+            else:
+                assert(False)
     
     def pc_str(self, s):
         return '\n'.join("{}. {}: {}, {}".format(i, v, f, z3.simplify(g))
