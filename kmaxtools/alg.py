@@ -628,6 +628,7 @@ class Kbuild:
         @return either a single string or a Multiverse, i.e., list of (condition, string)
         pairs."""
 
+        # sys.stderr.write("process_expansion: %s\n" % (str(expansion)))
         if isinstance(expansion, data.StringExpansion):
             return expansion.s
         elif isinstance(expansion, data.Expansion):
@@ -635,7 +636,7 @@ class Kbuild:
                   for element, isfunc in expansion]
             mv = self.hoist(rs)
             assert isinstance(mv, Multiverse), mv
-            # print("process_expansion", mv)
+            # sys.stderr.write("process_expansion_Expansion: %s\n" % (str(mv)))
             return mv
         else:
             mlog.error("Unsupported BaseExpansion subtype: {}".format(expansion))
