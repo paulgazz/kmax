@@ -354,6 +354,8 @@ class Kbuild:
             return Multiverse(self.mk_Multiverse(self.process_expansion(function._arguments[0])))
         elif isinstance(function, functions.AddPrefixFunction):
             return self.process_fun_AddPrefixFunction(function)
+        elif isinstance(function, functions.AddSuffixFunction):
+            return self.process_fun_AddSuffixFunction(function)
         else:
             mlog.warn("default on function: {}".format(function))
             return self.mk_Multiverse(function.to_source())
@@ -497,6 +499,29 @@ class Kbuild:
                                                    for token in token_string.split())
                     hoisted_results.append(CondDef(resulting_cond, resulting_zcond, prefixed_tokens))
 
+        # sys.stderr.write("prefix: %s\n" % (str(hoisted_results)))
+        return Multiverse(hoisted_results)
+        
+    def process_fun_AddSuffixFunction(self, function):
+        suffixes = self.mk_Multiverse(self.process_expansion(function._arguments[0]))
+        token_strings = self.mk_Multiverse(self.process_expansion(function._arguments[1]))
+
+        hoisted_results = []
+        for (suffix_cond, suffix_zcond, suffix) in suffixes:
+            for (tokens_cond, tokens_zcond, token_string) in token_strings:
+                resulting_cond = conj(suffix_cond, tokens_cond)
+                resulting_zcond = zconj(suffix_zcond, tokens_zcond)
+
+                if not isfalse(resulting_cond, resulting_zcond):
+                    # append suffix to each token in the token_string
+                    if token_string is None:
+                        suffixed_tokens = ""                            
+                    else:
+                        suffixed_tokens = " ".join(token + suffix
+                                                   for token in token_string.split())
+                    hoisted_results.append(CondDef(resulting_cond, resulting_zcond, suffixed_tokens))
+
+        # sys.stderr.write("suffix: %s\n" % (str(hoisted_results)))
         return Multiverse(hoisted_results)
         
     def process_fun_SubstitutionRef(self, function):
