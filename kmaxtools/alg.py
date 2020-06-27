@@ -260,7 +260,7 @@ class Kbuild:
             return Multiverse([ CondDef(bv32.bdd, bv32.zbdd, "32"),
                                 CondDef(bv64.bdd, bv64.zbdd, "64") ])
 
-        elif name not in self.variables and name == "MMU":
+        elif name not in self.variables and (name == "MMU" or name == "MMUEXT"):
             # TODO get globals from arch Makefiles
             is_defined, zis_defined = self.get_defined("CONFIG_MMU", True)
             not_defined, znot_defined = self.get_defined("CONFIG_MMU", False)
@@ -268,6 +268,10 @@ class Kbuild:
             return Multiverse([ CondDef(is_defined, zis_defined, ''),
                                 CondDef(not_defined, znot_defined, '-nommu') ])
 
+        elif name == "OS":
+            # for the shell call in arch/um/Makefile
+            return Multiverse([ CondDef(self.T, ZSolver.T, "Linux") ])
+        
         elif name.startswith("CONFIG_"):
             if kmaxtools.settings.do_boolean_configs:
                 #varbdd = self.bvars[name].bdd
