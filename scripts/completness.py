@@ -195,7 +195,7 @@ if __name__ == '__main__':
   available_versions = "Available Linux versions: %s\n" % (" ".join(explanations_by_version.keys()))
   
   if len(sys.argv) < 2:
-    sys.stderr.write("USAGE: python3 completeness.py linux_version\n\n  %s" % (available_versions))
+    sys.stderr.write("USAGE: python3 completeness.py linux_version [units_file]\n\n  %s" % (available_versions))
     exit(0)
   else:
     version = sys.argv[1]
@@ -205,12 +205,15 @@ if __name__ == '__main__':
 
   explanations = explanations_by_version[version]
 
-  if version == "3.19":
-    # for 3.19, we run kmax one arch at-a-time to repeat the FSE17 experiment
-    units_files = ".kmax/kclause/*/units"
+  if len(sys.argv) > 2:
+    units_files = sys.argv[2]
   else:
-    # other versions can just use a single kmax file that contains all archs
-    units_files = ".kmax/units"
+    if version == "3.19":
+      # for 3.19, we run kmax one arch at-a-time to repeat the FSE17 experiment
+      units_files = ".kmax/kclause/*/units"
+    else:
+      # other versions can just use a single kmax file that contains all archs
+      units_files = ".kmax/units"
 
   units_files = glob.glob(units_files)
 
