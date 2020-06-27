@@ -110,6 +110,19 @@ explanations_by_version = {
       'arch/powerpc/platforms/cell/spufs/spu_restore.c',
       'arch/powerpc/platforms/cell/spufs/spu_save.c',
       'arch/powerpc/math-emu/udivmodti4.c',
+      'arch/powerpc/platforms/powernv/opal-tracepoints.c',
+      'arch/x86/crypto/aes_glue.c',
+      'arch/x86/kvm/mmu_audit.c',
+      'drivers/gpu/drm/amd/display/dc/clk_mgr/dcn10/rv1_clk_mgr_clk.c',
+      'drivers/net/wireless/realtek/rtlwifi/btcoexist/halbtc8822bwifionly.c',
+      'drivers/gpu/drm/amd/display/modules/stats/stats.c',
+      'drivers/gpu/drm/amd/display/modules/vmid/vmid.c',
+      'drivers/gpu/drm/amd/display/dc/dce/dce_clk_mgr.c',
+      'drivers/gpu/drm/amd/display/dc/dce/dce_scl_filters_old.c',
+      'drivers/gpu/drm/amd/display/dc/dcn10/dcn10_dwb.c',
+      'drivers/gpu/drm/i915/gt/selftest_timeline.c',
+      'drivers/gpu/drm/i915/gt/selftests/mock_timeline.c',
+      'drivers/gpu/drm/i915/selftests/mock_gtt.c',
     ],
     'helpers': [
       'drivers/vhost/test.c', # test program
@@ -118,10 +131,12 @@ explanations_by_version = {
       'drivers/scsi/aic7xxx/aicasm/aicasm.c', # assembler for aic7xxx scsi host firmware adapter
       'drivers/scsi/aic7xxx/aicasm/aicasm_symbol.c',
       'arch/ia64/scripts/check-model.c', # helper
+      'arch/mips/vdso/config-n32-o32-env.c', # included C file
     ],
     'make_target': [  # done
       'arch/arm64/crypto/aes-glue.c', # make target of different name
       'arch/ia64/kernel/nr-irqs.c', # uses make target
+      'net/bpfilter/main.c', # uses make target
     ],
     'unconfigurable': [ # done
       "drivers/acpi/acpica/hwtimer.c", 
@@ -129,13 +144,30 @@ explanations_by_version = {
       "drivers/acpi/acpica/utcache.c", 
       "drivers/acpi/acpica/utprint.c", 
       "drivers/acpi/acpica/uttrack.c", 
-      "drivers/acpi/acpica/utuuid.c"
+      "drivers/acpi/acpica/utuuid.c",
+      "drivers/acpi/acpica/dbfileio.c",
+      "drivers/acpi/acpica/dbtest.c",
+
+      # certs/Makefile has an uconfigurable file
+      # obj-$(CONFIG_SYSTEM_BLACKLIST_KEYRING) += blacklist.o
+      # ifneq ($(CONFIG_SYSTEM_BLACKLIST_HASH_LIST),"")
+      # obj-$(CONFIG_SYSTEM_BLACKLIST_KEYRING) += blacklist_hashes.o
+      # else
+      # obj-$(CONFIG_SYSTEM_BLACKLIST_KEYRING) += blacklist_nohashes.o
+      # endif
+      'certs/blacklist_nohashes.c',
     ],
     # 'staging' : [
     #   'drivers/staging/comedi/drivers/addi-data/hwdrv_apci1500.c',
     #   'drivers/staging/comedi/drivers/addi-data/hwdrv_apci1564.c',
     #   'drivers/staging/comedi/drivers/addi-data/hwdrv_apci3501.c',
     # ] + list(compilation_units['unidentified_staging_c_files']),
+    'offsets' : [
+      'arch/x86/um/user-offsets.c',
+      'arch/arm/mach-at91/pm_data-offsets.c',
+      'arch/arm/mach-omap2/pm-asm-offsets.c',
+      'drivers/memory/emif-asm-offsets.c', 
+    ]
   }
 }
 
