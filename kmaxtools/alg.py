@@ -1236,9 +1236,9 @@ class Run:
             kbuild.get_presence_conditions([ "SPECIAL-extra", "extra-y" ], presence_conditions, kbuild.T, ZSolver.T)
             self.results.units_by_type['extra'] = kbuild.deduplicate_and_add_path(presence_conditions, path).keys()
 
-            kbuild.process_stmts(parser.parsestring("SPECIAL-hostprogs := $(hostprogs-y) $(hostprogs-m) $(host-progs) $(always)", makefile.name), kbuild.T, ZSolver.T)
+            kbuild.process_stmts(parser.parsestring("SPECIAL-hostprogs := $(hostprogs-y) $(hostprogs-m) $(hostprogs) $(always)", makefile.name), kbuild.T, ZSolver.T)
             presence_conditions = {}
-            kbuild.get_presence_conditions([ "SPECIAL-hostprogs", "hostprogs-y", "hostprogs-m", "host-progs", "always" ], presence_conditions, kbuild.T, ZSolver.T)
+            kbuild.get_presence_conditions([ "SPECIAL-hostprogs", "hostprogs-y", "hostprogs-m", "hostprogs", "always" ], presence_conditions, kbuild.T, ZSolver.T)
             self.results.units_by_type['hostprog_units'] = kbuild.deduplicate_and_add_path(presence_conditions, path).keys()
 
             kbuild.process_stmts(parser.parsestring("SPECIAL-targets := $(targets)", makefile.name), kbuild.T, ZSolver.T)
@@ -1270,7 +1270,7 @@ class Run:
                             not x.endswith("-y") and \
                             not x.endswith("-m") and \
                             not x.endswith("-objs") and \
-                            x != "host-progs":
+                            x != "hostprogs":
                         unconfigurable_variables.add(x)
                     elif x.startswith(p[:-1]) and x.endswith("-"):
                         # also look in variables resulting from expansion of
