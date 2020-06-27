@@ -1223,7 +1223,18 @@ class Run:
 
         presence_conditions = {}
         kbuild.get_presence_conditions([ "subdir-y", "subdir-m", "SPECIAL-subdir-simple" ], presence_conditions, kbuild.T, ZSolver.T)
-        subdirs = kbuild.deduplicate_and_add_path(presence_conditions, path).keys()
+        subdirs_pcs = kbuild.deduplicate_and_add_path(presence_conditions, path)
+        subdirs = subdirs_pcs.keys()
+
+        subdirs_pcs_fixed = {}
+        for subdir in subdirs_pcs.keys():
+            # add / to end of subdirs
+            if not subdir.endswith("/"):
+                fixed_subdir = subdir + "/"
+            else:
+                fixed_subdir = subdir
+            subdirs_pcs_fixed[fixed_subdir] = subdirs_pcs[subdir]
+        self.results.presence_conditions = kbuild.deduplicate_and_add_path(subdirs_pcs_fixed, "", self.results.presence_conditions)
 
         if kmaxtools.settings.output_all_unit_types:
             self.results.units_by_type['subdirs'] = subdirs
