@@ -100,6 +100,9 @@ explanations_by_version = {
     #   'drivers/staging/comedi/drivers/addi-data/hwdrv_apci1564.c',
     #   'drivers/staging/comedi/drivers/addi-data/hwdrv_apci3501.c',
     # ] + list(compilation_units['unidentified_staging_c_files']),
+    'offsets' : [
+      'arch/x86/um/user-offsets.c',
+    ]
   },
   "5.7.5" : {
     'orphaned': [
@@ -347,7 +350,7 @@ if __name__ == '__main__':
   # Kbuild file into offsets
   re_offsets_file = re.compile(r'arch/[^/]+/kernel/asm-offsets\.c')
   offsets_files = [ x for x in everycfile if re_offsets_file.match(x) ]
-  offsets_files.append('arch/x86/um/user-offsets.c')
+  offsets_files.extend(explanations['offsets'])
 
   # remove asm-offsets.c files
   unidentified_c_files.difference_update([filename
