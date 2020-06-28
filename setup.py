@@ -9,7 +9,7 @@ def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 about = {}
-exec(read(os.path.join("kmaxtools", "about.py")), about)
+exec(read(os.path.join("kmax", "about.py")), about)
 
 kextractor_next_20200430 = Extension('kextractor_next_20200430', [ 'kextractors/kextractor-next-20200430/kextractor_extension.c', 'kextractors/kextractor-next-20200430/kextractor.c', 'kextractors/kextractor-next-20200430/confdata.c', 'kextractors/kextractor-next-20200430/expr.c', 'kextractors/kextractor-next-20200430/preprocess.c', 'kextractors/kextractor-next-20200430/lexer.lex.c', 'kextractors/kextractor-next-20200430/parser.tab.c', 'kextractors/kextractor-next-20200430/symbol.c', 'kextractors/kextractor-next-20200430/util.c'], include_dirs=['kextractors/kextractor-next-20200430/'])
 
@@ -28,14 +28,14 @@ setup(
     license = "GPLv2+",
     keywords = "makefile kconfig kbuild configurations kmax kclause klocalizer",
     url = "https://github.com/paulgazz/kmax",
-    packages=['kmaxtools', 'pymake'],
+    packages=['kmax', 'pymake'],
     ext_modules = [ kextractor_next_20200430, kextractor_3_19, kextractor_4_12_8 ],
     classifiers=[
         "Development Status :: 4 - Beta",
         "Topic :: Utilities",
         "License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)",
     ],
-    scripts=['kmaxtools/kmax', 'kmaxtools/kmaxall', 'kmaxtools/kclause', 'kmaxtools/klocalizer', 'kmaxtools/kextract', 'kmaxtools/kreader'],
+    scripts=['kmax/kmax', 'kmax/kmaxall', 'kmax/kclause', 'kmax/klocalizer', 'kmax/kextract', 'kmax/kreader'],
     install_requires=[
         'enum34',
         'regex',

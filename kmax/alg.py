@@ -11,12 +11,12 @@ from collections import defaultdict
 import pdb
 trace = pdb.set_trace
 import z3
-import kmaxtools.vcommon as CM
+import kmax.vcommon as CM
 
 from datastructures import CondDef, Multiverse, VarEntry, BoolVar, Results
 
-import kmaxtools.settings
-mlog = CM.getLogger(__name__, kmaxtools.settings.logger_level)
+import kmax.settings
+mlog = CM.getLogger(__name__, kmax.settings.logger_level)
 
 match_unexpanded_variables = re.compile(r'.*\$\(.*\).*')
 def contains_unexpanded(s):
@@ -28,15 +28,15 @@ def contains_unexpanded(s):
     return s is not None and match_unexpanded_variables.match(s)
 
 # wrappers for symbolic boolean operations
-def conj(a, b): return kmaxtools.datastructures.conj(a, b)
-def disj(a, b): return kmaxtools.datastructures.disj(a, b)
-def neg(a): return kmaxtools.datastructures.neg(a)
-def bdd_one(): return kmaxtools.datastructures.bdd_one()
-def bdd_zero(): return kmaxtools.datastructures.bdd_zero()
-def bdd_ithvar(i): return kmaxtools.datastructures.bdd_ithvar(i)
-def bdd_init(): kmaxtools.datastructures.bdd_init()
-def bdd_destroy(): kmaxtools.datastructures.bdd_destroy()
-def isbddfalse(b): return kmaxtools.datastructures.isbddfalse(b)
+def conj(a, b): return kmax.datastructures.conj(a, b)
+def disj(a, b): return kmax.datastructures.disj(a, b)
+def neg(a): return kmax.datastructures.neg(a)
+def bdd_one(): return kmax.datastructures.bdd_one()
+def bdd_zero(): return kmax.datastructures.bdd_zero()
+def bdd_ithvar(i): return kmax.datastructures.bdd_ithvar(i)
+def bdd_init(): kmax.datastructures.bdd_init()
+def bdd_destroy(): kmax.datastructures.bdd_destroy()
+def isbddfalse(b): return kmax.datastructures.isbddfalse(b)
 
 def zconj(a, b): return None if a is None or b is None else z3.simplify(z3.And(a, b))
 def zdisj(a, b): return None if a is None or b is None else z3.simplify(z3.Or(a, b))
@@ -273,7 +273,7 @@ class Kbuild:
             return Multiverse([ CondDef(self.T, ZSolver.T, "Linux") ])
         
         elif name.startswith("CONFIG_"):
-            if kmaxtools.settings.do_boolean_configs:
+            if kmax.settings.do_boolean_configs:
                 #varbdd = self.bvars[name].bdd
                 v = self.get_bvars(name).bdd
                 zv = self.get_bvars(name).zbdd
@@ -282,7 +282,7 @@ class Kbuild:
                 # command-line, then only allow those options to be
                 # free variables, otherwise the configuration option
                 # is always disabled.
-                if kmaxtools.settings.unselectable != None and name in kmaxtools.settings.unselectable:
+                if kmax.settings.unselectable != None and name in kmax.settings.unselectable:
                     return Multiverse([ CondDef(self.T, ZSolver.T, None) ])
                 else:
                     return Multiverse([ CondDef(v, zv, 'y'),
@@ -777,7 +777,7 @@ class Kbuild:
 
         @returns a list of terms, represented as lists of factors"""
 
-        solutions = kmaxtools.datastructures.bdd_solutions(condition)
+        solutions = kmax.datastructures.bdd_solutions(condition)
         expression = []
         for solution_term in solutions:
             term = []
@@ -1075,7 +1075,7 @@ class Run:
             mlog.info("processing makefile: {}".format(makefile))            
             subdirs_ = self.extract(makefile)
             # # TODO: support recursive application of kmax when subdir-y is used, updating the current path, e.g., arch/arm64/boot/dts/amd/Makefile uses var from parent arch/arm64/boot/dts/Makefile
-            # if kmaxtools.settings.do_recursive:
+            # if kmax.settings.do_recursive:
             #     subdirs = subdirs.union(subdirs_)
 
     def extract(self, path):
@@ -1088,7 +1088,7 @@ class Run:
         makefile.close()
 
         kbuild = Kbuild()
-        kbuild.add_definitions(kmaxtools.settings.defines)
+        kbuild.add_definitions(kmax.settings.defines)
         stmts = parser.parsestring(s, makefile.name)
 
         kbuild.process_stmts(stmts, kbuild.T, ZSolver.T)
@@ -1237,7 +1237,7 @@ class Run:
             subdirs_pcs_fixed[fixed_subdir] = subdirs_pcs[subdir]
         self.results.presence_conditions = kbuild.deduplicate_and_add_path(subdirs_pcs_fixed, "", self.results.presence_conditions)
 
-        if kmaxtools.settings.output_all_unit_types:
+        if kmax.settings.output_all_unit_types:
             self.results.units_by_type['subdirs'] = subdirs
 
             # mapping from unit type name to structure holding them
@@ -1293,7 +1293,7 @@ class Run:
             kbuild.get_presence_conditions(unconfigurable_variables, presence_conditions, kbuild.T, ZSolver.T)
             self.results.units_by_type['unconfigurable_units'] = kbuild.deduplicate_and_add_path(presence_conditions, path).keys()
 
-        if kmaxtools.settings.do_table:
+        if kmax.settings.do_table:
             mlog.info(kbuild.getSymbTable(printCond=kbuild.bdd_to_str))
 
         #clean up

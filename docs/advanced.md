@@ -43,17 +43,17 @@ when making changes to the code:
 
 `klocalizer` can generate formulas on-demand or use formulas already
 extracted for your version of Linux, which you can download here:
-<https://kmaxtools.opentheblackbox.net/formulas>
+<https://kmax.opentheblackbox.net/formulas>
 
     wget https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.4.tar.xz
     tar -xvf linux-5.4.tar.xz
     cd linux-5.4/
-    wget https://kmaxtools.opentheblackbox.net/formulas/kmax-formulas_linux-v5.4.tar.bz2
+    wget https://kmax.opentheblackbox.net/formulas/kmax-formulas_linux-v5.4.tar.bz2
     tar -xvf kmax-formulas_linux-v5.4.tar.bz2
 
 This contains a `.kmax` directory containing the Kconfig and Kbuild
 formulas for each architecture.  If a version is not available
-[here](https://kmaxtools.opentheblackbox.net/formulas) submit an issue to request
+[here](https://kmax.opentheblackbox.net/formulas) submit an issue to request
 the formulas be generated and uplodated or see below for directions on
 generating these formulas.
 
@@ -291,7 +291,7 @@ e.g., `allnoconfig`, with the `--approximate` flag.
 ### Troubleshooting
 
 - `klocalizer` can use formulas from `kmax` and
-  `kclause`. [Download](https://kmaxtools.opentheblackbox.net/formulas) these
+  `kclause`. [Download](https://kmax.opentheblackbox.net/formulas) these
   first or generate them (see below).
 
 - Use the `CONFIG_` prefix on variables when referring to them in user constraints.

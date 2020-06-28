@@ -37,9 +37,9 @@ if __name__ == '__main__':
       import pickle
   import time
   import z3
-  import kmaxtools.about
+  import kmax.about
 
-  import kmaxtools.vcommon as CM
+  import kmax.vcommon as CM
 
   starting_time = time.time()
 
@@ -100,7 +100,7 @@ if __name__ == '__main__':
                          help="""Take the output from a prior run of kmaxall.  kmaxall will add new data to these prior results.""")
   argparser.add_argument('--version',
                          action="version",
-                         version="%s %s" % (kmaxtools.about.__title__, kmaxtools.about.__version__),
+                         version="%s %s" % (kmax.about.__title__, kmax.about.__version__),
                          help="""Print the version number.""")
 
   args = argparser.parse_args()

@@ -12,7 +12,7 @@
 
 ## Tools
 
-The Kmax Tool Suite (kmaxtools) contains a set of tools for performing
+The Kmax Tool Suite (kmax) contains a set of tools for performing
 automated reasoning on Kconfig and Kbuild constraints.  It consists of
 the following tools:
 

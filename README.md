@@ -14,10 +14,10 @@
 
 ## Getting Started
 
-Install `pip3`, Linux's build dependencies, and `kmaxtools`:
+Install `pip3`, Linux's build dependencies, and `kmax`:
 
     sudo apt install -y python3-pip flex bison bc libssl-dev
-    sudo pip3 install kmaxtools
+    sudo pip3 install kmax
 
 Download the Linux source:
 
@@ -52,4 +52,4 @@ Run `klocalizer` with a different architecture:
 
 [Advanced Usage](https://github.com/paulgazz/kmax/blob/master/docs/advanced.md)
 
-[Bugs Found by `kmaxtools`](https://github.com/paulgazz/kmax/blob/master/docs/bugs_found.md)
+[Bugs Found](https://github.com/paulgazz/kmax/blob/master/docs/bugs_found.md)

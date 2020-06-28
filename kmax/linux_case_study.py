@@ -31,7 +31,7 @@ except ImportError:  #Python3
     import pickle
 import time
 
-import kmaxtools.vcommon as CM
+import kmax.vcommon as CM
 
 scriptpath = os.path.dirname(os.path.realpath(__file__))
 

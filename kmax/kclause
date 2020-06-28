@@ -26,10 +26,10 @@ if __name__ == '__main__':
   import regex  # pip install regex
   import z3
   import z3.z3printer
-  from kmaxtools import expression_converter
-  from kmaxtools import find_selectable
+  from kmax import expression_converter
+  from kmax import find_selectable
   import pickle
-  import kmaxtools.about
+  import kmax.about
 
   # this script takes the check_dep --dimacs output and converts it into
   # a dimacs-compatible format
@@ -93,7 +93,7 @@ if __name__ == '__main__':
                          help="""list the unselectable options as the output.  performs no transformation to logic and ignores all other options.""")
   argparser.add_argument('--version',
                          action="version",
-                         version="%s %s" % (kmaxtools.about.__title__, kmaxtools.about.__version__),
+                         version="%s %s" % (kmax.about.__title__, kmax.about.__version__),
                          help="""Print the version number.""")
   args = argparser.parse_args()
 

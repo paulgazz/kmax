@@ -2,7 +2,7 @@
 *.pyo
 *~
 build/
-kmaxtools.egg-info/
+kmax.egg-info/
 dist/
 
 # Byte-compiled / optimized / DLL files

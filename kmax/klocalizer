@@ -7,9 +7,9 @@ import z3
 import regex
 import pickle
 import random
-import kmaxtools.about
+import kmax.about
 import subprocess
-from kmaxtools.common import get_kmax_constraints, unpickle_kmax_file
+from kmax.common import get_kmax_constraints, unpickle_kmax_file
 
 try:
   from subprocess import DEVNULL  # Python 3.
@@ -428,7 +428,7 @@ if __name__ == '__main__':
                          help="""Quiet mode prints no messages to stderr.""")
   argparser.add_argument('--version',
                          action="version",
-                         version="%s %s" % (kmaxtools.about.__title__, kmaxtools.about.__version__),
+                         version="%s %s" % (kmax.about.__title__, kmax.about.__version__),
                          help="""Print the version number.""")
   argparser.add_argument("compilation_units",
                          nargs='*',
@@ -501,7 +501,7 @@ if __name__ == '__main__':
     exit(12)
 
   if not os.path.exists(formulas):
-    warning("No formulas found.  Generating them on demand.  They can also be downloaded from https://kmaxtools.opentheblackbox.net/formulas/ for some Linux versions.")
+    warning("No formulas found.  Generating them on demand.  They can also be downloaded from https://kmax.opentheblackbox.net/formulas/ for some Linux versions.")
     os.makedirs(formulas)
 
   if not kmax_file:

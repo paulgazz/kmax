@@ -20,9 +20,9 @@
 
 if __name__ == '__main__':
     import argparse    
-    from kmaxtools.vcommon import getLogLevel , getLogger
-    import kmaxtools.settings
-    import kmaxtools.about
+    from kmax.vcommon import getLogLevel , getLogger
+    import kmax.settings
+    import kmax.about
 
     aparser = argparse.ArgumentParser("find interactions from Kbuild Makefiles")
     ag = aparser.add_argument
@@ -83,7 +83,7 @@ if __name__ == '__main__':
 
     ag('--version',
        action="version",
-       version="%s %s" % (kmaxtools.about.__title__, kmaxtools.about.__version__),
+       version="%s %s" % (kmax.about.__title__, kmax.about.__version__),
        help="""Print the version number.""")
     # ag('--case-study',
     #    type=str,
@@ -91,34 +91,34 @@ if __name__ == '__main__':
 
     args = aparser.parse_args()
         
-    if args.log_level != kmaxtools.settings.logger_level and 0 <= args.log_level <= 4:
-        kmaxtools.settings.logger_level = args.log_level
+    if args.log_level != kmax.settings.logger_level and 0 <= args.log_level <= 4:
+        kmax.settings.logger_level = args.log_level
 
-    kmaxtools.settings.logger_level = getLogLevel(kmaxtools.settings.logger_level)
-    mlog = getLogger(__name__, kmaxtools.settings.logger_level)    
+    kmax.settings.logger_level = getLogLevel(kmax.settings.logger_level)
+    mlog = getLogger(__name__, kmax.settings.logger_level)    
     if __debug__:
         mlog.warn("DEBUG MODE ON. Can be slow! (Use python -O ... for optimization)")
 
-    kmaxtools.settings.do_table = args.table
+    kmax.settings.do_table = args.table
     if not args.tristate_configs:
-        kmaxtools.settings.do_boolean_configs = args.boolean_configs
-    kmaxtools.settings.defines = args.define
-    kmaxtools.settings.output_smtlib2 = args.output_smtlib2
-    kmaxtools.settings.output_all_unit_types = args.output_all_unit_types
+        kmax.settings.do_boolean_configs = args.boolean_configs
+    kmax.settings.defines = args.define
+    kmax.settings.output_smtlib2 = args.output_smtlib2
+    kmax.settings.output_all_unit_types = args.output_all_unit_types
 
     if args.output_unit_pc_format:
-        kmaxtools.settings.output_unit_pc_format = True
-        kmaxtools.settings.output_smtlib2 = False
-        kmaxtools.settings.output_all_unit_types = False
+        kmax.settings.output_unit_pc_format = True
+        kmax.settings.output_smtlib2 = False
+        kmax.settings.output_all_unit_types = False
     
     if args.unselectable:
         with open(args.unselectable, "rb") as f:
-            kmaxtools.settings.unselectable = [ x.strip() for x in f.readlines() ]
+            kmax.settings.unselectable = [ x.strip() for x in f.readlines() ]
 
     inp = args.makefile
     mlog.info("processing {}\n".format(inp))
 
-    from kmaxtools.alg import Run
+    from kmax.alg import Run
     myrun = Run()
     myrun.run(inp)
     print(myrun.results)

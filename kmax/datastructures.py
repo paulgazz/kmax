@@ -3,11 +3,11 @@ import pickle
 import pdb
 trace = pdb.set_trace
 import z3
-import kmaxtools.vcommon as CM
+import kmax.vcommon as CM
 from dd.autoref import BDD
 
-import kmaxtools.settings
-mlog = CM.getLogger(__name__, kmaxtools.settings.logger_level)
+import kmax.settings
+mlog = CM.getLogger(__name__, kmax.settings.logger_level)
 
 # warning: this is not well encapsulated.  multiple runs in same process may not work properly
 bdd_lib = BDD()
@@ -72,7 +72,7 @@ class Multiverse(list):
         for cond, zcond, val in self:
             if val in cache:
                 c, zc = cache[val]
-                cache[val] = (kmaxtools.alg.disj(c, cond), z3.Or(zc, zcond)) #disj
+                cache[val] = (kmax.alg.disj(c, cond), z3.Or(zc, zcond)) #disj
             else:
                 cache[val] = (cond, zcond)
 
@@ -141,7 +141,7 @@ class Results:
         self.presence_conditions = {}
 
     def __str__(self, details=False):
-        if kmaxtools.settings.output_unit_pc_format:
+        if kmax.settings.output_unit_pc_format:
             # legacy output format
             f = lambda k, s: "{}: {}".format(k, ', '.join(s) if details else len(s))
             delim = '\n' if details else ', '
@@ -159,7 +159,7 @@ class Results:
                 solver = z3.Solver()
                 solver.add(self.presence_conditions[filename])
                 z3_pcs[filename] = solver.to_smt2()
-            if kmaxtools.settings.output_all_unit_types:
+            if kmax.settings.output_all_unit_types:
                 self.units_by_type['presence_conditions'] = z3_pcs
                 # for unit_type in self.units_by_type:
                 #     sys.stderr.write(unit_type)
@@ -168,7 +168,7 @@ class Results:
                 #     sys.stderr.write("\n")
                 #     sys.stderr.write("\n")
                 return pickle.dumps(self.units_by_type, 0).decode()
-            elif kmaxtools.settings.output_smtlib2:
+            elif kmax.settings.output_smtlib2:
                 return pickle.dumps(z3_pcs, 0).decode()
             else:
                 assert(False)

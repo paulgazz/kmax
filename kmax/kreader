@@ -7,14 +7,14 @@ import z3
 import regex
 import random
 import subprocess
-import kmaxtools.about
-from kmaxtools.common import get_kmax_constraints, unpickle_kmax_file, info
+import kmax.about
+from kmax.common import get_kmax_constraints, unpickle_kmax_file, info
 try:
   from functools import reduce # python 3
 except ImportError:
   reduce = reduce # reduce is built-in to python 2
 
-kmaxtools.common.quiet = True
+kmax.common.quiet = True
   
 def warning(msg, ending="\n"):
   sys.stderr.write("WARNING: %s%s" % (msg, ending))
@@ -55,7 +55,7 @@ if __name__ == '__main__':
   args = argparser.parse_args()
 
   if args.version:
-    print("%s %s" % (kmaxtools.about.__title__, kmaxtools.about.__version__))
+    print("%s %s" % (kmax.about.__title__, kmax.about.__version__))
     exit(0)
   
   formulas = args.formulas
