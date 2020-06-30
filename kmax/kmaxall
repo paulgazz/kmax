@@ -172,6 +172,20 @@ if __name__ == '__main__':
       for define in args.define:
         covering_set_args.append("-D" + define)
 
+    # add linux-specific non-Boolean
+    if kbuild_dir.startswith("arch/um"):
+      covering_set_args.append("-DOS=Linux")
+    elif kbuild_dir.startswith("arch/blackfin"): # 3.19
+      covering_set_args.append("-DARCH=blackfin")
+    elif kbuild_dir.startswith("arch/h8300"): # 5.7.5
+      covering_set_args.append("-DARCH=h8300")
+    elif kbuild_dir.startswith("arch/mips"): # 5.7.5
+      covering_set_args.append("-DARCH=mips")
+    elif kbuild_dir.startswith("drivers/gpu/drm"): # 5.7.5
+      covering_set_args.append("-DFULL_AMD_DISPLAY_PATH=drivers/gpu/drm/amd/display")
+      covering_set_args.append("-DFULL_AMD_PATH=drivers/gpu/drm/amd")
+      covering_set_args.append("-DDISPLAY_FOLDER_NAME=display")
+
     if args.unselectable != None:
       covering_set_args.append("--unselectable")
       covering_set_args.append(args.unselectable)

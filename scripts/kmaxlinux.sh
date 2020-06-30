@@ -2,6 +2,8 @@
 
 set -x
 
+mkdir -p .kmax/
+
 kmax --version
 
 # script_dir=$(dirname $0)
@@ -13,5 +15,5 @@ kmax --version
 # done
 # /usr/bin/time kmaxall -z $(cat .kmax/topleveldirs/* | tr ' ' '\n' | sort | uniq) $(find arch/ -maxdepth 1 -mindepth 1 | egrep -v ".gitignore|Kconfig") block certs crypto drivers fs init ipc kernel lib mm net samples security sound usr virt  > .kmax/kmax
 
-/usr/bin/time kmaxall -z $(find arch/ -maxdepth 1 -mindepth 1 | egrep -v ".gitignore|Kconfig") block certs crypto drivers fs init ipc kernel lib mm net samples security sound usr virt > .kmax/kmax.pending
+/usr/bin/time kmaxall $(find arch/ -maxdepth 1 -mindepth 1 | egrep -v ".gitignore|Kconfig") block certs crypto drivers fs init ipc kernel lib mm net samples security sound usr virt > .kmax/kmax.pending
 mv .kmax/kmax.pending .kmax/kmax

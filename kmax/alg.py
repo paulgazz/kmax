@@ -243,23 +243,19 @@ class Kbuild:
             return neg(bdd), z3.Not(zbdd)
 
     def process_variableref(self, name):
+        # linux-specific non-Booleans
         if name not in self.variables and name == 'BITS':
             # TODO get real entry from top-level makefiles
             bv32 = self.get_bvars("BITS=32")
             bv64 = self.get_bvars("BITS=64")
             return Multiverse([ CondDef(bv32.bdd, bv32.zbdd, "32"),
                                 CondDef(bv64.bdd, bv64.zbdd, "64") ])
-        
-        # elif name == 'ARCH':
-        #     # TODO user-defined
-        #     return Multiverse([ (self.T, "x86") ])
         elif name == "CONFIG_WORD_SIZE":
             # TODO get defaults from Kconfig files
             bv32 = self.get_bvars("CONFIG_WORD_SIZE=32")
             bv64 = self.get_bvars("CONFIG_WORD_SIZE=64")
             return Multiverse([ CondDef(bv32.bdd, bv32.zbdd, "32"),
                                 CondDef(bv64.bdd, bv64.zbdd, "64") ])
-
         elif name not in self.variables and (name == "MMU" or name == "MMUEXT"):
             # TODO get globals from arch Makefiles
             is_defined, zis_defined = self.get_defined("CONFIG_MMU", True)
@@ -267,11 +263,6 @@ class Kbuild:
 
             return Multiverse([ CondDef(is_defined, zis_defined, ''),
                                 CondDef(not_defined, znot_defined, '-nommu') ])
-
-        elif name == "OS":
-            # for the shell call in arch/um/Makefile
-            return Multiverse([ CondDef(self.T, ZSolver.T, "Linux") ])
-        
         elif name.startswith("CONFIG_"):
             if kmax.settings.do_boolean_configs:
                 #varbdd = self.bvars[name].bdd

@@ -2,6 +2,8 @@
 
 set -x
 
+mkdir -p .kmax/
+
 kmax --version
 
 # script_dir=$(dirname $0)

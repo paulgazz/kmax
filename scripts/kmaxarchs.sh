@@ -18,11 +18,9 @@ for dir in .kmax/kclause/*; do
     else
       srcarch="$arch"
     fi
-    if [[ "$arch" == "um" ]]; then
-      extra_args=" -DOS=Linux "
-    fi
     outfile="${dir}/units"
     # around linux 5
     /usr/bin/time kmaxall --output-all-unit-types --unselectable "${unselectable}" arch/${srcarch} block certs crypto drivers fs init ipc kernel lib mm net samples security sound usr virt  > "${outfile}.pending"
+    mv "${outfile}.pending" "${outfile}"
   fi
 done
