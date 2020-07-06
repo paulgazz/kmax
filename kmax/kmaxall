@@ -175,6 +175,8 @@ if __name__ == '__main__':
     # add linux-specific non-Boolean
     if kbuild_dir.startswith("arch/um"):
       covering_set_args.append("-DOS=Linux")
+    elif kbuild_dir.startswith("arch/x86/um"):
+      covering_set_args.append("-DOS=Linux")
     elif kbuild_dir.startswith("arch/blackfin"): # 3.19
       covering_set_args.append("-DARCH=blackfin")
     elif kbuild_dir.startswith("arch/h8300"): # 5.7.5
