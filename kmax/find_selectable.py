@@ -7,7 +7,7 @@ import regex
 
 int_pattern = regex.compile("^[0-9]+$")
 
-# This class is part of the selectable algorith, described in the FindSelectable class
+# This class is part of the selectable algorithm, described in the FindSelectable class
 class SelectableVisitor(ast.NodeVisitor):
   def __init__(self, find_selectable):
     ast.NodeVisitor.__init__(self)
