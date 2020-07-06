@@ -2,6 +2,8 @@
 
 # run kmax once for architecture, using the unselectable config options to rule out arch-specific files
 
+mkdir -p .kmax/archs/
+
 for dir in .kmax/kclause/*; do
   echo "processing ${dir}"
   arch="$(basename ${dir})"
@@ -18,9 +20,8 @@ for dir in .kmax/kclause/*; do
     else
       srcarch="$arch"
     fi
-    outfile="${dir}/units"
-    # around linux 5
-    /usr/bin/time kmaxall --output-all-unit-types --unselectable "${unselectable}" arch/${srcarch} block certs crypto drivers fs init ipc kernel lib mm net samples security sound usr virt  > "${outfile}.pending"
+    outfile=".kmax/archs/units.${arch}"
+    /usr/bin/time kmaxall --output-all-unit-types --unselectable "${unselectable}" arch/${srcarch} block certs crypto drivers fs init ipc kernel lib mm net security sound usr virt  > "${outfile}.pending"
     mv "${outfile}.pending" "${outfile}"
   fi
 done
