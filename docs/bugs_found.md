@@ -47,6 +47,6 @@ Conflicting types for the function `ssl_client_new` when selecting the
 
 #### History
 
-2017-12-26 [Report and Patch](https://github.com/paulgazz/kmax/blob/master/docs/bugs_found/docs/2017-12-26_axtls_language_bindings.txt)
+2017-12-26 [Report and Patch](https://github.com/paulgazz/kmax/blob/master/docs/bugs_found/2017-12-26_axtls_language_bindings.txt)
 
 2019-03-15 [Fix Confirmation](https://sourceforge.net/p/axtls/mailman/message/36613862/)
