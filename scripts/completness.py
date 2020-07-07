@@ -65,6 +65,7 @@ explanations_by_version = {
       'arch/powerpc/math-emu/udivmodti4.c',
       'drivers/parisc/ccio-rm-dma.c', # commented out
       'lib/inflate.c', # doesn't appear in lib/Makefile
+      'drivers/staging/rtl8192e/rtllib_crypt.c', # doesn't appear in drivers/staging/rtl8192e/Makefile
     ],
     'helpers': [
       'drivers/vhost/test.c', # test program
@@ -225,8 +226,6 @@ def resolve_path(path):
   return resolved
 
 if __name__ == '__main__':    
-  disable_slow_stuff = False
-
   available_versions = "Available Linux versions: %s\n" % (" ".join(explanations_by_version.keys()))
   
   if len(sys.argv) < 2:
@@ -326,113 +325,227 @@ if __name__ == '__main__':
   # find all .c files without a corresponding compilation unit, starting
   # with all c files
   # unidentified_c_files = set(all_c_files)
-  unidentified_c_files = set(everycfile)
 
-  sys.stderr.write("%s remaining\nremoving kmax results\n" % (str(len(unidentified_c_files))))
+  file_sets = {}
+  
+  file_sets['compilation_units'] = set([otoc(filename) for filename in compilation_units])
+  file_sets['unconfigurable_units'] = set([hostprog_otoc(filename) for filename in units_by_type['unconfigurable_units']])
+  file_sets['hostprog_units'] = set([hostprog_otoc(filename) for filename in units_by_type['hostprog_units']])
+  file_sets['extra_units'] = set([hostprog_otoc(filename) for filename in units_by_type['extra']])
+  file_sets['target_units'] = set([hostprog_otoc(filename) for filename in units_by_type['targets']])
+  file_sets['nonkernel_files'] = set([ filename for filename in everycfile
+                                       if (filename.startswith("Documentation/")
+                                           or filename.startswith("scripts")
+                                           or filename.startswith("firmware")
+                                           # or filename.startswith("include")
+                                               or filename.startswith("samples")
+                                           or filename.startswith("tools")
+                                       ) ])
+  file_sets['clean_files'] = set([filename for filename in units_by_type['clean_files']])
 
-  # remove kernel compilation units
-  unidentified_c_files.difference_update([otoc(filename)
-                                       for filename in compilation_units])
-
-  sys.stderr.write("%s remaining\nremoving unconfigurable units\n" % (str(len(unidentified_c_files))))
-
-  # remove unconfigurable compilation units
-  unidentified_c_files.difference_update([hostprog_otoc(filename)
-                                          for filename in units_by_type['unconfigurable_units']])
-
-  sys.stderr.write("%s remaining\nremoving hostprogs\n" % (str(len(unidentified_c_files))))
-
-  # remove hostprog compilation units
-  unidentified_c_files.difference_update([hostprog_otoc(filename)
-                                          for filename in units_by_type['hostprog_units']])
-
-  sys.stderr.write("%s remaining\nremoving extra units\n" % (str(len(unidentified_c_files))))
-
-  # remove extra units
-  unidentified_c_files.difference_update([hostprog_otoc(filename)
-                                          for filename in units_by_type['extra']])
-
-  sys.stderr.write("%s remaining\nremoving targets\n" % (str(len(unidentified_c_files))))
-
-  # remove target units
-  unidentified_c_files.difference_update([hostprog_otoc(filename)
-                                          for filename in units_by_type['targets']])
-
-  sys.stderr.write("%s remaining\nremoving non-kernel directories\n" % (str(len(unidentified_c_files))))
-
-  # remove non-kernel directories
-  unidentified_c_files = set([ filename for filename in unidentified_c_files
-                           if not (filename.startswith("Documentation/")
-                                   or filename.startswith("scripts")
-                                   or filename.startswith("firmware")
-                                   # or filename.startswith("include")
-                                   or filename.startswith("samples")
-                                   or filename.startswith("tools")
-                           ) ])
-
-  sys.stderr.write("%s remaining\nremoving clean_files\n" % (str(len(unidentified_c_files))))
-
-  # remove clean_files
-  unidentified_c_files.difference_update([filename
-                                          for filename in units_by_type['clean_files']])
-
-  sys.stderr.write("%s remaining\nremoving asm-offsets.c files\n" % (str(len(unidentified_c_files))))
-
+  # get source files that include c files
+  included_c_files = set()
+  p = subprocess.Popen(r'find . -name "*.[c|h]" | xargs grep -H "^#.*include.*\.c[\">]"',
+                       shell=True,
+                       stdout=subprocess.PIPE)
+  out, _ = p.communicate()
+  for line in out.decode().splitlines():
+    parts = line.split(":", 1)
+    if parts is not None:
+      infile = parts[0]
+      if len(parts) > 1:
+        m = re.search(r"\".*\.c\"", parts[1])
+        if m is not None:
+          included = m.group(0)[1:-1]
+          included = os.path.join(os.path.dirname(infile), included)
+          included = os.path.relpath(os.path.realpath(included))
+          included_c_files.add(included)
+  file_sets['included_c_files'] = set(included_c_files)
+  
   # find all asm-offsets.c files, for these are compiled by the root
   # Kbuild file into offsets
   re_offsets_file = re.compile(r'arch/[^/]+/kernel/asm-offsets\.c')
   offsets_files = [ x for x in everycfile if re_offsets_file.match(x) ]
-  offsets_files.extend(explanations['offsets'])
-
-  # remove asm-offsets.c files
-  unidentified_c_files.difference_update([filename
-                                          for filename in offsets_files])
-
-  if not disable_slow_stuff:
-    sys.stderr.write("%s remaining\nremoving C files included in other C files\n" % (str(len(unidentified_c_files))))
-
-    # get source files that include c files
-    included_c_files = set()
-    p = subprocess.Popen(r'find . -name "*.[c|h]" | xargs grep -H "^#.*include.*\.c[\">]"',
-                         shell=True,
-                         stdout=subprocess.PIPE)
-    out, _ = p.communicate()
-    for line in out.decode().splitlines():
-      parts = line.split(":", 1)
-      if parts is not None:
-        infile = parts[0]
-        if len(parts) > 1:
-          m = re.search(r"\".*\.c\"", parts[1])
-          if m is not None:
-            included = m.group(0)[1:-1]
-            included = os.path.join(os.path.dirname(infile), included)
-            included = os.path.relpath(os.path.realpath(included))
-            included_c_files.add(included)
-
-    # # only need the files in the current source subtree
-    # included_c_files.intersection_update(every_c_file)
-
-    # remove .c files that aren't compilation units, because they are
-    # included in other c files
-    unidentified_c_files.difference_update(included_c_files)
-
-  sys.stderr.write("%s remaining\nremoving driver staging files\n" % (str(len(unidentified_c_files))))
-
+  file_sets['additional_offsets'] = set(offsets_files)
+  
   # separate out .c files from the staging directory, which can be a
   # mess
-  unidentified_staging_c_files = [ x for x in unidentified_c_files
-                                if "drivers/staging" in os.path.dirname(x) ]
+  unidentified_staging_c_files = [ x for x in everycfile if "drivers/staging" in os.path.dirname(x) ]
 
-  unidentified_c_files.difference_update(unidentified_staging_c_files)
+  file_sets['unidentified_staging_c_files'] = set(unidentified_staging_c_files)
 
+  file_sets['unidentified_skeleton_c_files'] = set([ x for x in everycfile if "skeleton" in os.path.basename(x) ])
+
+  generated_c_files = set([])
+  for c in (units_by_type['clean_files'] | units_by_type['targets']):
+    if c.endswith(".c$"):
+      pattern = re.compile(fnmatch.translate(c))
+      for filename in everycfile:
+        if pattern.match(filename):
+          generated_c_files.add(filename)
+  file_sets['generated_c_files'] = set(generated_c_files)
+
+  file_sets['tools'] = set([c for c in everycfile if
+                            re.match("arch/.*/boot/", c) != None or
+                            re.match("arch/.*/tools/", c) != None ])
+
+  file_sets['nonkbuild_units'] = set([c for c in everycfile if
+                                      c.startswith("arch/xtensa/platforms") or # calls external shell
+                                      c.startswith("arch/x86/realmode/rm") or # creates realmode.bin via conventional make target, included in .S file
+                                      c.startswith("arch/um/sys-ppc") or # not compiled via Kbuild
+                                      c.startswith("arch/um/sys-ia64") # not compiled via Kbuild
+  ])
+
+  for explanation in explanations.keys():
+    assert explanation not in file_sets.keys()
+    file_sets[explanation] = set(explanations[explanation])
+
+  # filter file sets by actual .c files
+  for key in file_sets.keys():
+    file_sets[key] = set([ elem for elem in file_sets[key] if elem in everycfile ])
+    # sys.stderr.write("%s %s\n\n" % (key, ("\n%s " % (key)).join(sorted(file_sets[key]))))
+
+  # # check for overlap between file sets
+  # key_list = list(file_sets.keys())
+  # for i1 in range(0, len(key_list)):
+  #   key1 = key_list[i1]
+  #   for i2 in range(i1+1, len(key_list)):
+  #     key2 = key_list[i2]
+  #     sys.stderr.write("intersection of %s with %s\n" % (key1, key2))
+  #     intersection = file_sets[key1].intersection(file_sets[key2])
+  #     sys.stderr.write("%d files in intersection\n" % (len(intersection)))
+  #     sys.stderr.write("%s\n\n" % ("\n".join(intersection)))
+
+  # # check for differences between file sets
+  # for key1 in file_sets.keys():
+  #   for key2 in file_sets.keys():
+  #     if key1 != key2:
+  #       sys.stderr.write("difference of %s with %s\n" % (key1, key2))
+  #       difference = file_sets[key1].difference(file_sets[key2])
+  #       sys.stderr.write("%d files in difference\n" % (len(difference)))
+  #       sys.stderr.write("%s\n\n" % ("\n".join(difference)))
+  
+  # check for any C files that have not been accounted for
+  unidentified_c_files = set(everycfile)  
+    
+  key_list = [ 'compilation_units', 'unconfigurable_units', 'hostprog_units', 'extra_units', 'target_units', 'nonkernel_files', 'clean_files', 'included_c_files', 'additional_offsets', 'unidentified_staging_c_files', 'unidentified_skeleton_c_files', 'generated_c_files', 'tools', 'nonkbuild_units']
+  key_list.extend(explanations.keys())
+
+  results = {}
+  for key in key_list:
+    lastset = unidentified_c_files
+    lastcount = len(unidentified_c_files)
+    newset = lastset.difference(file_sets[key])
+    newcount = len(newset)
+
+    diffset = lastset.difference(newset)
+    unidentified_c_files = newset
+    setcount = lastcount - newcount
+    sys.stderr.write("count %s %d\n" % (key, setcount))
+    sys.stderr.write("%s " % (key))
+    sys.stderr.write(("\n%s " % (key)).join(diffset))
+    sys.stderr.write("\n")
+    results[key] = setcount
+
+  sum = 0
+  for key in key_list:
+    print("%s %d" % (key, results[key]))
+    sum = sum + results[key]
+
+  print("%d identified" % (sum))
+  print("%d c files" % (len(everycfile)))
+  
+  exit(0)
+
+  unidentified_c_files = set(everycfile)  
+
+  sys.stderr.write("%s remaining\nremoving kmax results\n" % (str(len(unidentified_c_files))))
+  lastcount = len(unidentified_c_files)
+  
+  # remove kernel compilation units
+  unidentified_c_files.difference_update(file_sets['compilation_units'])
+
+  sys.stderr.write("%d count\n" % (lastcount - len(unidentified_c_files)))
+  sys.stderr.write("%s remaining\nremoving unconfigurable units\n" % (str(len(unidentified_c_files))))
+  lastcount = len(unidentified_c_files)
+
+  # remove unconfigurable compilation units
+  unidentified_c_files.difference_update(file_sets['unconfigurable_units'])
+
+  sys.stderr.write("%d count\n" % (lastcount - len(unidentified_c_files)))
+  sys.stderr.write("%s remaining\nremoving hostprogs\n" % (str(len(unidentified_c_files))))
+  lastcount = len(unidentified_c_files)
+
+  # remove hostprog compilation units
+  unidentified_c_files.difference_update(file_sets['hostprog_units'])
+
+  sys.stderr.write("%d count\n" % (lastcount - len(unidentified_c_files)))
+  sys.stderr.write("%s remaining\nremoving extra units\n" % (str(len(unidentified_c_files))))
+  lastcount = len(unidentified_c_files)
+
+  # remove extra units
+  unidentified_c_files.difference_update(file_sets['extra_units'])
+
+  sys.stderr.write("%d count\n" % (lastcount - len(unidentified_c_files)))
+  sys.stderr.write("%s remaining\nremoving targets\n" % (str(len(unidentified_c_files))))
+  lastcount = len(unidentified_c_files)
+
+  # remove target units
+  unidentified_c_files.difference_update(file_sets['target_units'])
+
+  sys.stderr.write("%d count\n" % (lastcount - len(unidentified_c_files)))
+  sys.stderr.write("%s remaining\nremoving non-kernel directories\n" % (str(len(unidentified_c_files))))
+  lastcount = len(unidentified_c_files)
+
+  # remove non-kernel directories
+  unidentified_c_files.difference_update(set(file_sets['nonkernel_files']))
+
+  sys.stderr.write("%d count\n" % (lastcount - len(unidentified_c_files)))
+  sys.stderr.write("%s remaining\nremoving clean_files\n" % (str(len(unidentified_c_files))))
+  lastcount = len(unidentified_c_files)
+
+  # remove clean_files
+  unidentified_c_files.difference_update(file_sets['clean_files'])
+
+  sys.stderr.write("%d count\n" % (lastcount - len(unidentified_c_files)))
+  sys.stderr.write("%s remaining\nremoving asm-offsets.c files\n" % (str(len(unidentified_c_files))))
+  lastcount = len(unidentified_c_files)
+
+  # remove asm-offsets.c files
+  unidentified_c_files.difference_update(file_sets['offsets'])
+
+  sys.stderr.write("%d count\n" % (lastcount - len(unidentified_c_files)))
+  sys.stderr.write("%s remaining\nremoving other asm-offsets.c files\n" % (str(len(unidentified_c_files))))
+  lastcount = len(unidentified_c_files)
+
+  # remove asm-offsets.c files
+  unidentified_c_files.difference_update(file_sets['additional_offsets'])
+
+  sys.stderr.write("%d count\n" % (lastcount - len(unidentified_c_files)))
+  sys.stderr.write("%s remaining\nremoving C files included in other C files\n" % (str(len(unidentified_c_files))))
+  lastcount = len(unidentified_c_files)
+
+  # # only need the files in the current source subtree
+  # included_c_files.intersection_update(every_c_file)
+
+  # remove .c files that aren't compilation units, because they are
+  # included in other c files
+  unidentified_c_files.difference_update(file_sets['included_c_files'])
+
+  sys.stderr.write("%d count\n" % (lastcount - len(unidentified_c_files)))
+  sys.stderr.write("%s remaining\nremoving driver staging files\n" % (str(len(unidentified_c_files))))
+  lastcount = len(unidentified_c_files)
+
+  unidentified_c_files.difference_update(file_sets['unidentified_staging_c_files'])
+
+  sys.stderr.write("%d count\n" % (lastcount - len(unidentified_c_files)))
   sys.stderr.write("%s remaining\nremoving skeleton files\n" % (str(len(unidentified_c_files))))
+  lastcount = len(unidentified_c_files)
 
   # separate out .c files with "skeleton" in their name.  this is a
-  # heuristic to find example drivers that aren't actually compiled.
-  unidentified_skeleton_c_files = [ x for x in unidentified_c_files
-                                 if "skeleton" in os.path.basename(x) ]
+  # heuristic to find example drivers that aren't actually compiled.  
 
-  unidentified_c_files.difference_update(unidentified_skeleton_c_files)
+  unidentified_c_files.difference_update(file_sets['unidentified_skeleton_c_files'])
 
   # separate out generators heuristically.  look for "mk" or
   # "gen[^a-zA-Z]" in their name
@@ -483,57 +596,56 @@ if __name__ == '__main__':
   # unidentified_c_files.difference_update([ hostprog_otoc(x)
   #                                     for x in unexpanded_clean_files ])
 
-  if not disable_slow_stuff:
-    sys.stderr.write("%s remaining\nremoving generated C files\n" % (str(len(unidentified_c_files))))
+  sys.stderr.write("%d count\n" % (lastcount - len(unidentified_c_files)))
+  sys.stderr.write("%s remaining\nremoving generated C files\n" % (str(len(unidentified_c_files))))
+  lastcount = len(unidentified_c_files)
 
-    # remove c files specified in the clean-files and in targets, since
-    # these can be auto-generated c files
-    generated_c_files = set([])
-    for c in (units_by_type['clean_files'] | units_by_type['targets']):
-      if c.endswith(".c$"):
-        pattern = re.compile(fnmatch.translate(c))
-        for filename in unidentified_c_files:
-          if pattern.match(filename):
-            generated_c_files.add(filename)
-    unidentified_c_files.difference_update(generated_c_files)
+  # remove c files specified in the clean-files and in targets, since
+  # these can be auto-generated c files
+  unidentified_c_files.difference_update(file_sets['generated_c_files'])
 
+  sys.stderr.write("%d count\n" % (lastcount - len(unidentified_c_files)))
   sys.stderr.write("%s remaining\nremoving boot and tools arch files\n" % (str(len(unidentified_c_files))))
+  lastcount = len(unidentified_c_files)
 
-  unidentified_c_files.difference_update([c for c in unidentified_c_files if
-                                    re.match("arch/.*/boot/", c) != None or
-                                    re.match("arch/.*/tools/", c) != None ])
+  unidentified_c_files.difference_update(file_sets['tools'])
 
   # remove those that have manually-found explanations
   # for key in explanations.keys():
   #   unidentified_c_files.difference_update(explanations[key])
   # # sys.stderr.write(str(len(unidentified_c_files)) + "\n")
 
+  sys.stderr.write("%d count\n" % (lastcount - len(unidentified_c_files)))
   sys.stderr.write("%s remaining\nremoving helper programs\n" % (str(len(unidentified_c_files))))
+  lastcount = len(unidentified_c_files)
 
   unidentified_c_files.difference_update(set(explanations['helpers']))
 
   # unidentified_c_files.difference_update(set(explanations['staging']))
 
+  sys.stderr.write("%d count\n" % (lastcount - len(unidentified_c_files)))
   sys.stderr.write("%s remaining\nremoving orphaned source files\n" % (str(len(unidentified_c_files))))
+  lastcount = len(unidentified_c_files)
 
   unidentified_c_files.difference_update(set(explanations['orphaned']))
 
+  sys.stderr.write("%d count\n" % (lastcount - len(unidentified_c_files)))
   sys.stderr.write("%s remaining\nremoving source built by targets\n" % (str(len(unidentified_c_files))))
+  lastcount = len(unidentified_c_files)
 
   unidentified_c_files.difference_update(set(explanations['make_target']))
 
+  sys.stderr.write("%d count\n" % (lastcount - len(unidentified_c_files)))
   sys.stderr.write("%s remaining\nremoving unconfigurable code\n" % (str(len(unidentified_c_files))))
+  lastcount = len(unidentified_c_files)
 
   unidentified_c_files.difference_update(set(explanations['unconfigurable']))
 
+  sys.stderr.write("%d count\n" % (lastcount - len(unidentified_c_files)))
   sys.stderr.write("%s remaining\nremoving non-Kbuild-style object files\n" % (str(len(unidentified_c_files))))
+  lastcount = len(unidentified_c_files)
 
-  unidentified_c_files.difference_update(set([c for c in everycfile if
-                                         c.startswith("arch/xtensa/platforms") or # calls external shell
-                                         c.startswith("arch/x86/realmode/rm") or # creates realmode.bin via conventional make target, included in .S file
-                                         c.startswith("arch/um/sys-ppc") or # not compiled via Kbuild
-                                         c.startswith("arch/um/sys-ia64") # not compiled via Kbuild
-  ]))
+  unidentified_c_files.difference_update(file_sets['nonkbuild_units'])
 
   # # account for compilation units identified in other architectures, when checking a single architecture
   # for key in [key for key in compilation_units.keys() if key != 'unidentified_c_files']:
@@ -542,6 +654,7 @@ if __name__ == '__main__':
 
   print("\n".join(sorted(unidentified_c_files)))
 
+  sys.stderr.write("%d count\n" % (lastcount - len(unidentified_c_files)))
   sys.stderr.write("%s remaining\n" % (str(len(unidentified_c_files))))
 
   exit(0)
