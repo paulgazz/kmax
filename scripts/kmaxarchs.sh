@@ -21,7 +21,7 @@ for dir in .kmax/kclause/*; do
       srcarch="$arch"
     fi
     outfile=".kmax/archs/units.${arch}"
-    /usr/bin/time kmaxall --output-all-unit-types --unselectable "${unselectable}" arch/${srcarch} block certs crypto drivers fs init ipc kernel lib mm net security sound usr virt  > "${outfile}.pending"
+    /usr/bin/time kmaxall --output-all-unit-types --unselectable "${unselectable}" arch/${srcarch} block certs crypto drivers fs init ipc kernel lib mm net security sound usr virt > "${outfile}.pending"
     mv "${outfile}.pending" "${outfile}"
   fi
 done

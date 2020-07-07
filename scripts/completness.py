@@ -228,8 +228,8 @@ def resolve_path(path):
 if __name__ == '__main__':    
   available_versions = "Available Linux versions: %s\n" % (" ".join(explanations_by_version.keys()))
   
-  if len(sys.argv) < 2:
-    sys.stderr.write("USAGE: python3 completeness.py linux_version [units_file]\n\n  %s" % (available_versions))
+  if len(sys.argv) <= 2:
+    sys.stderr.write("USAGE: python3 completeness.py linux_version units_file_pattern1 [units_file_pattern2] [...]\n\n  %s" % (available_versions))
     exit(0)
   else:
     version = sys.argv[1]
@@ -239,17 +239,11 @@ if __name__ == '__main__':
 
   explanations = explanations_by_version[version]
 
-  if len(sys.argv) > 2:
-    units_files = sys.argv[2]
-  else:
-    if version == "3.19":
-      # for 3.19, we run kmax one arch at-a-time to repeat the FSE17 experiment
-      units_files = ".kmax/kclause/*/units"
-    else:
-      # other versions can just use a single kmax file that contains all archs
-      units_files = ".kmax/units"
+  units_file_list = sys.argv[2:]
 
-  units_files = glob.glob(units_files)
+  units_files = []
+  for globpattern in units_file_list:
+    units_files.extend(glob.glob(globpattern))
 
   units_by_type = {}
   for units_file in units_files:
