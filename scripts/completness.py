@@ -21,7 +21,6 @@ from collections import defaultdict
 import pickle
 import fnmatch
 import locale
-import numpy
 import itertools
 import re
 import subprocess
@@ -29,9 +28,9 @@ from pathlib import Path
 
 # The script looks at the output of kmaxall --output-units-by-type
 
-# explanations for 3.19
+# explanations for linux-3.19
 explanations_by_version = {
-  "3.19" : {
+  "linux-3.19" : {
     'orphaned': [
       'arch/alpha/lib/stacktrace.c',
       'arch/cris/arch-v10/lib/dmacopy.c',
@@ -105,7 +104,7 @@ explanations_by_version = {
       'arch/x86/um/user-offsets.c',
     ]
   },
-  "5.7.5" : {
+  "linux-5.7.5" : {
     'orphaned': [
       'arch/alpha/lib/stacktrace.c',
       'arch/powerpc/platforms/cell/spufs/spu_restore.c',
@@ -169,7 +168,43 @@ explanations_by_version = {
       'arch/arm/mach-omap2/pm-asm-offsets.c',
       'drivers/memory/emif-asm-offsets.c', 
     ]
-  }
+  },
+  'busybox-1.25.0' : {
+    'additional_hostprogs' : [
+      "networking/ssl_helper/ssl_helper.c", # built by networking/ssl_helper/ssl_helper.sh
+      "networking/ssl_helper-wolfssl/ssl_helper.c", # built by networking/ssl_helper-wolfssl/ssl_helper.sh
+    ],
+    "examples": [
+    "networking/httpd_ssi.c", # example program
+      "networking/httpd_indexcgi.c",
+      "shell/ash_test/printenv.c", # test program compiled and run in shell/ash_test/run-all
+      "shell/ash_test/recho.c",
+      "shell/ash_test/zecho.c",
+      "applets/individual.c", # example wrapper program
+    ],
+    "unused": [
+      "util-linux/volume_id/unused_highpoint.c",  # unused source
+      "util-linux/volume_id/unused_hpfs.c",
+      "util-linux/volume_id/unused_isw_raid.c",
+      "util-linux/volume_id/unused_lsi_raid.c",
+      "util-linux/volume_id/unused_lvm.c",
+      "util-linux/volume_id/unused_mac.c",
+      "util-linux/volume_id/unused_minix.c",
+      "util-linux/volume_id/unused_msdos.c",
+      "util-linux/volume_id/unused_nvidia_raid.c",
+      "util-linux/volume_id/unused_promise_raid.c",
+      "util-linux/volume_id/unused_silicon_raid.c",
+      "util-linux/volume_id/unused_ufs.c",
+      "util-linux/volume_id/unused_via_raid.c",
+      "libbb/hash_md5prime.c", # commented out in libbb/Kbuild
+      "libbb/bb_strtod.c",
+      "networking/tc.c", # CONFIG_TC commented out of networking/Config.in
+    ],
+    "commented_out": [
+      "editors/patch_bbox.c", # not built
+      "editors/patch_toybox.c",
+    ],
+  },
 }
 
 # explanations_table = [

@@ -22,4 +22,16 @@ date >> .kmax/info.txt
 /usr/bin/time bash ${scripts_dir}/completeness.py 3.19 '.kmax/archs/units.*'
 
 
-# wget https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.7.5.tar.xz
+# get busybox 1.28.0
+mkdir ~/src/
+cd ~/src
+git clone https://git.busybox.net/busybox
+cd busybox
+git checkout 1_28_0
+
+# run kmax
+mkdir .kmax/
+kmax --version >> .kmax/info.txt
+date >> .kmax/info.txt
+make allnoconfig; make clean;  # generate the Kbuild files
+/usr/bin/time kmaxall -a $(find | grep "Kbuild$" | cut -c3-) > .kmax/units
