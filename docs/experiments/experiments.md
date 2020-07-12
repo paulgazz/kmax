@@ -29,13 +29,13 @@
 
 ### Results
 
-Please find the resulting formulas here: <https://opentheblackbox.net/kmax>
+Please find the resulting formulas here: <https://configtools.org/kmax/formulas>
 
 #### Linux next-20191129 2019-12-02
 
 Using machine 1
 
-- Formulas: Please find the resulting formulas here: <https://opentheblackbox.net/kmax/kmax-formulas_linux-next-20191129.tar.bz2>
+- Formulas: Please find the resulting formulas here: <https://configtools.org/kmax/formulas/kmax-formulas_linux-next-20191129.tar.bz2>
 
 - Running time for `kmaxlinux.sh`
 
@@ -47,7 +47,7 @@ Using machine 1
 
 Using machine 1
 
-- Formulas: Please find the resulting formulas here: <https://opentheblackbox.net/kmax/kmax-formulas_linux-next-20191121.tar.bz2>
+- Formulas: Please find the resulting formulas here: <https://configtools.org/kmax/formulas/kmax-formulas_linux-next-20191121.tar.bz2>
 
 - Running time for `kmaxlinux.sh`
 
@@ -57,7 +57,7 @@ Using machine 1
 
 #### Linux v5.4 2019-11-28
 
-- Formulas: Please find the resulting formulas here: <https://opentheblackbox.net/kmax/kmax-formulas_linux-v5.4.tar.bz2>
+- Formulas: Please find the resulting formulas here: <https://configtools.org/kmax/formulas/kmax-formulas_linux-v5.4.tar.bz2>
 
 - Running time for `kmaxlinux.sh`
 
@@ -73,7 +73,7 @@ Using machine 1
 
 Using machine 2 (kmax and kclause started simultaneously)
 
-- Formulas: Please find the resulting formulas here: <https://opentheblackbox.net/kmax/kmax-formulas_linux-next-20191121.tar.bz2>
+- Formulas: Please find the resulting formulas here: <https://configtools.org/kmax/formulas/kmax-formulas_linux-next-20191121.tar.bz2>
 
 - Running time for `kmaxlinux.sh`
 
