@@ -44,9 +44,13 @@ static PyObject * kextract(PyObject *self, PyObject *args) {
 
   for (Py_ssize_t elem_idx = 0; elem_idx < list_size; elem_idx++) {
     char *elem_object = PyList_GetItem(list_arg, elem_idx);
-    char *elem_string = PyBytes_AsString(elem_object);  // will throw type error if not string
-    cargs[cargs_idx] = elem_string;
-    cargs_idx++;
+    if (PyBytes_Check(elem_object)) {
+      char *elem_string = PyBytes_AsString(elem_object);  // will throw type error if not string
+      cargs[cargs_idx] = elem_string;
+      cargs_idx++;
+    } else {
+      return Py_BuildValue("i", 1); // return non-zero error code
+    }
   }
   
   int errcode = main(num_args, cargs);
