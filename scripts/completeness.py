@@ -483,6 +483,7 @@ if __name__ == '__main__':
 
   print("%d identified" % (sum))
   print("%d c files" % (len(everycfile)))
+  print("\n".join(unidentified_c_files))
   
   exit(0)
 
