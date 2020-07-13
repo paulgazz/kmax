@@ -13,10 +13,10 @@ if __name__ == '__main__':
   usage = """\
 kextract [--module-version version] arg1 arg2 ...
 
-\t--module-version version\tSpecify the version of the Kconfig parser to use.  Defaults to \"latest\".  %s.
+\t--module-version version\tSpecify the version of the Kconfig parser to use.  Defaults to \"latest\" (%s).  %s.
 
 Kmax Tools %s
-""" % (kmax.about.__version__, kmax.kextractcommon.available_versions)
+""" % (kmax.kextractcommon.latest_module, kmax.kextractcommon.available_versions, kmax.about.__version__)
 
   args = sys.argv
 

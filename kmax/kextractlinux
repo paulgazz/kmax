@@ -24,6 +24,12 @@ def get_srcarch(arch):
   else:
     return arch
 
+def arch_specific(arch):
+  if arch == "um":
+    return [ '-e', 'HEADER_ARCH=x86' ]
+  else:
+    return []
+
 if __name__ == '__main__':
   available_versions = "Available versions: %s" % (", ".join(kmax.kextractcommon.module_versions.keys()))
 
@@ -59,5 +65,13 @@ if __name__ == '__main__':
     sys.stderr.write("Invalid module version \"%s\".  %s.\n" % (module_version, available_versions))
     exit(1)
 
-  args = [ "--extract", "-o", output, "-e", "ARCH=%s" % (arch), "-e", "SRCARCH=%s" % (srcarch), "-e", "KERNELVERSION=kcu", "-e", "srctree=./", "-e", "CC=cc", "-e", "LD=ld", kconfigfilename ]
+  args = []
+  args.extend([ "--extract" ])  # tell kextract to do an extract oepration
+  args.extend([ "-o", output ]) # set the output file
+  # setup the linux-specific environment variables
+  args.extend([ "-e", "ARCH=%s" % (arch), "-e", "SRCARCH=%s" % (srcarch), "-e", "KERNELVERSION=kcu", "-e", "srctree=./", "-e", "CC=cc", "-e", "LD=ld" ])
+  # set arch-specific environment variables
+  args.extend(arch_specific(arch))
+  # set the kconfig filename
+  args.extend([ kconfigfilename ])
   kmax.kextractcommon.kextract(module_version, args)
