@@ -216,6 +216,7 @@ if __name__ == '__main__':
 
     if p.returncode != 0:
       sys.stderr.write("ERROR(kmax): %s\n" % (kbuild_dir))
+      sys.stderr.write(err)
 
     if p.returncode != 0:
       broken.add(kbuild_dir)
