@@ -198,11 +198,11 @@ def flattenmakesyntax(d, offset):
         elements.append(s[offset:mstart])
         if (mend - mstart) % 2:
             # even number of backslashes... it's a comment
-            elements.append(''.ljust((mend - mstart - 1) / 2, '\\'))
+            elements.append(''.ljust(int((mend - mstart - 1) / 2), '\\'))
             return ''.join(elements)
 
         # odd number of backslashes
-        elements.append(''.ljust((mend - mstart - 2) / 2, '\\') + '#')
+        elements.append(''.ljust(int((mend - mstart - 2) / 2), '\\') + '#')
         offset = mend
 
     elements.append(s[offset:])
