@@ -484,6 +484,18 @@ if __name__ == '__main__':
   print("%d identified" % (sum))
   print("%d c files" % (len(everycfile)))
   print("\n".join(unidentified_c_files))
+
+  print()
+  print("table fields:")
+  print("Identified by Kmax", (results['compilation_units']))
+  print("In Non-Kbuild directories", (results['nonkernel_files']))
+  print("Helper programs", (results['hostprog_units']) + (results['extra_units']) + (results['target_units']) + (results['clean_files']) + (results['additional_offsets']) + (results['generated_c_files']) + (results['tools']) + (results['nonkbuild_units']) + (results['helpers']) + (results['offsets']))
+  print("#included C files", (results['included_c_files']))
+  print("Examples", (results['unidentified_skeleton_c_files']))
+  print("Orphaned", (results['unidentified_staging_c_files']) + (results['orphaned']))
+  print("No configuration option", (results['unconfigurable']) + (results['unconfigurable_units']))
+  print("Not built with Kbuild", (results['make_target']))
+  print("All C files in source tree", len(everycfile))
   
   exit(0)
 
