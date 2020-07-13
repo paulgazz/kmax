@@ -612,7 +612,8 @@ def parsestring(s, filename):
                 value = flattenmakesyntax(d, offset).lstrip()
                 condstack[-1].append(parserdata.SetVariable(e, value=value, valueloc=d.getloc(offset), token=token, targetexp=targets))
             elif token == '|':
-                raise SyntaxError('order-only prerequisites not implemented', d.getloc(offset))
+                # raise SyntaxError('order-only prerequisites not implemented', d.getloc(offset))
+                sys.stderr.write('WARNING: order-only prerequisites not implemented: %s\n' % (d.getloc(offset)))
             else:
                 assert token == ':'
                 # static pattern rule
