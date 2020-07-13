@@ -351,6 +351,8 @@ class Kbuild:
             return self.process_fun_AddPrefixFunction(function)
         elif isinstance(function, functions.AddSuffixFunction):
             return self.process_fun_AddSuffixFunction(function)
+        elif isinstance(function, functions.ShellFunction):
+            return self.process_fun_ShellFunction(function)
         else:
             mlog.warn("default on function: {}".format(function))
             return self.mk_Multiverse(function.to_source())
@@ -559,6 +561,18 @@ class Kbuild:
                 hoisted_results.append((instance_condition, instance_zcondition, instance_result))
 
         return Multiverse(hoisted_results)
+
+    def process_fun_ShellFunction(self, function):
+        unexpanded_arg = function._arguments[0]
+        # expanded_args = self.mk_Multiverse(self.process_expansion(arg))
+        # for arg_cond, arg_zcond, arg_value in expanded_args:
+        #     pass
+        if unexpanded_arg == unexpanded_arg:
+            mlog.info("assuming $(shell uname -a) expands to Linux")
+            return self.mk_Multiverse("Linux")
+        else:
+            mlog.warn("shell calls are not supported: {}".format(function))
+            return self.mk_Multiverse(function.to_source())
         
     def mk_Multiverse(self, expansion):
         assert isinstance(expansion, (str, Multiverse)), expansion
