@@ -1,4 +1,4 @@
-## This scripts shows how to create a fresh install of kmax in a new
+## This script shows how to create a fresh install of kmax in a new
 ## virtual machine and run the getting started test.
 
 ## create a fresh debian VM
