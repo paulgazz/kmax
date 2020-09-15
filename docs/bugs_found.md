@@ -31,6 +31,7 @@
 
 ### ARM: davinci: fix kconfig dependency warning when !PINCTRL
 
+2020-09-14 [Confirmation](https://lkml.org/lkml/2020/9/14/1145)
 2020-09-14 [Patch](https://lkml.org/lkml/2020/9/14/432)
 
 ### ARM: davinci: fix kconfig dependency warning when !GPIOLIB
