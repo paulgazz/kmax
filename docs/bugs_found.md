@@ -4,6 +4,12 @@
 
 - [Bugs Found by Kmax Tools](#bugs-found-by-kmax-tools)
   - [Linux kernel](#linux-kernel)
+    - [IB/rxe: fix kconfig dependency warning for RDMA_RXE](#ibrxe-fix-kconfig-dependency-warning-for-rdma_rxe)
+    - [clk: bcm: fix kconfig dependency warning for CLK_BCM2711_DVP](#clk-bcm-fix-kconfig-dependency-warning-for-clk_bcm2711_dvp)
+    - [staging: rtl8192e: fix kconfig dependency warning for RTLLIB_CRYPTO_CCMP](#staging-rtl8192e-fix-kconfig-dependency-warning-for-rtllib_crypto_ccmp)
+    - [staging: rtl8192e: fix kconfig dependency warning for RTLLIB_CRYPTO_WEP](#staging-rtl8192e-fix-kconfig-dependency-warning-for-rtllib_crypto_wep)
+    - [staging: rtl8192e: fix kconfig dependency warning for RTLLIB_CRYPTO_TKIP](#staging-rtl8192e-fix-kconfig-dependency-warning-for-rtllib_crypto_tkip)
+    - [platform/x86: fix kconfig dependency warning for LG_LAPTOP](#platformx86-fix-kconfig-dependency-warning-for-lg_laptop)
     - [arc: plat-hsdk: fix kconfig dependency warning when !RESET_CONTROLLER](#arc-plat-hsdk-fix-kconfig-dependency-warning-when-reset_controller)
     - [ARM: davinci: fix kconfig dependency warning when !PINCTRL](#arm-davinci-fix-kconfig-dependency-warning-when-pinctrl)
     - [ARM: davinci: fix kconfig dependency warning when !GPIOLIB](#arm-davinci-fix-kconfig-dependency-warning-when-gpiolib)
@@ -24,6 +30,32 @@
 # Bugs Found by Kmax Tools
 
 ## Linux kernel
+
+### IB/rxe: fix kconfig dependency warning for RDMA_RXE
+
+2020-09-15 [Patch](https://lkml.org/lkml/2020/9/15/360)
+
+### clk: bcm: fix kconfig dependency warning for CLK_BCM2711_DVP
+
+2020-09-15 [Patch](https://lkml.org/lkml/2020/9/15/381)
+
+2020-09-03 [Confirmation](https://lore.kernel.org/linux-clk/20200903082636.3844629-1-maxime@cerno.tech/): A similar patch was already submitted and merged.
+
+### staging: rtl8192e: fix kconfig dependency warning for RTLLIB_CRYPTO_CCMP
+
+2020-09-15 [Patch](https://lkml.org/lkml/2020/9/15/328)
+
+### staging: rtl8192e: fix kconfig dependency warning for RTLLIB_CRYPTO_WEP
+
+2020-09-15 [Patch](https://lkml.org/lkml/2020/9/15/317)
+
+### staging: rtl8192e: fix kconfig dependency warning for RTLLIB_CRYPTO_TKIP
+
+2020-09-15 [Patch](https://lkml.org/lkml/2020/9/15/299)
+
+### platform/x86: fix kconfig dependency warning for LG_LAPTOP
+
+2020-09-15 [Patch](https://lkml.org/lkml/2020/9/15/270)
 
 ### arc: plat-hsdk: fix kconfig dependency warning when !RESET_CONTROLLER
 
