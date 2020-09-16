@@ -76,6 +76,7 @@
 
 ### nvme: tcp: fix kconfig dependency warning when !CRYPTO
 
+2020-09-14 Confirmation [1](https://lkml.org/lkml/2020/9/14/1123) [2](https://lkml.org/lkml/2020/9/15/65)
 2020-09-14 [Patch](https://lkml.org/lkml/2020/9/14/702)
 
 ### MIPS: remove the obsolete RM7000 extended interrupts handler
