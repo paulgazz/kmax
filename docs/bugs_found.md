@@ -43,13 +43,19 @@
 
 ### staging: rtl8192e: fix kconfig dependency warning for RTLLIB_CRYPTO_CCMP
 
+2020-09-16 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/gregkh/staging.git/commit/?h=staging-testing&id=5f08dede60a6f86893c70e8a519551bed0c9a8c8): Committed into staging/staging-testing
+
 2020-09-15 [Patch](https://lkml.org/lkml/2020/9/15/328)
 
 ### staging: rtl8192e: fix kconfig dependency warning for RTLLIB_CRYPTO_WEP
 
+2020-09-16 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/gregkh/staging.git/commit/?h=staging-testing&id=02c4260713d62eff0875ca4a47019cd56371ffa7): Committed into staging/staging-testing
+
 2020-09-15 [Patch](https://lkml.org/lkml/2020/9/15/317)
 
 ### staging: rtl8192e: fix kconfig dependency warning for RTLLIB_CRYPTO_TKIP
+
+2020-09-16 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/gregkh/staging.git/commit/?h=staging-testing&id=243d040a6e4ae95408e133269dd72be2ba03dd48): Committed into staging/staging-testing
 
 2020-09-15 [Patch](https://lkml.org/lkml/2020/9/15/299)
 
