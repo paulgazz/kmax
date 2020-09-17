@@ -4,6 +4,14 @@
 
 - [Bugs Found by Kmax Tools](#bugs-found-by-kmax-tools)
   - [Linux kernel](#linux-kernel)
+    - [net: ipv6: fix kconfig dependency warning for IPV6_SEG6_HMAC](#net-ipv6-fix-kconfig-dependency-warning-for-ipv6_seg6_hmac)
+    - [platform/x86: fix kconfig dependency warning for FUJITSU_LAPTOP](#platformx86-fix-kconfig-dependency-warning-for-fujitsu_laptop)
+    - [sh: dma: fix kconfig dependency for G2_DMA](#sh-dma-fix-kconfig-dependency-for-g2_dma)
+    - [Input: MOUSE_ATARI overleaps Kconfig dependency of ATARI_KBD_CORE](#input-mouse_atari-overleaps-kconfig-dependency-of-atari_kbd_core)
+    - [ASoC: cros_ec_codec: fix kconfig dependency warning for SND_SOC_CROS_EC_CODEC](#asoc-cros_ec_codec-fix-kconfig-dependency-warning-for-snd_soc_cros_ec_codec)
+    - [soc/tegra: fuse: SOC_TEGRA_FUSE violates Kconfig dependency of TEGRA20_APB_DMA](#soctegra-fuse-soc_tegra_fuse-violates-kconfig-dependency-of-tegra20_apb_dma)
+    - [powerpc: MPC10X_BRIDGE violates Kconfig dependency of PPC_INDIRECT_PCI on PCI](#powerpc-mpc10x_bridge-violates-kconfig-dependency-of-ppc_indirect_pci-on-pci)
+    - [powerpc: obsolete driver: Marvell MV64X60 MPSC](#powerpc-obsolete-driver-marvell-mv64x60-mpsc)
     - [IB/rxe: fix kconfig dependency warning for RDMA_RXE](#ibrxe-fix-kconfig-dependency-warning-for-rdma_rxe)
     - [clk: bcm: fix kconfig dependency warning for CLK_BCM2711_DVP](#clk-bcm-fix-kconfig-dependency-warning-for-clk_bcm2711_dvp)
     - [staging: rtl8192e: fix kconfig dependency warning for RTLLIB_CRYPTO_CCMP](#staging-rtl8192e-fix-kconfig-dependency-warning-for-rtllib_crypto_ccmp)
@@ -31,6 +39,42 @@
 
 ## Linux kernel
 
+### net: ipv6: fix kconfig dependency warning for IPV6_SEG6_HMAC
+
+2020-09-17 [Patch](https://lkml.org/lkml/2020/9/17/880)
+
+### platform/x86: fix kconfig dependency warning for FUJITSU_LAPTOP
+
+2020-09-17 [Confirmation](https://lkml.org/lkml/2020/9/17/909)
+
+2020-09-17 [Patch](https://lkml.org/lkml/2020/9/17/1140)
+
+2020-09-17 [Report](https://www.spinics.net/lists/platform-driver-x86/msg22800.html): This issue was pointed by a reviewer as [a response](https://www.spinics.net/lists/platform-driver-x86/msg22800.html) to [an earlier patch sent by us](#platformx86-fix-kconfig-dependency-warning-for-lg_laptop). It was also found by klocalizer (building with the config generated for `drivers/media/dvb-frontends/zl10353.o` for linux-5.4.4).
+
+### sh: dma: fix kconfig dependency for G2_DMA
+
+2020-09-17 [Patch](https://lkml.org/lkml/2020/9/17/825)
+
+### Input: MOUSE_ATARI overleaps Kconfig dependency of ATARI_KBD_CORE
+
+2020-09-17 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=209303)
+
+### ASoC: cros_ec_codec: fix kconfig dependency warning for SND_SOC_CROS_EC_CODEC
+
+2020-09-17 [Patch](https://lkml.org/lkml/2020/9/17/723)
+
+### soc/tegra: fuse: SOC_TEGRA_FUSE violates Kconfig dependency of TEGRA20_APB_DMA
+
+2020-09-17 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=209301)
+
+### powerpc: MPC10X_BRIDGE violates Kconfig dependency of PPC_INDIRECT_PCI on PCI
+
+2020-09-17 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=209297)
+
+### powerpc: obsolete driver: Marvell MV64X60 MPSC
+
+2020-09-15 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=209277)
+
 ### IB/rxe: fix kconfig dependency warning for RDMA_RXE
 
 2020-09-15 [Patch](https://lkml.org/lkml/2020/9/15/360)
@@ -43,11 +87,15 @@
 
 ### staging: rtl8192e: fix kconfig dependency warning for RTLLIB_CRYPTO_CCMP
 
+2020-09-17 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/gregkh/staging.git/commit/?h=staging-next&id=5f08dede60a6f86893c70e8a519551bed0c9a8c8): Committed into staging/staging-next
+
 2020-09-16 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/gregkh/staging.git/commit/?h=staging-testing&id=5f08dede60a6f86893c70e8a519551bed0c9a8c8): Committed into staging/staging-testing
 
 2020-09-15 [Patch](https://lkml.org/lkml/2020/9/15/328)
 
 ### staging: rtl8192e: fix kconfig dependency warning for RTLLIB_CRYPTO_WEP
+
+2020-09-17 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/gregkh/staging.git/commit/?h=staging-next&id=02c4260713d62eff0875ca4a47019cd56371ffa7): Committed into staging/staging-next
 
 2020-09-16 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/gregkh/staging.git/commit/?h=staging-testing&id=02c4260713d62eff0875ca4a47019cd56371ffa7): Committed into staging/staging-testing
 
@@ -55,21 +103,28 @@
 
 ### staging: rtl8192e: fix kconfig dependency warning for RTLLIB_CRYPTO_TKIP
 
+2020-09-17 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/gregkh/staging.git/commit/?h=staging-next&id=243d040a6e4ae95408e133269dd72be2ba03dd48): Committed into staging/staging-next
+
 2020-09-16 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/gregkh/staging.git/commit/?h=staging-testing&id=243d040a6e4ae95408e133269dd72be2ba03dd48): Committed into staging/staging-testing
 
 2020-09-15 [Patch](https://lkml.org/lkml/2020/9/15/299)
 
 ### platform/x86: fix kconfig dependency warning for LG_LAPTOP
 
+2020-09-17 [Confirmation](https://www.spinics.net/lists/platform-driver-x86/msg22800.html)
+
 2020-09-15 [Patch](https://lkml.org/lkml/2020/9/15/270)
 
 ### arc: plat-hsdk: fix kconfig dependency warning when !RESET_CONTROLLER
+
+2020-09-14 [Confirmation](https://lkml.org/lkml/2020/9/14/1145)
 
 2020-09-14 [Patch](https://lkml.org/lkml/2020/9/14/400)
 
 ### ARM: davinci: fix kconfig dependency warning when !PINCTRL
 
 2020-09-14 [Confirmation](https://lkml.org/lkml/2020/9/14/1145)
+
 2020-09-14 [Patch](https://lkml.org/lkml/2020/9/14/432)
 
 ### ARM: davinci: fix kconfig dependency warning when !GPIOLIB
@@ -83,6 +138,7 @@
 ### nvme: tcp: fix kconfig dependency warning when !CRYPTO
 
 2020-09-14 Confirmation [1](https://lkml.org/lkml/2020/9/14/1123) [2](https://lkml.org/lkml/2020/9/15/65)
+
 2020-09-14 [Patch](https://lkml.org/lkml/2020/9/14/702)
 
 ### MIPS: remove the obsolete RM7000 extended interrupts handler
