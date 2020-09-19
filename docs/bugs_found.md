@@ -4,6 +4,13 @@
 
 - [Bugs Found by Kmax Tools](#bugs-found-by-kmax-tools)
   - [Linux kernel](#linux-kernel)
+    - [staging: netlogic: NETLOGIC_XLR_NET overleaps kconfig dependency for NETDEVICES](#staging-netlogic-netlogic_xlr_net-overleaps-kconfig-dependency-for-netdevices)
+    - [staging: mt7621-dma: MTK_HSDMA overleaps kconfig dependency of DMADEVICES](#staging-mt7621-dma-mtk_hsdma-overleaps-kconfig-dependency-of-dmadevices)
+    - [ASoC: fix kconfig dependency warnings for SND_SOC_WM8731](#asoc-fix-kconfig-dependency-warnings-for-snd_soc_wm8731)
+    - [drm/sun4i: DRM_SUN6I_DSI overleaps Kconfig dependencies of PHY_SUN6I_MIPI_DPHY](#drmsun4i-drm_sun6i_dsi-overleaps-kconfig-dependencies-of-phy_sun6i_mipi_dphy)
+    - [PM: PM_SLEEP_SMP overleaps Kconfig dependencies of HOTPLUG_CPU](#pm-pm_sleep_smp-overleaps-kconfig-dependencies-of-hotplug_cpu)
+    - [ocxl: fix kconfig dependency warning for OCXL](#ocxl-fix-kconfig-dependency-warning-for-ocxl)
+    - [net: broadcom: CNIC overleaps Kconfig dependency of UIO](#net-broadcom-cnic-overleaps-kconfig-dependency-of-uio)
     - [net: ipv6: fix kconfig dependency warning for IPV6_SEG6_HMAC](#net-ipv6-fix-kconfig-dependency-warning-for-ipv6_seg6_hmac)
     - [platform/x86: fix kconfig dependency warning for FUJITSU_LAPTOP](#platformx86-fix-kconfig-dependency-warning-for-fujitsu_laptop)
     - [sh: dma: fix kconfig dependency for G2_DMA](#sh-dma-fix-kconfig-dependency-for-g2_dma)
@@ -38,6 +45,36 @@
 # Bugs Found by Kmax Tools
 
 ## Linux kernel
+
+### staging: netlogic: NETLOGIC_XLR_NET overleaps kconfig dependency for NETDEVICES
+
+2020-09-18 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=209315)
+
+### staging: mt7621-dma: MTK_HSDMA overleaps kconfig dependency of DMADEVICES
+
+2020-09-18 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=209313)
+
+### ASoC: fix kconfig dependency warnings for SND_SOC_WM8731
+
+2020-09-18 [Confirmation](https://lkml.org/lkml/2020/9/18/661): The issue was confirmed but a different fix was suggested.
+
+2020-09-18 [Patch](https://lkml.org/lkml/2020/9/18/626)
+
+### drm/sun4i: DRM_SUN6I_DSI overleaps Kconfig dependencies of PHY_SUN6I_MIPI_DPHY
+
+2020-09-18 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=209311)
+
+### PM: PM_SLEEP_SMP overleaps Kconfig dependencies of HOTPLUG_CPU
+
+2020-09-18 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=209309)
+
+### ocxl: fix kconfig dependency warning for OCXL
+
+2020-09-18 [Patch](https://lkml.org/lkml/2020/9/18/325)
+
+### net: broadcom: CNIC overleaps Kconfig dependency of UIO
+
+2020-09-18 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=209307)
 
 ### net: ipv6: fix kconfig dependency warning for IPV6_SEG6_HMAC
 
@@ -111,7 +148,7 @@
 
 ### platform/x86: fix kconfig dependency warning for LG_LAPTOP
 
-2020-09-17 [Confirmation](https://www.spinics.net/lists/platform-driver-x86/msg22800.html)
+2020-09-17 Confirmation [1](https://www.spinics.net/lists/platform-driver-x86/msg22800.html) [2](https://lkml.org/lkml/2020/9/17/1276)
 
 2020-09-15 [Patch](https://lkml.org/lkml/2020/9/15/270)
 
