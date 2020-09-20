@@ -43,9 +43,10 @@ static PyObject * kextract(PyObject *self, PyObject *args) {
   cargs_idx++;
 
   for (Py_ssize_t elem_idx = 0; elem_idx < list_size; elem_idx++) {
-    char *elem_object = PyList_GetItem(list_arg, elem_idx);
-    if (PyBytes_Check(elem_object)) {
-      char *elem_string = PyBytes_AsString(elem_object);  // will throw type error if not string
+    PyObject *elem_object = PyList_GetItem(list_arg, elem_idx);
+    PyObject* str = PyUnicode_AsEncodedString(elem_object, "utf-8", "~E~");
+    if (PyBytes_Check(str)) {
+      char *elem_string = PyBytes_AsString(str);  // will throw type error if not string
       cargs[cargs_idx] = elem_string;
       cargs_idx++;
     } else {
