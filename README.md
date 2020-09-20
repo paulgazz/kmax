@@ -46,6 +46,17 @@ Run `klocalizer` with a different architecture:
     klocalizer -a powerpc drivers/block/ps3disk.o
     bash make.cross ARCH=powerpc olddefconfig; bash make.cross ARCH=powerpc clean drivers/block/ps3disk.o
 
+## Installing from Source
+
+    git clone https://github.com/paulgazz/kmax.git
+    cd kmax
+    sudo python3 setup.py install
+
+Installing for development obviates the need to rereun setup.py when
+making changes to the code:
+
+    sudo python3 setup.py develop
+
 ## Additional Documentation
 
 [Overview](https://github.com/paulgazz/kmax/blob/master/docs/overview.md)
