@@ -48,12 +48,18 @@ Run `klocalizer` with a different architecture:
 
 ## Installing from Source
 
+Install the prerequisites
+
+    sudo apt install -y python3-setuptools python3-dev
+    
+Clone and install kmax
+
     git clone https://github.com/paulgazz/kmax.git
     cd kmax
     sudo python3 setup.py install
 
-Installing for development obviates the need to rereun setup.py when
-making changes to the code:
+Alternatilvely, installing for development to obviate the need to
+rereun setup.py when making changes to the code
 
     sudo python3 setup.py develop
 
