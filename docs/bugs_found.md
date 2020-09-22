@@ -4,6 +4,9 @@
 
 - [Bugs Found by Kmax Tools](#bugs-found-by-kmax-tools)
   - [Linux kernel](#linux-kernel)
+    - [media: mantis: remove orphan mantis_core.c](#media-mantis-remove-orphan-mantis_corec)
+    - [regmap: potential dead code due to unused symbol REGCACHE_COMPRESSED](#regmap-potential-dead-code-due-to-unused-symbol-regcache_compressed)
+    - [arc: eznps: fix allmodconfig kconfig warning](#arc-eznps-fix-allmodconfig-kconfig-warning)
     - [staging: netlogic: NETLOGIC_XLR_NET overleaps kconfig dependency for NETDEVICES](#staging-netlogic-netlogic_xlr_net-overleaps-kconfig-dependency-for-netdevices)
     - [staging: mt7621-dma: MTK_HSDMA overleaps kconfig dependency of DMADEVICES](#staging-mt7621-dma-mtk_hsdma-overleaps-kconfig-dependency-of-dmadevices)
     - [ASoC: fix kconfig dependency warnings for SND_SOC_WM8731](#asoc-fix-kconfig-dependency-warnings-for-snd_soc_wm8731)
@@ -46,11 +49,25 @@
 
 ## Linux kernel
 
+### media: mantis: remove orphan mantis_core.c
+
+2020-09-22 [Patch](https://lkml.org/lkml/2020/9/22/520)
+
+### regmap: potential dead code due to unused symbol REGCACHE_COMPRESSED
+
+2020-09-22 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=209349)
+
+### arc: eznps: fix allmodconfig kconfig warning
+
+2020-09-22 [Patch](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=1928b36cfa4df1aeedf5f2644d0c33f3a1fcfd7b): Found with the config generated for `arch/arc/kernel/arc_hostlink.o` on linux-5.4.4 by klocalizer. Already fixed in a later version.
+
 ### staging: netlogic: NETLOGIC_XLR_NET overleaps kconfig dependency for NETDEVICES
 
 2020-09-18 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=209315)
 
 ### staging: mt7621-dma: MTK_HSDMA overleaps kconfig dependency of DMADEVICES
+
+2020-09-19 [Confirmation](https://bugzilla.kernel.org/show_bug.cgi?id=209301#c1)
 
 2020-09-18 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=209313)
 
