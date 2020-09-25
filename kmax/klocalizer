@@ -38,7 +38,13 @@ def get_kextract(kextract_file):
         lists.append(line.split())
       return lists
   
-def get_kclause_constraints(kclause_file):
+def get_kclause_constraints(kclause_file, is_file_composite):
+  # composite: a list of constraints
+  if is_file_composite:
+    return z3.parse_smt2_file(kclause_file)
+
+  # not composite: it is a mapping from config options to constraints
+  # thus, parse it
   with open(kclause_file, 'rb') as fp:
     # kclause, defined_vars, used_vars = pickle.load(fp)
     kclause = pickle.load(fp)
@@ -354,6 +360,10 @@ if __name__ == '__main__':
                          type=str,
                          default=None,
                          help="""The file containing the a pickled tuple with a mapping from configuration option to its formulas and a list of additional constraints.  This overrides --arch.""")
+  argparser.add_argument('--use-composite-kclause-formulas-files',
+                         action="store_true",
+                         help="""Use composite kclause formulas files where all constraints are in a single list instead of a mapping from configuration option to its formulas. """
+                              """This reduces the time spent on parsing the kclause formulas file, hence, increases the performance. The input kclause formulas file needs to be in composite format. """)
   argparser.add_argument('--kextract',
                          type=str,
                          default=None,
@@ -441,6 +451,7 @@ if __name__ == '__main__':
   formulas = args.formulas
   kmax_file = args.kmax_formulas
   kclause_file = args.kclause_formulas
+  use_composite_kclause_formulas_files = args.use_composite_kclause_formulas_files
   kextract_file = args.kextract
   archs = args.arch
   allarchs = args.all
@@ -749,7 +760,7 @@ if __name__ == '__main__':
           constraints.extend( z3.parse_smt2_string(f.read()) )
 
       # add kclause constraints
-      constraints.extend(get_kclause_constraints(kclause_file))
+      constraints.extend(get_kclause_constraints(kclause_file, use_composite_kclause_formulas_files))
 
       user_constraints = []
       
