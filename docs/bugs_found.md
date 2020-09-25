@@ -4,6 +4,8 @@
 
 - [Bugs Found by Kmax Tools](#bugs-found-by-kmax-tools)
   - [Linux kernel](#linux-kernel)
+    - [arc: build error due to missing ctop constants](#arc-build-error-due-to-missing-ctop-constants)
+    - [m68k: build error due to missing M680x0 dependency for MMU_MOTOROLA](#m68k-build-error-due-to-missing-m680x0-dependency-for-mmu_motorola)
     - [media: mantis: remove orphan mantis_core.c](#media-mantis-remove-orphan-mantis_corec)
     - [regmap: potential dead code due to unused symbol REGCACHE_COMPRESSED](#regmap-potential-dead-code-due-to-unused-symbol-regcache_compressed)
     - [arc: eznps: fix allmodconfig kconfig warning](#arc-eznps-fix-allmodconfig-kconfig-warning)
@@ -48,6 +50,14 @@
 # Bugs Found by Kmax Tools
 
 ## Linux kernel
+
+### arc: build error due to missing ctop constants
+
+2020-09-24 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=209377)
+
+### m68k: build error due to missing M680x0 dependency for MMU_MOTOROLA
+
+2020-09-24 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=209371)
 
 ### media: mantis: remove orphan mantis_core.c
 
@@ -95,6 +105,8 @@
 
 ### net: ipv6: fix kconfig dependency warning for IPV6_SEG6_HMAC
 
+2020-09-25 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=db7cd91a4be15e1485d6b58c6afc8761c59c4efb): Committed into linux-stable [v4.19](https://lkml.org/lkml/2020/9/25/670), [v5.4](https://lkml.org/lkml/2020/9/25/622), [v5.8](https://lkml.org/lkml/2020/9/25/583)
+
 2020-09-17 [Patch](https://lkml.org/lkml/2020/9/17/880)
 
 ### platform/x86: fix kconfig dependency warning for FUJITSU_LAPTOP
@@ -115,9 +127,13 @@
 
 ### ASoC: cros_ec_codec: fix kconfig dependency warning for SND_SOC_CROS_EC_CODEC
 
+2020-09-22 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/broonie/sound.git/commit/?id=50b18e4a2608e3897f3787eaa7dfa869b40d9923): Committed into sound/for-next.
+
 2020-09-17 [Patch](https://lkml.org/lkml/2020/9/17/723)
 
 ### soc/tegra: fuse: SOC_TEGRA_FUSE violates Kconfig dependency of TEGRA20_APB_DMA
+
+2020-09-23 [Patch](https://www.spinics.net/lists/linux-tegra/msg53800.html)
 
 2020-09-17 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=209301)
 
