@@ -203,9 +203,13 @@
 
 ### pinctrl: bcm: fix kconfig dependency warning when !GPIOLIB
 
+2020-09-29 [Confirmation](https://lkml.org/lkml/2020/9/29/1673)
+
 2020-09-14 [Patch](https://lkml.org/lkml/2020/9/14/651)
 
 ### nvme: tcp: fix kconfig dependency warning when !CRYPTO
+
+2020-09-29 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=af5ad17854f96a6d3c9775e776bd01ab262672a1): Committed into [5.9-rc7](https://lwn.net/Articles/832733/), [stable 5.4](https://lkml.org/lkml/2020/9/29/888) and [stable 5.8](https://lkml.org/lkml/2020/9/29/979).
 
 2020-09-14 Confirmation [1](https://lkml.org/lkml/2020/9/14/1123) [2](https://lkml.org/lkml/2020/9/15/65)
 
@@ -216,6 +220,8 @@
 2020-09-12 [Patch](https://lkml.org/lkml/2020/9/12/193)
 
 ### net: Wireless: fix unmet direct dependendices config warning when !CRYPTO
+
+2020-09-18 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=b959ba9f468b1c581f40e92661ad58b093abaa03): Committed into [5.9-rc7](https://lwn.net/Articles/832733/), [stable 5.4](https://lkml.org/lkml/2020/9/29/877), [stable 5.8](https://lkml.org/lkml/2020/9/29/936).
 
 2020-09-09 [Patch](https://lkml.org/lkml/2020/9/9/413)
 
