@@ -30,6 +30,7 @@ if __name__ == '__main__':
   from kmax import find_selectable
   import pickle
   import kmax.about
+  import re
 
   # this script takes the check_dep --dimacs output and converts it into
   # a dimacs-compatible format
@@ -58,6 +59,12 @@ if __name__ == '__main__':
   argparser.add_argument('--verbose',
                          action="store_true",
                          help="""Print additional information and warnings.""")
+  argparser.add_argument('--normal-dependencies-only',
+                         action="store_true",
+                         help="""Print normal dependencies only.""")
+  argparser.add_argument('--reverse-dependencies-only',
+                         action="store_true",
+                         help="""Print reverse dependencies only.""")
   argparser.add_argument('--remove-all-nonvisibles',
                          action="store_true",
                          help="""whether to leave only those config vars that can be selected by the user.  this is defined as config vars that have a kconfig prompt.""")
@@ -105,6 +112,8 @@ if __name__ == '__main__':
   selectable = args.selectable
   remove_true_clauses = True
   deduplicate_clauses = True
+  normal_dep_only = args.normal_dependencies_only
+  reverse_dep_only = args.reverse_dependencies_only
 
   if unselectable or selectable:
     # don't do output, which won't make much sense for --(un)selectable
@@ -112,6 +121,10 @@ if __name__ == '__main__':
 
   if selectable and unselectable:
     sys.stderr.write("only one of --selectable or --unselectable may be specified\n")
+    exit(1)
+
+  if normal_dep_only and reverse_dep_only:
+    sys.stderr.write("only one of --normal-dependencies-only or --reverse-dependencies-only may be specified\n")
     exit(1)
 
   z3_clauses = {}
@@ -355,6 +368,43 @@ if __name__ == '__main__':
       exit(1)
     if debug: sys.stderr.write("done %s\n" % (line))
   if not quiet: sys.stderr.write("[STEP 1/3] finished reading kextract file\n")
+
+  if normal_dep_only or reverse_dep_only:
+    if not quiet: sys.stderr.write("[STEP 2/3] converting the constraints to smtlib2 format..\n")
+
+    def convert_str_expr_to_smtlib2(str_expr):
+      # convert any "FOO" to CONFIG_FOO
+      rsub_re = re.compile( r"\"(?P<symname>[a-zA-Z0-9_]*)\"" )
+      rsub_repl = r"CONFIG_\g<symname>"
+      str_expr = re.sub( rsub_re, rsub_repl, str_expr)
+
+      # to z3 clause
+      z3_clause = expression_converter.convert_to_z3(str_expr)
+
+      # to smt2
+      s = z3.Solver()
+      s.add(z3_clause)
+      return s.to_smt2()
+
+    # Convert to smt2 format
+    convert_str_expr_dict_to_smt2 = lambda str_expr_dict : dict((k, convert_str_expr_to_smtlib2(v)) for k,v in str_expr_dict.items())
+
+    if normal_dep_only:
+      exprs_smt2 = convert_str_expr_dict_to_smt2(dep_exprs)
+    elif reverse_dep_only:
+      exprs_smt2 = convert_str_expr_dict_to_smt2(rev_dep_exprs)
+    else:
+      assert False
+    
+    if not quiet: sys.stderr.write("[STEP 2/3] finished converting the constraints to smtlib2 format.\n")
+    
+    if not quiet: sys.stderr.write("[STEP 3/3] pickling the map\n")
+
+    with os.fdopen(sys.stdout.fileno(), 'wb') as f:
+      pickle.dump(exprs_smt2, f)
+    
+    if not quiet: sys.stderr.write("[STEP 3/3] done \n")
+    exit(0)
 
   if unselectable or selectable:
     # this algorithm finds the set of options that can never be
