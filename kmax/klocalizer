@@ -361,6 +361,9 @@ if __name__ == '__main__':
   argparser.add_argument('--constraints-file',
                          type=str,
                          help="""A text file containing ad-hoc constraints.  One configuration option name per line.  Prefix with ! to force it off; no prefix means force on.""")
+  argparser.add_argument('--constraints-file-smt2',
+                         type=str,
+                         help="""A text file containing constraints in SMTLib format.""")
   argparser.add_argument('-a',
                          '--arch',
                          action="append",
@@ -443,6 +446,7 @@ if __name__ == '__main__':
   allarchs = args.all
   reportallarchs = args.report_all
   constraints_file = args.constraints_file
+  constraints_file_smt2 = args.constraints_file_smt2
   output_file = args.output
   show_unsat_core = args.show_unsat_core
   approximate = args.approximate
@@ -739,6 +743,10 @@ if __name__ == '__main__':
         ad_hoc_constraints, ad_hoc_config_options = get_ad_hoc_constraints(constraints_file)
         constraints.extend(ad_hoc_constraints)
         user_specified_option_names.update(ad_hoc_config_options)
+
+      if constraints_file_smt2:
+        with open(constraints_file_smt2, "r") as f:
+          constraints.extend( z3.parse_smt2_string(f.read()) )
 
       # add kclause constraints
       constraints.extend(get_kclause_constraints(kclause_file))
