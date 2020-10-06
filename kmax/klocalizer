@@ -626,11 +626,11 @@ if __name__ == '__main__':
   elif len(compilation_units) == 0:
     if len(kclause_to_try.keys()) == 1:
       info("No compilation unit given.  Generating configuration only based on kclause constraints.")
-    elif len(kclause_to_try.keys()) > 1:
-      error("Trying multiple architectures without a target compilation unit is not provided.  Give one architecture or --kclause-formula to generate a config file without providing a compilation unit.")
-      exit(8)
-    else:
-      assert(False)
+    #elif len(kclause_to_try.keys()) > 1:
+    #  error("Trying multiple architectures without a target compilation unit is not provided.  Give one architecture or --kclause-formula to generate a config file without providing a compilation unit.")
+    #  exit(8)
+    #else:
+    #  assert(False)
 
   # if os.path.exists(output_file):
   #   def randstring(n):
@@ -811,7 +811,12 @@ if __name__ == '__main__':
                 print_model_as_config(model, config_fp, kconfig_types, kconfig_visible, kconfig_has_def_nonbool, user_specified_option_names, modules_arg)
               if arch is not None:
                 info("Generated configuration for %s" % (arch))
-                info("Build with \"make.cross ARCH=%s olddefconfig; make.cross ARCH=%s clean %s\"." % (arch, arch, " ".join(compilation_units)))
+                if not compilation_units:
+                  # If no compilation unit was specified, build command is for building the whole kernel
+                  build_cmd = "make.cross ARCH=%s clean; make.cross ARCH=%s" % (arch, arch)
+                else:
+                  build_cmd = "make.cross ARCH=%s clean %s" % (arch, " ".join(compilation_units))
+                info("Build with \"make.cross ARCH=%s olddefconfig; %s\"." % (arch, build_cmd))
                 print(arch)
               exit(0)
           else:
