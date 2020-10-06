@@ -65,6 +65,9 @@ if __name__ == '__main__':
   argparser.add_argument('--reverse-dependencies-only',
                          action="store_true",
                          help="""Print reverse dependencies only.""")
+  argparser.add_argument('--selects-only',
+                         action="store_true",
+                         help="""Print selects only.""")
   argparser.add_argument('--remove-all-nonvisibles',
                          action="store_true",
                          help="""whether to leave only those config vars that can be selected by the user.  this is defined as config vars that have a kconfig prompt.""")
@@ -114,6 +117,7 @@ if __name__ == '__main__':
   deduplicate_clauses = True
   normal_dep_only = args.normal_dependencies_only
   reverse_dep_only = args.reverse_dependencies_only
+  selects_only = args.selects_only
 
   if unselectable or selectable:
     # don't do output, which won't make much sense for --(un)selectable
@@ -123,8 +127,8 @@ if __name__ == '__main__':
     sys.stderr.write("only one of --selectable or --unselectable may be specified\n")
     exit(1)
 
-  if normal_dep_only and reverse_dep_only:
-    sys.stderr.write("only one of --normal-dependencies-only or --reverse-dependencies-only may be specified\n")
+  if normal_dep_only + reverse_dep_only + selects_only > 1:
+    sys.stderr.write("only one of --normal-dependencies-only, --reverse-dependencies-only, or --selects-only may be specified\n")
     exit(1)
 
   z3_clauses = {}
@@ -369,14 +373,19 @@ if __name__ == '__main__':
     if debug: sys.stderr.write("done %s\n" % (line))
   if not quiet: sys.stderr.write("[STEP 1/3] finished reading kextract file\n")
 
-  if normal_dep_only or reverse_dep_only:
+  if normal_dep_only or reverse_dep_only or selects_only:
     if not quiet: sys.stderr.write("[STEP 2/3] converting the constraints to smtlib2 format..\n")
 
-    def convert_str_expr_to_smtlib2(str_expr):
-      # convert any "FOO" to CONFIG_FOO
+    # convert any "FOO" to CONFIG_FOO
+    # TODO: This is a fix of a bug that happens somewhere else in the earlier steps.
+    # The fix of the root cause might fix other unknown issues with kmax.
+    def fix_str_expr(str_expr):
       rsub_re = re.compile( r"\"(?P<symname>[a-zA-Z0-9_]*)\"" )
       rsub_repl = r"CONFIG_\g<symname>"
-      str_expr = re.sub( rsub_re, rsub_repl, str_expr)
+      return re.sub( rsub_re, rsub_repl, str_expr)
+
+    def convert_str_expr_to_smtlib2(str_expr):
+      str_expr = fix_str_expr(str_expr)
 
       # to z3 clause
       z3_clause = expression_converter.convert_to_z3(str_expr)
@@ -387,12 +396,23 @@ if __name__ == '__main__':
       return s.to_smt2()
 
     # Convert to smt2 format
-    convert_str_expr_dict_to_smt2 = lambda str_expr_dict : dict((k, convert_str_expr_to_smtlib2(v)) for k,v in str_expr_dict.items())
+    convert_str_expr_dict_to_smt2 = lambda str_expr_dict : dict((fix_str_expr(k), convert_str_expr_to_smtlib2(v)) for k,v in str_expr_dict.items())
 
     if normal_dep_only:
       exprs_smt2 = convert_str_expr_dict_to_smt2(dep_exprs)
     elif reverse_dep_only:
       exprs_smt2 = convert_str_expr_dict_to_smt2(rev_dep_exprs)
+    elif selects_only:
+      # f_ prefix means formatted, where convert_str_expr_to_smtlib2 is applied
+      f_selects = {}
+      # selects_only has a different type than others
+      for k1, i1 in selects.items():
+        f_k1 = fix_str_expr(k1)
+        f_selects[ f_k1 ] = dict()
+        for k2, i2 in i1.items():
+          f_k2 = fix_str_expr(k2)
+          f_selects[f_k1][f_k2] = set([convert_str_expr_to_smtlib2(x) for x in i2])
+      exprs_smt2 = f_selects
     else:
       assert False
     
