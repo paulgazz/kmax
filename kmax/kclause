@@ -376,16 +376,13 @@ if __name__ == '__main__':
   if normal_dep_only or reverse_dep_only or selects_only:
     if not quiet: sys.stderr.write("[STEP 2/3] converting the constraints to smtlib2 format..\n")
 
-    # convert any "FOO" to CONFIG_FOO
-    # TODO: This is a fix of a bug that happens somewhere else in the earlier steps.
-    # The fix of the root cause might fix other unknown issues with kmax.
-    def fix_str_expr(str_expr):
-      rsub_re = re.compile( r"\"(?P<symname>[a-zA-Z0-9_]*)\"" )
-      rsub_repl = r"CONFIG_\g<symname>"
-      return re.sub( rsub_re, rsub_repl, str_expr)
+    # Undeclared symbols will be "FOO" instead of CONFIG_FOO
+    def is_sym_declared(sym_name):
+      return not z3.is_false( expression_converter.convert_to_z3(sym_name + " and 1") )
 
     def convert_str_expr_to_smtlib2(str_expr):
-      str_expr = fix_str_expr(str_expr)
+      # Always and with 1 to eliminate "SYM" cases
+      str_expr = str_expr + " and 1"
 
       # to z3 clause
       z3_clause = expression_converter.convert_to_z3(str_expr)
@@ -395,24 +392,29 @@ if __name__ == '__main__':
       s.add(z3_clause)
       return s.to_smt2()
 
-    # Convert to smt2 format
-    convert_str_expr_dict_to_smt2 = lambda str_expr_dict : dict((fix_str_expr(k), convert_str_expr_to_smtlib2(v)) for k,v in str_expr_dict.items())
+    assert normal_dep_only + reverse_dep_only + selects_only < 2
 
-    if normal_dep_only:
-      exprs_smt2 = convert_str_expr_dict_to_smt2(dep_exprs)
-    elif reverse_dep_only:
-      exprs_smt2 = convert_str_expr_dict_to_smt2(rev_dep_exprs)
+    if normal_dep_only or reverse_dep_only:
+      # both dep_exprs and rev_dep_exprs have type { sym: dep_expr }
+      if normal_dep_only:
+        exprs = dep_exprs
+      else:
+        exprs = rev_dep_exprs
+      formatted_exprs = {}
+      for sym, sym_dep in exprs.items():
+        if is_sym_declared(sym):
+          formatted_exprs[sym] = convert_str_expr_to_smtlib2(sym_dep)
+      exprs_smt2 = formatted_exprs
     elif selects_only:
-      # f_ prefix means formatted, where convert_str_expr_to_smtlib2 is applied
-      f_selects = {}
-      # selects_only has a different type than others
+      # selects has type { selected_sym : { selecter_sym : [visibility_exprs] } }
+      formatted_selects = {}
       for k1, i1 in selects.items():
-        f_k1 = fix_str_expr(k1)
-        f_selects[ f_k1 ] = dict()
-        for k2, i2 in i1.items():
-          f_k2 = fix_str_expr(k2)
-          f_selects[f_k1][f_k2] = set([convert_str_expr_to_smtlib2(x) for x in i2])
-      exprs_smt2 = f_selects
+        if is_sym_declared(k1):
+          formatted_selects[ k1 ] = dict()
+          for k2, i2 in i1.items():
+              if is_sym_declared(k2):
+                formatted_selects[k1][k2] = sorted(list(set([convert_str_expr_to_smtlib2(x) for x in i2])))
+      exprs_smt2 = formatted_selects
     else:
       assert False
     
