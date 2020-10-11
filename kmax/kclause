@@ -155,6 +155,7 @@ if __name__ == '__main__':
   bools = set()
   choice_vars = set()
   bool_choices = []
+  tristate_choices = []
 
   # nonbool var attributes
   nonbools = set()
@@ -339,6 +340,10 @@ if __name__ == '__main__':
       var_string, dep_expr = data.split("|",1)
       config_vars = var_string.split(" ")
       bool_choices.append((config_vars, dep_expr))
+    elif (instr == "tristate_choice"):
+      var_string, dep_expr = data.split("|",1)
+      config_vars = var_string.split(" ")
+      tristate_choices.append((config_vars, dep_expr))
     elif (instr == "dep"):
       var, expr = data.split(" ", 1)
       if var in dep_exprs:
@@ -583,10 +588,13 @@ if __name__ == '__main__':
       else:  # it has no dependencies, so there is nothing to do
         return term
 
-  # generate clauses for boolean choices
+  # generate mutex choice clauses for boolean choices
   for (config_vars, dep_expr) in bool_choices:
     # print config_vars
     # mutex choice: a -> !b, a -> !c, ..., b -> !a, b -> !c, ...
+    
+    # TODO: Update choice_vars with tristate_choice as well when print_dimacs() method
+    # is modified for tristate_choices.
     choice_vars.update(set(config_vars))
     for i in range(0, len(config_vars)):
       defined_vars.add(config_vars[i])
@@ -594,7 +602,16 @@ if __name__ == '__main__':
         if i != j:
           add_clause(config_vars[i], z3.Or(z3.Not(z3.Bool(config_vars[i])), z3.Not(z3.Bool(config_vars[j]))))
     assert len(config_vars) > 0
+    
+  # TODO: generate mutex choice clauses for tristate choices
+  # Different than the boolean choices, tristate choices allow multiple options to be set to "m".
+  # However, only one option can be set to "y". Since we cannot differentiate between "m" and "y"
+  # with kclause, we cannot express the conditions for tristate choices in full. We can treat
+  # them the same way we treat bool_choices, which would prevent setting multiple choices to "m".
+  # Or, we can just not consider the mutex "y" choice at all. Currently, we are doing the latter.
 
+  # generate clauses for boolean and tristate choices
+  for (config_vars, dep_expr) in bool_choices + tristate_choices:
     # adding the following clauses:
 
     # dep_expr and individual_conditions -> possible_choices
@@ -1199,6 +1216,7 @@ if __name__ == '__main__':
       comment_prefix = "c"
     for varname in sorted(varnum_map, key=varnum_map.get):
       if varname in nonbools:
+        # TODO: Account for tristate choices here. Then, include tristate_choices in choice_vars as well.
         if varname in choice_vars:
           sys.stderr.write("choice variable is not boolean: %s\n" % (varname))
         if varname in nonbool_defaults:
@@ -1216,6 +1234,7 @@ if __name__ == '__main__':
           typename = "nonbool"
         print("%s %d %s %s%s" % (comment_prefix, varnum_map[varname], varname, typename, defaultval))
       else:
+        # TODO: Account for tristate choices here. Then, include tristate_choices in choice_vars as well.
         if varname in choice_vars:
           print("%s %d %s choice_bool" % (comment_prefix, varnum_map[varname], varname))
         elif varname in has_prompt:
