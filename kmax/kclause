@@ -777,6 +777,14 @@ if __name__ == '__main__':
     if args.remove_reverse_dependencies:
       rev_dep_expr = None
 
+    # ignore reverse dependencies if config is a choice value
+    # TODO: when choice_var gets updated for tristates, using it will make 
+    # the code more concise.
+    for (config_vars, dep_expr) in bool_choices + tristate_choices:
+      if var in config_vars:
+        rev_dep_expr = None
+        break
+
     # collect prompt condition
     if var in has_prompt:
       prompt_expr = prompt_lines[var]
