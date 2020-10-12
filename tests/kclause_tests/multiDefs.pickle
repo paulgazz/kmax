@@ -1,0 +1,11 @@
+CONFIG_A None
+CONFIG_VAR (0) or (CONFIG_VAR and (CONFIG_A) and not ((0))) or (CONFIG_VAR and (CONFIG_B) and not ((0) or (CONFIG_A))) or ( not (CONFIG_VAR) and ((1) and not ((0) or (CONFIG_A) or (CONFIG_B))))
+CONFIG_B None
+CONFIG_Module (0) or (CONFIG_Module and (1) and not ((0)))
+(dp0
+VCONFIG_VAR
+p1
+(lp2
+V; benchmark generated from python API\u000a(set-info :status unknown)\u000a(declare-fun CONFIG_B () Bool)\u000a(declare-fun CONFIG_A () Bool)\u000a(declare-fun CONFIG_VAR () Bool)\u000a(assert\u000a (let (($x23 (not CONFIG_VAR)))\u000a (let (($x45 (and $x23 (not (or CONFIG_A CONFIG_B)))))\u000a (let (($x42 (and CONFIG_VAR CONFIG_B (not CONFIG_A))))\u000a (let (($x40 (and CONFIG_VAR CONFIG_A)))\u000a (let (($x49 (or CONFIG_VAR (not (or $x40 $x42 $x45)))))\u000a (let (($x47 (or $x23 $x40 $x42 $x45)))\u000a (and $x47 $x49))))))))\u000a(check-sat)\u000a
+p3
+as.

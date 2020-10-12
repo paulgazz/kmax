@@ -1,0 +1,10 @@
+config CONFIG_Module bool
+def_bool CONFIG_Module 1|(1)
+config CONFIG_B bool
+prompt CONFIG_B (1)
+config CONFIG_A bool
+prompt CONFIG_A (1)
+config CONFIG_VAR tristate
+def_bool CONFIG_VAR 1|(CONFIG_A)
+def_bool CONFIG_VAR 1|(CONFIG_B)
+def_bool CONFIG_VAR "N"|(1)

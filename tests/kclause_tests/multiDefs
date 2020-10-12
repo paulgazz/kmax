@@ -1,0 +1,16 @@
+config Module
+	def_bool y
+	option modules
+
+
+config A
+	bool "A"
+
+config B
+	bool "B"
+
+config VAR
+	tristate
+	default y if A
+	default m if B
+	default N

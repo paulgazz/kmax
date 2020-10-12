@@ -139,8 +139,8 @@ if __name__ == '__main__':
   # collect visibility conditions
   prompt_lines = {}
 
-  # collect defaults
-  def_bool_lines = defaultdict(set)
+  # collect defaults (lines are stored in list to preserve order)
+  def_bool_lines = defaultdict(list)
 
   # keep track of variables that have default values
   has_defaults = set()
@@ -291,7 +291,7 @@ if __name__ == '__main__':
       prompt_lines[varname] = "(1)"  # note: this depends on env lines being after prompt lines
     elif (instr == "def_bool"):
       var, line = data.split(" ", 1)
-      def_bool_lines[var].add(line)
+      def_bool_lines[var].append(line)
     elif (instr == "def_nonbool"):
       var, val_and_expr = data.split(" ", 1)
       val, expr = val_and_expr.split("|", 1)
@@ -761,17 +761,26 @@ if __name__ == '__main__':
           if show_warnings: sys.stderr.write("warning: found bad select statement(s) for %s\n" % (var))
 
     # collect boolean default expression
+    # When multiple defaults are defined, kconfig uses 
+    # the first statement that satisfies its condition 
+    # Tristate defaults are also considered as def_bool 
+    # by kextract, where m is changed into 1
+    # TODO: kclause currenlty considers boolean defaults
+    # only. Nonbool default will need update to consider
+    # different possible default values.
     if var in def_bool_lines.keys():
       has_defaults.add(var)
       def_y_expr = "(0)"
       delim = " or "
+      ite_expr = "(0)"
       for def_bool_line in def_bool_lines[var]:
         val, expr = def_bool_line.split("|", 1)
         # sys.stderr.write("%s|%s|%s\n" % (var, val, expr))
         if val == "1" or val == "y":
-          def_y_expr = def_y_expr + delim + "(" + expr + ")"
+          def_y_expr = def_y_expr + delim + "(" + var + " and " + expr + " and not (" + ite_expr + "))"
         else:
-          def_y_expr = def_y_expr + delim + "((" + val + ") and (" + expr + "))"
+          def_y_expr = def_y_expr + delim + "(not (" + var + ") and (" + expr + " and not (" + ite_expr + ")))"
+        ite_expr = ite_expr + delim + expr
     else:
       def_y_expr = None
 
