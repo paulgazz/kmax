@@ -738,6 +738,10 @@ if __name__ == '__main__':
     if args.remove_reverse_dependencies:
       rev_dep_expr = None
 
+    # ignore reverse dependencies if symbol is a choice value
+    if var in choice_vars:
+      rev_dep_expr = None
+
     # collect prompt condition
     if var in has_prompt:
       prompt_expr = prompt_lines[var]
