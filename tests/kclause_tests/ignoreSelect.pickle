@@ -1,0 +1,17 @@
+(dp0
+VCONFIG_BOOL_VAL1
+p1
+(lp2
+V; benchmark generated from python API\u000a(set-info :status unknown)\u000a(declare-fun CONFIG_BOOL_VAL2 () Bool)\u000a(declare-fun CONFIG_BOOL_VAL1 () Bool)\u000a(assert\u000a (let (($x25 (not CONFIG_BOOL_VAL2)))\u000a (let (($x23 (not CONFIG_BOOL_VAL1)))\u000a (or $x23 $x25))))\u000a(check-sat)\u000a
+p3
+asVCONFIG_BOOL_VAL2
+p4
+(lp5
+V; benchmark generated from python API\u000a(set-info :status unknown)\u000a(declare-fun CONFIG_BOOL_VAL1 () Bool)\u000a(declare-fun CONFIG_BOOL_VAL2 () Bool)\u000a(assert\u000a (let (($x23 (not CONFIG_BOOL_VAL1)))\u000a (let (($x25 (not CONFIG_BOOL_VAL2)))\u000a (or $x25 $x23))))\u000a(check-sat)\u000a
+p6
+asV<CHOICE>
+p7
+(lp8
+V; benchmark generated from python API\u000a(set-info :status unknown)\u000a(declare-fun CONFIG_BOOL_VAL2 () Bool)\u000a(declare-fun CONFIG_BOOL_VAL1 () Bool)\u000a(assert\u000a (or CONFIG_BOOL_VAL1 CONFIG_BOOL_VAL2))\u000a(check-sat)\u000a
+p9
+as.
