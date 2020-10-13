@@ -1142,36 +1142,100 @@ int main(int argc, char **argv)
     /*   } */
     /* } */
 
+    // for choice symbols, add choice's visibility and dependency conditions to config_vars' direct dependency
+    // This is disabled because kclause already accounts for this dependency by adding the implication
+    // clause of "implication(possible_choices, dep_expr)". This is saying that possible_choices cannot
+    // be enabled without having dep_expr enabled.
+    // for_all_symbols(i, sym) {
+    //   if (sym_is_choice(sym)) {
+    //     struct expr *e;
+    //     struct symbol *def_sym;
+    //     struct property* prop = sym_get_choice_prop(sym);
+
+    //     if (prop && prop->visible.expr) {
+    //       expr_list_for_each_sym(prop->expr, e, def_sym) {
+    //         if (!def_sym->dir_dep.expr) {
+    //           // use the visibility expression
+    //           def_sym->dir_dep.expr = expr_copy(prop->visible.expr);
+    //         } else {
+    //           // conjuct the direct dependency with the visibility condition of the <choice>
+    //           def_sym->dir_dep.expr = expr_alloc_and(def_sym->dir_dep.expr, prop->visible.expr);
+    //         }
+    //       }
+    //     }
+    //   }
+    // }
     // print all dependent config vars
     for_all_symbols(i, sym) {
       // TODO: deal with choice nodes
-      if (sym_is_choice(sym) && sym->type == S_BOOLEAN) {
+      if (sym_is_choice(sym)) {
         struct property *prop;
         struct symbol *def_sym;
         struct expr *e;
 
         prop = sym_get_choice_prop(sym);
 
-        fprintf(output_fp, "bool_choice");
+        switch(sym->type) {
+          case S_BOOLEAN:
+            fprintf(output_fp, "bool_choice");
+            break;
+          case S_TRISTATE:
+            fprintf(output_fp, "tristate_choice");
+            break;
+          default:
+            fprintf(stderr, "fatal: choice type can only be bool or tristate, otherwise is impossible due to the parser.\n");
+            exit(1);
+        }
+
         expr_list_for_each_sym(prop->expr, e, def_sym) {
           fprintf(output_fp, " %s%s", config_prefix, def_sym->name);  // any dependencies should be handled below with 'dep'
         }
         fprintf(output_fp, "|(");
-        if ((NULL != sym->dir_dep.expr) && (NULL != sym->rev_dep.expr)) {
+
+        // for formatting
+        int printed_expr = 0;
+
+        // TODO: issue with the visible_expr, dir_dep.expr, and rev_dep.expr of choices
+        // The content of visible, direct dependency, and reverse dependency expressions are strange for choices:
+        // Seems like direct dependency expression is always NULL.
+        // visib_expr == NULL && rev_dep_expr != NULL -> rev_dep_expr == 1
+        // visib_expr != NULL && rev_dep_expr == NULL -> valid constraint in visib_expr. Example: check for CONFIG_USB_ZERO.
+        // visib_expr != NULL && rev_dep_expr != NULL -> they are the same most of the time except a few cases. Example: check for CONFIG_VMSPLIT_3G.
+        // In conclusion, I (Necip) cannot deduce what leads to those different behaviours looking at the specific examples.
+        // To understand, we need to have a deeper analysis on how Kconfig parser processes choice symbols.
+        // Until then, let's have the conjunction of all to ensure we have valid (yet more in complex/repetitive form than needed) results.
+
+        // visible
+        if (prop->visible.expr) {
+          if (printed_expr) fprintf(output_fp, " and ");
+          printed_expr = 1;
+          fprintf(output_fp, "(");
+          print_python_expr(prop->visible.expr, output_fp, E_NONE);
+          fprintf(output_fp, ")");
+        }
+
+        // direct dependency
+        if (sym->dir_dep.expr) {
+          if (printed_expr) fprintf(output_fp, " and ");
+          printed_expr = 1;
           fprintf(output_fp, "(");
           print_python_expr(sym->dir_dep.expr, output_fp, E_NONE);
-          fprintf(output_fp, ") and (");
+          fprintf(output_fp, ")");
+        }
+
+        // reverse dependency
+        if (sym->rev_dep.expr) {
+          if (printed_expr) fprintf(output_fp, " and ");
+          printed_expr = 1;
+          fprintf(output_fp, "(");
           print_python_expr(sym->rev_dep.expr, output_fp, E_NONE);
           fprintf(output_fp, ")");
-        } else if (NULL != sym->dir_dep.expr) {
-          print_python_expr(sym->dir_dep.expr, output_fp, E_NONE);
-        } else if (NULL != sym->rev_dep.expr) {
-          print_python_expr(sym->rev_dep.expr, output_fp, E_NONE);
-        } else {
-          fprintf(output_fp, "1");
         }
-        fprintf(output_fp, ")");
-        fprintf(output_fp, "\n");
+
+        if (!printed_expr)
+          fprintf(output_fp, "1");
+        
+        fprintf(output_fp, ")\n");
       }
       
       if (!sym->name || strlen(sym->name) == 0)
@@ -1192,24 +1256,26 @@ int main(int argc, char **argv)
 
         if (enable_reverse_dependencies) {
           // print all the variables selected by this variable
-          /* struct property *prop; */
-          /* for_all_properties(sym, prop, P_SELECT) { */
-          /*   // the current var itself is the var doing the select */
-          /*   // prop->expr is the variable being selected */
-          /*   // prop->visible.expr is the "if ..." after the select */
-          /*   fprintf(output_fp, "select "); */
-          /*   // note: this assumes that prop->expr is only a single */
-          /*   // variable name, which zconf.y guarantees */
-          /*   print_python_expr(prop->expr, output_fp, E_NONE); */
-          /*   fprintf(output_fp, " %s%s (", config_prefix, sym->name); */
-          /*   if (NULL != prop->original_expr) { */
-          /*     print_python_expr(prop->original_expr, output_fp, E_NONE); */
-          /*   } else { */
-          /*     fprintf(output_fp, "1"); */
-          /*   } */
-          /*   fprintf(output_fp, ")\n"); */
-          /* } */
+          struct property *prop;
+          for_all_properties(sym, prop, P_SELECT) {
+            // the current var itself is the var doing the select
+            // prop->expr is the variable being selected
+            // prop->visible.expr is And(sym->dir_dept, select_dep) where select_dep
+            // is the dependency for select defined as "select 'selected' if 'select_dep'"
+            fprintf(output_fp, "select ");
+            // note: this assumes that prop->expr is only a single
+            // variable name, which zconf.y guarantees
+            print_python_expr(prop->expr, output_fp, E_NONE);
+            fprintf(output_fp, " %s%s (", config_prefix, sym->name);
+            if (NULL != prop->visible.expr) {
+              print_python_expr(prop->visible.expr, output_fp, E_NONE);
+            } else {
+              fprintf(output_fp, "1");
+            }
+            fprintf(output_fp, ")\n");
+          }
 
+          // print the reverse dependency for this variable
           if (sym->rev_dep.expr) {
             no_dependencies = false;
             fprintf(output_fp, "rev_dep %s%s (", config_prefix, sym->name);

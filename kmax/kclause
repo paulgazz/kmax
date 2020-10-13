@@ -65,6 +65,9 @@ if __name__ == '__main__':
   argparser.add_argument('--reverse-dependencies-only',
                          action="store_true",
                          help="""Print reverse dependencies only.""")
+  argparser.add_argument('--selects-only',
+                         action="store_true",
+                         help="""Print selects only.""")
   argparser.add_argument('--remove-all-nonvisibles',
                          action="store_true",
                          help="""whether to leave only those config vars that can be selected by the user.  this is defined as config vars that have a kconfig prompt.""")
@@ -114,6 +117,7 @@ if __name__ == '__main__':
   deduplicate_clauses = True
   normal_dep_only = args.normal_dependencies_only
   reverse_dep_only = args.reverse_dependencies_only
+  selects_only = args.selects_only
 
   if unselectable or selectable:
     # don't do output, which won't make much sense for --(un)selectable
@@ -123,8 +127,8 @@ if __name__ == '__main__':
     sys.stderr.write("only one of --selectable or --unselectable may be specified\n")
     exit(1)
 
-  if normal_dep_only and reverse_dep_only:
-    sys.stderr.write("only one of --normal-dependencies-only or --reverse-dependencies-only may be specified\n")
+  if normal_dep_only + reverse_dep_only + selects_only > 1:
+    sys.stderr.write("only one of --normal-dependencies-only, --reverse-dependencies-only, or --selects-only may be specified\n")
     exit(1)
 
   z3_clauses = {}
@@ -151,6 +155,7 @@ if __name__ == '__main__':
   bools = set()
   choice_vars = set()
   bool_choices = []
+  tristate_choices = []
 
   # nonbool var attributes
   nonbools = set()
@@ -335,6 +340,10 @@ if __name__ == '__main__':
       var_string, dep_expr = data.split("|",1)
       config_vars = var_string.split(" ")
       bool_choices.append((config_vars, dep_expr))
+    elif (instr == "tristate_choice"):
+      var_string, dep_expr = data.split("|",1)
+      config_vars = var_string.split(" ")
+      tristate_choices.append((config_vars, dep_expr))
     elif (instr == "dep"):
       var, expr = data.split(" ", 1)
       if var in dep_exprs:
@@ -369,14 +378,16 @@ if __name__ == '__main__':
     if debug: sys.stderr.write("done %s\n" % (line))
   if not quiet: sys.stderr.write("[STEP 1/3] finished reading kextract file\n")
 
-  if normal_dep_only or reverse_dep_only:
+  if normal_dep_only or reverse_dep_only or selects_only:
     if not quiet: sys.stderr.write("[STEP 2/3] converting the constraints to smtlib2 format..\n")
 
+    # Undeclared symbols will be "FOO" instead of CONFIG_FOO
+    def is_sym_declared(sym_name):
+      return not z3.is_false( expression_converter.convert_to_z3(sym_name + " and 1") )
+
     def convert_str_expr_to_smtlib2(str_expr):
-      # convert any "FOO" to CONFIG_FOO
-      rsub_re = re.compile( r"\"(?P<symname>[a-zA-Z0-9_]*)\"" )
-      rsub_repl = r"CONFIG_\g<symname>"
-      str_expr = re.sub( rsub_re, rsub_repl, str_expr)
+      # Always and with 1 to eliminate "SYM" cases
+      str_expr = str_expr + " and 1"
 
       # to z3 clause
       z3_clause = expression_converter.convert_to_z3(str_expr)
@@ -386,13 +397,29 @@ if __name__ == '__main__':
       s.add(z3_clause)
       return s.to_smt2()
 
-    # Convert to smt2 format
-    convert_str_expr_dict_to_smt2 = lambda str_expr_dict : dict((k, convert_str_expr_to_smtlib2(v)) for k,v in str_expr_dict.items())
+    assert normal_dep_only + reverse_dep_only + selects_only < 2
 
-    if normal_dep_only:
-      exprs_smt2 = convert_str_expr_dict_to_smt2(dep_exprs)
-    elif reverse_dep_only:
-      exprs_smt2 = convert_str_expr_dict_to_smt2(rev_dep_exprs)
+    if normal_dep_only or reverse_dep_only:
+      # both dep_exprs and rev_dep_exprs have type { sym: dep_expr }
+      if normal_dep_only:
+        exprs = dep_exprs
+      else:
+        exprs = rev_dep_exprs
+      formatted_exprs = {}
+      for sym, sym_dep in exprs.items():
+        if is_sym_declared(sym):
+          formatted_exprs[sym] = convert_str_expr_to_smtlib2(sym_dep)
+      exprs_smt2 = formatted_exprs
+    elif selects_only:
+      # selects has type { selected_sym : { selecter_sym : [visibility_exprs] } }
+      formatted_selects = {}
+      for k1, i1 in selects.items():
+        if is_sym_declared(k1):
+          formatted_selects[ k1 ] = dict()
+          for k2, i2 in i1.items():
+              if is_sym_declared(k2):
+                formatted_selects[k1][k2] = sorted(list(set([convert_str_expr_to_smtlib2(x) for x in i2])))
+      exprs_smt2 = formatted_selects
     else:
       assert False
     
@@ -561,10 +588,13 @@ if __name__ == '__main__':
       else:  # it has no dependencies, so there is nothing to do
         return term
 
-  # generate clauses for boolean choices
+  # generate mutex choice clauses for boolean choices
   for (config_vars, dep_expr) in bool_choices:
     # print config_vars
     # mutex choice: a -> !b, a -> !c, ..., b -> !a, b -> !c, ...
+    
+    # TODO: Update choice_vars with tristate_choice as well when print_dimacs() method
+    # is modified for tristate_choices.
     choice_vars.update(set(config_vars))
     for i in range(0, len(config_vars)):
       defined_vars.add(config_vars[i])
@@ -572,7 +602,16 @@ if __name__ == '__main__':
         if i != j:
           add_clause(config_vars[i], z3.Or(z3.Not(z3.Bool(config_vars[i])), z3.Not(z3.Bool(config_vars[j]))))
     assert len(config_vars) > 0
+    
+  # TODO: generate mutex choice clauses for tristate choices
+  # Different than the boolean choices, tristate choices allow multiple options to be set to "m".
+  # However, only one option can be set to "y". Since we cannot differentiate between "m" and "y"
+  # with kclause, we cannot express the conditions for tristate choices in full. We can treat
+  # them the same way we treat bool_choices, which would prevent setting multiple choices to "m".
+  # Or, we can just not consider the mutex "y" choice at all. Currently, we are doing the latter.
 
+  # generate clauses for boolean and tristate choices
+  for (config_vars, dep_expr) in bool_choices + tristate_choices:
     # adding the following clauses:
 
     # dep_expr and individual_conditions -> possible_choices
@@ -1190,6 +1229,7 @@ if __name__ == '__main__':
       comment_prefix = "c"
     for varname in sorted(varnum_map, key=varnum_map.get):
       if varname in nonbools:
+        # TODO: Account for tristate choices here. Then, include tristate_choices in choice_vars as well.
         if varname in choice_vars:
           sys.stderr.write("choice variable is not boolean: %s\n" % (varname))
         if varname in nonbool_defaults:
@@ -1207,6 +1247,7 @@ if __name__ == '__main__':
           typename = "nonbool"
         print("%s %d %s %s%s" % (comment_prefix, varnum_map[varname], varname, typename, defaultval))
       else:
+        # TODO: Account for tristate choices here. Then, include tristate_choices in choice_vars as well.
         if varname in choice_vars:
           print("%s %d %s choice_bool" % (comment_prefix, varnum_map[varname], varname))
         elif varname in has_prompt:
