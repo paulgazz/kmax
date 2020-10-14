@@ -1,0 +1,38 @@
+config CONFIG_T1 bool
+prompt CONFIG_T1 (1 and 1)
+config CONFIG_TO2 bool
+prompt CONFIG_TO2 (1 and 1)
+config CONFIG_BO1 bool
+prompt CONFIG_BO1 (1)
+config CONFIG_BO2 bool
+prompt CONFIG_BO2 (1)
+config CONFIG_B2 bool
+prompt CONFIG_B2 (1)
+config CONFIG_B1 bool
+prompt CONFIG_B1 (1)
+config CONFIG_S bool
+prompt CONFIG_S (1)
+config CONFIG_T2 bool
+prompt CONFIG_T2 (1 and 1)
+config CONFIG_TO1 bool
+prompt CONFIG_TO1 (1 and 1)
+tristate_opt_choice CONFIG_TO1 CONFIG_TO2|(1)
+tristate_choice CONFIG_T1 CONFIG_T2|((1))
+bool_opt_choice CONFIG_BO1 CONFIG_BO2|(1)
+bool_choice CONFIG_B1 CONFIG_B2|((1))
+dep CONFIG_T1 (1)
+rev_dep CONFIG_T1 (CONFIG_S)
+dep CONFIG_TO2 (1)
+dep CONFIG_BO1 (1)
+rev_dep CONFIG_BO1 (CONFIG_S)
+dep CONFIG_BO2 (1)
+dep CONFIG_B2 (1)
+dep CONFIG_B1 (1)
+rev_dep CONFIG_B1 (CONFIG_S)
+select CONFIG_B1 CONFIG_S (1)
+select CONFIG_BO1 CONFIG_S (1)
+select CONFIG_T1 CONFIG_S (1)
+select CONFIG_TO1 CONFIG_S (1)
+dep CONFIG_T2 (1)
+dep CONFIG_TO1 (1)
+rev_dep CONFIG_TO1 (CONFIG_S)

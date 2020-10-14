@@ -1,0 +1,50 @@
+config S
+	bool "S"
+	select B1
+	select BO1
+	select T1
+	select TO1
+
+choice
+	bool "Bool choice"
+
+	config B1
+		bool "B1"
+
+	config B2
+		bool "B2"
+endchoice
+
+choice
+	bool "Bool optional choice"
+	optional
+
+	config BO1
+		bool "BO1"
+
+	config BO2
+		bool "BO2"
+endchoice
+
+choice
+	tristate "Tristate choice"
+
+	config T1
+		bool "T1"
+
+	config T2
+		bool "T2"
+endchoice
+
+choice
+	tristate "Tristate optinal choice"
+	optional
+
+	config TO1
+		bool "TO1"
+
+	config TO2
+		bool "TO2"
+endchoice
+
+
