@@ -31,7 +31,8 @@ can be converted to dimacs using the accompanying `dimacs.py` script.
     def_bool_line := 'def_bool' config_var bool_value '(' expr ')'
     def_nonbool_line := 'def_nonbool' config_var nonbool_value '|' '(' expr ')'
     clause_line := 'clause' clause_elem+
-    bool_choice_line := 'bool_choice' config_var+ '|' '(' expr ')'
+    choice_line := choice_type config_var+ '|' '(' expr ')'
+    choice_type := 'bool_choice' | 'tristate_choice' | 'bool_opt_choice' | 'tristate_opt_choice'
     dep_line := dep_name config_var '(' expr ')'
     select_line := 'select' config_var config_var '(' expr ')'
     dep_name := 'dep' | 'rev_dep'
