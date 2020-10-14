@@ -156,6 +156,8 @@ if __name__ == '__main__':
   choice_vars = set()
   bool_choices = []
   tristate_choices = []
+  bool_opt_choices = []
+  tristate_opt_choices = []
 
   # nonbool var attributes
   nonbools = set()
@@ -344,6 +346,14 @@ if __name__ == '__main__':
       var_string, dep_expr = data.split("|",1)
       config_vars = var_string.split(" ")
       tristate_choices.append((config_vars, dep_expr))
+    elif (instr == "bool_opt_choice"):
+      var_string, dep_expr = data.split("|",1)
+      config_vars = var_string.split(" ")
+      bool_opt_choices.append((config_vars, dep_expr))
+    elif (instr == "tristate_opt_choice"):
+      var_string, dep_expr = data.split("|",1)
+      config_vars = var_string.split(" ")
+      tristate_opt_choices.append((config_vars, dep_expr))
     elif (instr == "dep"):
       var, expr = data.split(" ", 1)
       if var in dep_exprs:
@@ -588,8 +598,9 @@ if __name__ == '__main__':
       else:  # it has no dependencies, so there is nothing to do
         return term
 
-  # generate mutex choice clauses for boolean choices
-  for (config_vars, dep_expr) in bool_choices:
+  # Generate mutex choice clauses for choices
+  # Mutex choice applies to all choice types, since tristate choices are currently treated as bool choices
+  for (config_vars, dep_expr) in bool_choices + tristate_choices + bool_opt_choices + tristate_opt_choices:
     # print config_vars
     # mutex choice: a -> !b, a -> !c, ..., b -> !a, b -> !c, ...
     
@@ -610,8 +621,8 @@ if __name__ == '__main__':
   # them the same way we treat bool_choices, which would prevent setting multiple choices to "m".
   # Or, we can just not consider the mutex "y" choice at all. Currently, we are doing the latter.
 
-  # generate clauses for boolean and tristate choices
-  for (config_vars, dep_expr) in bool_choices + tristate_choices:
+  # generate 'at least one' clause for boolean and tristate choices
+  for (config_vars, dep_expr) in bool_choices + tristate_choices + bool_opt_choices + tristate_opt_choices:
     # adding the following clauses:
 
     # dep_expr and individual_conditions -> possible_choices
@@ -637,9 +648,15 @@ if __name__ == '__main__':
       individual_conditions = individual_conditions + delim + individual_dep_expr
       delim = " or "
 
+    # when conditions are met, at least one choiceval should be selected
     clause1 = implication(conjunction(dep_expr, individual_conditions), possible_choices)
-    clause2 = implication(possible_choices, dep_expr)
-    final_expression = conjunction(clause1, clause2)
+    # force no choiceval to be selected when either dep_expr is not met or individual_conditions is not met
+    clause2 = implication(possible_choices, conjunction(dep_expr, individual_conditions))
+
+    # for optinal choices, clause1 is not needed
+    # (even when conditions are met, possible_choices can be false)
+    final_expression = conjunction(clause1, clause2) if (config_vars, dep_expr) in bool_choices + tristate_choices else clause2
+
     if debug_expressions:
       sys.stderr.write("bool choice")
       pretty_printer(final_expression, stream=sys.stderr)
