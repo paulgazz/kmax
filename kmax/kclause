@@ -641,8 +641,14 @@ if __name__ == '__main__':
     for var in config_vars:
       defined_vars.add(var)
       possible_choices = possible_choices + delim + var
-      if var in dep_exprs and dep_exprs[var] != None:
-        individual_dep_expr = "(%s)" % (dep_exprs[var])
+
+      # for a choice value to be selectable, both its
+      # depends on and visibility constraints should be
+      # satisfied.  Since depends on constraint is 
+      # conjuncted to visibility constraint by Kconfig,
+      # indivitual_conditions use visibiltiy constrains
+      if var in prompt_lines and prompt_lines[var] != None:
+        individual_dep_expr = "(%s)" % (prompt_lines[var])
       else:
         individual_dep_expr = "(1)"
       individual_conditions = individual_conditions + delim + individual_dep_expr
