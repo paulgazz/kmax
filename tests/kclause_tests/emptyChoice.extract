@@ -1,0 +1,19 @@
+config CONFIG_V2 bool
+prompt CONFIG_V2 (1)
+config CONFIG_C1 bool
+prompt CONFIG_C1 (1 and CONFIG_D1 and CONFIG_D2 and CONFIG_V1)
+config CONFIG_D2 bool
+prompt CONFIG_D2 (1)
+config CONFIG_D bool
+prompt CONFIG_D (1)
+config CONFIG_V1 bool
+prompt CONFIG_V1 (1)
+config CONFIG_C2 bool
+prompt CONFIG_C2 (1 and CONFIG_D2 and CONFIG_V2)
+config CONFIG_D1 bool
+prompt CONFIG_D1 (1)
+config CONFIG_V bool
+prompt CONFIG_V (1)
+bool_choice CONFIG_C1 CONFIG_C2|((CONFIG_D and CONFIG_V))
+dep CONFIG_C1 (1 and CONFIG_D1 and CONFIG_D2)
+dep CONFIG_C2 (1 and CONFIG_D2)

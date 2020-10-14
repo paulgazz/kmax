@@ -1,0 +1,32 @@
+config V
+	bool "V"
+
+config V1
+	bool "V1"
+
+config V2
+	bool "V2"
+
+config D
+	bool "D"
+
+config D1
+	bool "D1"
+
+config D2
+	bool "D2"
+
+
+choice 
+	bool "Choice" if V
+	depends on D
+
+	config C1
+		bool "C1" if V1
+		depends on D1 && D2
+	
+	config C2
+		bool "C2" if V2
+		depends on D2
+endchoice
+
