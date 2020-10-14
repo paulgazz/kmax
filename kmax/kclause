@@ -607,11 +607,11 @@ if __name__ == '__main__':
     # TODO: Update choice_vars with tristate_choice as well when print_dimacs() method
     # is modified for tristate_choices.
     choice_vars.update(set(config_vars))
-    for i in range(0, len(config_vars)):
+    for i in range(0, len(config_vars)-1):
       defined_vars.add(config_vars[i])
-      for j in range(0, len(config_vars)):
-        if i != j:
-          add_clause(config_vars[i], z3.Or(z3.Not(z3.Bool(config_vars[i])), z3.Not(z3.Bool(config_vars[j]))))
+      for j in range(i+1, len(config_vars)):
+        #if i != j:
+        add_clause(config_vars[i], z3.Or(z3.Not(z3.Bool(config_vars[i])), z3.Not(z3.Bool(config_vars[j]))))
     assert len(config_vars) > 0
     
   # TODO: generate mutex choice clauses for tristate choices
