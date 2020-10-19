@@ -1,0 +1,11 @@
+config A
+	bool "A"
+
+config B
+	bool "B"
+
+config X
+	bool
+	default n if A
+	default y if B
+
