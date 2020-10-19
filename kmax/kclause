@@ -31,6 +31,7 @@ if __name__ == '__main__':
   import pickle
   import kmax.about
   import re
+  import itertools
 
   # this script takes the check_dep --dimacs output and converts it into
   # a dimacs-compatible format
@@ -607,11 +608,9 @@ if __name__ == '__main__':
     # TODO: Update choice_vars with tristate_choice as well when print_dimacs() method
     # is modified for tristate_choices.
     choice_vars.update(set(config_vars))
-    for i in range(0, len(config_vars)-1):
-      defined_vars.add(config_vars[i])
-      for j in range(i+1, len(config_vars)):
-        #if i != j:
-        add_clause(config_vars[i], z3.Or(z3.Not(z3.Bool(config_vars[i])), z3.Not(z3.Bool(config_vars[j]))))
+    defined_vars.update(set(config_vars))
+    for c1, c2 in itertools.combinations(config_vars, 2):
+      add_clause(c1, z3.Or(z3.Not(z3.Bool(c1)), z3.Not(z3.Bool(c2))))
     assert len(config_vars) > 0
     
   # TODO: generate mutex choice clauses for tristate choices
@@ -619,7 +618,7 @@ if __name__ == '__main__':
   # However, only one option can be set to "y". Since we cannot differentiate between "m" and "y"
   # with kclause, we cannot express the conditions for tristate choices in full. We can treat
   # them the same way we treat bool_choices, which would prevent setting multiple choices to "m".
-  # Or, we can just not consider the mutex "y" choice at all. Currently, we are doing the latter.
+  # Or, we can just not consider the mutex "y" choice at all. Currently, we are doing the former.
 
   # generate 'at least one' clause for boolean and tristate choices
   for (config_vars, dep_expr) in bool_choices + tristate_choices + bool_opt_choices + tristate_opt_choices:
@@ -639,14 +638,13 @@ if __name__ == '__main__':
     individual_conditions = ""
     delim = ""
     for var in config_vars:
-      defined_vars.add(var)
       possible_choices = possible_choices + delim + var
 
       # for a choice value to be selectable, both its
       # depends on and visibility constraints should be
       # satisfied.  Since depends on constraint is 
       # conjuncted to visibility constraint by Kconfig,
-      # indivitual_conditions use visibiltiy constrains
+      # individual_conditions use visibiltiy constrains
       if var in prompt_lines and prompt_lines[var] != None:
         individual_dep_expr = "(%s)" % (prompt_lines[var])
       else:
