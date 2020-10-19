@@ -1,0 +1,7 @@
+config CONFIG_B bool
+prompt CONFIG_B (1)
+config CONFIG_A bool
+prompt CONFIG_A (1)
+config CONFIG_X bool
+def_bool CONFIG_X 0|(CONFIG_A)
+def_bool CONFIG_X 1|(CONFIG_B)

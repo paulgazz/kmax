@@ -1,0 +1,6 @@
+config CONFIG_A bool
+prompt CONFIG_A (1)
+config CONFIG_X bool
+def_bool CONFIG_X 0|(1)
+select CONFIG_X CONFIG_A (1)
+rev_dep CONFIG_X (CONFIG_A)
