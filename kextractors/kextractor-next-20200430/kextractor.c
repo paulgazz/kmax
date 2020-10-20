@@ -1212,18 +1212,18 @@ int main(int argc, char **argv)
           if ((NULL != prop)) {
 
 	    if (printed_expr) {
-        fprintf(stderr, "warning: encountered multiple prompts, ignoring.");
-        break;
-        // commented code below can handle the case where multiple
+	      fprintf(stderr, "warning: encountered multiple prompts, ignoring.");
+	      break;
+	      // commented code below can handle the case where multiple
 	      // prompts are defined, where satisfying any of them makes
 	      // the config option visible. However, multiple prompts 
-        // raises a warning by Kconfig and we consider it as an 
-        // invalid use of Kconfig language. Thus, this code is 
-        // commented for now. Note that, using this code here
-        // means the code for prompt keyword should also reflect
-        // this case.
+	      // raises a warning by Kconfig and we consider it as an 
+	      // invalid use of Kconfig language. Thus, this code is 
+              // commented for now. Note that, using this code here
+              // means the code for prompt keyword should also reflect
+              // this case.
 	      //fprintf(output_fp, " or ");
-      }
+	    }
 	    
 	    printed_expr = 1;
 	    fprintf(output_fp, "(");
