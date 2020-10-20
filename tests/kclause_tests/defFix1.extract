@@ -1,0 +1,2 @@
+config CONFIG_A bool
+def_bool CONFIG_A 0|(1)
