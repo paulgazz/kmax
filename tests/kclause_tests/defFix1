@@ -1,0 +1,4 @@
+config A
+	bool
+	default n
+

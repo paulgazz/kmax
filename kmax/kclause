@@ -837,9 +837,15 @@ if __name__ == '__main__':
         val, expr = def_bool_line.split("|", 1)
         # sys.stderr.write("%s|%s|%s\n" % (var, val, expr))
         if val == "1" or val == "y":
-          def_y_expr = def_y_expr + delim + "(" + var + " and " + expr + " and not (" + ite_expr + "))"
+          def_y_expr = def_y_expr + delim + "(" + expr + " and not (" + ite_expr + "))"
+        # Semantically, below has no effect to the formula 
+        # as it is merely disjuncting False to def_y_expr. 
+        # However, this line is kept for understanding the 
+        # equation. The output formula will be simplified 
+        # by z3 regardless.
         else:
-          def_y_expr = def_y_expr + delim + "(not (" + var + ") and (" + expr + " and not (" + ite_expr + ")))"
+          def_y_expr = def_y_expr + delim + "((" + val + ") and (" + expr + " and not (" + ite_expr + ")))"
+        
         ite_expr = ite_expr + delim + expr
     else:
       def_y_expr = None

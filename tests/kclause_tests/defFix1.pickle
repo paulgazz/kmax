@@ -1,0 +1,7 @@
+(dp0
+VCONFIG_A
+p1
+(lp2
+V; benchmark generated from python API\u000a(set-info :status unknown)\u000a(declare-fun CONFIG_A () Bool)\u000a(assert\u000a (not CONFIG_A))\u000a(check-sat)\u000a
+p3
+as.
