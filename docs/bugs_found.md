@@ -4,6 +4,11 @@
 
 - [Bugs Found by Kmax Tools](#bugs-found-by-kmax-tools)
   - [Linux kernel](#linux-kernel)
+    - [iio: adc: build error due to unmet dependency for MFD_STM32_TIMERS by STM32_ADC_CORE](#iio-adc-build-error-due-to-unmet-dependency-for-mfd_stm32_timers-by-stm32_adc_core)
+    - [sparc64: build error due to unmet dependency for COMPAT_BINFMT_ELF by COMPAT](#sparc64-build-error-due-to-unmet-dependency-for-compat_binfmt_elf-by-compat)
+    - [iio: light: build error due to unmet dependency for IIO_TRIGGERED_BUFFER by VCNL4035](#iio-light-build-error-due-to-unmet-dependency-for-iio_triggered_buffer-by-vcnl4035)
+    - [Input: build error due to unmet dependency for IIO_BUFFER_CB by TOUCHSCREEN_ADC](#input-build-error-due-to-unmet-dependency-for-iio_buffer_cb-by-touchscreen_adc)
+    - [MIPS: BCM47XX: build error due to unmet dependency for BCMA_DRIVER_PCI_HOSTMODE by BCM47XX_BCMA](#mips-bcm47xx-build-error-due-to-unmet-dependency-for-bcma_driver_pci_hostmode-by-bcm47xx_bcma)
     - [arc: build error due to missing ctop constants](#arc-build-error-due-to-missing-ctop-constants)
     - [m68k: build error due to missing M680x0 dependency for MMU_MOTOROLA](#m68k-build-error-due-to-missing-m680x0-dependency-for-mmu_motorola)
     - [media: mantis: remove orphan mantis_core.c](#media-mantis-remove-orphan-mantis_corec)
@@ -50,6 +55,26 @@
 # Bugs Found by Kmax Tools
 
 ## Linux kernel
+
+### iio: adc: build error due to unmet dependency for MFD_STM32_TIMERS by STM32_ADC_CORE
+
+2020-10-26 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=209889)
+
+### sparc64: build error due to unmet dependency for COMPAT_BINFMT_ELF by COMPAT
+
+2020-10-26 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=209885)
+
+### iio: light: build error due to unmet dependency for IIO_TRIGGERED_BUFFER by VCNL4035
+
+2020-10-26 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=209883)
+
+### Input: build error due to unmet dependency for IIO_BUFFER_CB by TOUCHSCREEN_ADC
+
+2020-10-26 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=209881)
+
+### MIPS: BCM47XX: build error due to unmet dependency for BCMA_DRIVER_PCI_HOSTMODE by BCM47XX_BCMA
+
+2020-10-26 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=209879)
 
 ### arc: build error due to missing ctop constants
 
