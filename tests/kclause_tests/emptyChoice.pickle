@@ -1,0 +1,19 @@
+(dp0
+VCONFIG_C1
+p1
+(lp2
+V; benchmark generated from python API\u000a(set-info :status unknown)\u000a(declare-fun CONFIG_C2 () Bool)\u000a(declare-fun CONFIG_C1 () Bool)\u000a(assert\u000a (let (($x25 (not CONFIG_C2)))\u000a (let (($x23 (not CONFIG_C1)))\u000a (or $x23 $x25))))\u000a(check-sat)\u000a
+p3
+aV; benchmark generated from python API\u000a(set-info :status unknown)\u000a(declare-fun CONFIG_C1 () Bool)\u000a(declare-fun CONFIG_V1 () Bool)\u000a(declare-fun CONFIG_D2 () Bool)\u000a(declare-fun CONFIG_D1 () Bool)\u000a(assert\u000a (let (($x57 (and CONFIG_D1 CONFIG_D2 CONFIG_V1 (or (not CONFIG_C1) (and CONFIG_D1 CONFIG_D2)))))\u000a (or $x57 (and (not (and CONFIG_D1 CONFIG_D2 CONFIG_V1)) (not CONFIG_C1)))))\u000a(check-sat)\u000a
+p4
+asV<CHOICE>
+p5
+(lp6
+V; benchmark generated from python API\u000a(set-info :status unknown)\u000a(declare-fun CONFIG_V2 () Bool)\u000a(declare-fun CONFIG_D2 () Bool)\u000a(declare-fun CONFIG_V1 () Bool)\u000a(declare-fun CONFIG_D1 () Bool)\u000a(declare-fun CONFIG_V () Bool)\u000a(declare-fun CONFIG_D () Bool)\u000a(declare-fun CONFIG_C2 () Bool)\u000a(declare-fun CONFIG_C1 () Bool)\u000a(assert\u000a (let (($x45 (and CONFIG_D2 CONFIG_V2)))\u000a (let (($x47 (and CONFIG_D CONFIG_V (or (and CONFIG_D1 CONFIG_D2 CONFIG_V1) $x45))))\u000a (let (($x50 (or (not (or CONFIG_C1 CONFIG_C2)) $x47)))\u000a (let (($x49 (or CONFIG_C1 CONFIG_C2 (not $x47))))\u000a (and $x49 $x50))))))\u000a(check-sat)\u000a
+p7
+asVCONFIG_C2
+p8
+(lp9
+V; benchmark generated from python API\u000a(set-info :status unknown)\u000a(declare-fun CONFIG_C2 () Bool)\u000a(declare-fun CONFIG_V2 () Bool)\u000a(declare-fun CONFIG_D2 () Bool)\u000a(assert\u000a (or (and CONFIG_D2 CONFIG_V2 (or (not CONFIG_C2) CONFIG_D2)) (and (not (and CONFIG_D2 CONFIG_V2)) (not CONFIG_C2))))\u000a(check-sat)\u000a
+p10
+as.
