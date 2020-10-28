@@ -14,10 +14,19 @@
 
 ## Getting Started
 
-Install `pip3`, Linux's build dependencies, and `kmax`:
+Install kmax in one of two ways:
 
-    sudo apt install -y python3-pip flex bison bc libssl-dev
-    sudo pip3 install kmax
+1. To a python virtual environment:
+
+        sudo apt install -y python3-pip python3-venv flex bison bc libssl-dev libelf-dev
+        python3 -m venv kmax_env  # create the environment
+        source kmax_env/bin/activate  # enter the environment
+        pip3 install kmax  # install kmax in the environment
+    
+2. System-wide:
+
+        sudo apt install -y python3-pip flex bison bc libssl-dev libelf-dev
+        sudo pip3 install kmax
 
 Download the Linux source:
 
