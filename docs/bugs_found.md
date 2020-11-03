@@ -4,6 +4,7 @@
 
 - [Bugs Found by Kmax Tools](#bugs-found-by-kmax-tools)
   - [Linux kernel](#linux-kernel)
+    - [ASoC: atmel: build error due to unmet dependency for SND_ATMEL_SOC_PDC by SND_ATMEL_SOC_SSC_PDC](#asoc-atmel-build-error-due-to-unmet-dependency-for-snd_atmel_soc_pdc-by-snd_atmel_soc_ssc_pdc)
     - [iio: adc: build error due to unmet dependency for MFD_STM32_TIMERS by STM32_ADC_CORE](#iio-adc-build-error-due-to-unmet-dependency-for-mfd_stm32_timers-by-stm32_adc_core)
     - [sparc64: build error due to unmet dependency for COMPAT_BINFMT_ELF by COMPAT](#sparc64-build-error-due-to-unmet-dependency-for-compat_binfmt_elf-by-compat)
     - [iio: light: build error due to unmet dependency for IIO_TRIGGERED_BUFFER by VCNL4035](#iio-light-build-error-due-to-unmet-dependency-for-iio_triggered_buffer-by-vcnl4035)
@@ -56,23 +57,35 @@
 
 ## Linux kernel
 
+### ASoC: atmel: build error due to unmet dependency for SND_ATMEL_SOC_PDC by SND_ATMEL_SOC_SSC_PDC
+
+2020-11-02 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=210003)
+
 ### iio: adc: build error due to unmet dependency for MFD_STM32_TIMERS by STM32_ADC_CORE
 
 2020-10-26 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=209889)
 
 ### sparc64: build error due to unmet dependency for COMPAT_BINFMT_ELF by COMPAT
 
+2020-11-03 [Patch](https://lkml.org/lkml/2020/11/2/1230)
+
 2020-10-26 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=209885)
 
 ### iio: light: build error due to unmet dependency for IIO_TRIGGERED_BUFFER by VCNL4035
+
+2020-11-03 [Patch](https://lkml.org/lkml/2020/11/2/1219)
 
 2020-10-26 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=209883)
 
 ### Input: build error due to unmet dependency for IIO_BUFFER_CB by TOUCHSCREEN_ADC
 
+2020-11-03 [Patch](https://lkml.org/lkml/2020/11/2/1208)
+
 2020-10-26 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=209881)
 
 ### MIPS: BCM47XX: build error due to unmet dependency for BCMA_DRIVER_PCI_HOSTMODE by BCM47XX_BCMA
+
+2020-11-03 [Patch](https://lkml.org/lkml/2020/11/2/1186)
 
 2020-10-26 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=209879)
 
