@@ -1,0 +1,55 @@
+nvme: tcp: build error due to unmet dependency for CRYPTO_CRC32C
+
+This issue was fixed with the following patch: https://lkml.org/lkml/2020/9/14/702
+
+Attachments:
+ - sample.config: Config file to reproduce the bug.
+ - build_out.txt: Output of Kbuild including the error messages.
+
+When NVME_TCP is enabled and CRYPTO is disabled, it results in the
+following Kbuild warning:
+
+WARNING: unmet direct dependencies detected for CRYPTO_CRC32C
+  Depends on [n]: CRYPTO [=n]
+  Selected by [y]:
+  - NVME_TCP [=y] && INET [=y] && BLK_DEV_NVME [=y]
+
+Building the kernel fails due to this unmet direct dependency issue as follows:
+
+[...]
+  LD      .tmp_vmlinux1
+crypto/crc32c_generic.o: In function `crc32c_mod_fini':
+crc32c_generic.c:(.exit.text+0x8): undefined reference to `crypto_unregister_shash'
+crypto/crc32c_generic.o: In function `crc32c_mod_init':
+crc32c_generic.c:(.init.text+0x8): undefined reference to `crypto_register_shash'
+drivers/nvme/host/tcp.o: In function `nvme_tcp_hdgst':
+tcp.c:(.text+0x241): undefined reference to `crypto_ahash_digest'
+drivers/nvme/host/tcp.o: In function `nvme_tcp_alloc_queue':
+tcp.c:(.text+0x10f0): undefined reference to `crypto_alloc_ahash'
+tcp.c:(.text+0x1178): undefined reference to `crypto_destroy_tfm'
+drivers/nvme/host/tcp.o: In function `nvme_tcp_io_work':
+tcp.c:(.text+0x1f00): undefined reference to `crypto_ahash_final'
+drivers/nvme/host/tcp.o: In function `nvme_tcp_recv_skb':
+tcp.c:(.text+0x3677): undefined reference to `crypto_ahash_final'
+drivers/nvme/host/tcp.o: In function `nvme_tcp_free_crypto':
+tcp.c:(.text+0xd35): undefined reference to `crypto_destroy_tfm'
+Makefile:1077: recipe for target 'vmlinux' failed
+make: *** [vmlinux] Error 1
+
+Steps to reproduce the bug for v5.4.4:
+  1. wget https://raw.githubusercontent.com/intel/lkp-tests/master/sbin/make.cross -O ~/bin/make.cross
+  2. chmod +x ~/bin/make.cross
+  3. cp sample.config path/to/linux-source-v5.4.4/.config
+  4. cd path/to/linux-source-v5.4.4/
+  5. ~/bin/make.cross ARCH=x86_64 clean
+  6. ~/bin/make.cross ARCH=x86_64 olddefconfig # unmet direct dependency warning
+  7. ~/bin/make.cross ARCH=x86_64 # should have a build error
+
+The output for the steps [6-8] can be found in build_out.txt.
+
+The build error happens as follows: NVME_TCP selects CRYPTO_CRC32.
+CRYPTO_CRC32 selects CRYPTO_HASH, and CRYPTO_HASH selects CRYPTO_HASH2.
+When NVME_TCP selects CRYPTO_CRC32 without accounting for its direct
+dependency (CRYPTO), CRYPTO_CRC32 gets enabled but it does not select
+CRYPTO_HASH thus CRYPTO_HASH2. Consequently, the required functions
+such crypto_unregister_shash are left undefined, causing the build error.

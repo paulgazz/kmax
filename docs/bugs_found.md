@@ -4,6 +4,15 @@
 
 - [Bugs Found by Kmax Tools](#bugs-found-by-kmax-tools)
   - [Linux kernel](#linux-kernel)
+    - [net: marvell: build error due to unmet dependency for MVMDIO by MV643XX_ETH](#net-marvell-build-error-due-to-unmet-dependency-for-mvmdio-by-mv643xx_eth)
+    - [mtd: rawnand: build error due to unmet dependency for MFD_SYSCON by MTD_NAND_MESON](#mtd-rawnand-build-error-due-to-unmet-dependency-for-mfd_syscon-by-mtd_nand_meson)
+    - [irqchip: build error due to unmet dependency for MFD_SYSCON by INGENIC_TCU_IRQ](#irqchip-build-error-due-to-unmet-dependency-for-mfd_syscon-by-ingenic_tcu_irq)
+    - [soc: samsung: build error due to unmet dependency for MFD_SYSCON by EXYNOS_CHIPID](#soc-samsung-build-error-due-to-unmet-dependency-for-mfd_syscon-by-exynos_chipid)
+    - [staging: ralink-gdma: build error due to unmet dependency for DMA_ENGINE by DMA_RALINK](#staging-ralink-gdma-build-error-due-to-unmet-dependency-for-dma_engine-by-dma_ralink)
+    - [MIPS: BMC47xx: build error due to unmet dependency for SSB_B43_PCI_BRIDGE by BCM47XX_SSB](#mips-bmc47xx-build-error-due-to-unmet-dependency-for-ssb_b43_pci_bridge-by-bcm47xx_ssb)
+    - [watchdog: build error due to unmet dependency for MFD_SYSCON by ARMADA_37XX_WATCHDOG](#watchdog-build-error-due-to-unmet-dependency-for-mfd_syscon-by-armada_37xx_watchdog)
+    - [arm64: build error due to unmet dependency for PINCTRL_EXYNOS by ARCH_EXYNOS](#arm64-build-error-due-to-unmet-dependency-for-pinctrl_exynos-by-arch_exynos)
+    - [ARM: davinci: build error due to unmet dependency for CPU_DCACHE_WRITETHROUGH by ARCH_DAVINCI_DA830](#arm-davinci-build-error-due-to-unmet-dependency-for-cpu_dcache_writethrough-by-arch_davinci_da830)
     - [ASoC: atmel: build error due to unmet dependency for SND_ATMEL_SOC_PDC by SND_ATMEL_SOC_SSC_PDC](#asoc-atmel-build-error-due-to-unmet-dependency-for-snd_atmel_soc_pdc-by-snd_atmel_soc_ssc_pdc)
     - [iio: adc: build error due to unmet dependency for MFD_STM32_TIMERS by STM32_ADC_CORE](#iio-adc-build-error-due-to-unmet-dependency-for-mfd_stm32_timers-by-stm32_adc_core)
     - [sparc64: build error due to unmet dependency for COMPAT_BINFMT_ELF by COMPAT](#sparc64-build-error-due-to-unmet-dependency-for-compat_binfmt_elf-by-compat)
@@ -56,6 +65,46 @@
 # Bugs Found by Kmax Tools
 
 ## Linux kernel
+
+### net: marvell: build error due to unmet dependency for MVMDIO by MV643XX_ETH
+
+2020-11-05 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=210063)
+
+### mtd: rawnand: build error due to unmet dependency for MFD_SYSCON by MTD_NAND_MESON
+
+2020-11-04 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=210061)
+
+### irqchip: build error due to unmet dependency for MFD_SYSCON by INGENIC_TCU_IRQ
+
+2020-11-04 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=210059)
+
+### soc: samsung: build error due to unmet dependency for MFD_SYSCON by EXYNOS_CHIPID
+
+2020-11-04 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=210057)
+
+### staging: ralink-gdma: build error due to unmet dependency for DMA_ENGINE by DMA_RALINK
+
+2020-11-04 [Patch](https://lkml.org/lkml/2020/11/4/912)
+
+2020-11-04 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=210055)
+
+### MIPS: BMC47xx: build error due to unmet dependency for SSB_B43_PCI_BRIDGE by BCM47XX_SSB
+
+2020-11-04 [Patch](https://lkml.org/lkml/2020/11/4/754)
+
+2020-11-04 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=210051)
+
+### watchdog: build error due to unmet dependency for MFD_SYSCON by ARMADA_37XX_WATCHDOG
+
+2020-11-04 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=210049)
+
+### arm64: build error due to unmet dependency for PINCTRL_EXYNOS by ARCH_EXYNOS
+
+2020-11-04 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=210047)
+
+### ARM: davinci: build error due to unmet dependency for CPU_DCACHE_WRITETHROUGH by ARCH_DAVINCI_DA830
+
+2020-11-04 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=210041)
 
 ### ASoC: atmel: build error due to unmet dependency for SND_ATMEL_SOC_PDC by SND_ATMEL_SOC_SSC_PDC
 
@@ -115,7 +164,7 @@
 
 ### staging: mt7621-dma: MTK_HSDMA overleaps kconfig dependency of DMADEVICES
 
-2020-09-19 [Confirmation](https://bugzilla.kernel.org/show_bug.cgi?id=209301#c1)
+2020-11-04 [Report: build error](https://bugzilla.kernel.org/show_bug.cgi?id=209313#c1): It was later found that this issue can lead to build errors as well.
 
 2020-09-18 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=209313)
 
@@ -126,6 +175,8 @@
 2020-09-18 [Patch](https://lkml.org/lkml/2020/9/18/626)
 
 ### drm/sun4i: DRM_SUN6I_DSI overleaps Kconfig dependencies of PHY_SUN6I_MIPI_DPHY
+
+2020-11-04 [Report: build error](https://bugzilla.kernel.org/show_bug.cgi?id=209311#c1): It was later found that this issue can lead to build errors as well.
 
 2020-09-18 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=209311)
 
@@ -139,9 +190,13 @@
 
 ### net: broadcom: CNIC overleaps Kconfig dependency of UIO
 
+2020-11-04 [Report: build error](https://bugzilla.kernel.org/show_bug.cgi?id=209307#c1): It was later found that this issue can lead to build errors as well.
+
 2020-09-18 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=209307)
 
 ### net: ipv6: fix kconfig dependency warning for IPV6_SEG6_HMAC
+
+2020-11-03 [Report: build error](IPV6_SEG6_HMAC-CRYPTO/report.txt): It was later found that this issue can lead to build errors as well.
 
 2020-09-25 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=db7cd91a4be15e1485d6b58c6afc8761c59c4efb): Committed into linux-stable [v4.19](https://lkml.org/lkml/2020/9/25/670), [v5.4](https://lkml.org/lkml/2020/9/25/622), [v5.8](https://lkml.org/lkml/2020/9/25/583)
 
@@ -185,6 +240,8 @@
 
 ### IB/rxe: fix kconfig dependency warning for RDMA_RXE
 
+2020-11-03 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=210021): It was later found that this issue can lead to build errors as well.
+
 2020-09-15 [Patch](https://lkml.org/lkml/2020/9/15/360)
 
 ### clk: bcm: fix kconfig dependency warning for CLK_BCM2711_DVP
@@ -225,6 +282,8 @@
 
 ### arc: plat-hsdk: fix kconfig dependency warning when !RESET_CONTROLLER
 
+2020-11-04 [Report: build error](ARC_SOC_HSDK-RESET_HSDK/report.txt): It was later found that this issue can lead to build errors as well.
+
 2020-09-14 [Confirmation](https://lkml.org/lkml/2020/9/14/1145)
 
 2020-09-14 [Patch](https://lkml.org/lkml/2020/9/14/400)
@@ -246,6 +305,8 @@
 2020-09-14 [Patch](https://lkml.org/lkml/2020/9/14/651)
 
 ### nvme: tcp: fix kconfig dependency warning when !CRYPTO
+
+2020-11-03 [Report: build error](NVME_TCP-CRYPTO_CRC32C/report.txt): It was later found that this issue can lead to build errors as well.
 
 2020-09-29 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=af5ad17854f96a6d3c9775e776bd01ab262672a1): Committed into [5.9-rc7](https://lwn.net/Articles/832733/), [stable 5.4](https://lkml.org/lkml/2020/9/29/888) and [stable 5.8](https://lkml.org/lkml/2020/9/29/979).
 
