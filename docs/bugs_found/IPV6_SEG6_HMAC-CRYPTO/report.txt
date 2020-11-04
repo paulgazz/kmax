@@ -1,0 +1,99 @@
+net: ipv6: build error due to unmet dependency for CRYPTO_SHA256, CRYPTO_HMAC, and CRYPTO_SHA1
+
+This issue was fixed with the following patch: https://lkml.org/lkml/2020/9/17/880
+
+Attachments:
+ - sample.config: Config file to reproduce the bug.
+ - build_out.txt: Output of Kbuild including the error messages.
+
+When IPV6_SEG6_HMAC is enabled and CRYPTO is disabled, it results in the
+following Kbuild warnings:
+
+WARNING: unmet direct dependencies detected for CRYPTO_HMAC
+  Depends on [n]: CRYPTO [=n]
+  Selected by [y]:
+  - IPV6_SEG6_HMAC [=y] && NET [=y] && INET [=y] && IPV6 [=y]
+
+WARNING: unmet direct dependencies detected for CRYPTO_SHA1
+  Depends on [n]: CRYPTO [=n]
+  Selected by [y]:
+  - IPV6_SEG6_HMAC [=y] && NET [=y] && INET [=y] && IPV6 [=y]
+
+WARNING: unmet direct dependencies detected for CRYPTO_SHA256
+  Depends on [n]: CRYPTO [=n]
+  Selected by [y]:
+  - IPV6_SEG6_HMAC [=y] && NET [=y] && INET [=y] && IPV6 [=y]
+
+Building the kernel fails due to this unmet direct dependency issue as follows:
+
+[...]
+  LD      .tmp_vmlinux1
+crypto/hmac.o: In function `hmac_setkey':
+hmac.c:(.text+0x3dd): undefined reference to `crypto_shash_digest'
+hmac.c:(.text+0x443): undefined reference to `crypto_shash_update'
+hmac.c:(.text+0x476): undefined reference to `crypto_shash_update'
+crypto/hmac.o: In function `hmac_finup':
+hmac.c:(.text+0x55d): undefined reference to `crypto_shash_finup'
+crypto/hmac.o: In function `hmac_final':
+hmac.c:(.text+0x64e): undefined reference to `crypto_shash_final'
+crypto/hmac.o: In function `hmac_init_tfm':
+hmac.c:(.text+0x6ca): undefined reference to `crypto_spawn_tfm2'
+hmac.c:(.text+0x738): undefined reference to `crypto_destroy_tfm'
+crypto/hmac.o: In function `hmac_create':
+hmac.c:(.text+0x784): undefined reference to `crypto_check_attr_type'
+hmac.c:(.text+0x7af): undefined reference to `shash_attr_alg'
+hmac.c:(.text+0x7dd): undefined reference to `shash_no_setkey'
+hmac.c:(.text+0x866): undefined reference to `crypto_alloc_instance'
+hmac.c:(.text+0x88b): undefined reference to `crypto_init_shash_spawn'
+hmac.c:(.text+0xb1d): undefined reference to `shash_register_instance'
+hmac.c:(.text+0xb2c): undefined reference to `shash_free_instance'
+hmac.c:(.text+0xb3a): undefined reference to `crypto_mod_put'
+crypto/hmac.o: In function `hmac_update':
+hmac.c:(.text+0x5): undefined reference to `crypto_shash_update'
+crypto/hmac.o: In function `hmac_finup':
+hmac.c:(.text+0x593): undefined reference to `crypto_shash_finup'
+crypto/hmac.o: In function `hmac_final':
+hmac.c:(.text+0x67f): undefined reference to `crypto_shash_finup'
+crypto/hmac.o: In function `hmac_exit_tfm':
+hmac.c:(.text+0xb79): undefined reference to `crypto_destroy_tfm'
+crypto/hmac.o:(.data+0x11c8): undefined reference to `shash_free_instance'
+crypto/hmac.o: In function `hmac_module_exit':
+hmac.c:(.exit.text+0x8): undefined reference to `crypto_unregister_template'
+crypto/hmac.o: In function `hmac_module_init':
+hmac.c:(.init.text+0x8): undefined reference to `crypto_register_template'
+crypto/sha1_generic.o: In function `sha1_generic_mod_fini':
+sha1_generic.c:(.exit.text+0x8): undefined reference to `crypto_unregister_shash'
+crypto/sha1_generic.o: In function `sha1_generic_mod_init':
+sha1_generic.c:(.init.text+0x8): undefined reference to `crypto_register_shash'
+crypto/sha256_generic.o: In function `crypto_sha256_finup':
+sha256_generic.c:(.text+0x290): undefined reference to `sha256_update'
+crypto/sha256_generic.o: In function `crypto_sha256_update':
+sha256_generic.c:(.text+0x5): undefined reference to `sha256_update'
+crypto/sha256_generic.o: In function `crypto_sha256_final':
+sha256_generic.c:(.text+0x276): undefined reference to `sha224_final'
+sha256_generic.c:(.text+0x27f): undefined reference to `sha256_final'
+crypto/sha256_generic.o: In function `sha256_generic_mod_fini':
+sha256_generic.c:(.exit.text+0xd): undefined reference to `crypto_unregister_shashes'
+crypto/sha256_generic.o: In function `sha256_generic_mod_init':
+sha256_generic.c:(.init.text+0xd): undefined reference to `crypto_register_shashes'
+net/ipv6/seg6_hmac.o: In function `seg6_hmac_compute':
+seg6_hmac.c:(.text+0x90e): undefined reference to `crypto_shash_setkey'
+seg6_hmac.c:(.text+0x970): undefined reference to `crypto_shash_digest'
+net/ipv6/seg6_hmac.o: In function `seg6_hmac_exit':
+seg6_hmac.c:(.text+0x14eb): undefined reference to `crypto_destroy_tfm'
+seg6_hmac.c:(.text+0x154d): undefined reference to `crypto_destroy_tfm'
+net/ipv6/seg6_hmac.o: In function `seg6_hmac_init':
+seg6_hmac.c:(.init.text+0x65): undefined reference to `crypto_alloc_shash'
+Makefile:1077: recipe for target 'vmlinux' failed
+make: *** [vmlinux] Error 1
+
+Steps to reproduce the bug for v5.4.4:
+  1. wget https://raw.githubusercontent.com/intel/lkp-tests/master/sbin/make.cross -O ~/bin/make.cross
+  2. chmod +x ~/bin/make.cross
+  3. cp sample.config path/to/linux-source-v5.4.4/.config
+  4. cd path/to/linux-source-v5.4.4/
+  5. ~/bin/make.cross ARCH=x86_64 clean
+  6. ~/bin/make.cross ARCH=x86_64 olddefconfig # unmet direct dependency warning
+  7. ~/bin/make.cross ARCH=x86_64 # should have a build error
+
+The output for the steps [6-8] can be found in build_out.txt.

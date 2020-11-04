@@ -1,0 +1,41 @@
+arc: plat-hsdk: build error due to unmet dependency for RESET_HSDK by ARC_SOC_HSDK
+
+This issue was fixed with the following patch: https://lkml.org/lkml/2020/9/14/400
+
+Attachments:
+ - sample.config: Config file to reproduce the bug.
+ - build_out.txt: Output of Kbuild including the error messages.
+
+When ARC_SOC_HSDK is enabled and RESET_CONTROLLER is disabled, it results in the
+following Kbuild warnings:
+
+WARNING: unmet direct dependencies detected for RESET_HSDK
+  Depends on [n]: RESET_CONTROLLER [=n] && HAS_IOMEM [=y] && (ARC_SOC_HSDK [=y] || COMPILE_TEST [=n])
+  Selected by [y]:
+  - ARC_SOC_HSDK [=y] && ISA_ARCV2 [=y]
+
+Building the kernel fails due to this unmet direct dependency issue as follows:
+
+[...]
+  LD      .tmp_vmlinux1
+/home/necip/0day/gcc-9.3.0-nolibc/arc-elf/bin/arc-elf-ld: drivers/gpu/drm/rcar-du/rcar_lvds.o:(.rodata+0x4): undefined reference to `drm_atomic_helper_connector_reset'
+/home/necip/0day/gcc-9.3.0-nolibc/arc-elf/bin/arc-elf-ld: drivers/gpu/drm/rcar-du/rcar_lvds.o:(.rodata+0x4): undefined reference to `drm_atomic_helper_connector_reset'
+/home/necip/0day/gcc-9.3.0-nolibc/arc-elf/bin/arc-elf-ld: drivers/gpu/drm/rcar-du/rcar_lvds.o:(.rodata+0x10): undefined reference to `drm_helper_probe_single_connector_modes'
+/home/necip/0day/gcc-9.3.0-nolibc/arc-elf/bin/arc-elf-ld: drivers/gpu/drm/rcar-du/rcar_lvds.o:(.rodata+0x10): undefined reference to `drm_helper_probe_single_connector_modes'
+/home/necip/0day/gcc-9.3.0-nolibc/arc-elf/bin/arc-elf-ld: drivers/gpu/drm/rcar-du/rcar_lvds.o:(.rodata+0x24): undefined reference to `drm_atomic_helper_connector_duplicate_state'
+/home/necip/0day/gcc-9.3.0-nolibc/arc-elf/bin/arc-elf-ld: drivers/gpu/drm/rcar-du/rcar_lvds.o:(.rodata+0x24): undefined reference to `drm_atomic_helper_connector_duplicate_state'
+/home/necip/0day/gcc-9.3.0-nolibc/arc-elf/bin/arc-elf-ld: drivers/gpu/drm/rcar-du/rcar_lvds.o:(.rodata+0x28): undefined reference to `drm_atomic_helper_connector_destroy_state'
+/home/necip/0day/gcc-9.3.0-nolibc/arc-elf/bin/arc-elf-ld: drivers/gpu/drm/rcar-du/rcar_lvds.o:(.rodata+0x28): undefined reference to `drm_atomic_helper_connector_destroy_state'
+Makefile:1077: recipe for target 'vmlinux' failed
+make: *** [vmlinux] Error 1
+
+Steps to reproduce the bug for v5.4.4:
+  1. wget https://raw.githubusercontent.com/intel/lkp-tests/master/sbin/make.cross -O ~/bin/make.cross
+  2. chmod +x ~/bin/make.cross
+  3. cp sample.config path/to/linux-source-v5.4.4/.config
+  4. cd path/to/linux-source-v5.4.4/
+  5. ~/bin/make.cross ARCH=x86_64 clean
+  6. ~/bin/make.cross ARCH=x86_64 olddefconfig # unmet direct dependency warning
+  7. ~/bin/make.cross ARCH=x86_64 # should have a build error
+
+The output for the steps [6-8] can be found in build_out.txt.
