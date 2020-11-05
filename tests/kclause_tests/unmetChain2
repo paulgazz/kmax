@@ -1,0 +1,16 @@
+config S1
+	bool "S1"
+	select S2
+
+config S2
+	bool "S2"
+	select S3
+	depends on D
+
+config D
+	bool
+
+config S3
+	bool
+	
+

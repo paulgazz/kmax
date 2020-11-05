@@ -1,0 +1,12 @@
+(dp0
+VCONFIG_S2
+p1
+(lp2
+V; benchmark generated from python API\u000a(set-info :status unknown)\u000a(declare-fun CONFIG_S2 () Bool)\u000a(declare-fun CONFIG_S1 () Bool)\u000a(declare-fun CONFIG_D () Bool)\u000a(assert\u000a (let (($x46 (and (not CONFIG_D) (or (not CONFIG_S2) CONFIG_S1) (or (not CONFIG_S1) CONFIG_S2))))\u000a (let (($x43 (and CONFIG_D (or CONFIG_S1 CONFIG_D (not CONFIG_S2)) (or (not CONFIG_S1) CONFIG_S2))))\u000a (or $x43 $x46))))\u000a(check-sat)\u000a
+p3
+asVCONFIG_S3
+p4
+(lp5
+V; benchmark generated from python API\u000a(set-info :status unknown)\u000a(declare-fun CONFIG_S3 () Bool)\u000a(declare-fun CONFIG_D () Bool)\u000a(declare-fun CONFIG_S2 () Bool)\u000a(assert\u000a (and (or (not CONFIG_S3) (and CONFIG_S2 CONFIG_D)) (or (not (and CONFIG_S2 CONFIG_D)) CONFIG_S3)))\u000a(check-sat)\u000a
+p6
+as.
