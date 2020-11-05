@@ -1,0 +1,11 @@
+config CONFIG_D bool
+prompt CONFIG_D (1)
+config CONFIG_S1 bool
+prompt CONFIG_S1 (1)
+config CONFIG_S2 bool
+config CONFIG_S3 bool
+select CONFIG_S2 CONFIG_S1 (1)
+dep CONFIG_S2 (CONFIG_D)
+select CONFIG_S3 CONFIG_S2 (CONFIG_D)
+rev_dep CONFIG_S2 (CONFIG_S1)
+rev_dep CONFIG_S3 (CONFIG_S2 and CONFIG_D)
