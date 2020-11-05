@@ -705,7 +705,7 @@ if __name__ == '__main__':
       # VAR, VAR's rev_dep_expr will contain "SEL and DIR_DEP".  we can
       # remove the DIR_DEP for SEL, since it will be covered when
       # processing SEL.  this reduces clause size.
-      if rev_dep_expr != None and rev_dep_expr != "(1)":
+      if False and rev_dep_expr != None and rev_dep_expr != "(1)":
         # get all the top-level terms of this clause.  the reverse
         # dependency will be a union of "SEL and DIR_DEP" terms,
         # representing each of the reverse dependencies.
