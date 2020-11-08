@@ -124,11 +124,15 @@
 
 ### iio: light: build error due to unmet dependency for IIO_TRIGGERED_BUFFER by VCNL4035
 
+2020-11-08 [Confirmation](https://lkml.org/lkml/2020/11/8/159): Marked for stable.
+
 2020-11-03 [Patch](https://lkml.org/lkml/2020/11/2/1219)
 
 2020-10-26 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=209883)
 
 ### Input: build error due to unmet dependency for IIO_BUFFER_CB by TOUCHSCREEN_ADC
+
+2020-11-03 [Confirmation](https://www.spinics.net/lists/linux-input/msg69800.html)
 
 2020-11-03 [Patch](https://lkml.org/lkml/2020/11/2/1208)
 
@@ -250,6 +254,8 @@
 
 2020-11-03 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=210021): It was later found that this issue can lead to build errors as well.
 
+2020-09-15 [Confirmation](https://lkml.org/lkml/2020/9/15/423): The issue was confirmed but a different fix was suggested.
+
 2020-09-15 [Patch](https://lkml.org/lkml/2020/9/15/360)
 
 ### clk: bcm: fix kconfig dependency warning for CLK_BCM2711_DVP
@@ -302,11 +308,13 @@
 
 ### ARM: davinci: fix kconfig dependency warning when !PINCTRL
 
-2020-09-14 [Confirmation](https://lkml.org/lkml/2020/9/14/1145)
+2020-09-14 [Confirmation](https://lkml.org/lkml/2020/9/24/867): The issue was confirmed but a different fix was suggested.
 
 2020-09-14 [Patch](https://lkml.org/lkml/2020/9/14/432)
 
 ### ARM: davinci: fix kconfig dependency warning when !GPIOLIB
+
+2020-09-14 [Confirmation](https://lkml.org/lkml/2020/9/28/1001): The issue was confirmed but a different fix was suggested.
 
 2020-09-14 [Patch](https://lkml.org/lkml/2020/9/14/600)
 
