@@ -84,6 +84,8 @@
 
 ### staging: ralink-gdma: build error due to unmet dependency for DMA_ENGINE by DMA_RALINK
 
+2020-11-16 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/gregkh/staging.git/commit/?h=staging-linus&id=06ea594051707c6b8834ef5b24e9b0730edd391b): Committed into gregkh/staging/staging-linus branch.
+
 2020-11-04 [Patch](https://lkml.org/lkml/2020/11/4/912)
 
 2020-11-04 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=210055)
@@ -186,6 +188,8 @@
 
 ### ocxl: fix kconfig dependency warning for OCXL
 
+2020-10-29 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/commit/?id=a9c6d4e7c94d02155c2dadf41bcfa393ee058d20): Committed into linux stable.
+
 2020-09-18 [Patch](https://lkml.org/lkml/2020/9/18/325)
 
 ### net: broadcom: CNIC overleaps Kconfig dependency of UIO
@@ -196,13 +200,15 @@
 
 ### net: ipv6: fix kconfig dependency warning for IPV6_SEG6_HMAC
 
-2020-11-03 [Report: build error](IPV6_SEG6_HMAC-CRYPTO/report.txt): It was later found that this issue can lead to build errors as well.
+2020-11-03 [Report: build error](bugs_found/IPV6_SEG6_HMAC-CRYPTO/report.txt): It was later found that this issue can lead to build errors as well.
 
 2020-09-25 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=db7cd91a4be15e1485d6b58c6afc8761c59c4efb): Committed into linux-stable [v4.19](https://lkml.org/lkml/2020/9/25/670), [v5.4](https://lkml.org/lkml/2020/9/25/622), [v5.8](https://lkml.org/lkml/2020/9/25/583)
 
 2020-09-17 [Patch](https://lkml.org/lkml/2020/9/17/880)
 
 ### platform/x86: fix kconfig dependency warning for FUJITSU_LAPTOP
+
+2020-10-24 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/commit/?id=afdd1ebb72051e8b6b83c4d7dc542a9be0e1352d): Committed into linux stable.
 
 2020-09-17 [Confirmation](https://lkml.org/lkml/2020/9/17/909)
 
@@ -219,6 +225,8 @@
 2020-09-17 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=209303)
 
 ### ASoC: cros_ec_codec: fix kconfig dependency warning for SND_SOC_CROS_EC_CODEC
+
+2020-10-29 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/commit/?id=ee306f90975bdbdd1ca6709f08516015c4246df6): Committed into linux stable.
 
 2020-09-22 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/broonie/sound.git/commit/?id=50b18e4a2608e3897f3787eaa7dfa869b40d9923): Committed into sound/for-next.
 
@@ -276,13 +284,17 @@
 
 ### platform/x86: fix kconfig dependency warning for LG_LAPTOP
 
+2020-10-24 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/commit/?id=8f0c01e666685c4d2e1a233e6f4d7ab16c9f8b2a): Committed into linux stable.
+
 2020-09-17 Confirmation [1](https://www.spinics.net/lists/platform-driver-x86/msg22800.html) [2](https://lkml.org/lkml/2020/9/17/1276)
 
 2020-09-15 [Patch](https://lkml.org/lkml/2020/9/15/270)
 
 ### arc: plat-hsdk: fix kconfig dependency warning when !RESET_CONTROLLER
 
-2020-11-04 [Report: build error](ARC_SOC_HSDK-RESET_HSDK/report.txt): It was later found that this issue can lead to build errors as well.
+2020-11-04 [Report: build error](bugs_found/ARC_SOC_HSDK-RESET_HSDK/report.txt): It was later found that this issue can lead to build errors as well.
+
+2020-10-29 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/commit/?id=0ee5ef9d3a5a5f2f95c92269be2473e235f8f950): Committed into linux stable.
 
 2020-09-14 [Confirmation](https://lkml.org/lkml/2020/9/14/1145)
 
@@ -300,13 +312,17 @@
 
 ### pinctrl: bcm: fix kconfig dependency warning when !GPIOLIB
 
+2020-11-03 [Report: build error](bugs_found/PINCTRL_BCM2835-GPIOLIB_IRQCHIP/report.txt): It was later found that this issue can lead to build errors as well.
+
+2020-10-29 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/commit/?id=7f101eccd00b242dd15f6dd1dc6cd624cce2ef2c): Committed into linux stable.
+
 2020-09-29 [Confirmation](https://lkml.org/lkml/2020/9/29/1673)
 
 2020-09-14 [Patch](https://lkml.org/lkml/2020/9/14/651)
 
 ### nvme: tcp: fix kconfig dependency warning when !CRYPTO
 
-2020-11-03 [Report: build error](NVME_TCP-CRYPTO_CRC32C/report.txt): It was later found that this issue can lead to build errors as well.
+2020-11-03 [Report: build error](bugs_found/NVME_TCP-CRYPTO_CRC32C/report.txt): It was later found that this issue can lead to build errors as well.
 
 2020-09-29 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=af5ad17854f96a6d3c9775e776bd01ab262672a1): Committed into [5.9-rc7](https://lwn.net/Articles/832733/), [stable 5.4](https://lkml.org/lkml/2020/9/29/888) and [stable 5.8](https://lkml.org/lkml/2020/9/29/979).
 

@@ -1,0 +1,41 @@
+pinctrl: bcm: build error due to unmet dependency for GPIOLIB_IRQCHIP by PINCTRL_BCM2835
+
+This issue was fixed with the following patch: https://lkml.org/lkml/2020/9/14/651
+
+Attachments:
+ - sample.config: Config file to reproduce the bug.
+ - build_out.txt: Output of Kbuild including the error messages.
+
+When PINCTRL_BCM2835 is enabled and GPIOLIB is disabled, it results in the
+following Kbuild warnings:
+
+WARNING: unmet direct dependencies detected for GPIOLIB_IRQCHIP
+  Depends on [n]: GPIOLIB [=n]
+  Selected by [y]:
+  - PINCTRL_BCM2835 [=y] && PINCTRL [=y] && OF [=y] && (ARCH_BCM2835 || ARCH_BRCMSTB || COMPILE_TEST [=y])
+
+Building the kernel fails due to this unmet direct dependency issue as follows:
+
+[...]
+drivers/pinctrl/bcm/pinctrl-bcm2835.c: In function 'bcm2835_pinctrl_probe':
+drivers/pinctrl/bcm/pinctrl-bcm2835.c:1116:15: error: 'struct gpio_chip' has no member named 'of_node'
+ 1116 |  pc->gpio_chip.of_node = np;
+      |               ^
+scripts/Makefile.build:265: recipe for target 'drivers/pinctrl/bcm/pinctrl-bcm2835.o' failed
+[...]
+
+The field 'of_node' for 'struct gpio_chip' in 'include/linux/gpio/driver.h'
+is only defined if OF_GPIO is enabled. OF_GPIO has 'def_bool y' but Depends
+on GPIOLIB. Because of the unmet direct dependency (GPIOLIB [=n]), this
+field gets left undefined, causing the build error.
+
+Steps to reproduce the bug for v5.4.4:
+  1. wget https://raw.githubusercontent.com/intel/lkp-tests/master/sbin/make.cross -O ~/bin/make.cross
+  2. chmod +x ~/bin/make.cross
+  3. cp sample.config path/to/linux-source-v5.4.4/.config
+  4. cd path/to/linux-source-v5.4.4/
+  5. ~/bin/make.cross ARCH=alpha clean
+  6. ~/bin/make.cross ARCH=alpha olddefconfig # unmet direct dependency warning
+  7. ~/bin/make.cross ARCH=alpha # should have a build error
+
+The output for the steps [6-8] can be found in build_out.txt.
