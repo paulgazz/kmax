@@ -11,15 +11,15 @@ from kmax.klocalizer import Klocalizer
 from kmax.arch import Arch
 from kmax.udd_warning_parser import parse_warnings
 import subprocess
-import time
 import csv
+from time import perf_counter
 
-# TODO(necip): impl: print the timings as a seperate summary file too (it is now being printed as info along the way)
+def __get_time_refpoint():
+  return perf_counter()
+
 # TODO(necip): impl: allow specifying selectee, selector pair for the analysis of a single construct
 # TODO(necip): impl: redesign logging mechanism
-# TODO(necip): impl: time_process() doesn't capture the external processes, change the time measurement
 # TODO(necip): docs: create a documentation file, explain each step and the effect of each flag
-# TODO(necip): docs: explain the meaning of each col in summary.csv
 # TODO(necip): test: automated testing
 try:
   from subprocess import DEVNULL  # Python 3.
@@ -220,7 +220,8 @@ def get_unmet_constraints(arch, symbols_to_query=None, syntactical_optimization=
   return unmet_constraints_mapping
 
 if __name__ == '__main__':
-  main_start = time.process_time()
+  t_start_main = __get_time_refpoint()
+
   argparser = argparse.ArgumentParser()
 
   argparser.add_argument('-a',
@@ -231,7 +232,7 @@ if __name__ == '__main__':
   argparser.add_argument('--formulas',
                         type=str,
                         default=None,
-                        help="""Path to the architecture formulas directory which contain kextract file and kclause files.  Defaults to \"LINUX_KSRC/.kmax/kclause/ARCH_NAME\" (LINUX_KSRC from --linux-ksrc and ARCH_NAME from --arch).""")
+                        help="""Path to the architecture formulas directory which contain kextract file and kclause files.  Defaults to \"LINUX_KSRC/.kmax/kclause/ARCHNAME\" (LINUX_KSRC from --linux-ksrc and ARCHNAME from --arch).""")
   argparser.add_argument('--linux-ksrc',
                         type=str,
                         default="./",
@@ -252,6 +253,20 @@ if __name__ == '__main__':
   argparser.add_argument('--dump-optimized-constraints',
                         action="store_true",
                         help="""Dump optimized constraints for each select construct in smt2 format in the test cases directory.""")
+  argparser.add_argument('--summary-csv',
+                        type=str,
+                        default=None,
+                        help="""Path to summary csv file, which includes the per construct stats.  Defaults to \"summary_ARCHNAME.csv\"""")
+  argparser.add_argument('--summary-txt',
+                        type=str,
+                        default=None,
+                        help="""Path to summary text file, which includes the aggreagated results.  Defaults to \"summary_ARCHNAME.txt\"""")
+  argparser.add_argument('--no-summary-csv',
+                        action="store_true",
+                        help="""Don't write summary csv file.""")
+  argparser.add_argument('--no-summary-txt',
+                        action="store_true",
+                        help="""Don't write aggregated summary text file.""")
   argparser.add_argument('--exclude-safe-from-summary',
                         action="store_true",
                         help="""Exclude selects constructs found unmet direct dependency safe from the summary csv.""")
@@ -293,7 +308,10 @@ if __name__ == '__main__':
   dump_optimized_constraints = args.dump_optimized_constraints
   dump_alarms= not args.exclude_alarm_from_summary
   dump_safe = not args.exclude_safe_from_summary
-  dump_summary = dump_alarms or dump_safe
+  dump_summary_csv = not args.no_summary_csv and (dump_alarms or dump_safe)
+  dump_summary_txt = not args.no_summary_txt
+  summary_csv_path = args.summary_csv if args.summary_csv != None else "summary_%s.csv" % arch_name
+  summary_txt_path = args.summary_txt if args.summary_txt != None else "summary_%s.txt" % arch_name
   summary_use_testcase_realpath= args.use_fullpath_in_summary
 
   if not precise_SAT_pass:
@@ -310,6 +328,10 @@ if __name__ == '__main__':
   if not generate_sample and verify:
     warning("Enabling sample generation (i.e., ignoring --no-test-case-generation) for verification of alarms.  Use --no-verification as well to turn off test case generation.")
   sample_models = verify or generate_sample
+
+  if not optimized_SAT_pass and explore_whole_unmet_space:
+    warning("Ignoring exploring whole unmet space (i.e., --explore-whole-unmet-space) since optimized SAT pass is disabled (i.e., --no-optimized-SAT-check).")
+    explore_whole_unmet_space = False
 
   if arch_name not in Arch.ARCHS:
     argparser.print_help()
@@ -329,25 +351,25 @@ if __name__ == '__main__':
   arch = Arch(arch_name, linux_ksrc=linux_ksrc, arch_dir=kclause_formulas_folder)
   
   info("Kismet will analyze the select constructs of the architecture \"%s\" for unmet direct dependency." % arch.name)
-  info("All times reported are measured using Python's time.process_time() utility.")
+  info("All times reported are measured using Python's time.perf_counter() utility.")
 
-  time_prefetchformulas_start = time.process_time()
   info("Prefetching the architecture kclause formulas.")
+  t_start_prefetchformulas = __get_time_refpoint()
   if sample_models: arch.get_kextract() # for sampling
   arch.get_selects() # for identifying select constructs and constraints
   arch.get_dir_dep() # for identifying select constructs and constraints
   if sample_models or precise_SAT_pass: arch.get_kclause_composite() # for generating config samples and precise check
-  time_prefetchformulas_end = time.process_time() # TODO: process time does not capture the external processes run
-  info("Architecture kclause formulas were loaded. (%.2fsec)" % (time_prefetchformulas_end-time_prefetchformulas_start))
+  t_spent_prefetchformulas = __get_time_refpoint() - t_start_prefetchformulas
+  info("Architecture kclause formulas were loaded. (%.2fsec)" % t_spent_prefetchformulas)
   
   #
   # Identify select constructs
   #
   info("Identifying the select constructs.")
-  time_identifyconstraints_start = time.process_time()
+  t_start_identifyconstructs = __get_time_refpoint()
   unmet_constraints = get_unmet_constraints(arch, syntactical_optimization=syntactical_optimization, attach_analysis_info=True)
 
-  # keep track of the counts only, traverse the list from scratch for each pass
+  # keep track of the counts. in case some step is disabled, this mapping will let the next step know how many alarms there are to check
   counts = {
     UnmetDepResult.UNMET_ALARM : 0,
     UnmetDepResult.UNMET_SAFE_SYNTACTIC_PASS : 0,
@@ -362,10 +384,15 @@ if __name__ == '__main__':
         analysis_result = unmet_constraints[selectee][selector][visib_id]["generic"]["analysis_result"]
         counts[ analysis_result ] += 1
 
-  timespent_identifyconstraints = time.process_time() - time_identifyconstraints_start
+  # Collect stats
+  t_spent_identifyconstructs = __get_time_refpoint() - t_start_identifyconstructs
+  count_identifyconstructs_checked = sum(counts.values())
+  count_identifyconstructs_unmet_alarm = counts[UnmetDepResult.UNMET_ALARM]
+  count_identifyconstructs_unmet_safe_syntactic = counts[UnmetDepResult.UNMET_SAFE_SYNTACTIC_PASS]
+
   # log info on the first phase
-  unmet_safe_str = (" unmet safe due to syntactical pass: %d." % counts[UnmetDepResult.UNMET_SAFE_SYNTACTIC_PASS]) if syntactical_optimization else ""
-  info("Identification of the select constructs was done in %.2fsec. %d constructs were found.%s alarms: %d." % (timespent_identifyconstraints, sum(counts.values()), unmet_safe_str, counts[UnmetDepResult.UNMET_ALARM]))  
+  unmet_safe_str = (" unmet safe due to syntactical pass: %d." % count_identifyconstructs_unmet_safe_syntactic) if syntactical_optimization else ""
+  info("Identification of the select constructs was done in %.2fsec. %d constructs were found.%s alarms: %d." % (t_spent_identifyconstructs, sum(counts.values()), unmet_safe_str, count_identifyconstructs_unmet_alarm))  
   
   #
   # Dump optimized constraints
@@ -393,7 +420,7 @@ if __name__ == '__main__':
     total_to_dump = sum(counts.values())
     dumped = 0
     info("Dumping optimized constraints for unmet direct dependency for %d select constructs in the test cases folder" % total_to_dump)
-    timestart_dumpoptimized = time.process_time()
+    t_start_dumpoptimized = __get_time_refpoint()
     for selectee in unmet_constraints:
       for selector in unmet_constraints[selectee]:
         for visib_id in unmet_constraints[selectee][selector]:
@@ -406,10 +433,15 @@ if __name__ == '__main__':
 
           # dump progress
           dump_dumpconstraints_progress()
-          
-    timespent_dumpoptimized = time.process_time() - timestart_dumpoptimized
+    
+    assert dumped == total_to_dump
     info("") # complete progress
-    info("The optimized constraints for %d select constructs were written into smt2 files in the test cases folder in %.2fsec." % (total_to_dump, timespent_dumpoptimized))
+
+    # Collect stats
+    t_spent_dumpoptimized = __get_time_refpoint() - t_start_dumpoptimized
+    count_dumpoptimized_dumped = total_to_dump
+
+    info("The optimized constraints for %d select constructs were written into smt2 files in the test cases folder in %.2fsec." % (count_dumpoptimized_dumped, t_spent_dumpoptimized))
 
   def check_sat(constraints: z3.BoolRef):
     """Check the SAT for the given z3.BoolRef using a z3.Solver
@@ -430,8 +462,9 @@ if __name__ == '__main__':
     total_to_check = counts[UnmetDepResult.UNMET_ALARM]
     checked = 0
     optimized_pass_eliminated = 0
+    count_sat_options_created = 0
     info("Doing optimized SAT pass for %d constructs" % total_to_check)
-    timestart_optimizedpass = time.process_time()
+    t_start_optimizedpass = __get_time_refpoint()
     
     for selectee in unmet_constraints:
       for selector in unmet_constraints[selectee]:
@@ -465,25 +498,33 @@ if __name__ == '__main__':
                     "constraint" : c,
                     "analysis_result" : UnmetDepResult.UNMET_ALARM }
                   unmet_constraints[selectee][selector][visib_id]["sat_options"].append(sat_option)
+                  count_sat_options_created += 1
             
             # dump progress
             dump_optimizedtest_progress()
     info("") # complete progress
 
     # update the counts after the optimized pass
-    counts[UnmetDepResult.UNMET_ALARM] -= optimized_pass_eliminated
-    counts[UnmetDepResult.UNMET_SAFE_SYNTACTIC_PASS] = optimized_pass_eliminated
+    counts[UnmetDepResult.UNMET_ALARM] -= optimized_pass_eliminated # this doesn't account for SAT options due to explore_whole_unmet_space since alarm is per unique select constructs
+    counts[UnmetDepResult.UNMET_SAFE_OPTIMIZED_PASS] = optimized_pass_eliminated
 
-    timespent_optimizedpass = time.process_time() - timestart_optimizedpass
-    # dump info on how many eliminated / how many left to analyze
-
-    info("Optimized SAT test was done in %.2fsec. %d constructs with alarms were checked. unmet safe due to optimized SAT test: %d. alarms: %d." % (timespent_optimizedpass, checked, optimized_pass_eliminated, checked - optimized_pass_eliminated))
+    # Collects stats
+    t_spent_optimizedpass = __get_time_refpoint() - t_start_optimizedpass
+    count_optimizedpass_checked = total_to_check
+    count_optimizedpass_unmet_safe = optimized_pass_eliminated
+    count_optimizedpass_unmet_alarms_unique_constructs = count_optimizedpass_checked - count_optimizedpass_unmet_safe # without including the sat options, only the generics
+    count_optimizedpass_sat_options_created = count_sat_options_created # these are alarms as well
+    
+    info("Optimized SAT test was done in %.2fsec. %d constructs with alarms were checked. unmet safe due to optimized SAT test: %d. alarms: %d." \
+       % (t_spent_optimizedpass, count_optimizedpass_checked, count_optimizedpass_unmet_safe, count_optimizedpass_unmet_alarms_unique_constructs))
+    if explore_whole_unmet_space:
+      info("Since exploring whole unmet space is enabled, %d additional SAT options were created for %d unique selects constructs with alarms." \
+        % (count_optimizedpass_sat_options_created, count_optimizedpass_unmet_alarms_unique_constructs))
 
   #
   # Precise test
   #
   if precise_SAT_pass:
-
     total_to_check = counts[UnmetDepResult.UNMET_ALARM]
     checked = 0
     num_alarms = 0
@@ -491,14 +532,11 @@ if __name__ == '__main__':
     num_alarms_sat_options = 0
     num_precise_safe_sat_options = 0
     num_models = 0 # num models found including all generic and sat options
+
     info("Doing precise SAT pass for %d constructs" % total_to_check)
-    timestart_precisepass = time.process_time()
-    
+    t_start_precisepass = __get_time_refpoint()
     klocalizer = Klocalizer()
     klocalizer.set_linux_krsc(linux_ksrc)
-    
-    # record sample models if sampling is needed
-    sample_models_for_alarms = {}
 
     def precise_check(optimized_constraints, try_force_target_udd_only_for_selectee=None):
       """Returns a tuple of: is_sat, payload, is_target_udd_only_forced
@@ -593,15 +631,28 @@ if __name__ == '__main__':
     counts[UnmetDepResult.UNMET_SAFE_PRECISE_PASS] = num_precise_safe
     assert num_alarms + num_precise_safe == checked
 
-    timespent_precisepass = time.process_time() - timestart_precisepass
+    # Collect stats
+    t_spent_precisepass = __get_time_refpoint() - t_start_precisepass
+    count_precisepass_checked_generic = total_to_check
+    count_precisepass_checked_satoptions = num_alarms_sat_options + num_precise_safe_sat_options
+    count_precisepass_unmet_safe_generic = num_precise_safe
+    count_precisepass_unmet_safe_satoptions = num_precise_safe_sat_options
+    count_precisepass_unmet_alarm_generic = num_alarms
+    count_precisepass_unmet_alarms_satoptions = num_alarms_sat_options
+    count_precisepass_models = num_models
 
+    assert count_precisepass_models == count_precisepass_unmet_alarm_generic + count_precisepass_unmet_alarms_satoptions
+    
     info("Precise SAT test was done in %.2fsec. %d constructs with alarms were checked. unmet safe due to precise SAT test: %d. alarms: %d." \
-      % (timespent_precisepass, checked, num_precise_safe, num_alarms))
+      % (t_spent_precisepass, count_precisepass_checked_generic, count_precisepass_unmet_safe_generic, count_precisepass_unmet_alarm_generic))
     
     if explore_whole_unmet_space:
       info("During precise SAT test, due to exploring whole unmet space, %d additional constraints were checked, leading to %d in total. Among all: unmet safe due to optimized SAT test: %d. alarms: %d." \
-        % (num_alarms_sat_options+num_precise_safe_sat_options, num_alarms_sat_options+num_precise_safe_sat_options+checked, num_precise_safe+num_precise_safe_sat_options, num_alarms + num_alarms_sat_options))
-    info("During precise SAT test, %d models were generated." % num_models)
+        % (count_precisepass_checked_satoptions, \
+           count_precisepass_checked_generic + count_precisepass_checked_satoptions, \
+           count_precisepass_unmet_safe_generic + count_precisepass_unmet_safe_satoptions, \
+           count_precisepass_unmet_alarm_generic + count_precisepass_unmet_alarms_satoptions))
+    info("During precise SAT test, %d models were generated." % count_precisepass_models)
 
     # end of precise pass
 
@@ -619,13 +670,14 @@ if __name__ == '__main__':
     current_time = datetime.datetime.now().strftime("%H:%M:%S")
     info("%s Test case generation progress: %s." % (current_time, dumps_progress(config_samples_created, num_models)), ending="\r")
 
-  if sample_models and num_alarms > 0:
+  # This is only possible if precise pass is done, so can use the variables from precise step safely
+  if sample_models:
     config_samples_created = 0
 
-    info("Generating test cases (Kconfig config files) for %d constructs with unmet direct dependency alarms. %d test cases will be generated." % (num_alarms, num_models))
+    info("Generating test cases (Kconfig config files) for %d constructs with unmet direct dependency alarms. %d test cases will be generated." % (count_precisepass_unmet_alarm_generic, count_precisepass_models))
     info("Test case files will be written in the following directory: %s" % samples_dir)
 
-    timestart_testcasegen = time.process_time()
+    t_start_testcasegen = __get_time_refpoint()
     for selectee in unmet_constraints:
       for selector in unmet_constraints[selectee]:
         for visib_id in unmet_constraints[selectee][selector]:
@@ -671,9 +723,13 @@ if __name__ == '__main__':
                   # dump progress
                   dump_testcasegen_progress()
     info("") # complete the progress
-    timespent_testcasegen = time.process_time() - timestart_testcasegen
+
+    # Collect stats
+    t_spent_testcasegen = __get_time_refpoint() - t_start_testcasegen
+    count_testcasgen_configscreated = config_samples_created
+
     info("Test generation was done in %.2fsec. %d test cases were generated for %d select constructs with unmet direct dependency alarms." \
-      % (timespent_testcasegen, config_samples_created, num_alarms))
+      % (t_spent_testcasegen, count_testcasgen_configscreated, count_precisepass_unmet_alarm_generic))
 
   #
   # Verify alarms
@@ -707,7 +763,7 @@ if __name__ == '__main__':
 
   def dump_verification_progress():
     current_time = datetime.datetime.now().strftime("%H:%M:%S")
-    info("%s Verification from test cases progress: %s." % (current_time, dumps_progress(num_checked, num_models)), ending="\r")
+    info("%s Verification from test cases progress: %s." % (current_time, dumps_progress(num_checked, count_testcasgen_configscreated)), ending="\r")
 
   if verify:
     num_verified = 0
@@ -715,8 +771,8 @@ if __name__ == '__main__':
     some_testcase_verifies = 0 # the count of constructs with alarms that at least one related test case verifies the alarm
     all_testcases_verify = 0 # the count of constructs with alarms for which all test cases verify the alarm
     num_checked = 0
-    info("Verifying unmet direct dependency alarms using %d test cases for %d constructs with unmet direct dependency alarms." % (num_models, num_alarms))
-    timestart_verification = time.process_time()
+    info("Verifying unmet direct dependency alarms using %d test cases for %d constructs with unmet direct dependency alarms." % (count_testcasgen_configscreated, count_precisepass_unmet_alarm_generic))
+    t_start_verification = __get_time_refpoint()
 
     for selectee in unmet_constraints:
       for selector in unmet_constraints[selectee]:
@@ -763,78 +819,154 @@ if __name__ == '__main__':
             all_testcases_verify += all_verified
     
     info("") # complete the progress
-    timespent_verification = time.process_time() - timestart_verification
-    info("Verification was done in %.2fsec. %d test cases were checked for %d constructs. %d of %d alarms were verified to be true alarms (at least one test case verified the alarm)." \
-      % (timespent_verification, num_models, num_alarms, some_testcase_verifies, num_alarms))
-    info_str = "During verification: for %d constructs, all test cases verified the related alarm." % all_testcases_verify
-    info_str += " For %d constructs, test cases had contradictory results." % (some_testcase_verifies - all_testcases_verify)
-    info_str += " For %d constructs, no test case verified the alarm." % (num_alarms - some_testcase_verifies)
+
+    # Collect stats
+    t_spent_verification = __get_time_refpoint() - t_start_verification
+    count_verification_some_verified_per_unique_construct = some_testcase_verifies # for a construct, at least one of options (generic or SAT options) verified the alarm
+    count_verification_all_verified_per_unique_construct = all_testcases_verify # for a construct, all related test cases (generic and SAT options) verified the alarm
+
+    info("Verification was done in %.2fsec. %d test cases were checked for %d constructs. %d of %d alarms were verified to be true alarms (at least one related test case verified the alarm)." \
+      % (t_spent_verification, count_testcasgen_configscreated, count_precisepass_unmet_alarm_generic, count_verification_some_verified_per_unique_construct, count_precisepass_unmet_alarm_generic))
+    
+    info_str = "During verification: for %d constructs, all test cases verified the related alarm." % count_verification_all_verified_per_unique_construct
+    info_str += " For %d constructs, test cases had contradictory results." % (count_verification_some_verified_per_unique_construct - count_verification_all_verified_per_unique_construct)
+    info_str += " For %d constructs, no test case verified the alarm." % (count_testcasgen_configscreated - count_verification_some_verified_per_unique_construct)
     info(info_str)
 
-  # TODO: dump the summary (num of checked, alarms, time etc.) as info, or as another csv
-  # The content of this summary can look like this:
-  # SAT passes:
-  #   identification of select constructs + syntactical pass
-  #   optimized SAT pass
-  #   precise SAT pass
-  # further processing:
-  #   test case generation
-  #   verification
-  # summary as follows:
-  # for passes:
-  #   over X constructs: X safe, X alarm
-  #   done in X sec
-  # test case gen (done in in Xsec): created X test cases 
-  # verification (done in Xsec): verified X of test cases. for X constructs, all test cases verify. for X constructs, some test cases verify with contradiction with others. for X constructs, no test cases verify.
-  # in total, X constructs were checked in X seconds
+  #
+  # Dump summary txt
+  #
+  if dump_summary_txt:
+    info("Writing the aggregated summary txt to \"%s\"." % summary_txt_path)
+    with open(summary_txt_path, "w") as f:
+      
+      # Timing results
+      timings = []
+      overall_analysis_time = t_spent_identifyconstructs
+      timings.append( ("Prefetch arch formulas", t_spent_prefetchformulas) )
+      overall_analysis_time += t_spent_prefetchformulas
+      timings.append( ("Identify constructs", t_spent_identifyconstructs) )
+      if dump_optimized_constraints:
+        timings.append( ("Dump optimized constraints", t_spent_dumpoptimized) )
+        # don't add to the overall analysis time: not a part of the analysis
+      if optimized_SAT_pass:
+        timings.append( ("Optimized SAT pass", t_spent_optimizedpass) )
+        overall_analysis_time += t_spent_optimizedpass
+      if precise_SAT_pass:
+        timings.append( ("Precise SAT pass", t_spent_precisepass) )
+        overall_analysis_time += t_spent_precisepass
+      if sample_models:
+        timings.append( ("Test case generation", t_spent_testcasegen) )
+        overall_analysis_time += t_spent_testcasegen
+      if verify:
+        timings.append( ("Verification", t_spent_verification) )
+        overall_analysis_time += t_spent_verification
 
-  # print the overall summary on stdout
-  if dump_summary:
-    info("Printing the summary csv.")
-    csv_writer = csv.writer(sys.stdout)
+      def dumps_timing(stage_name: str, time_in_seconds: float) -> str:
+        return "%-27s: %.2f\n" % (stage_name, time_in_seconds)
+      
+      f.write("= Overall analysis =\n")
+      f.write("Over %d select constructs, unmet dependency analysis resulted in: %d safe, %d alarm.\n" % ( sum(counts.values()), sum(counts.values()) -  counts[UnmetDepResult.UNMET_ALARM], counts[UnmetDepResult.UNMET_ALARM]))
+      if verify:
+        f.write("%d of %d alarms were successfully validated. Test cases couldn't verify the remaining %d alarms.\n" % (count_verification_some_verified_per_unique_construct, counts[UnmetDepResult.UNMET_ALARM],  counts[UnmetDepResult.UNMET_ALARM]-count_verification_some_verified_per_unique_construct))
+      f.write("The analysis was done in %.2f seconds (only analysis related stages)." % overall_analysis_time)
 
-    # header row
-    header_row = ["selectee", "selector", "visib_id", "constraint_type", "analysis_result"]
-    if verify:                header_row.append("verified")
-    if force_target_udd_only: header_row.append("forced_target_udd_only")
-    if generate_sample:       header_row.append("testcase")
-    csv_writer.writerow(header_row)
+      f.write("\n= Timing results (seconds) =\n")
+      for n, t in timings:
+        f.write( dumps_timing(n, t) )
 
-    def get_row(entry : dict, constraint_type : int):
-      analysis_result = entry["analysis_result"]
-      if not dump_alarms and analysis_result == UnmetDepResult.UNMET_ALARM:
-        return None
-      if not dump_safe and analysis_result != UnmetDepResult.UNMET_ALARM:
-        return None
-      analysis_result = analysis_result.name
+      # Stage specific results
+      f.write("\n= Per-stage results =\n")
 
-      row = [selectee, selector, visib_id, constraint_type, analysis_result]
+      # identify constructs
+      f.write("\n== Identification of select constructs & udd analysis through syntax ==\n")
+      f.write("%d select constructs identified in the architecture.\n" % count_identifyconstructs_checked)
+      if syntactical_optimization:
+        f.write("%d select constructs were found udd safe through syntax analysis.\n" % count_identifyconstructs_unmet_safe_syntactic)
+        f.write("%d select constructs were found udd alarm through syntax analysis.\n" % count_identifyconstructs_unmet_alarm)
 
-      if verify: row.append(entry.get("is_verified", "N/A"))
-      if force_target_udd_only: row.append(entry.get("forced_target_udd_only", "N/A"))
-      if generate_sample:
-        if "testcase_cfgpath" in entry:
-          cfgfilepath = entry["testcase_cfgpath"]
-          if summary_use_testcase_realpath: cfgfilepath = os.path.realpath(cfgfilepath)
-          row.append(cfgfilepath)
-        else:
-          row.append("N/A")
+      # optimized SAT pass
+      if optimized_SAT_pass:
+        f.write("\n== Optimized SAT pass ==\n")
+        f.write("%d select constructs with alarms from the previous stage were checked during optimized SAT pass.\n" % count_optimizedpass_checked)
+        f.write("%d select constructs were found udd SAFE through optimized SAT pass.\n" % count_optimizedpass_unmet_safe)
+        f.write("%d select constructs were found udd ALARM through optimized SAT pass.\n" % count_optimizedpass_unmet_alarms_unique_constructs)
+        if explore_whole_unmet_space:
+          f.write("%d additional constraints were identified as SAT options for optimized constraints to explore whole unmet space for %d udd alarms.\n" % (count_optimizedpass_sat_options_created, count_optimizedpass_unmet_alarms_unique_constructs))
+      
+      # precise SAT pass
+      if precise_SAT_pass:
+        f.write("\n== Precise SAT pass ==\n")
+        f.write("%d select constructs with alarms from the previous stage were checked during precise SAT pass.\n" % count_precisepass_checked_generic)
+        f.write("%d select constructs were found udd SAFE through precise SAT pass.\n" % count_precisepass_unmet_safe_generic)
+        f.write("%d select constructs were found udd ALARM through precise SAT pass.\n" % count_precisepass_unmet_alarm_generic)
+        if explore_whole_unmet_space:
+          f.write("%d SAT options for %d alarms were checked due to exploring whole unmet space.\n" % count_precisepass_checked_satoptions)
+          f.write("%d SAT options were found udd SAFE while %d SAT options were found udd ALARM.\n" % (count_precisepass_unmet_safe_satoptions, count_precisepass_unmet_alarms_satoptions))
+      
+      if sample_models:
+        f.write("\n== Test case generation ==\n")
+        f.write("%d select constructs with alarms from the previous stage were considered for test case generation, totaling %d models with %d due to generic and %d due to SAT options.\n" % \
+          (count_precisepass_unmet_alarm_generic, count_precisepass_models, count_precisepass_unmet_alarm_generic, count_precisepass_unmet_alarms_satoptions) )
+        f.write("%d test cases were generated.\n" % count_testcasgen_configscreated)
+      
+      if verify:
+        f.write("\n== Verification ==\n")
+        f.write("%d test cases were used during verification to verify alarms for %d select constructs.\n")
+        f.write("For %d constructs, all test cases verified the alarm.\n" % count_verification_all_verified_per_unique_construct)
+        f.write("For %d constructs, at least one test verified the alarm, thus, proving the existince of the udd.\n" % count_verification_some_verified_per_unique_construct)
 
-      row = [str(i) for i in row]
+    info("Aggregated summary txt was written.")
 
-      return row
+  #
+  # Dump summary csv
+  #
+  if dump_summary_csv:
+    info("Writing the summary csv to \"%s\"." % summary_csv_path)
+    with open(summary_csv_path, "w") as f:
+      csv_writer = csv.writer(f)
 
-    for selectee in unmet_constraints:
-      for selector in unmet_constraints[selectee]:
-        for visib_id in unmet_constraints[selectee][selector]:
-          # generic
-          row = get_row(entry = unmet_constraints[selectee][selector][visib_id]["generic"], constraint_type=0)
-          if row: csv_writer.writerow(row)
+      # header row
+      header_row = ["selectee", "selector", "visib_id", "constraint_type", "analysis_result"]
+      if verify:                header_row.append("verified")
+      if force_target_udd_only: header_row.append("forced_target_udd_only")
+      if generate_sample:       header_row.append("testcase")
+      csv_writer.writerow(header_row)
 
-          # sat options
-          sat_options = unmet_constraints[selectee][selector][visib_id].get("sat_options", [])
-          for i, sat_option in enumerate(sat_options):
-            row = get_row(entry = sat_option, constraint_type=i+1)
+      def get_row(entry : dict, constraint_type : int):
+        analysis_result = entry["analysis_result"]
+        if not dump_alarms and analysis_result == UnmetDepResult.UNMET_ALARM:
+          return None
+        if not dump_safe and analysis_result != UnmetDepResult.UNMET_ALARM:
+          return None
+        analysis_result = analysis_result.name
+
+        row = [selectee, selector, visib_id, constraint_type, analysis_result]
+
+        if verify: row.append(entry.get("is_verified", "N/A"))
+        if force_target_udd_only: row.append(entry.get("forced_target_udd_only", "N/A"))
+        if generate_sample:
+          if "testcase_cfgpath" in entry:
+            cfgfilepath = entry["testcase_cfgpath"]
+            if summary_use_testcase_realpath: cfgfilepath = os.path.realpath(cfgfilepath)
+            row.append(cfgfilepath)
+          else:
+            row.append("N/A")
+
+        row = [str(i) for i in row]
+
+        return row
+
+      for selectee in unmet_constraints:
+        for selector in unmet_constraints[selectee]:
+          for visib_id in unmet_constraints[selectee][selector]:
+            # generic
+            row = get_row(entry = unmet_constraints[selectee][selector][visib_id]["generic"], constraint_type=0)
             if row: csv_writer.writerow(row)
-    info("Summary csv was printed.")
-  
+
+            # sat options
+            sat_options = unmet_constraints[selectee][selector][visib_id].get("sat_options", [])
+            for i, sat_option in enumerate(sat_options):
+              row = get_row(entry = sat_option, constraint_type=i+1)
+              if row: csv_writer.writerow(row)
+    info("Summary csv was written.")
