@@ -734,7 +734,7 @@ if __name__ == '__main__':
   #
   # Verify alarms
   #
-  def verify_test_case(cfgfilepath, selectee, selector):
+  def verify_test_case(cfgfilepath, selectee, selector, arch_name):
     """Return True if the test case verified the udd
     
     selectee and selector assumed to have CONFIG_ prefix.
@@ -746,7 +746,7 @@ if __name__ == '__main__':
     kismets_copy = shutil.copyfile(cfgfilepath, kismetcopy_path)
     assert os.path.isfile(kismets_copy)
 
-    command = ["make", "KCONFIG_CONFIG=%s" % os.path.realpath(kismets_copy), "olddefconfig"]
+    command = ["make", "ARCH=%s" % arch_name, "KCONFIG_CONFIG=%s" % os.path.realpath(kismets_copy), "olddefconfig"]
     popen = subprocess.Popen(command, stdin=DEVNULL, stdout=DEVNULL, stderr=subprocess.PIPE, cwd=linux_ksrc)
     stderr = popen.communicate()[1].decode("utf-8")
     parsed_warnings = parse_warnings(str(stderr))
@@ -788,7 +788,7 @@ if __name__ == '__main__':
 
           if generic_result == UnmetDepResult.UNMET_ALARM:
             cfgfilepath = unmet_constraints[selectee][selector][visib_id]["generic"]["testcase_cfgpath"]
-            is_verified = verify_test_case(cfgfilepath, selectee, selector)
+            is_verified = verify_test_case(cfgfilepath, selectee, selector, arch_name)
             unmet_constraints[selectee][selector][visib_id]["generic"]["is_verified"] = is_verified
             some_verified = some_verified or is_verified
             all_verified = all_verified and is_verified
@@ -805,7 +805,7 @@ if __name__ == '__main__':
               for sat_option in sat_options:
                 if sat_option["analysis_result"] == UnmetDepResult.UNMET_ALARM:
                   cfgfilepath = sat_option["testcase_cfgpath"]
-                  is_verified = verify_test_case(cfgfilepath, selectee, selector)
+                  is_verified = verify_test_case(cfgfilepath, selectee, selector, arch_name)
                   sat_option["is_verified"] = is_verified
                   some_verified = some_verified or is_verified
                   all_verified = all_verified and is_verified
@@ -869,7 +869,7 @@ if __name__ == '__main__':
       f.write("Over %d select constructs, unmet dependency analysis resulted in: %d safe, %d alarm.\n" % ( sum(counts.values()), sum(counts.values()) -  counts[UnmetDepResult.UNMET_ALARM], counts[UnmetDepResult.UNMET_ALARM]))
       if verify:
         f.write("%d of %d alarms were successfully validated. Test cases couldn't verify the remaining %d alarms.\n" % (count_verification_some_verified_per_unique_construct, counts[UnmetDepResult.UNMET_ALARM],  counts[UnmetDepResult.UNMET_ALARM]-count_verification_some_verified_per_unique_construct))
-      f.write("The analysis was done in %.2f seconds (only analysis related stages)." % overall_analysis_time)
+      f.write("The analysis was done in %.2f seconds (only analysis related stages).\n" % overall_analysis_time)
 
       f.write("\n= Timing results (seconds) =\n")
       for n, t in timings:
@@ -912,9 +912,10 @@ if __name__ == '__main__':
       
       if verify:
         f.write("\n== Verification ==\n")
-        f.write("%d test cases were used during verification to verify alarms for %d select constructs.\n")
+        f.write("%d test cases were used during verification to verify alarms for %d select constructs.\n" % (count_testcasgen_configscreated, count_precisepass_unmet_alarm_generic))
         f.write("For %d constructs, all test cases verified the alarm.\n" % count_verification_all_verified_per_unique_construct)
         f.write("For %d constructs, at least one test verified the alarm, thus, proving the existince of the udd.\n" % count_verification_some_verified_per_unique_construct)
+        f.write("For %d constructs, none of the test cases verified the alarm, thus, false positive of kismet.\n" % count_precisepass_unmet_alarm_generic - count_verification_some_verified_per_unique_construct)
 
     info("Aggregated summary txt was written.")
 
