@@ -1,25 +1,22 @@
 #!/usr/bin/env python
 
 from kmax.klocalizer import *
+import logging
 
-# TODO(necip): Solve the issue with --quiet
-# TODO(necip): Solve the issue with --view-kbuild
-# TODO(necip): Redesign logging mechanism
-# TODO(necip): automated testing
 
-quiet=False
-def info(msg, ending="\n"):
-  if not quiet: sys.stderr.write("INFO: %s%s" % (msg, ending))
-
-def warning(msg, ending="\n"):
-  sys.stderr.write("WARNING: %s%s" % (msg, ending))
-
-def error(msg, ending="\n"):
-  sys.stderr.write("ERROR: %s%s" % (msg, ending))
+class BasicLogger:
+  def __init__(self, quiet=False):
+    self.quiet = quiet
+  
+  def info(self, msg):
+    if not self.quiet: sys.stderr.write("INFO: %s" % msg)
+  def warning(self, msg):
+    sys.stderr.write("WARNING: %s" % msg)
+  def error(self, msg):
+    sys.stderr.write("ERROR: %s" % msg)
 
 def klocalizerCLI():
   klocalizer=Klocalizer()
-  klocalizer.set_logfile(sys.stderr)
   
   # Parse command line arguments
   argparser = argparse.ArgumentParser()
@@ -167,13 +164,9 @@ def klocalizerCLI():
   allow_unmet_for = args.allow_unmet_for
   quiet = args.quiet
 
-  # TODO: issues to fix
-  if quiet:
-    error("--quiet is broken")
-    exit(-1)
-  if view_kbuild:
-    error("--view-kbuild is broken")
-    exit(-1)
+  kmax.common.quiet = quiet
+  logger = BasicLogger(quiet=quiet)
+  klocalizer.set_logger(logger)
 
   klocalizer.set_linux_krsc(linux_ksrc)
 
@@ -187,32 +180,32 @@ def klocalizerCLI():
   # TODO: we can actually compute kclause formulas from kextract, thus, does this really need --kclause-formulas?
   if kextract_file and not kclause_file:
     argparser.print_help()
-    error("--kextract can only be used with --kclause-formulas")
+    logger.error("--kextract can only be used with --kclause-formulas\n")
     exit(12)
 
   if kclause_file and len(archs_arg) > 0:
     argparser.print_help()
-    error("Cannot provide --arch arguments when already providing an explicit --kclause-formulas argument")
+    logger.error("Cannot provide --arch arguments when already providing an explicit --kclause-formulas argument\n")
     exit(12)
 
   if kclause_file and reportallarchs:
     argparser.print_help()
-    error("Cannot use --report-all when providing an explicit --kclause-formulas argument.")
+    logger.error("Cannot use --report-all when providing an explicit --kclause-formulas argument.\n")
     exit(12)
 
   if kclause_file and allarchs:
     argparser.print_help()
-    error("Cannot use --all-architectures when providing an explicit --kclause-formulas argument.")
+    logger.error("Cannot use --all-architectures when providing an explicit --kclause-formulas argument.\n")
     exit(12)
   
   if allow_unmet_for and not force_unmet_free:
     argparser.print_help()
-    error("--allow-unmet-for can only be used with --force-unmet-free.")
+    logger.error("--allow-unmet-for can only be used with --force-unmet-free.\n")
     exit(12)
   
   if allarchs and len(archs_arg) > 0:
     argparser.print_help()
-    error("Cannot use --all-architectures when providing explicit --arch arguments.")
+    logger.error("Cannot use --all-architectures when providing explicit --arch arguments.\n")
     exit(12)
 
   if sample is not None:
@@ -220,24 +213,24 @@ def klocalizerCLI():
       sample_prefix="config"
     if approximate is not None:
       argparser.print_help()
-      error("--approximate and --sample cannot currently be used together")
+      logger.error("--approximate and --sample cannot currently be used together\n")
       exit(12)
     if sample < 0:
       argparser.print_help()
-      error("Must provide a sample size of 0 or more")
+      logger.error("Must provide a sample size of 0 or more\n")
       exit(12)
     if reportallarchs:
       argparser.print_help()
-      error("Cannot use --report-all when requesting a sample.")
+      logger.error("Cannot use --report-all when requesting a sample.\n")
       exit(12)
   else:
     if sample_prefix is not None:
       argparser.print_help()
-      error("--sample-prefix only to be used with --sample")
+      logger.error("--sample-prefix only to be used with --sample\n")
       exit(12)
 
   if not os.path.exists(formulas):
-    warning("No formulas found.  Generating them on demand.  They can also be downloaded from https://configtools.org/kmax/formulas/ for some Linux versions.")
+    logger.warning("No formulas found.  Generating them on demand.  They can also be downloaded from https://configtools.org/kmax/formulas/ for some Linux versions.\n")
     os.makedirs(formulas)
 
   #
@@ -249,11 +242,11 @@ def klocalizerCLI():
     
     if not os.path.isfile(kmax_file): # if default kmax file doesn't exist, attempt to reach default kmax cache file
       kmax_cache_file = os.path.join(formulas, "kmax_cache")
-      info("No prebuilt kmax formulas.  Running kmax on demand with kmax cache file: %s" % kmax_cache_file)
+      logger.info("No prebuilt kmax formulas.  Running kmax on demand with kmax cache file: %s\n" % kmax_cache_file)
       if os.path.isfile(kmax_cache_file): klocalizer.load_kmax_formulas(kmax_cache_file, is_cache=True)
       is_kmax_cache = True
     else:
-      info("Kmax formula file: %s" % (kmax_file))
+      logger.info("Kmax formula file: %s\n" % (kmax_file))
       klocalizer.load_kmax_formulas(kmax_file, is_cache=False)
       is_kmax_cache = False
 
@@ -262,7 +255,7 @@ def klocalizerCLI():
   #
   for i, unit in enumerate(compilation_units):
     if not unit.endswith(".o"):
-      warning("Forcing file extension to be .o, since lookup is by compilation unit: %s" % (unit))
+      logger.warning("Forcing file extension to be .o, since lookup is by compilation unit: %s\n" % (unit))
       unit = os.path.splitext(unit)[0] + ".o"
       compilation_units[i] = unit
 
@@ -278,45 +271,45 @@ def klocalizerCLI():
   if view_kbuild:
     if len(compilation_units) > 0:
       for unit in compilation_units:
-        # TODO: solve this: AttributeError: 'Klocalizer' object has no attribute '__kmax_formulas'
-        info("The Kbuild constraints for %s:" % (unit))
-        get_kmax_constraints(klocalizer.__kmax_formulas, unit, view=True)
+        logger.info("The Kbuild constraints for %s:\n" % (unit))
+        get_kmax_constraints(klocalizer.get_kmax_formulas(), unit, view=True)
       exit(0)
     else:
-      error("Please provide a compilation unit when using --view-kbuild.")
+      logger.error("Please provide a compilation unit when using --view-kbuild.\n")
       exit(5)
 
   #
   # Update the kmax cache (now that we are done with generating new kmax formulas)
   #
   if len(compilation_units) > 0 and is_kmax_cache:
-    info("Updating Kmax formulas cache file: %s" % kmax_cache_file)
+    logger.info("Updating Kmax formulas cache file: %s\n" % kmax_cache_file)
     klocalizer.update_kmax_cache_file(kmax_cache_file)
-    info("Kmax formulas cache file was updated.")
+    logger.info("Kmax formulas cache file was updated.\n")
 
   #
   # Prepare the architectures
   #
   archs = []
   
+  arch_logger_level = logging.INFO if not quiet else logging.WARNING
   def get_arch_formulas_dir(formulas: str, arch: str) -> str:
     assert arch != None
     return os.path.join(formulas, "kclause", arch)
 
   assert allarchs + (len(archs_arg) > 0) + (kclause_file != None) < 2 # at most one can be defined
   if len(archs_arg) > 0:
-    archs = [Arch(arch, linux_ksrc=linux_ksrc, arch_dir=get_arch_formulas_dir(formulas, arch), is_kclause_composite=use_composite_kclause_formulas_files) for arch in archs_arg]
+    archs = [Arch(arch, linux_ksrc=linux_ksrc, arch_dir=get_arch_formulas_dir(formulas, arch), is_kclause_composite=use_composite_kclause_formulas_files, loggerLevel=arch_logger_level) for arch in archs_arg]
   elif kclause_file != None:
     # A custom architecture
-    arch = Arch(Arch.CUSTOM_ARCH_NAME)
+    arch = Arch(Arch.CUSTOM_ARCH_NAME, loggerLevel=arch_logger_level)
     if kextract_file != None: arch.load_kextract(kextract_file, delay_loading=True)
     arch.load_kclause(kclause_file, is_composite=use_composite_kclause_formulas_files, delay_loading=True)
     archs = [arch]
   else: # allarchs is enabled, or if the above are not defined behave as if allarchs
-    archs = [Arch(arch, linux_ksrc=linux_ksrc, arch_dir=get_arch_formulas_dir(formulas, arch), is_kclause_composite=use_composite_kclause_formulas_files) for arch in Arch.ARCHS]
+    archs = [Arch(arch, linux_ksrc=linux_ksrc, arch_dir=get_arch_formulas_dir(formulas, arch), is_kclause_composite=use_composite_kclause_formulas_files, loggerLevel=arch_logger_level) for arch in Arch.ARCHS]
 
   if kclause_file == None:
-    info("Trying the following architectures: %s" % " ".join(arch.name for arch in archs))
+    logger.info("Trying the following architectures: %s\n" % " ".join(arch.name for arch in archs))
   
   #
   # Filter archs based on unit name
@@ -327,7 +320,7 @@ def klocalizerCLI():
         unit_archs = Arch.get_archs_from_subdir(unit)
         archs = [ arch for arch in archs if arch.name in unit_archs ]
         if not archs:
-          error("Resolved compilation unit is architecture-specific, but its architecture is not available: %s" % (unit))
+          logger.error("Resolved compilation unit is architecture-specific, but its architecture is not available: %s\n" % (unit))
           exit(9)
   
   assert len(archs) > 0
@@ -398,7 +391,7 @@ def klocalizerCLI():
   seen_unsat = False # to prevent logging some info multiple times for unsat cases
   sat_archs = []
   for arch in archs:
-    info("Trying \"%s\"" % (arch.name))
+    logger.info("Trying \"%s\"\n" % (arch.name))
     constraints = klocalizer.compile_constraints(arch)
     model_sampler = Klocalizer.Z3ModelSampler(constraints, approximate_constraints=approximate_constraints, random_seed=random_seed)
     is_sat, payload = model_sampler.sample_model()
@@ -408,22 +401,22 @@ def klocalizerCLI():
     #
     if not is_sat:
       unsat_core = payload
-      info("The constraints are unsatisfiable.  Either no configuration is possible or the formulas are overconstrained.")
+      logger.info("The constraints are unsatisfiable.  Either no configuration is possible or the formulas are overconstrained.\n")
       if show_unsat_core:
-        info("The following constraint(s) prevented satisfiability:\n%s" % (str(unsat_core)))
+        logger.info("The following constraint(s) prevented satisfiability:\n%s\n" % (str(unsat_core)))
       else:
         if not seen_unsat:
-          info("Run with --show-unsat-core to see what constraints prevented satisfiability.")
+          logger.info("Run with --show-unsat-core to see what constraints prevented satisfiability.\n")
           seen_unsat = True
         if disable_config_broken and config_broken in unsat_core:
-          error("Found a dependency on CONFIG_BROKEN, so the compilation unit may not be buildable.  Stopping the search.  Run again with --allow-config-broken to search anyway.")
+          logger.error("Found a dependency on CONFIG_BROKEN, so the compilation unit may not be buildable.  Stopping the search.  Run again with --allow-config-broken to search anyway.\n")
           exit(10)
     #
     # Constraints are SAT
     #
     else: # is_sat: True
       model = payload
-      info("The constraints are satisfiable.")
+      logger.info("The constraints are satisfiable.\n")
       sat_archs.append(arch)
 
       #
@@ -440,10 +433,10 @@ def klocalizerCLI():
         
         # Prepare the config filenames
         if sample_count == 1:
-          info("Writing the configuration to %s" % (output_file))
+          logger.info("Writing the configuration to %s\n" % (output_file))
           config_filenames = [output_file]
         elif sample_count > 1:
-          info("Generating %s configurations with prefix %s" % (str(sample_count), sample_prefix))
+          logger.info("Generating %s configurations with prefix %s\n" % (str(sample_count), sample_prefix))
           config_filenames = ["%s%d" % (sample_prefix, i + 1) for i in range(sample_count)]
         
         assert len(configs) == len(config_filenames)
@@ -459,7 +452,7 @@ def klocalizerCLI():
             build_cmd = "make.cross ARCH=%s clean; make.cross ARCH=%s" % (arch.name, arch.name)
           else:
             build_cmd = "make.cross ARCH=%s clean %s" % (arch.name, " ".join(compilation_units))
-          info("Build with \"make.cross ARCH=%s olddefconfig; %s\"." % (arch.name, build_cmd))
+          logger.info("Build with \"make.cross ARCH=%s olddefconfig; %s\".\n" % (arch.name, build_cmd))
       
       # Stop the SAT search with the first SAT arch if not reporting for all archs
       if not reportallarchs:
@@ -470,24 +463,25 @@ def klocalizerCLI():
     print("\n".join([arch.name for arch in sat_archs]))
     exit(0)
   else:
-    error("No satisfying configuration found.")
+    logger.error("No satisfying configuration found.\n")
     exit(11)
 
 if __name__ == '__main__':
+  logger = BasicLogger()
   try:
     klocalizerCLI()
   except Klocalizer.NoFormulaFoundForCompilationUnit as e:
-    error("No formula from kmax was found for the compilation unit: %s" % (e.unit))
+    logger.error("No formula from kmax was found for the compilation unit: %s\n" % (e.unit))
     exit(3)
   except Klocalizer.MultipleCompilationUnitsMatch as e:
-    error("There are multiple compilation units that match %s.  Please provide one of the Kbuild paths from below." % (e.unit))
+    logger.error("There are multiple compilation units that match %s.  Please provide one of the Kbuild paths from below.\n" % (e.unit))
     print("\n".join(e.matching_units))
     exit(4)
   except Arch.FormulaFileNotFound as e:
-    error("Cannot find %s formulas file: %s" % (e.formula_type, e.filepath))
+    logger.error("Cannot find %s formulas file: %s\n" % (e.formula_type, e.filepath))
     exit(6)
   except Arch.FormulaGenerationError as e:
-    error("Cannot generate %s formulas." % (e.formula_type))
+    logger.error("Cannot generate %s formulas.\n" % (e.formula_type))
     exit(13)
   
   exit(0)

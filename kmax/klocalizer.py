@@ -16,29 +16,25 @@ from kmax.common import get_kmax_constraints, unpickle_kmax_file
 from kmax.vcommon import getLogLevel, getLogger
 
 # TODO(necip): automated testing
-# TODO(necip): redesign the logging mechanism
-
-quiet=False
-def info(msg, ending="\n"):
-  if not quiet: sys.stderr.write("INFO: %s%s" % (msg, ending))
-
-def warning(msg, ending="\n"):
-  sys.stderr.write("WARNING: %s%s" % (msg, ending))
-
-def error(msg, ending="\n"):
-  sys.stderr.write("ERROR: %s%s" % (msg, ending))
 
 try:
   from subprocess import DEVNULL  # Python 3.
 except ImportError:
   DEVNULL = open(os.devnull, 'wb')
 
+class VoidLogger:
+  """A quiet logger satisfying the attribute requirements."""
+  def info(self, msg):
+    pass
+  def warning(self, msg):
+    pass
+  def error(self, msg):
+    pass
+
 class Klocalizer:
   def __init__(self):
-    # Keep track of compilation units to optimize the architecture search
-    self.logfile=None
-    self.quiet=False # TODO: set
-    self.ksrc=os.curdir # defaults to current directory
+    self.__logger = VoidLogger()
+    self.__ksrc = os.curdir # defaults to current directory
 
     # Kmax formulas related state variables
     # If self.__is_kmax_formulas_cache is set and kmax formulas for some unit
@@ -54,23 +50,23 @@ class Klocalizer:
 
     self.unmet_free = False
     self.unmet_free_except_for = []
-
-  def __info(self, msg):
-    if self.logfile and not self.quiet:
-      print("INFO: %s" % (msg), file=self.logfile)
-
-  def __warning(self, msg):
-    if self.logfile:
-      print("WARNING: %s" % (msg), file=self.logfile)
-
-  def __error(self, msg):
-    if self.logfile:
-      print("ERROR: %s" % (msg), file=self.logfile)
   
-  # file: a file pointer (os.stderr etc.)
-  def set_logfile(self, file):
-    # TODO: Check if file is valid
-    self.logfile=file
+  def set_logger(self, logger):
+    """Set logger.
+    
+    Logger must have info(msg: str), warning(msg: str), and error(msg: str) attributes.
+    
+    Also, it is assumed that the logger won't implicity print newline since klocalizer might print carriage return to update ongoing progress.
+
+    Set logger to None to disable logging.
+    """
+    if logger == None:
+      self.__logger = VoidLogger()
+    else:    
+      for m in ['info', 'error', 'warning']:
+        assert m in dir(logger)
+      
+      self.__logger = logger
 
   def set_unmet_free(self, unmet_free=True, except_for=[]):
     """Include unmet direct dependency free constraints in the compiled constraints.
@@ -131,10 +127,13 @@ class Klocalizer:
 
     self.__is_kmax_formulas_cache=is_cache
     self.__kmax_cache_file=None
-    self.__info("Loading Kmax formulas from file: %s" % kmax_file)
+    self.__logger.info("Loading Kmax formulas from file: %s\n" % kmax_file)
     self.__kmax_formulas = unpickle_kmax_file(filepath)
-    self.__info("Kmax formulas was loaded.")
+    self.__logger.info("Kmax formulas was loaded.\n")
 
+  def get_kmax_formulas(self):
+    return self.__kmax_formulas
+  
   def add_constraints(self, constraints: list):
     """Add to the list of additional constraints.
 
@@ -176,8 +175,8 @@ class Klocalizer:
     path -- kbuild path.
     """
     command = ['kmax', '-z', ('-Dsrctree=./'), ('-Dsrc=%s' % (os.path.dirname(path))), path]
-    self.__info("Running kmax: %s" % (" ".join(command)))
-    output = subprocess.check_output(command, stderr=DEVNULL, cwd=self.ksrc) # todo: save error output to a log
+    self.__logger.info("Running kmax: %s\n" % (" ".join(command)))
+    output = subprocess.check_output(command, stderr=DEVNULL, cwd=self.__ksrc) # todo: save error output to a log
     formulas = pickle.loads(output)
     return formulas
           
@@ -192,7 +191,7 @@ class Klocalizer:
     # # TODO: Can't set the logger level of kmax, maybe kmax should have an interface for this?
     # kmax.settings.logger_level = getLogLevel(1)
 
-    # kmax.settings.defines = [("srctree=%s" % self.ksrc), ("src=%s" % os.path.dirname(path))]
+    # kmax.settings.defines = [("srctree=%s" % self.__ksrc), ("src=%s" % os.path.dirname(path))]
     # print("defines: '%s'" % kmax.settings.defines)
     # print("inp: '%s'" % path)
     # kmax_run=kmax.alg.Run()
@@ -226,17 +225,17 @@ class Klocalizer:
           # paths are relative to ksrc
           path_to_kbuild = os.path.join(parent_path, "Kbuild")
           path_to_makefile = os.path.join(parent_path, "Makefile")
-          if os.path.exists(os.path.join(self.ksrc, path_to_kbuild)):
+          if os.path.exists(os.path.join(self.__ksrc, path_to_kbuild)):
             paths_to_try.append(path_to_kbuild)
-          if os.path.exists(os.path.join(self.ksrc, path_to_makefile)):
+          if os.path.exists(os.path.join(self.__ksrc, path_to_makefile)):
             paths_to_try.append(path_to_makefile)
           if len(paths_to_try) == 0:
-            self.__warning("There is no Kbuild Makefile in %s" % (parent_path))
+            self.__logger.warning("There is no Kbuild Makefile in %s\n" % (parent_path))
           for path_to_try in paths_to_try:
             new_formulas = self.__query_kmax(path_to_try)
             self.__kmax_formulas.update(new_formulas)
         if current_path not in self.__kmax_formulas:
-          self.__info("%s has no kmax formula, assuming it is unconstrained." % (current_path))
+          self.__logger.info("%s has no kmax formula, assuming it is unconstrained.\n" % (current_path))
 
   def __resolve_kbuild_path(self, unit: str):
     """Resolve the kbuild paths for unit.
@@ -291,7 +290,7 @@ class Klocalizer:
       return constraints
   
   @staticmethod
-  def get_config_from_model(model: z3.Model, arch: Arch, set_tristate_m, allow_non_visibles: bool) -> str:
+  def get_config_from_model(model: z3.Model, arch: Arch, set_tristate_m, allow_non_visibles: bool, logger=None) -> str:
     """Given a z3_model, return a Kconfig config in string representation,
     which can be later dumped as a Kconfig config file and used against Kbuild
     build system.
@@ -305,6 +304,7 @@ class Klocalizer:
     set_tristate_m -- If set, set tristate symbols to `m` if on.
     allow_non_visibles -- Allow non-visible Kconfig configuration options to
     be set in the resulting config file.
+    logger -- Logger.
     
     """
     assert model != None
@@ -322,7 +322,7 @@ class Klocalizer:
     except Arch.MissingLinuxSource:
       # if kextract can't be found, arch will try to generate it and this will fail when linux_ksrc is unset
       # it is okay since we don't expect kextract to exist at all times
-      warning("Can't use architecture kextract while generating config: neither kextract nor linux kernel source to generate kextract was set.")
+      if logger: logger.warning("Can't use architecture kextract while generating config: neither kextract nor linux kernel source to generate kextract was set.\n")
       kconfig_visible = None
       kconfig_types = None
       kconfig_has_def_nonbool = None
@@ -348,7 +348,7 @@ class Klocalizer:
             elif str_entry not in kconfig_types:
               if str_entry not in Arch.ARCH_CONFIGS:
                 # TODO: change this maybe
-                warning("%s is not defined by Kconfig for this architecture." % (str_entry))
+                if logger: logger.warning("%s is not defined by Kconfig for this architecture.\n" % (str_entry))
             elif kconfig_types[str_entry] == "bool":
               write_to_content( "%s=y\n" % (str_entry) )
             elif kconfig_types[str_entry] == "tristate":
@@ -366,7 +366,7 @@ class Klocalizer:
               write_to_content( "# %s is not set\n" % (str_entry) )
             else:
               if str_entry not in Arch.ARCH_CONFIGS:
-                warning("%s is not defined by Kconfig for this architecture." % (str_entry))
+                if logger: logger.warning("%s is not defined by Kconfig for this architecture.\n" % (str_entry))
       # else:
       #   sys.stderr.write("omitting non-config var %s\n" % (str_entry))
     
@@ -385,8 +385,11 @@ class Klocalizer:
     model can be sampled when approximating (for now). Subsequent sample_model()
     calls will return the same model.
     random_seed -- random seed to be used by the internal z3 solver.
+    logger -- Logger.
     """
     def __init__(self, constraints: list, approximate_constraints=None, random_seed=None):
+      self.__logger = VoidLogger()
+
       self.__solver = z3.Solver()
       self.__solver.set(unsat_core=True)
 
@@ -404,6 +407,23 @@ class Klocalizer:
       # keep this to remember if sat check is done or not
       self.__is_sat = None
     
+    def set_logger(self, logger):
+      """Set logger.
+      
+      Logger must have info(msg: str), warning(msg: str), and error(msg: str) attributes.
+      
+      Also, it is assumed that the logger won't implicity print newline since klocalizer might print carriage return to update ongoing progress.
+
+      Set logger to None to disable logging.
+      """
+      if logger == None:
+        self.__logger = VoidLogger()
+      else:
+        for m in ['info', 'error', 'warning']:
+          assert m in dir(logger)
+        
+        self.__logger = logger
+      
     def __approximate_model(self):
       """Assumptions:
         * the constraints are already sat.
@@ -422,21 +442,21 @@ class Klocalizer:
 
       is_sat = solver.check(assumptions) == z3.sat
       if is_sat:
-        info("Already satisfiable when constraining with given config.  No approximatation needed.")
+        self.__logger.info("Already satisfiable when constraining with given config.  No approximatation needed.\n")
       else:
-        info("Approximating via unsat core approach.")
+        self.__logger.info("Approximating via unsat core approach.\n")
         total_assumptions_to_match = len(assumptions)
-        info("%d assumptions left to try removing." % (total_assumptions_to_match), ending="\r")
+        self.__logger.info("%d assumptions left to try removing.\r" % (total_assumptions_to_match))
         while not is_sat:
           core = solver.unsat_core()
           # remove all assumptions that in the core, except those specifically given as user-constraints.  potential optmization: try randomizing this or removing only some assumptions each iteration.
           # print(core)
           # update: user-constraints are no longer handled differently
           assumptions = [ assumption for assumption in assumptions if assumption not in core ]
-          info(len(assumptions), ending="\r")
+          self.__logger.info("%s\r" % len(assumptions))
           is_sat = solver.check(assumptions) == z3.sat
-        info("\r")
-        info("Found satisfying config by removing %d assumptions." % (total_assumptions_to_match - len(assumptions)))
+        self.__logger.info("\r")
+        self.__logger.info("Found satisfying config by removing %d assumptions.\n" % (total_assumptions_to_match - len(assumptions)))
 
     def sample_model(self):
       """If sat, return (True, z3_model)
@@ -474,7 +494,7 @@ class Klocalizer:
       assert False # should've returned above
 
   def set_linux_krsc(self, ksrc_dir):
-    self.ksrc=ksrc_dir
+    self.__ksrc=ksrc_dir
 
   def compile_constraints(self, arch: Arch):
     """Compile and return the constraints.
@@ -502,7 +522,7 @@ class Klocalizer:
       except Arch.MissingLinuxSource:
         # if kextract can't be found, arch will try to generate it and this will fail when linux_ksrc is unset
         # it is okay since we don't expect kextract to exist at all times
-        self.__warning("Can't use architecture kextract to disable undefined boolean configs: neither kextract nor linux kernel source to generate kextract was set.")
+        self.__logger.warning("Can't use architecture kextract to disable undefined boolean configs: neither kextract nor linux kernel source to generate kextract was set.\n")
         kconfig_types = None
       if kconfig_types:
         token_pattern = regex.compile("CONFIG_[A-Za-z0-9_]+")
@@ -550,7 +570,7 @@ class Klocalizer:
     # Format the unit name
     #
     if not unit.endswith(".o"):
-      self.__warning("Forcing file extension to be .o, since lookup is by compilation unit: %s" % (unit))
+      self.__logger.warning("Forcing file extension to be .o, since lookup is by compilation unit: %s\n" % (unit))
       unit = os.path.splitext(unit)[0] + ".o"
     
     #
@@ -572,13 +592,13 @@ class Klocalizer:
           raise Klocalizer.MultipleCompilationUnitsMatch(unit, kbuild_paths)
         kbuild_path = kbuild_paths[0]
         assert unit != kbuild_path
-        self.__info("Using full path from Kbuild: %s" % (kbuild_path))
+        self.__logger.info("Using full path from Kbuild: %s\n" % (kbuild_path))
         unit = kbuild_path
     
     #
     # Add the constraints to the kmax constraints accumulator
     #
-    kmax_constraints_for_unit = get_kmax_constraints(self.__kmax_formulas, unit)
+    kmax_constraints_for_unit = get_kmax_constraints(self.__kmax_formulas, unit) # TODO: this one is not quiet
 
     if inclusion_prop == Klocalizer.__CompUnitInclusionProp.INCLUDE:
       self.__include_compilation_units.append(unit)

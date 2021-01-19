@@ -7,7 +7,7 @@ import string
 import pickle
 import z3
 import logging
-from vcommon import getLogger
+from kmax.vcommon import getLogger
 
 # TODO(necip): test: test compatibility with the existing file formats
 # TODO(necip): test: test exceptions
@@ -16,7 +16,6 @@ from vcommon import getLogger
 # TODO(necip): impl: reoder methods, reorganize code
 # TODO(necip): docs: better define in documentation what resets different states of an Arch instance
 # TODO(necip): impl: do the seperation of read and load to ensure you can load kextract independent of the file (or other formulas)
-# TODO(necip): impl??: create an interface for Arch (e.g., IArch) and implement it, and document the interface for cleaner code
 # TODO(necip): impl: some methods return smt2 string while some return z3 bools. should we keep one way only or is the current way fine?
 
 class Arch:
