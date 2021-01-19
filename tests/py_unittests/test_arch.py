@@ -1,15 +1,51 @@
 import unittest
-from arch import Arch
+from kmax.arch import Arch
 import os
+import sys
 import logging
+import random
+import tempfile
 
-# TODO(necip): use linux kernel source directory, generate formulas
+# LINUX_KSRC="path/to/linux/src" python -m unittest arch_tests.py
+
 # TODO(necip): prepare assets, load formulas from assets, dump, generate from asset kextract
 # TODO(necip): test load_arch (can be done by loading arch from the assets dir)
 # TODO(necip): for assets, check the content of the formulas to see if they are right
 # TODO(necip): test FormulaGenerationError exceptions
 # TODO(necip): test kextract summary (kconfig types etc.)
 # TODO(necip): test kclause composite
+
+linux_ksrc_test = unittest.skipUnless(
+  os.environ.get('LINUX_KSRC', False), 'skipping tests requiring linux kernel source since LINUX_KSRC is unset'
+)
+
+@linux_ksrc_test
+class LinuxKsrcRequiredTests(unittest.TestCase):
+  @staticmethod
+  def get_linux_ksrc():
+    return os.environ.get('LINUX_KSRC', False)
+
+# TODO: use subtests, for each type do: 1) generate, get, dump, 2) load, get, so that, other paths will be tested
+class TestFormulaGeneration(LinuxKsrcRequiredTests):
+  def __get_new_arch(self):
+    self.arch_tmpdir = tempfile.TemporaryDirectory()
+    return Arch(random.choice(Arch.ARCHS), loggerLevel=logging.CRITICAL, linux_ksrc=LinuxKsrcRequiredTests.get_linux_ksrc(), arch_dir=self.arch_tmpdir.name)
+  
+  def test_generate_kextract(self):
+    self.__get_new_arch().generate_kextract()
+
+  def test_generate_kclause(self):
+    self.__get_new_arch().generate_kclause()
+  
+  def test_generate_dir_dep(self):
+    self.__get_new_arch().generate_dir_dep()
+  
+  def test_generate_selects(self):
+    self.__get_new_arch().generate_selects()
+  
+  def test_generate_rev_dep(self):
+    self.__get_new_arch().generate_rev_dep()
+  
 
 class TestFormulaFileNotFound(unittest.TestCase):
   def setUp(self):
