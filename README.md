@@ -14,9 +14,9 @@
 
 ## Getting Started
 
-Install kmax in one of two ways:
+Kmax currently depends on python 3.8 or later.  Install kmax in one of two ways:
 
-1. To a python virtual environment:
+1. To a python virtual environment (_recommended_):
 
         sudo apt install -y python3-pip python3-venv flex bison bc libssl-dev libelf-dev
         python3 -m venv kmax_env  # create the environment
