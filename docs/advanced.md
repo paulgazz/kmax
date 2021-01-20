@@ -22,6 +22,12 @@
     - [Example](#example)
     - [Other uses](#other-uses)
       - [Get a list of all visible configs](#get-a-list-of-all-visible-configs)
+  - [Kismet](#kismet)
+    - [Analysis stages](#analysis-stages)
+      - [Syntactical optimization](#syntactical-optimization)
+      - [Optimized SAT check](#optimized-sat-check)
+      - [Precise SAT check](#precise-sat-check)
+    - [Summary format](#summary-format)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -484,3 +490,33 @@ Then, from the root of a Linux source tree, run the following:
     
     # the visibles should be a subset of the configs
     diff configs.txt visible.txt  | grep ">"
+
+## Kismet
+
+`kismet`'s routine consists of a three step analyses pipeline, each at different precisions.
+
+After the identification of the select constructs, each construct is seen as a potential unmet direct dependency case, thus, marked to raise unmet dependency alarm. The subsequent stages works on the alarms of the previous stage, trying to rule out alarms as unmet dependency safe, thus, increasing the precision. While any stage is at least as precise as the stages before it, the earlier stages helps to increase the performance.
+
+### Analysis stages
+
+#### Syntactical optimization
+Given the fact that a select construct is unmet dependency safe if the selectee has no direct dependency, this stage marks such constructs as unmet safe. This is very fast, and does not involve any SAT solvers but only syntactical analysis of the constructs.
+
+#### Optimized SAT check
+For a select construct to be unmet dependency free, the kclause constraints for the architecture together with the additional unmet dependency free constraints (which we call optimized constraints) must be satisfiable. We name this whole set of constraints as precise constraints. Given the observation that the optimized constraints are much smaller than the precise constraints, SAT solvers can decide the optimized constraints much faster. In this stage, `kismet` discharges the optimized constraints to a SAT solver to rule out more constructs as unmet dependency safe.
+
+#### Precise SAT check
+In this stage, `kismet` discharges the whole set of constraints (optimized and kclause architecture constraints, i.e., precise constraints) to a SAT solver to analyse remaining alarms and rule them as safe. This is the last stage of the static analysis pipeline, where any construct could not be ruled to be unmet safe raise unmet alarms.
+
+### Summary format
+Upon completing the analysis, `kismet` writes a detailed summary in CSV format to the standard output.
+
+This includes the following columns:  
+- `selectee`: The selectee of the select construct.  
+- `selector`: The selector of the select construct.  
+- `visib_id`: The visibility id of the select construct. One (selectee, selector) pair might appear multiple times on different visibility constraints (e.g., within `CONFIG_SELECTOR`, there might be two entries, such as: `select SELECTEE if VISIB1`, `select SELECTEE if VISIB2`). Such constructs are distinguished with this visibility id.  
+- `constraint_type`: There are possibly multiple ways to satisfy the optimized constraints. If exploring the whole unmet space is enabled (disabled by default, use `'--explore-whole-unmet-space` to enable), all expressions to satisfy the optimized constraints are explored individually, called as SAT options. On the other hand, some random solution to precise constraints is called generic option, which suffices to verify alarms. In the summary, generic option has `constraint_type` 0 while exhaustively explored SAT options have `constraint_type` ids starting from 1.  
+- `analysis_result`: one of: `UNMET_ALARM`, `UNMET_SAFE_SYNTACTIC_PASS`, `UNMET_SAFE_OPTIMIZED_PASS`, `UNMET_SAFE_PRECISE_PASS`.  
+- `verified`: If the analysis result is an alarm, includes whether the generated test case for the related construct verifies the alarm.  
+- `forced_target_udd_only`: If the analysis result is an alarm, includes whether forcing the target unmet dependency only was successful.  
+- `testcase`: The path to the generated test case, i.e., sample Kconfig config file.  

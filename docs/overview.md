@@ -32,6 +32,8 @@ the following tools:
   described [here](https://paulgazzillo.com/papers/esecfse17.pdf) and
   the original implementation can be found
   [here](https://github.com/paulgazz/kmax/releases/tag/v1.0).
+- `kismet` does verification-based static analysis to find unmet dependency
+  bugs and generates test cases.
 
 ## Contributors
 

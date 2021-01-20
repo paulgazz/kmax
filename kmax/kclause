@@ -1147,7 +1147,7 @@ if __name__ == '__main__':
   if not quiet: sys.stderr.write("[STEP 3/3] done \n")
 
   # quit and don't do dimacs clause processing
-  exit(1)
+  exit(0)
 
   if force_all_nonbools_on:
     for nonbool in (nonbools):
