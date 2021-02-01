@@ -655,6 +655,14 @@ if __name__ == '__main__':
     info("During precise SAT test, %d models were generated." % count_precisepass_models)
 
     # end of precise pass
+  
+  if count_precisepass_models == 0:
+    if sample_models:
+      info("Skipping test case generation since there are no models to generate test cases for.")
+      sample_models = False
+    if verify:
+      info("Skipping verification since there are no test cases to verify.")
+      verify = False
 
   # TODO: allow putting comments in the config files
   def get_cfgfilepath(selectee, selector, visib_id, type_id):
@@ -915,7 +923,7 @@ if __name__ == '__main__':
         f.write("%d test cases were used during verification to verify alarms for %d select constructs.\n" % (count_testcasgen_configscreated, count_precisepass_unmet_alarm_generic))
         f.write("For %d constructs, all test cases verified the alarm.\n" % count_verification_all_verified_per_unique_construct)
         f.write("For %d constructs, at least one test verified the alarm, thus, proving the existince of the udd.\n" % count_verification_some_verified_per_unique_construct)
-        f.write("For %d constructs, none of the test cases verified the alarm, thus, false positive of kismet.\n" % count_precisepass_unmet_alarm_generic - count_verification_some_verified_per_unique_construct)
+        f.write("For %d constructs, none of the test cases verified the alarm, thus, false positive of kismet.\n" % (count_precisepass_unmet_alarm_generic - count_verification_some_verified_per_unique_construct))
 
     info("Aggregated summary txt was written.")
 
