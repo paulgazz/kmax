@@ -278,11 +278,11 @@ if __name__ == '__main__':
   argparser.add_argument('--summary-csv',
                         type=str,
                         default=None,
-                        help="""Path to summary csv file, which includes the per construct stats.  Defaults to \"summary_ARCHNAME.csv\"""")
+                        help="""Path to summary csv file, which includes the per construct stats.  Defaults to \"kismet_summary_ARCHNAME.csv\"""")
   argparser.add_argument('--summary-txt',
                         type=str,
                         default=None,
-                        help="""Path to summary text file, which includes the aggreagated results.  Defaults to \"summary_ARCHNAME.txt\"""")
+                        help="""Path to summary text file, which includes the aggreagated results.  Defaults to \"kismet_summary_ARCHNAME.txt\"""")
   argparser.add_argument('--no-summary-csv',
                         action="store_true",
                         help="""Don't write summary csv file.""")
@@ -337,8 +337,8 @@ if __name__ == '__main__':
   dump_safe = not args.exclude_safe_from_summary
   dump_summary_csv = not args.no_summary_csv and (dump_alarms or dump_safe)
   dump_summary_txt = not args.no_summary_txt
-  summary_csv_path = args.summary_csv if args.summary_csv != None else "summary_%s.csv" % arch_name
-  summary_txt_path = args.summary_txt if args.summary_txt != None else "summary_%s.txt" % arch_name
+  summary_csv_path = args.summary_csv if args.summary_csv != None else "kismet_summary_%s.csv" % arch_name
+  summary_txt_path = args.summary_txt if args.summary_txt != None else "kismet_summary_%s.txt" % arch_name
   summary_use_testcase_realpath= args.use_fullpath_in_summary
   disable_config_broken = not args.allow_config_broken
 
@@ -965,7 +965,7 @@ if __name__ == '__main__':
       csv_writer = csv.writer(f)
 
       # header row
-      header_row = ["selectee", "selector", "visib_id", "constraint_type", "analysis_result"]
+      header_row = ["arch", "selectee", "selector", "visib_id", "constraint_type", "analysis_result"]
       if verify:                header_row.append("verified")
       if force_target_udd_only: header_row.append("forced_target_udd_only")
       if generate_sample:       header_row.append("testcase")
@@ -979,7 +979,7 @@ if __name__ == '__main__':
           return None
         analysis_result = analysis_result.name
 
-        row = [selectee, selector, visib_id, constraint_type, analysis_result]
+        row = [arch_name, selectee, selector, visib_id, constraint_type, analysis_result]
 
         if verify: row.append(entry.get("is_verified", "N/A"))
         if force_target_udd_only: row.append(entry.get("forced_target_udd_only", "N/A"))
