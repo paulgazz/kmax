@@ -143,7 +143,10 @@ class Klocalizer:
     if constraints == None or constraints == []:
       return
     
-    assert type(constraints) == list and type(constraints[0]) == z3.BoolRef
+    # The following check is disabled since the constraints are allowed to be
+    # instances of other types such as an z3.ASTVector.
+    # TODO: fix and enable the constraints type check
+    #assert type(constraints) == list and type(constraints[0]) == z3.BoolRef
     self.__additional_constraints.extend(constraints)
 
   def set_constraints(self, constraints: list):

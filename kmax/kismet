@@ -104,7 +104,7 @@ def get_all_sat_exprs(formula: z3.z3.BoolRef):
 
   return sat_exprs
 
-def get_unmet_constraints(arch, symbols_to_query=None, syntactical_optimization=True, attach_analysis_info=False):
+def get_unmet_constraints(arch, selectors=None, selectees=None, syntactical_optimization=True, attach_analysis_info=False):
   """Get unmet constraints mapping to optimized constraints.
 
   For a Kconfig select construct (selectee, selector, visibility), the optimized
@@ -126,9 +126,10 @@ def get_unmet_constraints(arch, symbols_to_query=None, syntactical_optimization=
   Arguments:
   arch -- The architecture for which to identify the selects constructs and
   the related unmet direct dependency constraints.
-  symbols_to_query -- List of (selector, selectee) pairs of type (str, str)
-  to query unmet constraints for. If unset, unmet constraints for all pairs
-  will be returned.
+  selectors -- List of selector config symbol names to query unmet constraints
+  for. If unset, any selector symbol will be included in the results.
+  selectors -- List of selectee config symbol names to query unmet constraints
+  for. If unset, any selectee symbol will be included in the results.
   syntactical_optimization -- If there is no direct dependency for some symbol,
   don't include any select constructs involving such symbol as selectee. This
   is a syntactical optimization -- does not involve usage of a SAT solver.
@@ -167,17 +168,28 @@ def get_unmet_constraints(arch, symbols_to_query=None, syntactical_optimization=
 
   selects = arch.get_selects()
   dir_deps = arch.get_dir_dep()
+  
+  #
+  # If specified, limit the constructs to given selectees and selectors
+  #
+  if selectees: selectees = set(selectees)
+  if selectors: selectors = set(selectors)
 
-  if symbols_to_query:
+  if selectees or selectors:
     selects_new = {}
 
-    for selectee, selector in symbols_to_query:
-      if not (selectee in selects and selector in selects[selectee]):
+    for selectee in selects:
+      if selectees and selectee not in selectees:
         continue
-
       selects_new[selectee] = {}
-      selects_new[selectee][selector] = selects[selectee][selector]
-  
+
+      for selector in selects[selectee]:
+        if selectors and selector not in selectors:
+          continue
+        selects_new[selectee][selector] = selects[selectee][selector]
+
+      if len(selects_new[selectee]) == 0:
+        del selects_new[selectee]
     selects = selects_new
 
   for selectee in selects:
@@ -229,6 +241,16 @@ if __name__ == '__main__':
                         type=str,
                         required=True,
                         help="""Specify architecture to analyze.  Available architectures: %s""" % (", ".join(Arch.ARCHS)))
+  argparser.add_argument('--selectors',
+                        action="extend",
+                        default=[],
+                        nargs="+",
+                        help="""List of selector config symbols to analyze.  If not specified, any selector symbol will be included in the analysis.""")
+  argparser.add_argument('--selectees',
+                        action="extend",
+                        default=[],
+                        nargs="+",
+                        help="""List of selectee config symbols to analyze.  If not specified, any selectee symbol will be included in the analysis.""")
   argparser.add_argument('--formulas',
                         type=str,
                         default=None,
@@ -256,11 +278,11 @@ if __name__ == '__main__':
   argparser.add_argument('--summary-csv',
                         type=str,
                         default=None,
-                        help="""Path to summary csv file, which includes the per construct stats.  Defaults to \"summary_ARCHNAME.csv\"""")
+                        help="""Path to summary csv file, which includes the per construct stats.  Defaults to \"kismet_summary_ARCHNAME.csv\"""")
   argparser.add_argument('--summary-txt',
                         type=str,
                         default=None,
-                        help="""Path to summary text file, which includes the aggreagated results.  Defaults to \"summary_ARCHNAME.txt\"""")
+                        help="""Path to summary text file, which includes the aggreagated results.  Defaults to \"kismet_summary_ARCHNAME.txt\"""")
   argparser.add_argument('--no-summary-csv',
                         action="store_true",
                         help="""Don't write summary csv file.""")
@@ -291,9 +313,14 @@ if __name__ == '__main__':
   argparser.add_argument('--no-verification',
                         action="store_true",
                         help="""Turn off verification of alarms.  """)
+  argparser.add_argument('--allow-config-broken',
+                        action="store_true",
+                        help="""Allow CONFIG_BROKEN dependencies.  """)
   
   args = argparser.parse_args()
   arch_name = args.arch
+  selectors = args.selectors
+  selectees = args.selectees
   linux_ksrc = args.linux_ksrc
   kclause_formulas_folder = args.formulas if args.formulas != None else os.path.join(linux_ksrc, ".kmax/kclause/%s" % arch_name)
   syntactical_optimization = not args.no_syntactical_optimization
@@ -310,9 +337,10 @@ if __name__ == '__main__':
   dump_safe = not args.exclude_safe_from_summary
   dump_summary_csv = not args.no_summary_csv and (dump_alarms or dump_safe)
   dump_summary_txt = not args.no_summary_txt
-  summary_csv_path = args.summary_csv if args.summary_csv != None else "summary_%s.csv" % arch_name
-  summary_txt_path = args.summary_txt if args.summary_txt != None else "summary_%s.txt" % arch_name
+  summary_csv_path = args.summary_csv if args.summary_csv != None else "kismet_summary_%s.csv" % arch_name
+  summary_txt_path = args.summary_txt if args.summary_txt != None else "kismet_summary_%s.txt" % arch_name
   summary_use_testcase_realpath= args.use_fullpath_in_summary
+  disable_config_broken = not args.allow_config_broken
 
   if not precise_SAT_pass:
     if generate_sample:
@@ -367,7 +395,7 @@ if __name__ == '__main__':
   #
   info("Identifying the select constructs.")
   t_start_identifyconstructs = __get_time_refpoint()
-  unmet_constraints = get_unmet_constraints(arch, syntactical_optimization=syntactical_optimization, attach_analysis_info=True)
+  unmet_constraints = get_unmet_constraints(arch, selectors=selectors, selectees=selectees, syntactical_optimization=syntactical_optimization, attach_analysis_info=True)
 
   # keep track of the counts. in case some step is disabled, this mapping will let the next step know how many alarms there are to check
   counts = {
@@ -552,6 +580,7 @@ if __name__ == '__main__':
       else:
         klocalizer.set_unmet_free(unmet_free=False)
       klocalizer.set_constraints([optimized_constraints])
+      if disable_config_broken: klocalizer.add_constraints([z3.Not(z3.Bool("CONFIG_BROKEN"))])
       full_constraints = klocalizer.compile_constraints(arch)
       model_sampler = Klocalizer.Z3ModelSampler(full_constraints, random_seed=random_seed)
       is_sat, payload = model_sampler.sample_model()
@@ -656,7 +685,7 @@ if __name__ == '__main__':
 
     # end of precise pass
   
-  if count_precisepass_models == 0:
+  if precise_SAT_pass and count_precisepass_models == 0:
     if sample_models:
       info("Skipping test case generation since there are no models to generate test cases for.")
       sample_models = False
@@ -855,8 +884,8 @@ if __name__ == '__main__':
       overall_analysis_time += t_spent_prefetchformulas
       timings.append( ("Identify constructs", t_spent_identifyconstructs) )
       if dump_optimized_constraints:
+        overall_analysis_time += t_spent_dumpoptimized
         timings.append( ("Dump optimized constraints", t_spent_dumpoptimized) )
-        # don't add to the overall analysis time: not a part of the analysis
       if optimized_SAT_pass:
         timings.append( ("Optimized SAT pass", t_spent_optimizedpass) )
         overall_analysis_time += t_spent_optimizedpass
@@ -877,7 +906,7 @@ if __name__ == '__main__':
       f.write("Over %d select constructs, unmet dependency analysis resulted in: %d safe, %d alarm.\n" % ( sum(counts.values()), sum(counts.values()) -  counts[UnmetDepResult.UNMET_ALARM], counts[UnmetDepResult.UNMET_ALARM]))
       if verify:
         f.write("%d of %d alarms were successfully validated. Test cases couldn't verify the remaining %d alarms.\n" % (count_verification_some_verified_per_unique_construct, counts[UnmetDepResult.UNMET_ALARM],  counts[UnmetDepResult.UNMET_ALARM]-count_verification_some_verified_per_unique_construct))
-      f.write("The analysis was done in %.2f seconds (only analysis related stages).\n" % overall_analysis_time)
+      f.write("The analysis was done in %.2f seconds.\n" % overall_analysis_time)
 
       f.write("\n= Timing results (seconds) =\n")
       for n, t in timings:
@@ -936,7 +965,7 @@ if __name__ == '__main__':
       csv_writer = csv.writer(f)
 
       # header row
-      header_row = ["selectee", "selector", "visib_id", "constraint_type", "analysis_result"]
+      header_row = ["arch", "selectee", "selector", "visib_id", "constraint_type", "analysis_result"]
       if verify:                header_row.append("verified")
       if force_target_udd_only: header_row.append("forced_target_udd_only")
       if generate_sample:       header_row.append("testcase")
@@ -950,7 +979,7 @@ if __name__ == '__main__':
           return None
         analysis_result = analysis_result.name
 
-        row = [selectee, selector, visib_id, constraint_type, analysis_result]
+        row = [arch_name, selectee, selector, visib_id, constraint_type, analysis_result]
 
         if verify: row.append(entry.get("is_verified", "N/A"))
         if force_target_udd_only: row.append(entry.get("forced_target_udd_only", "N/A"))
