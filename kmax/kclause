@@ -1119,6 +1119,14 @@ if __name__ == '__main__':
     else:
       assert True
 
+  # set orphaned nonvisible bools to false
+  def is_orphaned_nonvisible(var):
+    return var not in has_prompt and var in bools and var not in has_defaults and var not in has_selects
+  
+  for var in defined_vars:
+    if is_orphaned_nonvisible(var):
+      add_clause(var, z3.Not(z3.Bool(var)))
+
   if not quiet and not debug:
     sys.stderr.write("%s\r" % (" " * last_status_line_size))
     sys.stderr.write("[STEP 2/3] translated %d/%d configuration option dependencies\n" % (processing, num_vars))
