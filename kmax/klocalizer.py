@@ -390,8 +390,8 @@ class Klocalizer:
     random_seed -- random seed to be used by the internal z3 solver.
     logger -- Logger.
     """
-    def __init__(self, constraints: list, approximate_constraints=None, random_seed=None):
-      self.__logger = VoidLogger()
+    def __init__(self, constraints: list, approximate_constraints=None, random_seed=None, logger=None):
+      self.set_logger(logger)
 
       self.__solver = z3.Solver()
       self.__solver.set(unsat_core=True)
