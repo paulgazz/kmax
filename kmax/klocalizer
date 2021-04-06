@@ -233,6 +233,10 @@ def klocalizerCLI():
     logger.warning("No formulas found.  Generating them on demand.  They can also be downloaded from https://configtools.org/kmax/formulas/ for some Linux versions.\n")
     os.makedirs(formulas)
 
+  if approximate and not os.path.isfile(approximate):
+    logger.error("Cannot find config file to approximate: %s\n" % approximate)
+    exit(6)
+
   #
   # Set kmax file
   #
@@ -393,7 +397,7 @@ def klocalizerCLI():
   for arch in archs:
     logger.info("Trying \"%s\"\n" % (arch.name))
     constraints = klocalizer.compile_constraints(arch)
-    model_sampler = Klocalizer.Z3ModelSampler(constraints, approximate_constraints=approximate_constraints, random_seed=random_seed)
+    model_sampler = Klocalizer.Z3ModelSampler(constraints, approximate_constraints=approximate_constraints, random_seed=random_seed, logger=logger)
     is_sat, payload = model_sampler.sample_model()
 
     #
