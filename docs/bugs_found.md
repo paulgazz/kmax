@@ -106,10 +106,6 @@
 
 2021-03-06 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=7005227369079963d25fb2d5d736d0feb2c44cf6): Committed into linux stable.
 
-### RDMA/rxe: fix unmet dependency for RDMA_RXE when !CRYPTO
-
-2021-03-01 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=475f23b8c66d2892ad6acbf90ed757cafab13de7): Committed into linux stable.
-
 ### net: marvell: build error due to unmet dependency for MVMDIO by MV643XX_ETH
 
 2020-11-05 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=210063)
@@ -301,6 +297,10 @@
 2020-09-15 [Confirmation](https://lkml.org/lkml/2020/9/15/423): The issue was confirmed but a different fix was suggested.
 
 2020-09-15 [Patch](https://lkml.org/lkml/2020/9/15/360)
+
+2021-02-19 [Patch](https://lkml.org/lkml/2021/2/19/708): The patch was accidentally resubmitted, but then accepted this time.
+
+2021-03-01 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=475f23b8c66d2892ad6acbf90ed757cafab13de7): Committed into linux stable.
 
 ### clk: bcm: fix kconfig dependency warning for CLK_BCM2711_DVP
 
