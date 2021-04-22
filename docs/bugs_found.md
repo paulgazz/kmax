@@ -72,43 +72,43 @@
 
 ### drivers: gpu: drm: bridge: fix unmet dependency for DRM_KMS_HELPER when !DRM_KMS_HELPER
 
-2020-04-09 [Commit](https://cgit.freedesktop.org/drm/drm-misc/commit/?id=62066d3164467167fc27b2383f67d097e39bf176): Committed into drm-misc-next.
+2021-04-01 [Commit](https://cgit.freedesktop.org/drm/drm-misc/commit/?id=62066d3164467167fc27b2383f67d097e39bf176): Committed into drm-misc-next.
 
 ### mips: fix unmet dependency for FRAME_POINTER when !ARCH_WANT_FRAME_POINTERS
 
-2020-04-09 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=f766b28a5edfd86600e55360cc4bf29c71cca2eb): Committed into linux-next.
+2021-03-29 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=f766b28a5edfd86600e55360cc4bf29c71cca2eb): Committed into linux-next.
 
 ### mips: fix unmet dependency for MTD_COMPLEX_MAPPINGS when !MTD
 
-2020-04-09 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=f766b28a5edfd86600e55360cc4bf29c71cca2eb): Committed into linux-next.
+2021-03-29 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=f766b28a5edfd86600e55360cc4bf29c71cca2eb): Committed into linux-next.
 
 ### mips: fix unmet dependency for DEBUG_INFO when !DEBUG_KERNEL
 
-2020-04-09 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=e87f69a5187d9414c3c2dae9539649e3823ee32c): Committed into linux-next.
+2021-03-29 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=e87f69a5187d9414c3c2dae9539649e3823ee32c): Committed into linux-next.
 
 ### drivers: staging: netlogic: fix unmet dependency for PHYLIB when !NETDEVICES
 
-2020-04-09 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=a5bf1a101a19dbb38be7ffebe2650449e344c892): Committed into linux-next.
+2021-03-26 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=a5bf1a101a19dbb38be7ffebe2650449e344c892): Committed into linux-next.
 
 ### media: drivers: media: pci: sta2x11: fix unmet dependency for VIDEO_ADV7180 when !GPIOLIB
 
-2020-04-09 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=24df8b74c8b2fb42c49ffe8585562da0c96446ff): Committed into linux-next.
+2021-03-11 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=24df8b74c8b2fb42c49ffe8585562da0c96446ff): Committed into linux-next.
 
 ### drivers: tty: serial: fix unmet dependency for SERIAL_EARLYCON when !SERIAL_CORE
 
-2020-04-09 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=196ebe5c000afbfe67b8561f716e365174552bd7): Committed into linux-next.
+2021-03-10 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=196ebe5c000afbfe67b8561f716e365174552bd7): Committed into linux-next.
 
 ### staging: rtl8192e: fix unmet dependency for CRYPTO_MICHAEL_MIC and CRYPTO_LIB_ARC4 when !CRYPTO
 
-2020-04-09 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=7c36194558cf49a86a53b5f60db8046c5e3013ae): Committed into linux stable.
+2021-03-10 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=7c36194558cf49a86a53b5f60db8046c5e3013ae): Committed into linux stable.
 
 ### fs: nfsd: fix unmet dependency for CRYPTO_SHA256 and CRYPTO_MD5 when !CRYPTO
 
-2020-04-09 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=7005227369079963d25fb2d5d736d0feb2c44cf6): Committed into linux stable.
+2021-03-06 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=7005227369079963d25fb2d5d736d0feb2c44cf6): Committed into linux stable.
 
 ### RDMA/rxe: fix unmet dependency for RDMA_RXE when !CRYPTO
 
-2020-04-09 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=475f23b8c66d2892ad6acbf90ed757cafab13de7): Committed into linux stable.
+2021-03-01 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=475f23b8c66d2892ad6acbf90ed757cafab13de7): Committed into linux stable.
 
 ### net: marvell: build error due to unmet dependency for MVMDIO by MV643XX_ETH
 
