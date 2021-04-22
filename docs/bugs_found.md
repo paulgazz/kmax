@@ -86,10 +86,6 @@
 
 2021-03-29 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=e87f69a5187d9414c3c2dae9539649e3823ee32c): Committed into linux-next.
 
-### drivers: staging: netlogic: fix unmet dependency for PHYLIB when !NETDEVICES
-
-2021-03-26 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=a5bf1a101a19dbb38be7ffebe2650449e344c892): Committed into linux-next.
-
 ### media: drivers: media: pci: sta2x11: fix unmet dependency for VIDEO_ADV7180 when !GPIOLIB
 
 2021-03-11 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=24df8b74c8b2fb42c49ffe8585562da0c96446ff): Committed into linux-next.
@@ -203,6 +199,10 @@
 ### staging: netlogic: NETLOGIC_XLR_NET overleaps kconfig dependency for NETDEVICES
 
 2020-09-18 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=209315)
+
+2021-03-26 [Patch](https://lkml.org/lkml/2021/3/26/32)
+
+2021-03-26 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=a5bf1a101a19dbb38be7ffebe2650449e344c892): Committed into linux-next.
 
 ### staging: mt7621-dma: MTK_HSDMA overleaps kconfig dependency of DMADEVICES
 
