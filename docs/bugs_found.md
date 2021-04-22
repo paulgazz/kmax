@@ -1,9 +1,16 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-
 - [Bugs Found by Kmax Tools](#bugs-found-by-kmax-tools)
   - [Linux kernel](#linux-kernel)
+    - [drivers: pinctrl: qcom: fix unmet dependency for PINCTRL_MSM when !GPIOLIB](#drivers-pinctrl-qcom-fix-unmet-dependency-for-pinctrl_msm-when-gpiolib)
+    - [drivers: gpu: drm: bridge: fix unmet dependency for DRM_KMS_HELPER when !DRM_KMS_HELPER](#drivers-gpu-drm-bridge-fix-unmet-dependency-for-drm_kms_helper-when-drm_kms_helper)
+    - [mips: fix unmet dependency for FRAME_POINTER when !ARCH_WANT_FRAME_POINTERS](#mips-fix-unmet-dependency-for-frame_pointer-when-arch_want_frame_pointers)
+    - [mips: fix unmet dependency for MTD_COMPLEX_MAPPINGS when !MTD](#mips-fix-unmet-dependency-for-mtd_complex_mappings-when-mtd)
+    - [mips: fix unmet dependency for DEBUG_INFO when !DEBUG_KERNEL](#mips-fix-unmet-dependency-for-debug_info-when-debug_kernel)
+    - [media: drivers: media: pci: sta2x11: fix unmet dependency for VIDEO_ADV7180 when !GPIOLIB](#media-drivers-media-pci-sta2x11-fix-unmet-dependency-for-video_adv7180-when-gpiolib)
+    - [drivers: tty: serial: fix unmet dependency for SERIAL_EARLYCON when !SERIAL_CORE](#drivers-tty-serial-fix-unmet-dependency-for-serial_earlycon-when-serial_core)
+    - [fs: nfsd: fix unmet dependency for CRYPTO_SHA256 and CRYPTO_MD5 when !CRYPTO](#fs-nfsd-fix-unmet-dependency-for-crypto_sha256-and-crypto_md5-when-crypto)
     - [net: marvell: build error due to unmet dependency for MVMDIO by MV643XX_ETH](#net-marvell-build-error-due-to-unmet-dependency-for-mvmdio-by-mv643xx_eth)
     - [mtd: rawnand: build error due to unmet dependency for MFD_SYSCON by MTD_NAND_MESON](#mtd-rawnand-build-error-due-to-unmet-dependency-for-mfd_syscon-by-mtd_nand_meson)
     - [irqchip: build error due to unmet dependency for MFD_SYSCON by INGENIC_TCU_IRQ](#irqchip-build-error-due-to-unmet-dependency-for-mfd_syscon-by-ingenic_tcu_irq)
