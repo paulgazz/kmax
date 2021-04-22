@@ -70,13 +70,19 @@
 
 2021-04-14 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=376f9e34c10faa3e94b881088b160cfda540ae5f): Committed into linux-next.
 
+2021-02-22 [Patch](https://lkml.org/lkml/2021/2/25/105)
+
 ### drivers: gpu: drm: bridge: fix unmet dependency for DRM_KMS_HELPER when !DRM_KMS_HELPER
 
 2021-04-01 [Commit](https://cgit.freedesktop.org/drm/drm-misc/commit/?id=62066d3164467167fc27b2383f67d097e39bf176): Committed into drm-misc-next.
 
+2021-02-22 [Patch](https://lkml.org/lkml/2021/2/22/1167)
+
 ### mips: fix unmet dependency for FRAME_POINTER when !ARCH_WANT_FRAME_POINTERS
 
 2021-03-29 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=f766b28a5edfd86600e55360cc4bf29c71cca2eb): Committed into linux-next.
+
+2021-03-29 [Patch](https://lkml.org/lkml/2021/3/29/1692)
 
 ### mips: fix unmet dependency for MTD_COMPLEX_MAPPINGS when !MTD
 
@@ -86,17 +92,25 @@
 
 2021-03-29 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=e87f69a5187d9414c3c2dae9539649e3823ee32c): Committed into linux-next.
 
+2021-03-26 [Patch](https://lkml.org/lkml/2021/3/26/26)
+
 ### media: drivers: media: pci: sta2x11: fix unmet dependency for VIDEO_ADV7180 when !GPIOLIB
 
 2021-03-11 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=24df8b74c8b2fb42c49ffe8585562da0c96446ff): Committed into linux-next.
+
+2021-02-25 [Patch](https://lkml.org/lkml/2021/2/25/87)
 
 ### drivers: tty: serial: fix unmet dependency for SERIAL_EARLYCON when !SERIAL_CORE
 
 2021-03-10 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=196ebe5c000afbfe67b8561f716e365174552bd7): Committed into linux-next.
 
+2021-02-24 [Patch](https://lkml.org/lkml/2021/2/24/1184)
+
 ### fs: nfsd: fix unmet dependency for CRYPTO_SHA256 and CRYPTO_MD5 when !CRYPTO
 
 2021-03-06 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=7005227369079963d25fb2d5d736d0feb2c44cf6): Committed into linux stable.
+
+2021-02-19 [Patch](https://lkml.org/lkml/2021/2/19/669)
 
 ### net: marvell: build error due to unmet dependency for MVMDIO by MV643XX_ETH
 
