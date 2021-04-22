@@ -98,10 +98,6 @@
 
 2021-03-10 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=196ebe5c000afbfe67b8561f716e365174552bd7): Committed into linux-next.
 
-### staging: rtl8192e: fix unmet dependency for CRYPTO_MICHAEL_MIC and CRYPTO_LIB_ARC4 when !CRYPTO
-
-2021-03-10 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=7c36194558cf49a86a53b5f60db8046c5e3013ae): Committed into linux stable.
-
 ### fs: nfsd: fix unmet dependency for CRYPTO_SHA256 and CRYPTO_MD5 when !CRYPTO
 
 2021-03-06 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=7005227369079963d25fb2d5d736d0feb2c44cf6): Committed into linux stable.
