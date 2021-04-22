@@ -66,6 +66,10 @@
 
 ## Linux kernel
 
+### drivers: pinctrl: qcom: fix unmet dependency for PINCTRL_MSM when !GPIOLIB
+
+2021-04-14 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=376f9e34c10faa3e94b881088b160cfda540ae5f): Committed into linux-next.
+
 ### drivers: gpu: drm: bridge: fix unmet dependency for DRM_KMS_HELPER when !DRM_KMS_HELPER
 
 2020-04-09 [Commit](https://cgit.freedesktop.org/drm/drm-misc/commit/?id=62066d3164467167fc27b2383f67d097e39bf176): Committed into drm-misc-next.
