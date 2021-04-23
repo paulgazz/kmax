@@ -83,11 +83,15 @@
 
 2021-04-01 [Commit](https://cgit.freedesktop.org/drm/drm-misc/commit/?id=62066d3164467167fc27b2383f67d097e39bf176): Committed into drm-misc-next.
 
+2021-04-01 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=62066d3164467167fc27b2383f67d097e39bf176): Committed into linux-next.
+
 2021-02-22 [Patch](https://lkml.org/lkml/2021/2/22/1167)
 
 ### mips: fix unmet dependency for FRAME_POINTER when !ARCH_WANT_FRAME_POINTERS
 
-2021-03-29 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=7d37cb2c912dc5c25ffac784a4f9b98c06c6bd08): Committed into linux-next.
+2021-04-09 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=7d37cb2c912dc5c25ffac784a4f9b98c06c6bd08): Committed into linux-next.
+
+2021-04-09 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/commit/?id=7d37cb2c912dc5c25ffac784a4f9b98c06c6bd08): Committed into linux-stable.
 
 2021-03-29 [Patch](https://lkml.org/lkml/2021/3/29/1692)
 
@@ -117,7 +121,9 @@
 
 ### fs: nfsd: fix unmet dependency for CRYPTO_SHA256 and CRYPTO_MD5 when !CRYPTO
 
-2021-03-06 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=7005227369079963d25fb2d5d736d0feb2c44cf6): Committed into linux stable.
+2021-03-06 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=7005227369079963d25fb2d5d736d0feb2c44cf6): Committed into linux-next.
+
+2021-03-06 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/commit/?id=7005227369079963d25fb2d5d736d0feb2c44cf6): Committed into linux-stable.
 
 2021-02-19 [Patch](https://lkml.org/lkml/2021/2/19/669)
 
@@ -319,7 +325,9 @@
 
 2021-02-19 [Patch](https://lkml.org/lkml/2021/2/19/708): The patch was accidentally resubmitted, but then accepted this time.
 
-2021-03-01 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=475f23b8c66d2892ad6acbf90ed757cafab13de7): Committed into linux stable.
+2021-03-01 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=475f23b8c66d2892ad6acbf90ed757cafab13de7): Committed into linux-next.
+
+2021-03-01 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/commit/?id=475f23b8c66d2892ad6acbf90ed757cafab13de7): Committed into linux-stable.
 
 ### clk: bcm: fix kconfig dependency warning for CLK_BCM2711_DVP
 
