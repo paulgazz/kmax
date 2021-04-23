@@ -87,7 +87,7 @@
 
 ### mips: fix unmet dependency for FRAME_POINTER when !ARCH_WANT_FRAME_POINTERS
 
-2021-03-29 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=f766b28a5edfd86600e55360cc4bf29c71cca2eb): Committed into linux-next.
+2021-03-29 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=7d37cb2c912dc5c25ffac784a4f9b98c06c6bd08): Committed into linux-next.
 
 2021-03-29 [Patch](https://lkml.org/lkml/2021/3/29/1692)
 
@@ -95,11 +95,13 @@
 
 2021-03-29 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=f766b28a5edfd86600e55360cc4bf29c71cca2eb): Committed into linux-next.
 
+2021-03-26 [Patch](https://lkml.org/lkml/2021/3/26/26)
+
 ### mips: fix unmet dependency for DEBUG_INFO when !DEBUG_KERNEL
 
 2021-03-29 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=e87f69a5187d9414c3c2dae9539649e3823ee32c): Committed into linux-next.
 
-2021-03-26 [Patch](https://lkml.org/lkml/2021/3/26/26)
+2021-03-26 [Patch](https://lkml.org/lkml/2021/3/26/21)
 
 ### media: drivers: media: pci: sta2x11: fix unmet dependency for VIDEO_ADV7180 when !GPIOLIB
 
