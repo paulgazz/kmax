@@ -69,7 +69,7 @@ if __name__ == '__main__':
   args.extend([ "--extract" ])  # tell kextract to do an extract oepration
   args.extend([ "-o", output ]) # set the output file
   # setup the linux-specific environment variables
-  args.extend([ "-e", "ARCH=%s" % (arch), "-e", "SRCARCH=%s" % (srcarch), "-e", "KERNELVERSION=kcu", "-e", "srctree=./", "-e", "CC=cc", "-e", "LD=ld" ])
+  args.extend([ "-e", "ARCH=%s" % (arch), "-e", "SRCARCH=%s" % (srcarch), "-e", "KERNELVERSION=kcu", "-e", "srctree=./", "-e", "CC=cc", "-e", "LD=ld", "-e", "RUSTC=rustc" ])
   # set arch-specific environment variables
   args.extend(arch_specific(arch))
   # set the kconfig filename
