@@ -1,9 +1,16 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-
 - [Bugs Found by Kmax Tools](#bugs-found-by-kmax-tools)
   - [Linux kernel](#linux-kernel)
+    - [drivers: pinctrl: qcom: fix unmet dependency for PINCTRL_MSM when !GPIOLIB](#drivers-pinctrl-qcom-fix-unmet-dependency-for-pinctrl_msm-when-gpiolib)
+    - [drivers: gpu: drm: bridge: fix unmet dependency for DRM_KMS_HELPER when !DRM_KMS_HELPER](#drivers-gpu-drm-bridge-fix-unmet-dependency-for-drm_kms_helper-when-drm_kms_helper)
+    - [mips: fix unmet dependency for FRAME_POINTER when !ARCH_WANT_FRAME_POINTERS](#mips-fix-unmet-dependency-for-frame_pointer-when-arch_want_frame_pointers)
+    - [mips: fix unmet dependency for MTD_COMPLEX_MAPPINGS when !MTD](#mips-fix-unmet-dependency-for-mtd_complex_mappings-when-mtd)
+    - [mips: fix unmet dependency for DEBUG_INFO when !DEBUG_KERNEL](#mips-fix-unmet-dependency-for-debug_info-when-debug_kernel)
+    - [media: drivers: media: pci: sta2x11: fix unmet dependency for VIDEO_ADV7180 when !GPIOLIB](#media-drivers-media-pci-sta2x11-fix-unmet-dependency-for-video_adv7180-when-gpiolib)
+    - [drivers: tty: serial: fix unmet dependency for SERIAL_EARLYCON when !SERIAL_CORE](#drivers-tty-serial-fix-unmet-dependency-for-serial_earlycon-when-serial_core)
+    - [fs: nfsd: fix unmet dependency for CRYPTO_SHA256 and CRYPTO_MD5 when !CRYPTO](#fs-nfsd-fix-unmet-dependency-for-crypto_sha256-and-crypto_md5-when-crypto)
     - [net: marvell: build error due to unmet dependency for MVMDIO by MV643XX_ETH](#net-marvell-build-error-due-to-unmet-dependency-for-mvmdio-by-mv643xx_eth)
     - [mtd: rawnand: build error due to unmet dependency for MFD_SYSCON by MTD_NAND_MESON](#mtd-rawnand-build-error-due-to-unmet-dependency-for-mfd_syscon-by-mtd_nand_meson)
     - [irqchip: build error due to unmet dependency for MFD_SYSCON by INGENIC_TCU_IRQ](#irqchip-build-error-due-to-unmet-dependency-for-mfd_syscon-by-ingenic_tcu_irq)
@@ -66,45 +73,59 @@
 
 ## Linux kernel
 
+### drivers: pinctrl: qcom: fix unmet dependency for PINCTRL_MSM when !GPIOLIB
+
+2021-04-14 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=376f9e34c10faa3e94b881088b160cfda540ae5f): Committed into linux-next.
+
+2021-02-22 [Patch](https://lkml.org/lkml/2021/2/25/105)
+
 ### drivers: gpu: drm: bridge: fix unmet dependency for DRM_KMS_HELPER when !DRM_KMS_HELPER
 
-2020-04-09 [Commit](https://cgit.freedesktop.org/drm/drm-misc/commit/?id=62066d3164467167fc27b2383f67d097e39bf176): Committed into drm-misc-next.
+2021-04-01 [Commit](https://cgit.freedesktop.org/drm/drm-misc/commit/?id=62066d3164467167fc27b2383f67d097e39bf176): Committed into drm-misc-next.
+
+2021-04-01 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=62066d3164467167fc27b2383f67d097e39bf176): Committed into linux-next.
+
+2021-02-22 [Patch](https://lkml.org/lkml/2021/2/22/1167)
 
 ### mips: fix unmet dependency for FRAME_POINTER when !ARCH_WANT_FRAME_POINTERS
 
-2020-04-09 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=f766b28a5edfd86600e55360cc4bf29c71cca2eb): Committed into linux-next.
+2021-04-09 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=7d37cb2c912dc5c25ffac784a4f9b98c06c6bd08): Committed into linux-next.
+
+2021-04-09 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/commit/?id=7d37cb2c912dc5c25ffac784a4f9b98c06c6bd08): Committed into linux-stable.
+
+2021-03-29 [Patch](https://lkml.org/lkml/2021/3/29/1692)
 
 ### mips: fix unmet dependency for MTD_COMPLEX_MAPPINGS when !MTD
 
-2020-04-09 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=f766b28a5edfd86600e55360cc4bf29c71cca2eb): Committed into linux-next.
+2021-03-29 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=f766b28a5edfd86600e55360cc4bf29c71cca2eb): Committed into linux-next.
+
+2021-03-26 [Patch](https://lkml.org/lkml/2021/3/26/26)
 
 ### mips: fix unmet dependency for DEBUG_INFO when !DEBUG_KERNEL
 
-2020-04-09 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=e87f69a5187d9414c3c2dae9539649e3823ee32c): Committed into linux-next.
+2021-03-29 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=e87f69a5187d9414c3c2dae9539649e3823ee32c): Committed into linux-next.
 
-### drivers: staging: netlogic: fix unmet dependency for PHYLIB when !NETDEVICES
-
-2020-04-09 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=a5bf1a101a19dbb38be7ffebe2650449e344c892): Committed into linux-next.
+2021-03-26 [Patch](https://lkml.org/lkml/2021/3/26/21)
 
 ### media: drivers: media: pci: sta2x11: fix unmet dependency for VIDEO_ADV7180 when !GPIOLIB
 
-2020-04-09 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=24df8b74c8b2fb42c49ffe8585562da0c96446ff): Committed into linux-next.
+2021-03-11 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=24df8b74c8b2fb42c49ffe8585562da0c96446ff): Committed into linux-next.
+
+2021-02-25 [Patch](https://lkml.org/lkml/2021/2/25/87)
 
 ### drivers: tty: serial: fix unmet dependency for SERIAL_EARLYCON when !SERIAL_CORE
 
-2020-04-09 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=196ebe5c000afbfe67b8561f716e365174552bd7): Committed into linux-next.
+2021-03-10 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=196ebe5c000afbfe67b8561f716e365174552bd7): Committed into linux-next.
 
-### staging: rtl8192e: fix unmet dependency for CRYPTO_MICHAEL_MIC and CRYPTO_LIB_ARC4 when !CRYPTO
-
-2020-04-09 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=7c36194558cf49a86a53b5f60db8046c5e3013ae): Committed into linux stable.
+2021-02-24 [Patch](https://lkml.org/lkml/2021/2/24/1184)
 
 ### fs: nfsd: fix unmet dependency for CRYPTO_SHA256 and CRYPTO_MD5 when !CRYPTO
 
-2020-04-09 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=7005227369079963d25fb2d5d736d0feb2c44cf6): Committed into linux stable.
+2021-03-06 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=7005227369079963d25fb2d5d736d0feb2c44cf6): Committed into linux-next.
 
-### RDMA/rxe: fix unmet dependency for RDMA_RXE when !CRYPTO
+2021-03-06 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/commit/?id=7005227369079963d25fb2d5d736d0feb2c44cf6): Committed into linux-stable.
 
-2020-04-09 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=475f23b8c66d2892ad6acbf90ed757cafab13de7): Committed into linux stable.
+2021-02-19 [Patch](https://lkml.org/lkml/2021/2/19/669)
 
 ### net: marvell: build error due to unmet dependency for MVMDIO by MV643XX_ETH
 
@@ -208,6 +229,10 @@
 
 2020-09-18 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=209315)
 
+2021-03-26 [Patch](https://lkml.org/lkml/2021/3/26/32)
+
+2021-03-26 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=a5bf1a101a19dbb38be7ffebe2650449e344c892): Committed into linux-next.
+
 ### staging: mt7621-dma: MTK_HSDMA overleaps kconfig dependency of DMADEVICES
 
 2020-11-04 [Report: build error](https://bugzilla.kernel.org/show_bug.cgi?id=209313#c1): It was later found that this issue can lead to build errors as well.
@@ -297,6 +322,12 @@
 2020-09-15 [Confirmation](https://lkml.org/lkml/2020/9/15/423): The issue was confirmed but a different fix was suggested.
 
 2020-09-15 [Patch](https://lkml.org/lkml/2020/9/15/360)
+
+2021-02-19 [Patch](https://lkml.org/lkml/2021/2/19/708): The patch was accidentally resubmitted, but then accepted this time.
+
+2021-03-01 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=475f23b8c66d2892ad6acbf90ed757cafab13de7): Committed into linux-next.
+
+2021-03-01 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/commit/?id=475f23b8c66d2892ad6acbf90ed757cafab13de7): Committed into linux-stable.
 
 ### clk: bcm: fix kconfig dependency warning for CLK_BCM2711_DVP
 
