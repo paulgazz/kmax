@@ -219,7 +219,7 @@ class Arch:
       ensure_then_dump(rev_dep_path,  self.get_rev_dep,  self.dump_rev_dep)
       ensure_then_dump(selects_path,  self.get_selects,  self.dump_selects)
 
-  def __init__(self, name: str, linux_ksrc=None, arch_dir=None, is_kclause_composite=False, verify_linux_ksrc=True, loggerLevel=logging.INFO):
+  def __init__(self, name: str, linux_ksrc=None, arch_dir=None, is_kclause_composite=False, verify_linux_ksrc=True, kextract_version=None, loggerLevel=logging.INFO):
     """Create an Arch instance.
 
     Arguments:
@@ -230,6 +230,9 @@ class Arch:
     within this directory will be loaded as needed, and formulas not available
     will be dumped to this directory as generated.
     verify_linux_ksrc -- Set to verify linux_ksrc.
+    kextract_version -- Kextract module version to use for generating kextract formulas.
+    If not set, the latest possible version suitable for the kernel version is automatically
+    detected and used.
     is_kclause_composite -- When an arch_dir is provided and it contains a
     kclause formulas file, it will be treated as composite or not dependending
     on this flag. If kclause file doesn't exist, the delayed dump will be composite
@@ -245,6 +248,8 @@ class Arch:
 
     # in string format
     self.__kextract=None
+    # kextract module version
+    self.__kextract_version=kextract_version
     # a mapping from symbol name in str to clauses in smt2 str
     self.__kclause_formulas=None
     # a mapping from symbol name in str to its direct dependencies in smt2 str
@@ -670,6 +675,33 @@ class Arch:
     self.__kconfig_visible=None
     self.__kconfig_has_def_nonbool=None
 
+  def set_kextract_version(self, version: str):
+    """Set kextract module version.
+    
+    If set to None, the latest possible version suitable for the kernel version is automatically detected and used.
+    """
+    self.__kextract_version=version
+  
+  def __detect_kextract_version(self):
+    """Detect the latest possible kextract module version for the Linux kernel version.
+    """
+    command=["make", "kernelversion"]
+    stdout, _, ret_code = self.__run_command(command, capture_stderr=False, cwd=self.__linux_ksrc)
+    
+    # If can't detect the kernelversion, use latest kextract module
+    if ret_code != 0:
+      return "latest"
+    
+    kernel_version = stdout.decode("ascii").strip()
+    major, minor, patch = kernel_version.split('.')
+    major, minor = int(major), int(minor)
+
+    # TODO: make sure if this major/minor is the exact point where we start needing next-20210426
+    if major > 5 or (major == 5 and minor >= 12):
+      return "next-20210426"
+    else:
+      return "next-20200430"
+
   def generate_kextract(self):
     """Generate kextract using kextract tool, set, and return.
 
@@ -686,6 +718,13 @@ class Arch:
       self.__logger.error("Can't generate kextract: unknown architecture name.")
       raise Arch.UnknownArchitectureName(self.name)
 
+    if not self.__kextract_version:
+      self.__logger.info("Automatically detecting kextract module version suitable for the kernel.")
+      kextract_version=self.__detect_kextract_version()
+    else:
+      kextract_version=self.__kextract_version
+    self.__logger.info("kextract module version: \"%s\"" % kextract_version)
+
     # reset kextract summary
     self.__reset_kextract_summary()
   
@@ -698,13 +737,14 @@ class Arch:
     # currently, kextract can only output to a file. to keep generation and
     # dumping to file apart from each other, use a temporary file, read the
     # content, then remove. the user can save the content using dump_kextract()
+    # TODO: use OS provided tmp files instead
     kextract_file = self.__get_tmp_file("kextract_", ".tmp")
     kextract_file=os.path.realpath(kextract_file)
     os.makedirs(os.path.dirname(kextract_file), exist_ok=True)
     
     # TODO: Use the python package instead of running the executable?
     # write to a temp file first, then move if successful
-    command = [ "kextractlinux", self.name, kextract_file ]
+    command = [ "kextractlinux", self.name, kextract_file, "--module-version", kextract_version]
     self.__logger.info("Running kextract tool to generate kextract.")
     _, _, ret_code = self.__run_command(command, cwd=self.__linux_ksrc)
 
