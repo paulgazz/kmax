@@ -45,6 +45,10 @@ def klocalizerCLI():
                          type=str,
                          default=None,
                          help="""The file containing the kconfig extract.  This must be accompanied by --kclause-formulas.""")
+  argparser.add_argument('--kextract-version',
+                         type=str,
+                         default=None,
+                         help="""The kextract module version to use for generating kextract formulas.  the latest possible version suitable for the kernel version is detected and used.  Cannot be used with --kextract.""")
   argparser.add_argument('--constraints-file',
                          type=str,
                          help="""A text file containing ad-hoc constraints.  One configuration option name per line.  Prefix with ! to force it off; no prefix means force on.""")
@@ -140,6 +144,7 @@ def klocalizerCLI():
   kclause_file = args.kclause_formulas
   use_composite_kclause_formulas_files = args.use_composite_kclause_formulas_files
   kextract_file = args.kextract
+  kextract_version = args.kextract_version
   archs_arg = args.arch
   allarchs = args.all
   reportallarchs = args.report_all
@@ -181,6 +186,11 @@ def klocalizerCLI():
   if kextract_file and not kclause_file:
     argparser.print_help()
     logger.error("--kextract can only be used with --kclause-formulas\n")
+    exit(12)
+
+  if kextract_file and kextract_version:
+    argparser.print_help()
+    logger.error("Cannot use --kextract-version while already providing an explicit kextract file with --kextract\n")
     exit(12)
 
   if kclause_file and len(archs_arg) > 0:
@@ -302,15 +312,15 @@ def klocalizerCLI():
 
   assert allarchs + (len(archs_arg) > 0) + (kclause_file != None) < 2 # at most one can be defined
   if len(archs_arg) > 0:
-    archs = [Arch(arch, linux_ksrc=linux_ksrc, arch_dir=get_arch_formulas_dir(formulas, arch), is_kclause_composite=use_composite_kclause_formulas_files, loggerLevel=arch_logger_level) for arch in archs_arg]
+    archs = [Arch(arch, linux_ksrc=linux_ksrc, arch_dir=get_arch_formulas_dir(formulas, arch), is_kclause_composite=use_composite_kclause_formulas_files, kextract_version=kextract_version, loggerLevel=arch_logger_level) for arch in archs_arg]
   elif kclause_file != None:
     # A custom architecture
-    arch = Arch(Arch.CUSTOM_ARCH_NAME, loggerLevel=arch_logger_level)
+    arch = Arch(Arch.CUSTOM_ARCH_NAME, kextract_version=kextract_version, loggerLevel=arch_logger_level)
     if kextract_file != None: arch.load_kextract(kextract_file, delay_loading=True)
     arch.load_kclause(kclause_file, is_composite=use_composite_kclause_formulas_files, delay_loading=True)
     archs = [arch]
   else: # allarchs is enabled, or if the above are not defined behave as if allarchs
-    archs = [Arch(arch, linux_ksrc=linux_ksrc, arch_dir=get_arch_formulas_dir(formulas, arch), is_kclause_composite=use_composite_kclause_formulas_files, loggerLevel=arch_logger_level) for arch in Arch.ARCHS]
+    archs = [Arch(arch, linux_ksrc=linux_ksrc, arch_dir=get_arch_formulas_dir(formulas, arch), is_kclause_composite=use_composite_kclause_formulas_files, kextract_version=kextract_version, loggerLevel=arch_logger_level) for arch in Arch.ARCHS]
 
   if kclause_file == None:
     logger.info("Trying the following architectures: %s\n" % " ".join(arch.name for arch in archs))
