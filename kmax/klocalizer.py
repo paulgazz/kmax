@@ -338,16 +338,31 @@ class Klocalizer:
           # if str_entry not in kclause_constraints.keys():
           #   sys.stderr.write("warning: %s was not defined in the kconfig spec, but may be required for this unit.\n" % (str_entry))
           if model[entry]:
-            # todo: for non-Boolean values, these are simplistic
-            # placeholders. use defaults from kconfig instead. these
-            # have their own dependencies but are not part of
-            # constraints themselves.
             if kconfig_types is None:
               # if no types provided, assume all are Boolean
               write_to_content( "%s=y\n" % (str_entry) )
             elif kconfig_has_def_nonbool != None and str_entry in kconfig_has_def_nonbool:
-              # don't bother printing out non-Booleans that Kconfig will likely set to a default value, as long as they weren't set by the user-defined constraints
-              pass
+              # write placeholder values for visible nonboolean options.
+              # we assume that "make olddefconfig" will fill in the proper default values for the nonvisible ones.
+              # NOTE: adding all of the default value expressions to the z3 solver requires too much memory for practical usage.
+              all_vars = model.decls()
+              # checks the model's value for the nonbool's corresponding visibility variable
+              for var in all_vars:
+                if str(var) == "__VISIBILITY__" + str_entry:
+                  if model.get_interp(var):
+                    if kconfig_types[str_entry] == "bool":
+                      write_to_content( "%s=y\n" % (str_entry) )
+                    elif kconfig_types[str_entry] == "tristate":
+                      write_to_content( "%s=%s\n" % (str_entry, "y" if not set_tristate_m else "m") )
+                    elif kconfig_types[str_entry] == "string":
+                      write_to_content( "%s=\n" % (str_entry) )
+                    elif kconfig_types[str_entry] == "number":
+                      write_to_content( "%s=0\n" % (str_entry) )
+                    elif kconfig_types[str_entry] == "hex":
+                      write_to_content( "%s=0x0\n" % (str_entry) )
+                    else:
+                      assert(False)
+                  break
             elif str_entry not in kconfig_types:
               if str_entry not in Arch.ARCH_CONFIGS:
                 # TODO: change this maybe

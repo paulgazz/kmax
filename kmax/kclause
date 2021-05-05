@@ -290,6 +290,16 @@ if __name__ == '__main__':
         if show_warnings: sys.stderr.write("found duplicate prompt for %s. currently unsupported\n" % (varname))
       has_prompt.add(varname)
       prompt_lines[varname] = condition
+      
+      # NOTE: 2 underscores to avoid naming clashes with other config options
+      vis_var = "__VISIBILITY__" + varname
+      # visibility boolean variables for nonboolean options are generated here.
+      # these visibility variables may used by klocalizer to determine whether
+      # a nonboolean should be set to a placeholder value when writing a config file.
+      if varname in nonbools:
+        bools.add(vis_var)
+        def_bool_lines[vis_var].append("1|" + condition) # condition is the prompt's expression
+        def_bool_lines[vis_var].append("0| ( not " + condition + ")")
     elif (instr == "env"):
       varname = data
       envs.add(varname)
