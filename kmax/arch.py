@@ -719,11 +719,11 @@ class Arch:
       raise Arch.UnknownArchitectureName(self.name)
 
     if not self.__kextract_version:
-      self.__logger.info("Automatically detecting kextract module version suitable for the kernel.")
+      self.__logger.info("Automatically detecting the kextract module version suitable for the kernel.")
       kextract_version=self.__detect_kextract_version()
+      self.__logger.info("Using kextract module version: %s" % kextract_version)
     else:
       kextract_version=self.__kextract_version
-    self.__logger.info("kextract module version: \"%s\"" % kextract_version)
 
     # reset kextract summary
     self.__reset_kextract_summary()
@@ -743,13 +743,31 @@ class Arch:
     os.makedirs(os.path.dirname(kextract_file), exist_ok=True)
     
     # TODO: Use the python package instead of running the executable?
-    # write to a temp file first, then move if successful
-    command = [ "kextractlinux", self.name, kextract_file, "--module-version", kextract_version]
-    self.__logger.info("Running kextract tool to generate kextract.")
-    _, _, ret_code = self.__run_command(command, cwd=self.__linux_ksrc)
+    # Try multiple kextract module versions unless version is explicitly set
+    if not self.__kextract_version:
+      # Give the priority to the detected version
+      kextract_module_versions=[a for a in ["3.19", "4.12.8", "next-20200430", "next-20210426"] if a != kextract_version] + [kextract_version]
+    else:
+      # Version is explicity set
+      kextract_module_versions=[kextract_version]
+
+    assert kextract_module_versions
+
+    while kextract_module_versions:
+      kextract_version=kextract_module_versions.pop() # pop the next version to try
+      command = [ "kextractlinux", self.name, kextract_file, "--module-version", kextract_version]
+      self.__logger.info("Running kextract tool to generate kextract (module version: %s)." % kextract_version)
+      _, _, ret_code = self.__run_command(command, cwd=self.__linux_ksrc)
+      if ret_code == 0:
+        break
+      else:
+        self.__logger.error("Kextract failed (module version: %s, return code: %d)." % (kextract_version, ret_code))
+        if kextract_module_versions: self.__logger.info("Trying next latest kextract module version: %s" % kextract_module_versions[-1])
+        os.remove(kextract_file)
 
     if ret_code != 0:
-      self.__logger.error("Error running kextract: return code %d" % (ret_code))
+      assert not kextract_module_versions
+      self.__logger.error("Error running kextract: kextract file couldn't be generated.")
       raise Arch.KextractFormulaGenerationError()
     else:
       self.__logger.info("kextract was successfully generated.")
