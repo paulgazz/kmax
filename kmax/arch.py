@@ -721,7 +721,7 @@ class Arch:
     if not self.__kextract_version:
       self.__logger.info("Automatically detecting the kextract module version suitable for the kernel.")
       kextract_version=self.__detect_kextract_version()
-      self.__logger.info("Detected kextract module version: %s" % kextract_version)
+      self.__logger.info("Using kextract module version: %s" % kextract_version)
     else:
       kextract_version=self.__kextract_version
 
