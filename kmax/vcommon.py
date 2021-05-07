@@ -7,6 +7,26 @@ import inspect
 
 import logging
 
+def run(args, stdin=None, capture_stdout=True, capture_stderr=True, cwd=None):
+  """Helper for running an external process.
+  Returns a tuple of (stdout, stderr, return_code) for the process.
+  Arguments:
+  args -- args, a list to pass to subprocess.Popen.
+  stdin -- The content to be passed as stdin to the process.
+  capture_stdout -- If set, caoture stdout to be returned by the method. Otherwise, keep it at stdout.
+  capture_stderr -- If set, caoture stderr to be returned by the method. Otherwise, keep it at stdin.
+  cwd -- Current working directory for the process.
+  """
+  import subprocess
+  stdout_param = subprocess.PIPE if capture_stdout else None
+  stderr_param = subprocess.PIPE if capture_stderr else None
+  popen = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=stdout_param, stderr=stderr_param, cwd=cwd)
+  if stdin != None: popen.stdin.write(stdin)
+  captured_stdout, captured_stderr = popen.communicate()
+  popen.stdin.close()
+  
+  return captured_stdout, captured_stderr, popen.returncode
+
 def pause(s=None):
     try: #python2
         raw_input("Press any key to continue ..." if s is None else s)
