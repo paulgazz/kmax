@@ -13,7 +13,7 @@ import enum
 import z3
 from kmax.arch import Arch
 from kmax.common import get_kmax_constraints, unpickle_kmax_file
-from kmax.vcommon import getLogLevel, getLogger
+from kmax.vcommon import getLogLevel, getLogger, run
 
 # TODO(necip): automated testing
 
@@ -655,6 +655,314 @@ class Klocalizer:
     self.__kmax_constraints=[]
     self.__include_compilation_units=[]
     self.__exclude_compilation_units=[]
+
+  class ConditionalBlock:
+    """A node of tree-like representation of source code for conditional blocks
+    defined by conditional preprocessor directives.
+    """
+    def __init__(self):
+      # Line number where the conditional block starts in the source code.
+      # A conditional block starts with a`#if` or `#elif` directive. Thus,
+      # the corresponding line in the source code contains one of these directives.
+      self.start_line = -1
+
+      # Line number where the conditional block ends in the source code. A
+      # conditional block ends with a `#elif` (the beginning of the next conditional
+      # block) or `#endif` directive. Thus, the corresponding line in the source
+      # code contains one of these directives.
+      self.end_line = -1
+
+      # List of sub conditional block groups contained. A conditional block
+      # group is a conditional ladder (#if [#elif]* #endif), which might contain
+      # one or more conditional blocks.
+      self.sub_block_groups = []
+
+      # Complete presence condition for the conditional block. A z3.Solver instance.
+      self.pc = None
+
+      # Parent conditional block.
+      self.parent = None
+    
+    def __repr__(self):
+      return "{Lines:[%d-%d], PC: %s, Sub: %s}" % (self.start_line, self.end_line, self.pc, self.sub_block_groups)
+    
+    def get_deepest_block(self, line: int):
+      """Given a line number, returns the deepest conditional block that contains
+      the line.
+
+      Arguments:
+      line -- Line number to query the deepest conditional block for.
+
+      Returns `None` if line is not included within the block."""
+      if not (self.start_line <= line < self.end_line):
+        return None
+      
+      # visit children
+      for cbgroup in self.sub_block_groups:
+        for cb in cbgroup:
+          ret = cb.get_deepest_block(line)
+          if ret != None:
+            return ret
+      
+      # no children covers but the self does -- return self
+      return self
+
+    @staticmethod
+    def parse_superc(superc_rep: str):
+      """Parse conditional block groups outputted by SuperC -sourcelinePC.
+
+      Arguments:
+      superc_rep -- string representation of conditional block groups outputted
+      by SuperC -sourcelinePC.
+
+      Returns [[ConditionalBlock]], i.e., a list of conditional block groups.
+      """
+      return Klocalizer.ConditionalBlock.__parse_sub(superc_rep, None)
+
+    @staticmethod
+    def __parse_sub(superc_rep: str, parent):
+      """Parse conditional block groups outputted by SuperC -sourcelinePC.
+      This may be any intermediate conditional block group as well.
+
+      Arguments:
+      superc_rep -- string representation of conditional block groups outputted
+      by SuperC -sourcelinePC.
+      parent -- Parent ConditionalBlock instance. The parent of top-level conditional
+      block groups parsed by the method will be set to this.
+
+      Returns [[ConditionalBlock]], i.e., a list of conditional block groups.
+      """
+      groups = []
+      for superc_cbgroup in superc_rep:
+        group = []
+        for superc_cb in superc_cbgroup:
+          cb = Klocalizer.ConditionalBlock.__parse_cb(superc_cb)
+          cb.parent = parent
+          group.append(cb)
+        groups.append(group)
+      return groups
+
+    @staticmethod
+    def __parse_cb(superc_cb: str):
+      """Parse a conditional block group outputted by SuperC -sourcelinePC.
+
+      Arguments:
+      superc_cb -- string representation of a conditional block outputted by
+      SuperC -sourcelinePC.
+
+      Returns [ConditionalBlock], i.e., a list of conditional blocks.
+      """
+      cb = Klocalizer.ConditionalBlock()
+      cb.start_line = int(superc_cb["StartLine"])
+      cb.end_line = int(superc_cb["EndLine"])
+      z3_solver = z3.Solver()
+      z3_solver.from_string(superc_cb["PC"]) # TODO: make this an expression instead?
+
+      cb.pc = z3_solver
+      cb.sub_block_groups = Klocalizer.ConditionalBlock.__parse_sub(superc_cb["Sub"], cb)
+
+      return cb
+
+    # TODO: impl method: given pc and line ranges, return configs
+
+  @staticmethod
+  def __check_args_get_sourceline_pc( \
+      srcfile: str, srcdir: str, is_linux: bool, \
+      superc_linux_script, makecross_script, \
+      skip_kconfig_config_gen, skip_building_unit, skip_superc_config_gen):
+    """Check arguments of for sourceline presence condition localization methods
+    through assertions.
+    """
+    from shutil import which
+    def is_success(command_to_run: list):
+      return 0 == run(command_to_run, capture_stdout=True, capture_stderr=True)[2]
+    
+    def check_java():
+      return which("java") != None
+
+    def check_superc():
+      return is_success(["java", "superc.SuperC"])
+    
+    def check_superc_linux_script():
+      return which(superc_linux_script) != None
+    
+    def check_makecross_script():
+      return which(makecross_script) != None
+    
+    # TODO: raise specific exceptions instead of assertion failures
+    assert srcfile
+    if srcdir: assert os.path.isdir(srcdir) and os.path.isfile(os.path.join(srcdir, srcfile))
+    if not srcdir: os.path.isfile(srcfile)
+    assert check_java()
+    assert check_superc()
+    if is_linux:
+      assert srcdir # TODO: check if dir is linux ksrc
+      assert skip_building_unit or check_makecross_script()
+      assert check_superc_linux_script()
+
+  @staticmethod
+  def get_sourceline_pc_standalone_file(srcfile: str):
+    """Get sourceline presence conditions for a stand-alone source file.
+
+    Requires SuperC.
+
+    Arguments:
+    srcfile -- Path to the source file.
+
+    Returns [[ConditionalBlock]], i.e., a list of conditional block groups.
+    """
+    # TODO: let user choose whether to restrict to CONFIG_ prefixed options
+    Klocalizer.__check_args_get_sourceline_pc(srcfile=srcfile, srcdir=None, is_linux=False, \
+      superc_linux_script=None, makecross_script=None,
+      skip_kconfig_config_gen=True, skip_building_unit=True, skip_superc_config_gen=True)
+  
+    #
+    # Run SuperC
+    #
+    import tempfile
+    with tempfile.NamedTemporaryFile() as tmpfile:
+      tmpfilename = tmpfile.name
+      superc_cmd = ["java", "superc.SuperC", "-sourcelinePC", tmpfilename, srcfile]
+      _, _, ret = run(superc_cmd, capture_stdout=True, capture_stderr=True)
+      assert ret == 0
+      from ast import literal_eval
+      return Klocalizer.ConditionalBlock.parse_superc(literal_eval(tmpfile.read().decode()))
+
+  @staticmethod
+  def get_sourceline_pc_linux_file(srcfile: str, linux_ksrc: str, arch: Arch, \
+      superc_linux_script: str, makecross_script: str, \
+      restrict_to_config_prefix=True, \
+      superc_configs_dir="superc_configs/", \
+      skip_kconfig_config_gen=False, skip_building_unit=False, skip_superc_config_gen=False, \
+      logger=VoidLogger()):
+    """Get sourceline presence conditions for a source file within a Linux
+    kernel source.
+
+    Requires SuperC.
+
+    The routine is as follows:
+    1. Create a config file that compiles the unit using Klocalizer.
+    2. Compile the unit using the compiler script (makecross_script).
+    3. Create SuperC config file for the unit using SuperC Linux script (superc_linux_script).
+    4. Clear autoconf.h ($LINUX_KSRC/include/generated/autoconf.h)
+    5. Run SuperC using SuperC Linux script (superc_linux_script).
+    6. Parse SuperC's output and and return [[ConditionalBlock]].
+
+    Arguments:
+    srcfile -- Path to the source file. This must be relative to the top directory
+    of the Linux kernel source, specified with linux_ksrc argument.
+    linux_ksrc -- Path to the Linux kernel source.
+    arch -- An instance of Arch, defining the Linux architecture to use for
+    the query.
+    superc_linux_script -- Path to the superc_linux script to be used to obtain
+    SuperC configs for the source file and to run SuperC. This can be found
+    at $SUPERC_SRC/scripts/superc_linux.sh.
+    makecross_script -- Path to the make script for cross compilation. For
+    Linux source files, SuperC needs the source file to be built. If not
+    cross-compiling, having this set to `make` is enough if it is in PATH.
+    restrict_to_config_prefix -- If set, `-restrictConfigToPrefix` is set to 
+    `CONFIG_` for SuperC. This boosts the performance and results in focusing
+    on config macros, while setting the rest to their default values.
+    superc_configs_dir -- Directory to read/write SuperC configs. See `skip_superc_config_gen`.
+    skip_kconfig_config_gen -- Set to skip Kconfig config generation for the unit.
+    skip_building_unit -- Set to skip building the unit.
+    skip_superc_config_gen -- Set to skip SuperC config generation for the
+    unit to reuse existing configs. If not set, a config is always generated.
+    logger -- Logger.
+
+    Returns [[ConditionalBlock]], i.e., a list of conditional block groups.
+    """
+    # TODO: take additional flags to SuperC
+    # TODO: any existing .config file is overwritten. write new Kconfig configs to a path different than linux_ksrc/.config?
+    # TODO: don't create superc_configs if exists already? add a flag such as create_if_no_config
+    superc_configs_dir=os.path.realpath(superc_configs_dir)
+
+    # Check the arguments.
+    Klocalizer.__check_args_get_sourceline_pc(srcfile, linux_ksrc, True, \
+      superc_linux_script, makecross_script, \
+      skip_kconfig_config_gen, skip_building_unit, skip_superc_config_gen)
+
+    #
+    # Create a config file that compiles the unit
+    #
+    config_filepath = os.path.join(linux_ksrc, ".config")
+    if not skip_kconfig_config_gen:
+      logger.info("Creating config file to compile the unit.")
+      kloc = Klocalizer()
+      kloc.set_linux_krsc(linux_ksrc)
+      kloc.add_constraints([z3.Not(z3.Bool("CONFIG_BROKEN"))])
+      kloc.include_compilation_unit(srcfile)
+      full_constraints = kloc.compile_constraints(arch)
+      model_sampler = Klocalizer.Z3ModelSampler(full_constraints)
+      is_sat, z3_model = model_sampler.sample_model()
+      assert is_sat # TODO: might be impossible for the given arch
+      config_content = Klocalizer.get_config_from_model(z3_model, arch, set_tristate_m=False, allow_non_visibles=False)
+      with open(config_filepath, "w") as f:
+        f.write(config_content)
+      assert os.path.isfile(config_filepath)
+    else:
+      logger.info("Skipped: creating config file to compile the unit.")
+
+    #
+    # Compile the unit
+    #
+    unit_name = srcfile[:-len(".c")] + ".o"
+    if not skip_building_unit:
+      logger.info("Compiling the unit.")
+      olddefconf_cmd = ["make", "ARCH=%s" % arch.name, "olddefconfig"]
+      assert srcfile.endswith(".c") # TODO: what if this is not a sourcefile but a header file?
+
+      compile_cmd = [makecross_script, "ARCH=%s" % arch.name, "clean", unit_name]
+
+      run(olddefconf_cmd, cwd=linux_ksrc)
+      run(compile_cmd, cwd=linux_ksrc)
+      assert os.path.isfile(os.path.join(linux_ksrc, unit_name))
+    else:
+      logger.info("Skipped: compiling the unit.")
+
+    #
+    # Create superc config for srcfile
+    #
+    superc_config_path = os.path.join(superc_configs_dir, srcfile+".configs_superc")
+    if not skip_superc_config_gen:
+      logger.info("Creating SuperC config file.")
+      # use superc_linux_script
+      # /usr/bin/time bash $superc_linux_script -S"$superc_args" -w -L configs/ ${source_file} < /dev/null
+      import pathlib
+      pathlib.Path(superc_configs_dir).mkdir(parents=True, exist_ok=True)
+      assert os.path.isdir(superc_configs_dir)
+      config_gen_cmd = [superc_linux_script, "-w", "-L", superc_configs_dir, srcfile]
+      run(config_gen_cmd, cwd=linux_ksrc)
+      assert os.path.isfile(superc_config_path)
+    else:
+      logger.info("Skipped: creating SuperC config file.")
+    
+    #
+    # Clear autoconf.h
+    #
+    logger.info("Clearing autoconf.h.")
+    autoconf_path = os.path.join(linux_ksrc, "include/generated/autoconf.h")
+    with open(autoconf_path, "w") as f: pass
+    assert os.path.isfile(autoconf_path)
+    with open(autoconf_path, "r") as f: assert not f.readlines()
+
+    #
+    # Run SuperC
+    #
+    logger.info("Running SuperC.")
+    import tempfile
+    with tempfile.NamedTemporaryFile() as tmpfile:
+      tmpfilename = tmpfile.name
+
+      restrict_flag = " -restrictConfigToPrefix CONFIG_ " if restrict_to_config_prefix else ""
+      superc_flags = "%s -sourcelinePC %s" % (restrict_flag, tmpfilename)
+      superc_sourcelinepc_cmd = [superc_linux_script, "-S%s" % superc_flags, "-L%s" % superc_configs_dir, srcfile]
+
+      run(superc_sourcelinepc_cmd, capture_stdout=True, capture_stderr=True, cwd=linux_ksrc)
+      superc_pcfile_content = tmpfile.read().decode()
+    assert superc_pcfile_content
+    from ast import literal_eval
+    return Klocalizer.ConditionalBlock.parse_superc(literal_eval(superc_pcfile_content))
 
   #
   # Exceptions
