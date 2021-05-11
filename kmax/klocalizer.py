@@ -683,9 +683,47 @@ class Klocalizer:
       # Parent conditional block.
       self.parent = None
     
-    def __repr__(self):
-      return "{Lines:[%d-%d], PC: %s, Sub: %s}" % (self.start_line, self.end_line, self.pc, self.sub_block_groups)
+    def dumps(self) -> str:
+      """Return string representation of conditional block.
+      """
+      return self.__repr__()
     
+    @staticmethod
+    def loads(cb_string: str):
+      """Parse conditional block from its string representation.
+
+      Arguments:
+      cb_string -- string representation of conditional block.
+
+      Returns an instance of ConditionalBlock.
+      """
+      from ast import literal_eval
+      return Klocalizer.ConditionalBlock.__parse_cb(literal_eval(cb_string))
+
+    def __repr__(self):
+      pc_repr = ""
+      if self.pc: pc_repr = self.pc.to_smt2().replace("\n", "\\n")
+      return "{\"StartLine\": %d, \"EndLine\": %d, \"PC\": \"%s\", \"Sub\": %s}" % (self.start_line, self.end_line, pc_repr, self.sub_block_groups)
+
+    def get_deepest_blocks(self, lines):
+      """Given a line number, returns the unique set of deepest conditional
+      blocks that contains these lines. The return value is equivalent to what
+      would be obtained by calling get_deepest_block() for each line and deduplicating.
+      However, this method is faster.
+
+      Arguments:
+      lines -- List of lines to query the deepest conditional blocks for.
+
+      Returns `None` if a block for some line can't be found."""
+      # TODO: optimize: do a single traversal on the tree.
+      cbs = set()
+      for line in lines:
+        cb = self.get_deepest_block(line)
+        if cb == None: return None
+        cbs.add(cb)
+      
+      return cbs
+
     def get_deepest_block(self, line: int):
       """Given a line number, returns the deepest conditional block that contains
       the line.
@@ -708,58 +746,44 @@ class Klocalizer:
       return self
 
     @staticmethod
-    def parse_superc(superc_rep: str):
-      """Parse conditional block groups outputted by SuperC -sourcelinePC.
+    def __parse_sub(sub_string_rep: str, parent):
+      """Parse and return conditional block groups This may be any intermediate
+      conditional block group as well.
 
       Arguments:
-      superc_rep -- string representation of conditional block groups outputted
-      by SuperC -sourcelinePC.
-
-      Returns [[ConditionalBlock]], i.e., a list of conditional block groups.
-      """
-      return Klocalizer.ConditionalBlock.__parse_sub(superc_rep, None)
-
-    @staticmethod
-    def __parse_sub(superc_rep: str, parent):
-      """Parse conditional block groups outputted by SuperC -sourcelinePC.
-      This may be any intermediate conditional block group as well.
-
-      Arguments:
-      superc_rep -- string representation of conditional block groups outputted
-      by SuperC -sourcelinePC.
+      sub_string_rep -- string representation of conditional block groups.
       parent -- Parent ConditionalBlock instance. The parent of top-level conditional
       block groups parsed by the method will be set to this.
 
       Returns [[ConditionalBlock]], i.e., a list of conditional block groups.
       """
       groups = []
-      for superc_cbgroup in superc_rep:
+      for cbgroup_str in sub_string_rep:
         group = []
-        for superc_cb in superc_cbgroup:
-          cb = Klocalizer.ConditionalBlock.__parse_cb(superc_cb)
+        for cb_str in cbgroup_str:
+          cb = Klocalizer.ConditionalBlock.__parse_cb(cb_str)
           cb.parent = parent
           group.append(cb)
         groups.append(group)
       return groups
 
     @staticmethod
-    def __parse_cb(superc_cb: str):
-      """Parse a conditional block group outputted by SuperC -sourcelinePC.
+    def __parse_cb(cb_string_rep: str):
+      """Parse and return a conditional block group.
 
       Arguments:
-      superc_cb -- string representation of a conditional block outputted by
-      SuperC -sourcelinePC.
+      cb_string_rep -- string representation of a conditional block.
 
-      Returns [ConditionalBlock], i.e., a list of conditional blocks.
+      Returns ConditionalBlock.
       """
+      # TODO: change these
       cb = Klocalizer.ConditionalBlock()
-      cb.start_line = int(superc_cb["StartLine"])
-      cb.end_line = int(superc_cb["EndLine"])
+      cb.start_line = int(cb_string_rep["StartLine"])
+      cb.end_line = int(cb_string_rep["EndLine"])
       z3_solver = z3.Solver()
-      z3_solver.from_string(superc_cb["PC"]) # TODO: make this an expression instead?
-
+      z3_solver.from_string(cb_string_rep["PC"]) # TODO: make this an expression instead?
       cb.pc = z3_solver
-      cb.sub_block_groups = Klocalizer.ConditionalBlock.__parse_sub(superc_cb["Sub"], cb)
+      cb.sub_block_groups = Klocalizer.ConditionalBlock.__parse_sub(cb_string_rep["Sub"], cb)
 
       return cb
 
@@ -809,7 +833,7 @@ class Klocalizer:
     Arguments:
     srcfile -- Path to the source file.
 
-    Returns [[ConditionalBlock]], i.e., a list of conditional block groups.
+    Returns ConditionalBlock.
     """
     # TODO: let user choose whether to restrict to CONFIG_ prefixed options
     Klocalizer.__check_args_get_sourceline_pc(srcfile=srcfile, srcdir=None, is_linux=False, \
@@ -826,7 +850,7 @@ class Klocalizer:
       _, _, ret = run(superc_cmd, capture_stdout=True, capture_stderr=True)
       assert ret == 0
       from ast import literal_eval
-      return Klocalizer.ConditionalBlock.parse_superc(literal_eval(tmpfile.read().decode()))
+      return Klocalizer.ConditionalBlock.__parse_cb(literal_eval(tmpfile.read().decode()))
 
   @staticmethod
   def get_sourceline_pc_linux_file(srcfile: str, linux_ksrc: str, arch: Arch, \
@@ -870,7 +894,7 @@ class Klocalizer:
     unit to reuse existing configs. If not set, a config is always generated.
     logger -- Logger.
 
-    Returns [[ConditionalBlock]], i.e., a list of conditional block groups.
+    Returns ConditionalBlock.
     """
     # TODO: take additional flags to SuperC
     # TODO: any existing .config file is overwritten. write new Kconfig configs to a path different than linux_ksrc/.config?
@@ -962,7 +986,7 @@ class Klocalizer:
       superc_pcfile_content = tmpfile.read().decode()
     assert superc_pcfile_content
     from ast import literal_eval
-    return Klocalizer.ConditionalBlock.parse_superc(literal_eval(superc_pcfile_content))
+    return Klocalizer.ConditionalBlock.__parse_cb(literal_eval(superc_pcfile_content))
 
   #
   # Exceptions
