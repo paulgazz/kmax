@@ -8,6 +8,7 @@ import pickle
 import z3
 import logging
 from kmax.vcommon import getLogger
+import kmax.kextractcommon
 
 # TODO(necip): test: test compatibility with the existing file formats
 # TODO(necip): test: test exceptions
@@ -722,6 +723,8 @@ class Arch:
       self.__logger.info("Automatically detecting the kextract module version suitable for the kernel.")
       kextract_version=self.__detect_kextract_version()
       self.__logger.info("Using kextract module version: %s" % kextract_version)
+    elif self.__kextract_version not in kmax.kextractcommon.module_versions.keys():
+      raise Arch.UnknownKextractVersion(self.__kextract_version)
     else:
       kextract_version=self.__kextract_version
 
@@ -1175,6 +1178,12 @@ class Arch:
     def __init__(self, arch_name):
       self.arch_name = arch_name
       self.message = "Unknown architecture name: %s" % arch_name
+      super().__init__(self.message)
+
+  class UnknownKextractVersion(ArchException):
+    def __init__(self, kextract_version):
+      self.kextract_version = kextract_version
+      self.message = "Unknown kextract version: %s" % kextract_version
       super().__init__(self.message)
 
   class FormulaError(ArchException):
