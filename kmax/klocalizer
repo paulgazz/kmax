@@ -230,7 +230,7 @@ def klocalizerCLI():
             t.extractall(formulas)
             t.close()
         else:
-          logger.error("No cached formulas avaiable for %s :(  Caching the formulas the slow way...\n" % (linux_tag_version))
+          logger.warning("No cached formulas for %s available for download :(\n" % (linux_tag_version))
   
   # flatten allow_unmet_for list of lists
   allow_unmet_for = [ item for elem in allow_unmet_for for item in elem ]
@@ -293,7 +293,7 @@ def klocalizerCLI():
       exit(12)
 
   if not os.path.exists(formulas):
-    logger.warning("No formulas found.  Generating them on demand.  They can also be downloaded from https://configtools.org/kmax/formulas/ for some Linux versions.\n")
+    # logger.warning("No formulas found.  Generating them on demand.  They can also be downloaded from https://configtools.org/kmax/formulas/ for some Linux versions.\n")
     os.makedirs(formulas)
 
   if approximate and not os.path.isfile(approximate):
