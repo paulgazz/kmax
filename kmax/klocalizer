@@ -4,15 +4,22 @@ from kmax.klocalizer import *
 import logging
 
 class BasicLogger:
-  def __init__(self, quiet=False):
+  def __init__(self, quiet=False, verbose=False):
+    assert (not (quiet and verbose))
     self.quiet = quiet
+    self.verbose = verbose
   
   def info(self, msg):
     if not self.quiet: sys.stderr.write("INFO: %s" % msg)
+    
   def warning(self, msg):
     sys.stderr.write("WARNING: %s" % msg)
+    
   def error(self, msg):
     sys.stderr.write("ERROR: %s" % msg)
+    
+  def debug(self, msg):
+    if self.verbose: sys.stderr.write("DEBUG: %s" % msg)
 
 def klocalizerCLI():
   klocalizer=Klocalizer()
@@ -127,6 +134,10 @@ def klocalizerCLI():
                          '--quiet',
                          action="store_true",
                          help="""Quiet mode prints no messages to stderr.""")
+  argparser.add_argument('-v',
+                         '--verbose',
+                         action="store_true",
+                         help="""Verbose mode prints additional messages to stderr.""")
   argparser.add_argument('--version',
                          action="version",
                          version="%s %s" % (kmax.about.__title__, kmax.about.__version__),
@@ -166,9 +177,11 @@ def klocalizerCLI():
   force_unmet_free = args.force_unmet_free
   allow_unmet_for = args.allow_unmet_for
   quiet = args.quiet
+  verbose = args.verbose
 
   kmax.common.quiet = quiet
-  logger = BasicLogger(quiet=quiet)
+  kmax.common.verbose = verbose
+  logger = BasicLogger(quiet=quiet, verbose=verbose)
   klocalizer.set_logger(logger)
 
   klocalizer.set_linux_krsc(linux_ksrc)
@@ -211,11 +224,9 @@ def klocalizerCLI():
         # lookup version in the cache; if we can't, then tell user it's not available
         import requests
         req = requests.get(link)
-        # logger.info("Looking up cache index: %s\n" % (link))
+        logger.debug("Looking up cache index: %s\n" % (link))
         if req.status_code == 200:
           url_to_cached_formulas = (req.text if req.encoding is None else req.text.decode(req.encoding)).strip()
-          # logger.info("Found cached formulas: %s\n" % (url_to_cached_formulas))
-          # logger.info("Downloading...\n")
           logger.info("Found cached formulas for %s.  Downloading...\n" % (linux_tag_version))
           # download from the url; if we can't, then error
           import shutil
@@ -229,6 +240,8 @@ def klocalizerCLI():
           with tarfile.open(local_filename) as t:
             t.extractall(formulas)
             t.close()
+          logger.debug("Removing downloaded cache file %s\n" % (local_filename))
+          os.remove(local_filename)
         else:
           logger.warning("No cached formulas for %s available for download :(\n" % (linux_tag_version))
   
@@ -293,7 +306,8 @@ def klocalizerCLI():
       exit(12)
 
   if not os.path.exists(formulas):
-    # logger.warning("No formulas found.  Generating them on demand.  They can also be downloaded from https://configtools.org/kmax/formulas/ for some Linux versions.\n")
+    # create the formula cache directory if it doesn't already exist
+    # or couldn't be downloaded
     os.makedirs(formulas)
 
   if approximate and not os.path.isfile(approximate):
@@ -304,16 +318,17 @@ def klocalizerCLI():
   # Set kmax file
   #
   if len(compilation_units) > 0:
+    # logger.info("Getting the compilation unit constraints via kmax\n")
     if not kmax_file:
       kmax_file = os.path.join(formulas, "kmax") # default kmax file
     
     if not os.path.isfile(kmax_file): # if default kmax file doesn't exist, attempt to reach default kmax cache file
       kmax_cache_file = os.path.join(formulas, "kmax_cache")
-      logger.info("No prebuilt kmax formulas.  Running kmax on demand with kmax cache file: %s\n" % kmax_cache_file)
+      logger.debug("No prebuilt kmax formulas.  Running kmax on demand with kmax cache file: %s\n" % kmax_cache_file)
       if os.path.isfile(kmax_cache_file): klocalizer.load_kmax_formulas(kmax_cache_file, is_cache=True)
       is_kmax_cache = True
     else:
-      logger.info("Kmax formula file: %s\n" % (kmax_file))
+      logger.debug("Kmax formula file: %s\n" % (kmax_file))
       klocalizer.load_kmax_formulas(kmax_file, is_cache=False)
       is_kmax_cache = False
 
@@ -349,16 +364,19 @@ def klocalizerCLI():
   # Update the kmax cache (now that we are done with generating new kmax formulas)
   #
   if len(compilation_units) > 0 and is_kmax_cache:
-    logger.info("Updating Kmax formulas cache file: %s\n" % kmax_cache_file)
+    logger.debug("Updating Kmax formulas cache file: %s\n" % kmax_cache_file)
     klocalizer.update_kmax_cache_file(kmax_cache_file)
-    logger.info("Kmax formulas cache file was updated.\n")
+    logger.debug("Kmax formulas cache file was updated.\n")
 
   #
   # Prepare the architectures
   #
   archs = []
   
-  arch_logger_level = logging.INFO if not quiet else logging.WARNING
+  arch_logger_level = logging.INFO
+  if quiet: arch_logger_level = logging.WARNING
+  if verbose: arch_logger_level = logging.DEBUG
+  
   def get_arch_formulas_dir(formulas: str, arch: str) -> str:
     assert arch != None
     return os.path.join(formulas, "kclause", arch)

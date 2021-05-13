@@ -3,9 +3,13 @@ import pickle
 import z3
 
 quiet = False
+verbose = False
 
 def info(msg, ending="\n"):
   if not quiet: sys.stderr.write("INFO: %s%s" % (msg, ending))
+
+def debug(msg, ending="\n"):
+  if verbose: sys.stderr.write("DEBUG: %s%s" % (msg, ending))
 
 def get_kmax_constraints(kmax_formulas, kbuild_path, view=False):
   """Returns an array of z3 formulas that, ANDed together, represent conditions under which the unit is included in a build, as specified by Kbuild.  Note that this excludes any Kconfig constraints, which are handled by kclause instead."""
@@ -28,7 +32,7 @@ def get_kmax_constraints(kmax_formulas, kbuild_path, view=False):
           if view:
             print("%s\n%s\n" % (subsubpath, subsubpath_constraint))
         else:
-          info("%s has no kmax formula, assuming it is unconstrained." % (subsubpath))
+          debug("%s has no kmax formula, assuming it is unconstrained." % (subsubpath))
     return kmax_constraints
   else:
     return None

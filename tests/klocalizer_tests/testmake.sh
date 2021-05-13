@@ -6,6 +6,8 @@ test_klocalizer="bash $(dirname $0)/../../scripts/test_klocalizer.sh"
 
 klocalizer --version
 
+${test_klocalizer} sound/soc/cirrus/ep93xx-ac97.o
+${test_klocalizer} sound/soc/cirrus/ep93xx-i2s.c
 ${test_klocalizer} drivers/usb/storage/alauda.o
 ${test_klocalizer} sound/soc/intel/boards/glk_rt5682_max98357a.o
 ${test_klocalizer} sound/mips/sgio2audio.o

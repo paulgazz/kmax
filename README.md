@@ -5,6 +5,7 @@
 - [The Kmax Tool Suite](#the-kmax-tool-suite)
   - [Getting Started](#getting-started)
   - [Cross-Compiling](#cross-compiling)
+  - [Installing from Source](#installing-from-source)
   - [Additional Documentation](#additional-documentation)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
