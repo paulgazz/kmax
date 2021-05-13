@@ -318,16 +318,17 @@ def klocalizerCLI():
   # Set kmax file
   #
   if len(compilation_units) > 0:
+    # logger.info("Getting the compilation unit constraints via kmax\n")
     if not kmax_file:
       kmax_file = os.path.join(formulas, "kmax") # default kmax file
     
     if not os.path.isfile(kmax_file): # if default kmax file doesn't exist, attempt to reach default kmax cache file
       kmax_cache_file = os.path.join(formulas, "kmax_cache")
-      logger.info("No prebuilt kmax formulas.  Running kmax on demand with kmax cache file: %s\n" % kmax_cache_file)
+      logger.debug("No prebuilt kmax formulas.  Running kmax on demand with kmax cache file: %s\n" % kmax_cache_file)
       if os.path.isfile(kmax_cache_file): klocalizer.load_kmax_formulas(kmax_cache_file, is_cache=True)
       is_kmax_cache = True
     else:
-      logger.info("Kmax formula file: %s\n" % (kmax_file))
+      logger.debug("Kmax formula file: %s\n" % (kmax_file))
       klocalizer.load_kmax_formulas(kmax_file, is_cache=False)
       is_kmax_cache = False
 
@@ -363,9 +364,9 @@ def klocalizerCLI():
   # Update the kmax cache (now that we are done with generating new kmax formulas)
   #
   if len(compilation_units) > 0 and is_kmax_cache:
-    logger.info("Updating Kmax formulas cache file: %s\n" % kmax_cache_file)
+    logger.debug("Updating Kmax formulas cache file: %s\n" % kmax_cache_file)
     klocalizer.update_kmax_cache_file(kmax_cache_file)
-    logger.info("Kmax formulas cache file was updated.\n")
+    logger.debug("Kmax formulas cache file was updated.\n")
 
   #
   # Prepare the architectures
