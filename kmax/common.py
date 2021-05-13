@@ -3,6 +3,7 @@ import pickle
 import z3
 
 quiet = False
+verbose = False
 
 def info(msg, ending="\n"):
   if not quiet: sys.stderr.write("INFO: %s%s" % (msg, ending))

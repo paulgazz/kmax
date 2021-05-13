@@ -4,15 +4,22 @@ from kmax.klocalizer import *
 import logging
 
 class BasicLogger:
-  def __init__(self, quiet=False):
+  def __init__(self, quiet=False, verbose=False):
+    assert (not (quiet and verbose))
     self.quiet = quiet
+    self.verbose = verbose
   
   def info(self, msg):
     if not self.quiet: sys.stderr.write("INFO: %s" % msg)
+    
   def warning(self, msg):
     sys.stderr.write("WARNING: %s" % msg)
+    
   def error(self, msg):
     sys.stderr.write("ERROR: %s" % msg)
+    
+  def debug(self, msg):
+    if self.verbose: sys.stderr.write("DEBUG: %s" % msg)
 
 def klocalizerCLI():
   klocalizer=Klocalizer()
@@ -127,6 +134,10 @@ def klocalizerCLI():
                          '--quiet',
                          action="store_true",
                          help="""Quiet mode prints no messages to stderr.""")
+  argparser.add_argument('-v',
+                         '--verbose',
+                         action="store_true",
+                         help="""Verbose mode prints additional messages to stderr.""")
   argparser.add_argument('--version',
                          action="version",
                          version="%s %s" % (kmax.about.__title__, kmax.about.__version__),
@@ -166,9 +177,11 @@ def klocalizerCLI():
   force_unmet_free = args.force_unmet_free
   allow_unmet_for = args.allow_unmet_for
   quiet = args.quiet
+  verbose = args.verbose
 
   kmax.common.quiet = quiet
-  logger = BasicLogger(quiet=quiet)
+  kmax.common.verbose = verbose
+  logger = BasicLogger(quiet=quiet, verbose=verbose)
   klocalizer.set_logger(logger)
 
   klocalizer.set_linux_krsc(linux_ksrc)
