@@ -3,7 +3,6 @@
 from kmax.klocalizer import *
 import logging
 
-
 class BasicLogger:
   def __init__(self, quiet=False):
     self.quiet = quiet
@@ -55,6 +54,10 @@ def klocalizerCLI():
   argparser.add_argument('--constraints-file-smt2',
                          type=str,
                          help="""A text file containing constraints in SMTLib format.""")
+  argparser.add_argument('-c',
+                         '--cached-formula-download',
+                         action="store_true",
+                         help="""Check configtools.org for a cached copy of this Linux version's kclause formulas to the local cache .kmax/.  Requires a git clone of Linux to discover version via tag.  Warning: this will overwrite the .kmax/ cache directory.""")
   argparser.add_argument('-a',
                          '--arch',
                          action="append",
@@ -149,6 +152,7 @@ def klocalizerCLI():
   reportallarchs = args.report_all
   constraints_file = args.constraints_file
   constraints_file_smt2 = args.constraints_file_smt2
+  cached_formula_download=args.cached_formula_download
   output_file = args.output
   show_unsat_core = args.show_unsat_core
   approximate = args.approximate
@@ -238,6 +242,50 @@ def klocalizerCLI():
       logger.error("--sample-prefix only to be used with --sample\n")
       exit(12)
 
+  if cached_formula_download:
+    # get current version of kernel; if we can't, then error
+    command=["git", "describe", "--abbrev=0", "--tags"]
+    popen = subprocess.Popen(command, stdin=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    linux_tag_version, _ = popen.communicate()
+    linux_tag_version = linux_tag_version.strip().decode('utf-8')
+    if popen.returncode != 0:
+      logger.error("Unable to get Linux version from git describe for downloading cached formulas.\n")
+      exit(14)
+    # get version of .kmax (if available); if we can't, then assume we need to download a cached version
+    try:
+      with open(".kmax/linux_version") as lvf:
+        current_cache_version = lvf.readlines()[0].strip()
+    except:
+      current_cache_version = None
+    if linux_tag_version != current_cache_version:
+      # get cache index; if we can't, then fatal error
+      link = Klocalizer.get_kclause_cache_url(linux_tag_version)
+      # lookup version in the cache; if we can't, then tell user it's not available
+      import requests
+      req = requests.get(link)
+      # logger.info("Looking up cache index: %s\n" % (link))
+      if req.status_code == 200:
+        url_to_cached_formulas = (req.text if req.encoding is None else req.text.decode(req.encoding)).strip()
+        # logger.info("Found cached formulas: %s\n" % (url_to_cached_formulas))
+        # logger.info("Downloading...\n")
+        logger.info("Found cached formulas for %s.  Downloading...\n" % (linux_tag_version))
+        # download from the url; if we can't, then error
+        import shutil
+        local_filename = url_to_cached_formulas.split('/')[-1]
+        with requests.get(url_to_cached_formulas, stream=True) as r:
+            with open(local_filename, 'wb') as f:
+              shutil.copyfileobj(r.raw, f)
+        # untar; if we can't, then error
+        import tarfile
+        logger.info("Unpacking %s...\n" % (local_filename))
+        with tarfile.open(local_filename) as t:
+          t.extractall()
+          t.close()
+      else:
+        logger.error("No cached formulas avaiable for %s :(  Caching the formulas the slow way...\n" % (linux_tag_version))
+    else:
+      logger.info("Formula cache for %s already exists locally\n" % (linux_tag_version))
+    
   if not os.path.exists(formulas):
     logger.warning("No formulas found.  Generating them on demand.  They can also be downloaded from https://configtools.org/kmax/formulas/ for some Linux versions.\n")
     os.makedirs(formulas)
