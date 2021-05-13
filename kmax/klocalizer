@@ -3,7 +3,6 @@
 from kmax.klocalizer import *
 import logging
 
-
 class BasicLogger:
   def __init__(self, quiet=False):
     self.quiet = quiet
@@ -176,7 +175,62 @@ def klocalizerCLI():
 
   # set default value for formulas if not specified
   if not formulas:
-    formulas = os.path.join(linux_ksrc, ".kmax/")
+    # try to determine the version of the linux source code
+    # first try git
+    command=["git", "describe", "--abbrev=0", "--tags"]
+    popen = subprocess.Popen(command, stdin=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    linux_tag_version, _ = popen.communicate()
+    linux_tag_version = linux_tag_version.strip().decode('utf-8')
+    if popen.returncode == 0:
+      # successfully found linux version git
+      pass
+    else:
+      # apparently not a git repository, so try with make kernelversion
+      command=["make", "kernelversion"]
+      popen = subprocess.Popen(command, stdin=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+      linux_tag_version, _ = popen.communicate()
+      linux_tag_version = linux_tag_version.strip().decode('utf-8')
+      if popen.returncode == 0:
+        # successfully found linux version from make
+        pass
+      else:
+        # could not get any linux_tag_version
+        linux_tag_version = None
+    assert(type(linux_tag_version) == str or linux_tag_version is None)
+    if linux_tag_version is None:
+      # provide a hard-coded version name since we couldn't determine the version
+      formulas = os.path.join(linux_ksrc, ".kmax/", "_unknown_version")
+    else:
+      # set the formula folder based on the linux version
+      formulas = os.path.join(linux_ksrc, ".kmax/", linux_tag_version)
+
+      # try downloading a cached version if user hasn't already started generating formulas
+      if not os.path.exists(formulas):
+        # get cache index; if we can't, then fatal error
+        link = Klocalizer.get_kclause_cache_url(linux_tag_version)
+        # lookup version in the cache; if we can't, then tell user it's not available
+        import requests
+        req = requests.get(link)
+        # logger.info("Looking up cache index: %s\n" % (link))
+        if req.status_code == 200:
+          url_to_cached_formulas = (req.text if req.encoding is None else req.text.decode(req.encoding)).strip()
+          # logger.info("Found cached formulas: %s\n" % (url_to_cached_formulas))
+          # logger.info("Downloading...\n")
+          logger.info("Found cached formulas for %s.  Downloading...\n" % (linux_tag_version))
+          # download from the url; if we can't, then error
+          import shutil
+          local_filename = url_to_cached_formulas.split('/')[-1]
+          with requests.get(url_to_cached_formulas, stream=True) as r:
+              with open(local_filename, 'wb') as f:
+                shutil.copyfileobj(r.raw, f)
+          # untar; if we can't, then error
+          import tarfile
+          logger.info("Unpacking %s...\n" % (local_filename))
+          with tarfile.open(local_filename) as t:
+            t.extractall(formulas)
+            t.close()
+        else:
+          logger.warning("No cached formulas for %s available for download :(\n" % (linux_tag_version))
   
   # flatten allow_unmet_for list of lists
   allow_unmet_for = [ item for elem in allow_unmet_for for item in elem ]
@@ -239,7 +293,7 @@ def klocalizerCLI():
       exit(12)
 
   if not os.path.exists(formulas):
-    logger.warning("No formulas found.  Generating them on demand.  They can also be downloaded from https://configtools.org/kmax/formulas/ for some Linux versions.\n")
+    # logger.warning("No formulas found.  Generating them on demand.  They can also be downloaded from https://configtools.org/kmax/formulas/ for some Linux versions.\n")
     os.makedirs(formulas)
 
   if approximate and not os.path.isfile(approximate):

@@ -44,6 +44,7 @@ setup(
         'z3-solver',
         'dd',
         'networkx==2.2', # for dd to work on python2
+        'requests',
     ],
     use_2to3=True,
 )
