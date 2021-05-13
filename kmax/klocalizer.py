@@ -390,6 +390,11 @@ class Klocalizer:
     
     return "".join(configfile_content)
 
+  @staticmethod
+  def get_kclause_cache_url(linux_tag_version):
+    """Get the URL that holds the index to the cached formula's for the given linux version tag."""
+    return "https://configtools.org/klocalizer/cache/%s" % (linux_tag_version)
+  
   class Z3ModelSampler:
     """Given constraints, check SAT and sample models using z3 solver.
 
