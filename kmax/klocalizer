@@ -224,11 +224,9 @@ def klocalizerCLI():
         # lookup version in the cache; if we can't, then tell user it's not available
         import requests
         req = requests.get(link)
-        # logger.info("Looking up cache index: %s\n" % (link))
+        logger.debug("Looking up cache index: %s\n" % (link))
         if req.status_code == 200:
           url_to_cached_formulas = (req.text if req.encoding is None else req.text.decode(req.encoding)).strip()
-          # logger.info("Found cached formulas: %s\n" % (url_to_cached_formulas))
-          # logger.info("Downloading...\n")
           logger.info("Found cached formulas for %s.  Downloading...\n" % (linux_tag_version))
           # download from the url; if we can't, then error
           import shutil
@@ -242,6 +240,8 @@ def klocalizerCLI():
           with tarfile.open(local_filename) as t:
             t.extractall(formulas)
             t.close()
+          logger.debug("Removing downloaded cache file %s\n" % (local_filename))
+          os.remove(local_filename)
         else:
           logger.warning("No cached formulas for %s available for download :(\n" % (linux_tag_version))
   
@@ -372,7 +372,10 @@ def klocalizerCLI():
   #
   archs = []
   
-  arch_logger_level = logging.INFO if not quiet else logging.WARNING
+  arch_logger_level = logging.INFO
+  if quiet: arch_logger_level = logging.WARNING
+  if verbose: arch_logger_level = logging.DEBUG
+  
   def get_arch_formulas_dir(formulas: str, arch: str) -> str:
     assert arch != None
     return os.path.join(formulas, "kclause", arch)
