@@ -11,7 +11,7 @@
   - [Using merge_config.sh instead of olddefconfig](#using-merge_configsh-instead-of-olddefconfig)
   - [Klocalizer](#klocalizer)
     - [Troubleshooting](#troubleshooting)
-  - [Generating Formulas for Linux](#generating-formulas-for-linux)
+  - [Formulas Cache Directory Structure](#formulas-cache-directory-structure)
   - [Generating Formulas for BusyBox](#generating-formulas-for-busybox)
     - [Test out `klocalizer` on BusyBox](#test-out-klocalizer-on-busybox)
   - [Kmax](#kmax)
@@ -34,22 +34,6 @@
 # Advanced Usage
 
 ## Annotated Example
-
-`klocalizer` can generate formulas on-demand or use formulas already
-extracted for your version of Linux, which you can download here:
-<https://configtools.org/kmax/formulas>
-
-    wget https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.4.tar.xz
-    tar -xvf linux-5.4.tar.xz
-    cd linux-5.4/
-    wget https://configtools.org/kmax/formulas/kmax-formulas_linux-v5.4.tar.bz2
-    tar -xvf kmax-formulas_linux-v5.4.tar.bz2
-
-This contains a `.kmax` directory containing the Kconfig and Kbuild
-formulas for each architecture.  If a version is not available
-[here](https://configtools.org/kmax/formulas) submit an issue to request
-the formulas be generated and uplodated or see below for directions on
-generating these formulas.
 
 Run klocalizer for a given compilation unit, e.g.,
 
@@ -284,15 +268,13 @@ e.g., `allnoconfig`, with the `--approximate` flag.
 
 ### Troubleshooting
 
-- `klocalizer` can use formulas from `kmax` and
-  `kclause`. [Download](https://configtools.org/kmax/formulas) these
-  first or generate them (see below).
+- If you see a message like `ERROR:Kextract failed`, it likely means the Kconfig parser is out-of-date (or klocalizer cannot figure out what version of the Kconfig parser to use.)  Please submit an issues to have the Kconfig parser updated.
 
 - Use the `CONFIG_` prefix on variables when referring to them in user constraints.
 
 - Use the `.o` ending for compilation units (though `klocalizer` will change it automatically.)
 
-- The extracted formulas may not be exact.  No resulting configuration is a sign that the formulas are overconstrained.  A resulting configuration that does not include the desired compilation unit mean the formulas may be underconstrained.
+- The extracted formulas may not be exact.  No resulting configuration is a sign that the formulas are overconstrained.  A resulting configuration that does not include the desired compilation unit may mean the formulas are underconstrained.
 
 - Compilation unit not buildable.  There are several possible reasons:
 
@@ -318,9 +300,9 @@ e.g., `allnoconfig`, with the `--approximate` flag.
             make.cross ARCH=m68k olddefconfig
             make.cross ARCH=m68k drivers/block/amiflop.o  # Makefile sees it, but causes compiler error.
         
-    5. Klocalizer's formulas were wrong in some cases
+    5. Klocalizer's formulas were wrong in some cases.  Please file an issue with source version number and klocalizer command used.
 
-- If the unit's configuration constraints depend  on - `CONFIG_BROKEN`, then `klocalizer`, by default, which detect it and stop searching, because the compilation unit may not be (easily) compilable.
+- If the unit's configuration constraints depend on `CONFIG_BROKEN`, then `klocalizer`, by default, which detect it and stop searching, because the compilation unit may not be (easily) compilable.
     
         klocalizer drivers/watchdog/pnx833x_wdt.o  # stops after finding a dependency on `CONFIG_BROKEN`
 
@@ -330,26 +312,16 @@ e.g., `allnoconfig`, with the `--approximate` flag.
         make.cross ARCH=mips olddefconfig
         make.cross ARCH=mips drivers/watchdog/pnx833x_wdt.o  # won't be included in the build, due to CONFIG_BROKEN
 
-## Generating Formulas for Linux
+## Formulas Cache Directory Structure
 
-This requires cloning the kmax repository, since there are helper
-scripts to generate the formulas for Linux.  These commands and
-scripts are intended to be run from the root of your Linux source
-tree.
+The `.kmax` holds the formula cache to avoid having to regenerate
+formulas on each run of klocalizer.  klocalizer will also look for
+prebuilt formulas to download and store in this directory.  To support
+caching multiple versions of the Linux source, i.e., when using a git
+repo, the `.kmax` folder's subfolders are Linux versions, i.e., git
+tags.  klocalizer will gather the current version of Linux (either via
+`git describe --abbrev=0 --tags` or `make kernelversion`).
 
-To get the formulas for compilation units defined in the Kbuild files,
-we first need a list of all the top-level source directories for each
-architecture.  The script uses a hacky Makefile to do this.  Then
-calls kmaxall with all of the top-level directories.  This is a memory
-intensive operation.  The next script calls kclause on each of the
-architectures, as named in the arch/ directory.
-
-    cd /path/to/linux
-    mkdir -p .kmax/
-    /usr/bin/time bash /path/to/kmax/scripts/kmaxlinux.sh
-    /usr/bin/time bash /path/to/kmax/scripts/kclauselinux.sh
-    bash /path/to/kmax/scripts/packageformulaslinux.sh
-    
 ## Generating Formulas for BusyBox
 
 Get the BusyBox source:

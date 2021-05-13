@@ -48,9 +48,9 @@ if [[ ${errcodekloc} -eq 0 ]]; then
     archvar="ARCH=$(cat archname.txt)"
   fi
   cp .config .config.klocalizer
-  timeout 30 "${scripts_dir}/make.cross" -j 4 $archvar olddefconfig > build.txt 2>&1
-  # "${scripts_dir}/make.cross" $archvar clean >> build.txt 2>&1
-  timeout 2m "${scripts_dir}/make.cross" -j 4 $archvar "$target" >> build.txt 2>&1
+  timeout 30 "make.cross" -j 4 $archvar olddefconfig > build.txt 2>&1
+  # "make.cross" $archvar clean >> build.txt 2>&1
+  timeout 2m "make.cross" -j 4 $archvar "$target" >> build.txt 2>&1
   errcodemake=${?}
   tail -n1000 build.txt
   egrep "(CC|CC [M]) *$kbuild_path" build.txt
@@ -64,9 +64,9 @@ if [[ ${errcodekloc} -eq 0 ]]; then
   else
     # try ignoring errors while building
     cp .config.klocalizer .config  # restore klocalizer .config again
-    timeout 30 "${scripts_dir}/make.cross" -j 4 $archvar olddefconfig > build.txt 2>&1
-    # "${scripts_dir}/make.cross" $archvar clean >> build.txt 2>&1
-    timeout 2m "${scripts_dir}/make.cross" -i -j 4 $archvar "$target" > build.txt 2>&1
+    timeout 30 "make.cross" -j 4 $archvar olddefconfig > build.txt 2>&1
+    # "make.cross" $archvar clean >> build.txt 2>&1
+    timeout 2m "make.cross" -i -j 4 $archvar "$target" > build.txt 2>&1
     errcodemake=${?}
     tail -n1000 build.txt
     egrep "(CC|CC [M]) *$kbuild_path" build.txt

@@ -293,7 +293,8 @@ def klocalizerCLI():
       exit(12)
 
   if not os.path.exists(formulas):
-    # logger.warning("No formulas found.  Generating them on demand.  They can also be downloaded from https://configtools.org/kmax/formulas/ for some Linux versions.\n")
+    # create the formula cache directory if it doesn't already exist
+    # or couldn't be downloaded
     os.makedirs(formulas)
 
   if approximate and not os.path.isfile(approximate):
