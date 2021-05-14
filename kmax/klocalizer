@@ -120,6 +120,9 @@ def klocalizerCLI():
   argparser.add_argument("--random-seed",
                          type=int,
                          help="""The random seed for the solver's model generation.""")
+  argparser.add_argument("--save-dimacs",
+                         type=str,
+                         help="""Save the resulting formula in DIMACS format to the given file.  This option will not create a .config file.""")
   argparser.add_argument("--exclude-compilation-units",
                          action="store_true",
                          help="""Invert the z3 formula of the compilation unit (.o file) when generating .config""")
@@ -173,6 +176,7 @@ def klocalizerCLI():
   sample_count = sample if sample else 1 # default sample count is 1
   sample_prefix = args.sample_prefix
   random_seed = args.random_seed
+  save_dimacs = args.save_dimacs
   compilation_units = args.compilation_units
   dont_compile = args.exclude_compilation_units
   force_unmet_free = args.force_unmet_free
@@ -284,6 +288,15 @@ def klocalizerCLI():
     argparser.print_help()
     logger.error("Cannot use --all-architectures when providing explicit --arch arguments.\n")
     exit(12)
+
+  if save_dimacs:
+    if os.path.exists(save_dimacs):
+      logger.warning("Overwriting existing file with the DIMACS output: %s\n" % (save_dimacs))
+    if reportallarchs or sample:
+      logger.error("--save-dimacs is incompatible with --report-all\n")
+      exit(12)
+    # current behavior is to not sample with z3 when outputting constraints in the DIMACS format
+    sample_count = 0
 
   if sample is not None:
     if sample_prefix is None:
@@ -505,6 +518,15 @@ def klocalizerCLI():
       logger.info("The constraints are satisfiable.\n")
       sat_archs.append(arch)
 
+      # write the constraints as a DIMACS file
+      if save_dimacs:
+        dimacs_file_name = save_dimacs
+        logger.info("Writing constraints in DIMACS format to \"%s\".\n" % dimacs_file_name)
+        solver = z3.Solver()
+        solver.add(constraints)
+        with open(dimacs_file_name, 'w') as dimacsf:
+          dimacsf.write(solver.dimacs())
+
       #
       # Sample configs
       #
@@ -539,7 +561,7 @@ def klocalizerCLI():
           else:
             build_cmd = "make.cross ARCH=%s clean %s" % (arch.name, " ".join(compilation_units))
           logger.info("Build with \"make.cross ARCH=%s olddefconfig; %s\".\n" % (arch.name, build_cmd))
-      
+
       # Stop the SAT search with the first SAT arch if not reporting for all archs
       if not reportallarchs:
         break # break the loop iterating over the architectures searching for SAT
