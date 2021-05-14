@@ -722,7 +722,7 @@ class Arch:
     if not self.__kextract_version:
       self.__logger.debug("Automatically detecting the kextract module version suitable for the kernel.")
       kextract_version=self.__detect_kextract_version()
-      self.__logger.info("Using kextract module version: %s" % kextract_version)
+      self.__logger.debug("Using kextract module version: %s" % kextract_version)
     elif self.__kextract_version not in kmax.kextractcommon.module_versions.keys():
       raise Arch.UnknownKextractVersion(self.__kextract_version)
     else:
@@ -764,7 +764,7 @@ class Arch:
       if ret_code == 0:
         break
       else:
-        self.__logger.error("Kextract failed (module version: %s, return code: %d)." % (kextract_version, ret_code))
+        self.__logger.debug("Kextract failed (module version: %s, return code: %d)." % (kextract_version, ret_code))
         if kextract_module_versions: self.__logger.debug("Trying next latest kextract module version: %s" % kextract_module_versions[-1])
         os.remove(kextract_file)
 
