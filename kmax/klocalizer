@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import kmax.kextractcommon
 from kmax.klocalizer import *
 import logging
 
