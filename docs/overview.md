@@ -37,7 +37,12 @@ the following tools:
 
 ## Contributors
 
-- [Paul Gazzillo](https://paulgazzillo.com) -- creator and developer
-- [ThanhVu Nguyen](https://cse.unl.edu/~tnguyen/) -- developer and z3 integration into `kmax`
-- Jeho Oh -- developer and kclause's Kconfig logical formulas
-- [Julia Lawall](https://pages.lip6.fr/Julia.Lawall/) -- ideation, evaluation
+- [Paul Gazzillo](https://paulgazzillo.com) -- kextract, kclause, kmax, klocalizer
+- [Jeho Oh](https://www.linkedin.com/in/jeho-oh-110a2092/) -- kclause
+- [Necip Yildiran](http://www.necipyildiran.com/) -- kismet, plocalizer
+- [Julian Braha](https://julianbraha.com/) -- kclause
+
+Special thanks to [Julia Lawall](https://pages.lip6.fr/Julia.Lawall/)
+for posing the problem and for invaluable advice, feedback, and
+support. Thanks also to [ThanhVu
+Nguyen](https://cse.unl.edu/~tnguyen/) for adding z3 support to kmax.
