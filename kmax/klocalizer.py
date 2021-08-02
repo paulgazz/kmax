@@ -1001,7 +1001,7 @@ class Klocalizer:
       restrict_flag = " -restrictConfigToPrefix CONFIG_ " if restrict_to_config_prefix else ""
       superc_flags = "%s -sourcelinePC %s" % (restrict_flag, tmpfilename)
       superc_sourcelinepc_cmd = [superc_linux_script, "-S \"%s\"" % superc_flags, "-L %s" % superc_configs_dir, srcfile]
-      print(superc_sourcelinepc_cmd)
+      
       run(superc_sourcelinepc_cmd, capture_stdout=True, capture_stderr=True, cwd=linux_ksrc)
       superc_pcfile_content = tmpfile.read().decode()
     assert superc_pcfile_content
