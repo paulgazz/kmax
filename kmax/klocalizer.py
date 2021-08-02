@@ -17,6 +17,26 @@ from kmax.vcommon import getLogLevel, getLogger, run
 
 # TODO(necip): automated testing
 
+def __parse_cb(cb_string_rep: str):
+  """Parse and return a conditional block group.
+
+  Arguments:
+  cb_string_rep -- string representation of a conditional block.
+
+  Returns ConditionalBlock.
+  """
+  # TODO: change these
+  cb = Klocalizer.ConditionalBlock()
+  cb.start_line = int(cb_string_rep["StartLine"])
+  cb.end_line = int(cb_string_rep["EndLine"])
+  z3_solver = z3.Solver()
+  z3_solver.from_string(cb_string_rep["PC"]) # TODO: make this an expression instead?
+  cb.pc = z3_solver
+  cb.sub_block_groups = Klocalizer.ConditionalBlock.__parse_sub(cb_string_rep["Sub"], cb)
+
+  return cb
+
+
 try:
   from subprocess import DEVNULL  # Python 3.
 except ImportError:
@@ -698,7 +718,7 @@ class Klocalizer:
       Returns an instance of ConditionalBlock.
       """
       from ast import literal_eval
-      return Klocalizer.ConditionalBlock.__parse_cb(literal_eval(cb_string))
+      return Klocalizer.ConditionalBlock._ConditionalBlock__parse_cb(literal_eval(cb_string))
 
     def __repr__(self):
       pc_repr = ""
@@ -761,7 +781,7 @@ class Klocalizer:
       for cbgroup_str in sub_string_rep:
         group = []
         for cb_str in cbgroup_str:
-          cb = Klocalizer.ConditionalBlock.__parse_cb(cb_str)
+          cb = Klocalizer.ConditionalBlock._ConditionalBlock__parse_cb(cb_str)
           cb.parent = parent
           group.append(cb)
         groups.append(group)
@@ -850,7 +870,7 @@ class Klocalizer:
       _, _, ret = run(superc_cmd, capture_stdout=True, capture_stderr=True)
       assert ret == 0
       from ast import literal_eval
-      return Klocalizer.ConditionalBlock.__parse_cb(literal_eval(tmpfile.read().decode()))
+      return Klocalizer.ConditionalBlock._ConditionalBlock__parse_cb(literal_eval(tmpfile.read().decode()))
 
   @staticmethod
   def get_sourceline_pc_linux_file(srcfile: str, linux_ksrc: str, arch: Arch, \
@@ -986,7 +1006,8 @@ class Klocalizer:
       superc_pcfile_content = tmpfile.read().decode()
     assert superc_pcfile_content
     from ast import literal_eval
-    return Klocalizer.ConditionalBlock.__parse_cb(literal_eval(superc_pcfile_content))
+    # return __parse_cb(literal_eval(superc_pcfile_content))
+    return Klocalizer.ConditionalBlock._ConditionalBlock__parse_cb(literal_eval(superc_pcfile_content))
 
   #
   # Exceptions
