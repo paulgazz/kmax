@@ -113,6 +113,7 @@ def klocalizerCLI():
                          help="""Just show the Kbuild constraints for the given compilation unit.  All other arguments are ignored.""")
   argparser.add_argument("--sample",
                          type=int,
+                         default=1,
                          help="""Generate the given number of configurations.  Cannot be used with --approximate and will output to --sample-prefix instead of --output-file.""")
   argparser.add_argument("--sample-prefix",
                          type=str,
@@ -173,7 +174,7 @@ def klocalizerCLI():
   allow_non_visibles = args.allow_non_visibles
   view_kbuild = args.view_kbuild
   sample = args.sample
-  sample_count = sample if sample else 1 # default sample count is 1
+  sample_count = sample if sample is not None else 1
   sample_prefix = args.sample_prefix
   random_seed = args.random_seed
   save_dimacs = args.save_dimacs
