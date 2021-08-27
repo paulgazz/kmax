@@ -30,6 +30,8 @@ class VoidLogger:
     pass
   def error(self, msg):
     pass
+  def debug(self, msg):
+    pass
 
 class Klocalizer:
   def __init__(self):
