@@ -940,8 +940,11 @@ class Kbuild:
 
 
             else:
-                self.variables[new_var_name] = [VarEntry(
-                    value, presence_cond, presence_zcond, VarEntry.RECURSIVE)]       
+                if not isfalse(presence_cond, presence_zcond):
+                    self.variables[new_var_name] = [VarEntry(
+                        value, presence_cond, presence_zcond, VarEntry.RECURSIVE)]
+                else:
+                    mlog.warn("no feasible entries to add for {} {} {}".format(name, token, value))
                 
                     
         elif token == "?=":
