@@ -50,6 +50,8 @@ class VoidLogger:
     pass
   def error(self, msg):
     pass
+  def debug(self, msg):
+    pass
 
 class Klocalizer:
   def __init__(self):
@@ -554,6 +556,14 @@ class Klocalizer:
       * any additional constraints, if set
     """
     constraints = []
+
+    # check based on the included compilation units' directory hierarchy. this is linux specific.
+    for unit in self.__include_compilation_units:
+      if unit.startswith("arch/"):
+        unit_archs = Arch.get_archs_from_subdir(unit)
+        if not arch.name in unit_archs:
+          self.__logger.warning("Resolved compilation unit (%s) is architecture-specific (%s), unsat for the provided architecture (%s).\n" % (unit, " ".join(unit_archs), arch.name))
+          return [z3.BoolVal(False)]
 
     # add kmax constraints
     constraints.extend(self.__kmax_constraints)
