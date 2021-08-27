@@ -817,7 +817,7 @@ class Klocalizer:
   @staticmethod
   def __check_args_get_sourceline_pc( \
       srcfile: str, srcdir: str, is_linux: bool, \
-      superc_linux_script, makecross_script, \
+      archs, superc_linux_script, makecross_script, \
       skip_kconfig_config_gen, skip_building_unit, skip_superc_config_gen):
     """Check arguments of for sourceline presence condition localization methods
     through assertions.
@@ -848,6 +848,9 @@ class Klocalizer:
       assert srcdir # TODO: check if dir is linux ksrc
       assert skip_building_unit or check_makecross_script()
       assert check_superc_linux_script()
+      assert archs
+      for arch in archs:
+        assert type(arch) is Arch
 
   @staticmethod
   def get_sourceline_pc_standalone_file(srcfile: str):
@@ -878,7 +881,7 @@ class Klocalizer:
       return Klocalizer.ConditionalBlock._ConditionalBlock__parse_cb(literal_eval(tmpfile.read().decode()))
 
   @staticmethod
-  def get_sourceline_pc_linux_file(srcfile: str, linux_ksrc: str, arch: Arch, \
+  def get_sourceline_pc_linux_file(srcfile: str, linux_ksrc: str, archs, \
       superc_linux_script: str, makecross_script: str, \
       restrict_to_config_prefix=True, \
       superc_configs_dir="superc_configs/", \
@@ -895,14 +898,14 @@ class Klocalizer:
     3. Create SuperC config file for the unit using SuperC Linux script (superc_linux_script).
     4. Clear autoconf.h ($LINUX_KSRC/include/generated/autoconf.h)
     5. Run SuperC using SuperC Linux script (superc_linux_script).
-    6. Parse SuperC's output and and return [[ConditionalBlock]].
+    6. Parse SuperC's output and and return (arch, [[ConditionalBlock]]).
 
     Arguments:
     srcfile -- Path to the source file. This must be relative to the top directory
     of the Linux kernel source, specified with linux_ksrc argument.
     linux_ksrc -- Path to the Linux kernel source.
-    arch -- An instance of Arch, defining the Linux architecture to use for
-    the query.
+    arch -- A list of Arch instances. The first arch that compiles the unit
+    will be used.
     superc_linux_script -- Path to the superc_linux script to be used to obtain
     SuperC configs for the source file and to run SuperC. This can be found
     at $SUPERC_SRC/scripts/superc_linux.sh.
@@ -928,8 +931,37 @@ class Klocalizer:
 
     # Check the arguments.
     Klocalizer.__check_args_get_sourceline_pc(srcfile, linux_ksrc, True, \
-      superc_linux_script, makecross_script, \
+      archs, superc_linux_script, makecross_script, \
       skip_kconfig_config_gen, skip_building_unit, skip_superc_config_gen)
+
+    #
+    # Detect the architecture
+    #
+    logger.info("Detecting the architecture.")
+      kloc = Klocalizer()
+      kloc.set_linux_krsc(linux_ksrc)
+      kloc.add_constraints([z3.Not(z3.Bool("CONFIG_BROKEN"))])
+      kloc.include_compilation_unit(srcfile)
+
+    #
+    # Find an architecture that compiles the unit
+    #
+    for arch in archs:
+      logger.info("Trying \"%s\"" % arch.name)
+      full_constraints = kloc.compile_constraints(arch)
+      model_sampler = Klocalizer.Z3ModelSampler(full_constraints)
+      is_sat, z3_model = model_sampler.sample_model()
+      if is_sat:
+        break
+
+    # Not possible to compile with the given set of architectures
+    if not is_sat:
+      logger.warning("Could not find an architecture that compiles the unit.")
+      return None, None
+    else:
+      assert arch
+      logger.info("The unit compiles for the architecture: \"%s\"" % arch.name)
+      
 
     #
     # Create a config file that compiles the unit
@@ -937,14 +969,7 @@ class Klocalizer:
     config_filepath = os.path.join(linux_ksrc, ".config")
     if not skip_kconfig_config_gen:
       logger.info("Creating config file to compile the unit.")
-      kloc = Klocalizer()
-      kloc.set_linux_krsc(linux_ksrc)
-      kloc.add_constraints([z3.Not(z3.Bool("CONFIG_BROKEN"))])
-      kloc.include_compilation_unit(srcfile)
-      full_constraints = kloc.compile_constraints(arch)
-      model_sampler = Klocalizer.Z3ModelSampler(full_constraints)
-      is_sat, z3_model = model_sampler.sample_model()
-      assert is_sat # TODO: might be impossible for the given arch
+      assert is_sat and (z3_model != None)
       config_content = Klocalizer.get_config_from_model(z3_model, arch, set_tristate_m=False, allow_non_visibles=False)
       with open(config_filepath, "w") as f:
         f.write(config_content)
@@ -980,7 +1005,7 @@ class Klocalizer:
       import pathlib
       pathlib.Path(superc_configs_dir).mkdir(parents=True, exist_ok=True)
       assert os.path.isdir(superc_configs_dir)
-      config_gen_cmd = [superc_linux_script, "-w", "-L", superc_configs_dir, srcfile]
+      config_gen_cmd = [superc_linux_script, "-w", "-x", makecross_script, "-a", arch.name, "-L", superc_configs_dir, srcfile]
       run(config_gen_cmd, cwd=linux_ksrc)
       assert os.path.isfile(superc_config_path)
     else:
@@ -1010,6 +1035,7 @@ class Klocalizer:
       run(superc_sourcelinepc_cmd, capture_stdout=True, capture_stderr=True, cwd=linux_ksrc)
       superc_pcfile_content = tmpfile.read().decode()
     assert superc_pcfile_content
+    assert arch
     from ast import literal_eval
     # return __parse_cb(literal_eval(superc_pcfile_content))
     return Klocalizer.ConditionalBlock._ConditionalBlock__parse_cb(literal_eval(superc_pcfile_content))
