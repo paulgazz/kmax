@@ -147,9 +147,9 @@ class Klocalizer:
 
     self.__is_kmax_formulas_cache=is_cache
     self.__kmax_cache_file=None
-    self.__logger.info("Loading Kmax formulas from file: %s\n" % kmax_file)
+    self.__logger.debug("Loading Kmax formulas from file: %s\n" % kmax_file)
     self.__kmax_formulas = unpickle_kmax_file(filepath)
-    self.__logger.info("Kmax formulas was loaded.\n")
+    self.__logger.debug("Kmax formulas was loaded.\n")
 
   def get_kmax_formulas(self):
     return self.__kmax_formulas
@@ -198,7 +198,7 @@ class Klocalizer:
     path -- kbuild path.
     """
     command = ['kmax', '-z', ('-Dsrctree=./'), ('-Dsrc=%s' % (os.path.dirname(path))), path]
-    self.__logger.info("Running kmax: %s\n" % (" ".join(command)))
+    self.__logger.debug("Running kmax: %s\n" % (" ".join(command)))
     output = subprocess.check_output(command, stderr=DEVNULL, cwd=self.__ksrc) # todo: save error output to a log
     formulas = pickle.loads(output)
     return formulas
@@ -258,7 +258,7 @@ class Klocalizer:
             new_formulas = self.__query_kmax(path_to_try)
             self.__kmax_formulas.update(new_formulas)
         if current_path not in self.__kmax_formulas:
-          self.__logger.info("%s has no kmax formula, assuming it is unconstrained.\n" % (current_path))
+          self.__logger.debug("%s has no kmax formula, assuming it is unconstrained.\n" % (current_path))
 
   def __resolve_kbuild_path(self, unit: str):
     """Resolve the kbuild paths for unit.
@@ -410,6 +410,11 @@ class Klocalizer:
     
     return "".join(configfile_content)
 
+  @staticmethod
+  def get_kclause_cache_url(linux_tag_version):
+    """Get the URL that holds the index to the cached formula's for the given linux version tag."""
+    return "https://configtools.org/klocalizer/cache/%s" % (linux_tag_version)
+  
   class Z3ModelSampler:
     """Given constraints, check SAT and sample models using z3 solver.
 
@@ -484,16 +489,16 @@ class Klocalizer:
       else:
         self.__logger.info("Approximating via unsat core approach.\n")
         total_assumptions_to_match = len(assumptions)
-        self.__logger.info("%d assumptions left to try removing.\r" % (total_assumptions_to_match))
+        self.__logger.debug("%d assumptions left to try removing.\r" % (total_assumptions_to_match))
         while not is_sat:
           core = solver.unsat_core()
           # remove all assumptions that in the core, except those specifically given as user-constraints.  potential optmization: try randomizing this or removing only some assumptions each iteration.
           # print(core)
           # update: user-constraints are no longer handled differently
           assumptions = [ assumption for assumption in assumptions if assumption not in core ]
-          self.__logger.info("%s\r" % len(assumptions))
+          self.__logger.debug("%s\r" % len(assumptions))
           is_sat = solver.check(assumptions) == z3.sat
-        self.__logger.info("\r")
+        self.__logger.debug("\r")
         self.__logger.info("Found satisfying config by removing %d assumptions.\n" % (total_assumptions_to_match - len(assumptions)))
 
     def sample_model(self):
@@ -630,7 +635,7 @@ class Klocalizer:
           raise Klocalizer.MultipleCompilationUnitsMatch(unit, kbuild_paths)
         kbuild_path = kbuild_paths[0]
         assert unit != kbuild_path
-        self.__logger.info("Using full path from Kbuild: %s\n" % (kbuild_path))
+        self.__logger.debug("Using full path from Kbuild: %s\n" % (kbuild_path))
         unit = kbuild_path
     
     #

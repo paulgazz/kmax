@@ -8,6 +8,7 @@ import pickle
 import z3
 import logging
 from kmax.vcommon import getLogger
+import kmax.kextractcommon
 
 # TODO(necip): test: test compatibility with the existing file formats
 # TODO(necip): test: test exceptions
@@ -719,9 +720,11 @@ class Arch:
       raise Arch.UnknownArchitectureName(self.name)
 
     if not self.__kextract_version:
-      self.__logger.info("Automatically detecting the kextract module version suitable for the kernel.")
+      self.__logger.debug("Automatically detecting the kextract module version suitable for the kernel.")
       kextract_version=self.__detect_kextract_version()
-      self.__logger.info("Using kextract module version: %s" % kextract_version)
+      self.__logger.debug("Using kextract module version: %s" % kextract_version)
+    elif self.__kextract_version not in kmax.kextractcommon.module_versions.keys():
+      raise Arch.UnknownKextractVersion(self.__kextract_version)
     else:
       kextract_version=self.__kextract_version
 
@@ -756,13 +759,13 @@ class Arch:
     while kextract_module_versions:
       kextract_version=kextract_module_versions.pop() # pop the next version to try
       command = [ "kextractlinux", self.name, kextract_file, "--module-version", kextract_version]
-      self.__logger.info("Running kextract tool to generate kextract (module version: %s)." % kextract_version)
+      self.__logger.debug("Running kextract tool to generate kextract (module version: %s)." % kextract_version)
       _, _, ret_code = self.__run_command(command, cwd=self.__linux_ksrc)
       if ret_code == 0:
         break
       else:
-        self.__logger.error("Kextract failed (module version: %s, return code: %d)." % (kextract_version, ret_code))
-        if kextract_module_versions: self.__logger.info("Trying next latest kextract module version: %s" % kextract_module_versions[-1])
+        self.__logger.debug("Kextract failed (module version: %s, return code: %d)." % (kextract_version, ret_code))
+        if kextract_module_versions: self.__logger.debug("Trying next latest kextract module version: %s" % kextract_module_versions[-1])
         os.remove(kextract_file)
 
     if ret_code != 0:
@@ -770,7 +773,7 @@ class Arch:
       self.__logger.error("Error running kextract: kextract file couldn't be generated.")
       raise Arch.KextractFormulaGenerationError()
     else:
-      self.__logger.info("kextract was successfully generated.")
+      self.__logger.debug("kextract was successfully generated.")
 
     # Load after generation
     with open(kextract_file, "r") as f:
@@ -791,7 +794,7 @@ class Arch:
     Arguments:
     kextract_file -- Path to the file to dump kextract.
     """
-    self.__logger.info("Dumping kextract to file '%s'" % kextract_file)
+    self.__logger.debug("Dumping kextract to file '%s'" % kextract_file)
     self.__dump_str_to_file(kextract_file, self.get_kextract(), binary=False)
 
   def load_kextract(self, kextract_file, delay_loading=False):
@@ -810,11 +813,11 @@ class Arch:
     if delay_loading:
       self.__kextract_file_delayed_load=kextract_file
     else:
-      self.__logger.info("Loading kextract from file '%s'" % kextract_file)
+      self.__logger.debug("Loading kextract from file '%s'" % kextract_file)
       self.__kextract_file_delayed_load=None
       with open(kextract_file, "r") as f:
         self.__kextract = f.read()
-      self.__logger.info("Successfully loaded the kextract.")  
+      self.__logger.debug("Successfully loaded the kextract.")
       # TODO: verify if the content is right  
 
   def dump_kclause(self, kclause_file, dump_composite=False):
@@ -823,7 +826,7 @@ class Arch:
     Arguments:
     kclause_file -- Path to the file to dump kclause formulas.
     """
-    self.__logger.info("Dumping kclause formulas to file '%s'" % kclause_file)
+    self.__logger.debug("Dumping kclause formulas to file '%s'" % kclause_file)
     if dump_composite:
       self.__pickle_dump_to_file(kclause_file, self.get_kclause_composite())
     else:
@@ -845,7 +848,7 @@ class Arch:
     if self.__composite_kclause_formulas != None:
       return self.__composite_kclause_formulas
     
-    self.__logger.info("Transforming kclause formulas into composite format..")
+    self.__logger.debug("Transforming kclause formulas into composite format..")
     kclause_constraints = {}
     for var in self.__kclause_formulas:
       kclause_constraints[var] = [ z3.parse_smt2_string(clause) for clause in self.__kclause_formulas[var] ]
@@ -855,7 +858,7 @@ class Arch:
       for z3_clause in kclause_constraints[var]:
         constraints.extend(z3_clause)
     
-    self.__logger.info("Transforming kclause formulas into composite format succeeded.")
+    self.__logger.debug("Transforming kclause formulas into composite format succeeded.")
 
     # keep in smt2 string format for consistency with the other formulas
     s = z3.Solver()
@@ -882,16 +885,16 @@ class Arch:
       self.__kclause_file_delayed_load=None
       self.__kclause_file_delayed_load_is_composite=None
       if is_composite:
-        self.__logger.info("Loading composite kclause formulas from file '%s'" % kclause_file)
+        self.__logger.debug("Loading composite kclause formulas from file '%s'" % kclause_file)
         self.__kclause_formulas = None
         with open(kclause_file, "r") as f:
           self.__composite_kclause_formulas = f.read()
-        self.__logger.info("Successfully loaded the composite kclause formulas.")
+        self.__logger.debug("Successfully loaded the composite kclause formulas.")
       else:
-        self.__logger.info("Loading kclause formulas from file '%s'" % kclause_file)
+        self.__logger.debug("Loading kclause formulas from file '%s'" % kclause_file)
         self.__kclause_formulas = Arch.__pickle_bin_dict(kclause_file)
         self.__generate_composite_kclause_formulas()
-        self.__logger.info("Successfully loaded the kclause formulas.")
+        self.__logger.debug("Successfully loaded the kclause formulas.")
       # TODO: verify content
 
   # Can use the kextract_file, or the kextract loaded in the architecture
@@ -907,14 +910,14 @@ class Arch:
     assert self.__kextract != None
 
     command = ["kclause", "--remove-orphaned-nonvisible" ]
-    self.__logger.info("Running kclause tool to generate kclause formulas.")
+    self.__logger.debug("Running kclause tool to generate kclause formulas.")
     proc_stdout, _, ret_code = self.__run_command(command, self.__kextract.encode(), capture_stderr=False)
     
     if ret_code != 0:
       self.__logger.error("Error running kclause: return code %d" % (ret_code))
       raise Arch.KclauseFormulaGenerationError()
     else:
-      self.__logger.info("kclause formulas was successfully generated.")
+      self.__logger.debug("kclause formulas was successfully generated.")
 
     self.__kclause_formulas=pickle.loads(proc_stdout)
 
@@ -939,10 +942,10 @@ class Arch:
     if delay_loading:
       self.__dir_dep_file_delayed_load=dir_dep_file
     else:
-      self.__logger.info("Loading kclause direct dependency formulas from file '%s'" % dir_dep_file)
+      self.__logger.debug("Loading kclause direct dependency formulas from file '%s'" % dir_dep_file)
       self.__dir_dep_file_delayed_load=None
       self.__dir_dep_formulas = Arch.__pickle_bin_dict(dir_dep_file)
-      self.__logger.info("Successfully loaded the kclause direct dependency formulas.")
+      self.__logger.debug("Successfully loaded the kclause direct dependency formulas.")
       # TODO: verify content
   
   def dump_dir_dep(self, dir_dep_file):
@@ -951,7 +954,7 @@ class Arch:
     Arguments:
     dir_dep_file -- Path to the file to dump kclause direct dependency formulas.
     """
-    self.__logger.info("Dumping kclause direct dependency formulas to file '%s'" % dir_dep_file)
+    self.__logger.debug("Dumping kclause direct dependency formulas to file '%s'" % dir_dep_file)
     self.__pickle_dump_to_file(dir_dep_file, self.get_dir_dep())
 
   def generate_dir_dep(self):
@@ -966,14 +969,14 @@ class Arch:
     assert self.__kextract != None
 
     command = ["kclause", "--normal-dependencies-only" ]
-    self.__logger.info("Running kclause tool to generate kclause direct dependency formulas.")
+    self.__logger.debug("Running kclause tool to generate kclause direct dependency formulas.")
     proc_stdout, _, ret_code = self.__run_command(command, self.__kextract.encode(), capture_stderr=False)
     
     if ret_code != 0:
       self.__logger.error("Error running kclause: return code %d" % (ret_code))
       raise Arch.KclauseDirDepFormulaGenerationError()
     else:
-      self.__logger.info("kclause direct dependency formulas was successfully generated.")
+      self.__logger.debug("kclause direct dependency formulas was successfully generated.")
 
     self.__dir_dep_formulas = pickle.loads(proc_stdout)
 
@@ -996,10 +999,10 @@ class Arch:
     if delay_loading:
       self.__rev_dep_file_delayed_load=rev_dep_file
     else:
-      self.__logger.info("Loading kclause reverse dependency formulas from file '%s'" % rev_dep_file)
+      self.__logger.debug("Loading kclause reverse dependency formulas from file '%s'" % rev_dep_file)
       self.__rev_dep_file_delayed_load=None
       self.__rev_dep_formulas = Arch.__pickle_bin_dict(rev_dep_file)
-      self.__logger.info("Successfully loaded the kclause reverse dependency formulas.")
+      self.__logger.debug("Successfully loaded the kclause reverse dependency formulas.")
       # TODO: verify content
   
   def dump_rev_dep(self, rev_dep_file):
@@ -1008,7 +1011,7 @@ class Arch:
     Arguments:
     rev_dep_file -- Path to the file to dump kclause reverse dependency formulas.
     """
-    self.__logger.info("Dumping kclause reverse dependency formulas to file '%s'" % rev_dep_file)
+    self.__logger.debug("Dumping kclause reverse dependency formulas to file '%s'" % rev_dep_file)
     self.__pickle_dump_to_file(rev_dep_file, self.get_rev_dep())
 
   def generate_rev_dep(self):
@@ -1023,14 +1026,14 @@ class Arch:
     assert self.__kextract != None
 
     command = ["kclause", "--reverse-dependencies-only" ]
-    self.__logger.info("Running kclause tool to generate kclause reverse dependency formulas.")
+    self.__logger.debug("Running kclause tool to generate kclause reverse dependency formulas.")
     proc_stdout, _, ret_code = self.__run_command(command, self.__kextract.encode(), capture_stderr=False)
     
     if ret_code != 0:
       self.__logger.error("Error running kclause: return code %d" % (ret_code))
       raise Arch.KclauseRevDepFormulaGenerationError()
     else:
-      self.__logger.info("kclause reverse dependency formulas was successfully generated.")
+      self.__logger.debug("kclause reverse dependency formulas was successfully generated.")
     
     self.__rev_dep_formulas = pickle.loads(proc_stdout)
 
@@ -1053,10 +1056,10 @@ class Arch:
     if delay_loading:
       self.__selects_file_delayed_load=selects_file
     else:
-      self.__logger.info("Loading kclause selects formulas from file '%s'" % selects_file)
+      self.__logger.debug("Loading kclause selects formulas from file '%s'" % selects_file)
       self.__selects_file_delayed_load=None
       self.__selects = Arch.__pickle_bin_dict(selects_file)
-      self.__logger.info("Successfully loaded the kclause selects formulas.")
+      self.__logger.debug("Successfully loaded the kclause selects formulas.")
       # TODO: verify content
     
   def dump_selects(self, selects_file):
@@ -1065,7 +1068,7 @@ class Arch:
     Arguments:
     selects_file -- Path to the file to dump kclause selects formulas.
     """
-    self.__logger.info("Dumping kclause selects formulas to file '%s'" % selects_file)
+    self.__logger.debug("Dumping kclause selects formulas to file '%s'" % selects_file)
     self.__pickle_dump_to_file(selects_file, self.get_selects())
 
   def generate_selects(self):
@@ -1080,14 +1083,14 @@ class Arch:
     assert self.__kextract != None
 
     command = ["kclause", "--selects-only" ]
-    self.__logger.info("Running kclause tool to generate kclause selects formulas.")
+    self.__logger.debug("Running kclause tool to generate kclause selects formulas.")
     proc_stdout, _, ret_code = self.__run_command(command, self.__kextract.encode(), capture_stderr=False)
     
     if ret_code != 0:
       self.__logger.error("Error running kclause: return code %d" % (ret_code))
       raise Arch.KclauseSelectsFormulaGenerationError()
     else:
-      self.__logger.info("kclause selects formulas was successfully generated.")
+      self.__logger.debug("kclause selects formulas was successfully generated.")
 
     self.__selects = pickle.loads(proc_stdout)
 
@@ -1175,6 +1178,12 @@ class Arch:
     def __init__(self, arch_name):
       self.arch_name = arch_name
       self.message = "Unknown architecture name: %s" % arch_name
+      super().__init__(self.message)
+
+  class UnknownKextractVersion(ArchException):
+    def __init__(self, kextract_version):
+      self.kextract_version = kextract_version
+      self.message = "Unknown kextract version: %s" % kextract_version
       super().__init__(self.message)
 
   class FormulaError(ArchException):

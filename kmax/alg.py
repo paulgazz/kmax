@@ -833,18 +833,21 @@ class Kbuild:
         if token == "=":
             # Recursively-expanded variable defs are expanded at use-time
 
-            equivs = self.get_var_equiv_set(name)
-            for equiv_name in equivs:
-                # Update all existing definitions' presence conds
-                if equiv_name in self.variables:
-                    self.variables[equiv_name] = update_vars(equiv_name)
-                else:
-                    self.variables[equiv_name] = []
+            if not isfalse(presence_cond, presence_zcond):
+                equivs = self.get_var_equiv_set(name)
+                for equiv_name in equivs:
+                    # Update all existing definitions' presence conds
+                    if equiv_name in self.variables:
+                        self.variables[equiv_name] = update_vars(equiv_name)
+                    else:
+                        self.variables[equiv_name] = []
 
-                # Add complete definition to variable (needed to find variable
-                # expansions at use-time)
-                self.variables[equiv_name].append(
-                    VarEntry(value, presence_cond, presence_zcond, VarEntry.RECURSIVE))
+                    # Add complete definition to variable (needed to find variable
+                    # expansions at use-time)
+                    self.variables[equiv_name].append(
+                        VarEntry(value, presence_cond, presence_zcond, VarEntry.RECURSIVE))
+            else:
+                mlog.warn("no feasible entries to add for {} {} {}".format(name, token, value))
 
         elif token == ":=":
             # Simply-expanded self.variables are expanded at define-time
@@ -872,12 +875,16 @@ class Kbuild:
                 # print new_definitions
                 new_variables = []
                 for new_cond, new_zcond, new_value in new_definitions:
-                    new_variables.append(VarEntry(new_value, 
-                                                    new_cond,
-                                                    new_zcond,
-                                                    VarEntry.SIMPLE))
+                    if not isfalse(new_cond, new_zcond):
+                        new_variables.append(VarEntry(new_value, 
+                                                        new_cond,
+                                                        new_zcond,
+                                                        VarEntry.SIMPLE))
 
-                self.variables[equiv_name] = old_variables + new_variables
+                if len(old_variables + new_variables) > 0:
+                    self.variables[equiv_name] = old_variables + new_variables
+                else:
+                    mlog.warn("no feasible entries to add for {} {} {}".format(name, token, value))
                 # TODO: check for computed variable names, compute them, and
                 # collect any configurations resulting from those self.variables
 
@@ -933,8 +940,11 @@ class Kbuild:
 
 
             else:
-                self.variables[new_var_name] = [VarEntry(
-                    value, presence_cond, presence_zcond, VarEntry.RECURSIVE)]       
+                if not isfalse(presence_cond, presence_zcond):
+                    self.variables[new_var_name] = [VarEntry(
+                        value, presence_cond, presence_zcond, VarEntry.RECURSIVE)]
+                else:
+                    mlog.warn("no feasible entries to add for {} {} {}".format(name, token, value))
                 
                     
         elif token == "?=":
