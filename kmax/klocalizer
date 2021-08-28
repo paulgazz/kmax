@@ -113,7 +113,6 @@ def klocalizerCLI():
                          help="""Just show the Kbuild constraints for the given compilation unit.  All other arguments are ignored.""")
   argparser.add_argument("--sample",
                          type=int,
-                         default=1,
                          help="""Generate the given number of configurations.  Cannot be used with --approximate and will output to --sample-prefix instead of --output-file.""")
   argparser.add_argument("--sample-prefix",
                          type=str,
@@ -310,7 +309,7 @@ def klocalizerCLI():
       argparser.print_help()
       logger.error("Must provide a sample size of 0 or more\n")
       exit(12)
-    if reportallarchs:
+    if reportallarchs and sample > 0:
       argparser.print_help()
       logger.error("Cannot use --report-all when requesting a sample.\n")
       exit(12)
