@@ -948,10 +948,10 @@ class Klocalizer:
     # Detect the architecture
     #
     logger.info("Detecting the architecture.")
-      kloc = Klocalizer()
-      kloc.set_linux_krsc(linux_ksrc)
-      kloc.add_constraints([z3.Not(z3.Bool("CONFIG_BROKEN"))])
-      kloc.include_compilation_unit(srcfile)
+    kloc = Klocalizer()
+    kloc.set_linux_krsc(linux_ksrc)
+    kloc.add_constraints([z3.Not(z3.Bool("CONFIG_BROKEN"))])
+    kloc.include_compilation_unit(srcfile)
 
     #
     # Find an architecture that compiles the unit
@@ -1048,7 +1048,7 @@ class Klocalizer:
     assert arch
     from ast import literal_eval
     # return __parse_cb(literal_eval(superc_pcfile_content))
-    return Klocalizer.ConditionalBlock._ConditionalBlock__parse_cb(literal_eval(superc_pcfile_content))
+    return arch, Klocalizer.ConditionalBlock._ConditionalBlock__parse_cb(literal_eval(superc_pcfile_content))
 
   #
   # Exceptions
