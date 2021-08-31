@@ -2,6 +2,7 @@ import sys
 import os
 import argparse
 import z3
+import re
 import regex
 import pickle
 import random
@@ -29,8 +30,12 @@ def __parse_cb(cb_string_rep: str):
   cb = Klocalizer.ConditionalBlock()
   cb.start_line = int(cb_string_rep["StartLine"])
   cb.end_line = int(cb_string_rep["EndLine"])
+  # Config options come as |(defined CONFIG_A)| from SuperC. Convert
+  # them to CONFIG_A format for compatibility with kclause.
+  pc_string = cb_string_rep["PC"]
+  pc_string = re.sub(r'\|\(defined (CONFIG_[a-zA-Z0-9_]*)\)\|', r'\1', pc_string)
   z3_solver = z3.Solver()
-  z3_solver.from_string(cb_string_rep["PC"]) # TODO: make this an expression instead?
+  z3_solver.from_string(pc_string) # TODO: make this an expression instead?
   cb.pc = z3_solver
   cb.sub_block_groups = Klocalizer.ConditionalBlock.__parse_sub(cb_string_rep["Sub"], cb)
 
@@ -815,8 +820,12 @@ class Klocalizer:
       cb = Klocalizer.ConditionalBlock()
       cb.start_line = int(cb_string_rep["StartLine"])
       cb.end_line = int(cb_string_rep["EndLine"])
+      # Config options come as |(defined CONFIG_A)| from SuperC. Convert
+      # them to CONFIG_A format for compatibility with kclause.
+      pc_string = cb_string_rep["PC"]
+      pc_string = re.sub(r'\|\(defined (CONFIG_[a-zA-Z0-9_]*)\)\|', r'\1', pc_string)
       z3_solver = z3.Solver()
-      z3_solver.from_string(cb_string_rep["PC"]) # TODO: make this an expression instead?
+      z3_solver.from_string(pc_string) # TODO: make this an expression instead?
       cb.pc = z3_solver
       cb.sub_block_groups = Klocalizer.ConditionalBlock.__parse_sub(cb_string_rep["Sub"], cb)
 
