@@ -751,11 +751,15 @@ class Klocalizer:
 
       Returns `None` if a block for some line can't be found."""
       # TODO: optimize: do a single traversal on the tree.
-      cbs = set()
+      # Use a list to preserve the order for replicability.
+      cbs = []
       for line in lines:
         cb = self.get_deepest_block(line)
         if cb == None: return None
-        cbs.add(cb)
+        if cb not in cbs: cbs.append(cb)
+      start_line_cbs = [(cb.start_line, cb) for cb in cbs]
+      start_line_cbs.sort()
+      return [x[1] for x in start_line_cbs]
       
       return cbs
 
