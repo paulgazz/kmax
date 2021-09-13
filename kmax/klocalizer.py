@@ -1113,7 +1113,7 @@ class Klocalizer:
 
       superc_pcfile_content = tmpfile.read().decode()
       if not superc_pcfile_content:
-        logger.error("Empty SuperC output." % unit_path)
+        logger.error("Empty SuperC output.")
         write_content_to_file(superc_sourcelinepc_cmd_str +"\n"+ superc_out.decode('utf-8'), superc_out_path)
         write_content_to_file(superc_sourcelinepc_cmd_str +"\n"+ superc_err.decode('utf-8'), superc_err_path)
         return Klocalizer.SourcelinePcResult.ERROR_SUPERC, arch, None
