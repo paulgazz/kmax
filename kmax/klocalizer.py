@@ -12,6 +12,7 @@ import subprocess
 import pprint
 import enum
 import z3
+import time
 from kmax.arch import Arch
 from kmax.common import get_kmax_constraints, unpickle_kmax_file
 from kmax.vcommon import getLogLevel, getLogger, run
@@ -898,7 +899,7 @@ class Klocalizer:
     with tempfile.NamedTemporaryFile() as tmpfile:
       tmpfilename = tmpfile.name
       superc_cmd = ["java", "superc.SuperC", "-sourcelinePC", tmpfilename, srcfile]
-      _, _, ret = run(superc_cmd, capture_stdout=True, capture_stderr=True)
+      _, _, ret, _ = run(superc_cmd, capture_stdout=True, capture_stderr=True)
       assert ret == 0
       from ast import literal_eval
       return Klocalizer.ConditionalBlock._ConditionalBlock__parse_cb(literal_eval(tmpfile.read().decode()))
@@ -910,6 +911,11 @@ class Klocalizer:
     ERROR_SUPERC=3  #< SuperC fails to create sourceline presence conditions,
                     #< or SuperC cannot be found. The returned architecture
                     #< is still valid to compile the unit.
+    ERROR_MAKE_TIMEOUT=4   #< Make timed-out while trying to compile the unit.
+    ERROR_SUPERC_TIMEOUT=5 #< SuperC timed-out while creating sourceline
+                    #< presence conditions. The returned architecture is
+                    #< still valid to compile the unit.
+
 
   @staticmethod
   def get_sourceline_pc_linux_file(srcfile: str, linux_ksrc: str, archs, \
@@ -919,6 +925,7 @@ class Klocalizer:
       skip_kconfig_config_gen=False, skip_building_unit=False, skip_superc_config_gen=False, \
       make_out_path=None, make_err_path=None, \
       superc_out_path=None, superc_err_path=None, \
+      make_timeout=None, superc_timeout=None,
       logger=VoidLogger()):
     """Get sourceline presence conditions for a source file within a Linux
     kernel source.
@@ -965,6 +972,8 @@ class Klocalizer:
     superc_err_path -- Path to the file where to write superc's stderr
     while computing sourceline pc. Created if it fails, i.e., when status
     is ERROR_SUPERC.
+    make_timeout -- Timeout in seconds for make.
+    superc_timeout -- Timeout in seconds for SuperC.
     logger -- Logger.
 
     Returns a tuple of three values:
@@ -996,6 +1005,7 @@ class Klocalizer:
     # Detect the architecture
     #
     logger.info("Detecting the architecture.")
+    time_start = time.time()
     kloc = Klocalizer()
     kloc.set_linux_krsc(linux_ksrc)
     kloc.add_constraints([z3.Not(z3.Bool("CONFIG_BROKEN"))])
@@ -1011,7 +1021,8 @@ class Klocalizer:
       is_sat, z3_model = model_sampler.sample_model()
       if is_sat:
         break
-
+    time_elapsed = time.time() - time_start
+    logger.info("TIME: Time elapsed(sec) for architecture search: %.2f" % time_elapsed)
     # Not possible to compile with the given set of architectures
     if not is_sat:
       logger.warning("Could not find an architecture that compiles the unit.")
@@ -1027,11 +1038,15 @@ class Klocalizer:
     config_filepath = os.path.join(linux_ksrc, ".config")
     if not skip_kconfig_config_gen:
       logger.info("Creating config file to compile the unit.")
+      time_start = time.time()
       assert is_sat and (z3_model != None)
       config_content = Klocalizer.get_config_from_model(z3_model, arch, set_tristate_m=False, allow_non_visibles=False)
       with open(config_filepath, "w") as f:
         f.write(config_content)
       assert os.path.isfile(config_filepath)
+      time_elapsed = time.time() - time_start
+      logger.info("TIME: Time elapsed(sec) for creating the config file: %.2f" % time_elapsed)
+
     else:
       logger.info("Skipped: creating config file to compile the unit.")
 
@@ -1047,20 +1062,28 @@ class Klocalizer:
       compile_cmd = [makecross_script, "ARCH=%s" % arch.name, "clean", unit_name]
       compile_cmd_str = " ".join(compile_cmd)
 
-      run(olddefconf_cmd, cwd=linux_ksrc)
-      make_out, make_err, ret = run(compile_cmd, cwd=linux_ksrc)
+      _, _, _, time_elapsed = run(olddefconf_cmd, cwd=linux_ksrc)
+      logger.info("TIME: Time elapsed(sec) for running make olddefconfig: %.2f" % time_elapsed)
+      try:
+        make_out, make_err, ret, time_elapsed = run(compile_cmd, cwd=linux_ksrc, timeout=make_timeout)
+        logger.info("TIME: Time elapsed(sec) for running make: %0.2f" % time_elapsed)
 
-      # Write make's stdout and stderr
-      if ret != 0:
-        # Might happen with warnings like unmet dependency bug. Make is
-        # said to fail if the unit cannot be found compiled.
-        logger.warning("Make returned non-zero(%s)" % ret)
-      unit_path = os.path.join(linux_ksrc, unit_name)
-      if not os.path.isfile(unit_path):
-        logger.error("Cannot find a compiled unit at \"%s\"" % unit_path)
-        write_content_to_file(compile_cmd_str +"\n"+ make_out.decode('utf-8'), make_out_path)
-        write_content_to_file(compile_cmd_str +"\n"+ make_err.decode('utf-8'), make_err_path)
-        return Klocalizer.SourcelinePcResult.ERROR_MAKE, None, None
+        # Write make's stdout and stderr
+        if ret != 0:
+          # Might happen with warnings like unmet dependency bug. Make is
+          # said to fail if the unit cannot be found compiled.
+          logger.warning("Make returned non-zero(%s)" % ret)
+        unit_path = os.path.join(linux_ksrc, unit_name)
+        if not os.path.isfile(unit_path):
+          logger.error("Cannot find a compiled unit at \"%s\"" % unit_path)
+          write_content_to_file(compile_cmd_str +"\n"+ make_out.decode('utf-8'), make_out_path)
+          write_content_to_file(compile_cmd_str +"\n"+ make_err.decode('utf-8'), make_err_path)
+          return Klocalizer.SourcelinePcResult.ERROR_MAKE, None, None
+      except subprocess.TimeoutExpired:
+        logger.error("Timeout expired for make, duration(sec): %.2f" % make_timeout)
+        write_content_to_file(compile_cmd_str +"\n"+ "Timeout expired, duration(sec): %.2f" % make_timeout, make_out_path)
+        write_content_to_file(compile_cmd_str +"\n"+ "Timeout expired, duration(sec): %.2f" % make_timeout, make_err_path)
+        return Klocalizer.SourcelinePcResult.ERROR_MAKE_TIMEOUT, None, None
     else:
       logger.info("Skipped: compiling the unit.")
 
@@ -1077,7 +1100,8 @@ class Klocalizer:
       assert os.path.isdir(superc_configs_dir)
       config_gen_cmd = [superc_linux_script, "-w", "-x", makecross_script, "-a", arch.name, "-L", superc_configs_dir, srcfile]
       logger.info("SuperC config gen command: \"%s\"" % " ".join(config_gen_cmd))
-      run(config_gen_cmd, cwd=linux_ksrc)
+      _, _, _, time_elapsed = run(config_gen_cmd, cwd=linux_ksrc)
+      logger.info("TIME: Time elapsed(sec) for SuperC config generation: %.2f" % time_elapsed)
       assert os.path.isfile(superc_config_path)
     else:
       logger.info("Skipped: creating SuperC config file.")
@@ -1104,19 +1128,25 @@ class Klocalizer:
       superc_sourcelinepc_cmd = [superc_linux_script, "-S%s" % superc_flags, "-L%s" % superc_configs_dir, srcfile]
       superc_sourcelinepc_cmd_str = " ".join(superc_sourcelinepc_cmd)
       logger.info("SuperC command: \"%s\"" % " ".join(superc_sourcelinepc_cmd))
-      # TODO: timeout
-      superc_out, superc_err, ret = run(superc_sourcelinepc_cmd, cwd=linux_ksrc)
+      try:
+        superc_out, superc_err, ret, time_elapsed = run(superc_sourcelinepc_cmd, cwd=linux_ksrc, timeout=superc_timeout)
+        logger.info("TIME: Time elapsed(sec) for SuperC sourceline pc computation: %0.2f" % time_elapsed)
 
-      if ret != 0:
-        # Might happen with warnings/errors where we still get some results.
-        logger.warning("SuperC returned non-zero(%s)" % ret)
+        if ret != 0:
+          # Might happen with warnings/errors where we still get some results.
+          logger.warning("SuperC returned non-zero(%s)" % ret)
 
-      superc_pcfile_content = tmpfile.read().decode()
-      if not superc_pcfile_content:
-        logger.error("Empty SuperC output.")
-        write_content_to_file(superc_sourcelinepc_cmd_str +"\n"+ superc_out.decode('utf-8'), superc_out_path)
-        write_content_to_file(superc_sourcelinepc_cmd_str +"\n"+ superc_err.decode('utf-8'), superc_err_path)
-        return Klocalizer.SourcelinePcResult.ERROR_SUPERC, arch, None
+        superc_pcfile_content = tmpfile.read().decode()
+        if not superc_pcfile_content:
+          logger.error("Empty SuperC output.")
+          write_content_to_file(superc_sourcelinepc_cmd_str +"\n"+ superc_out.decode('utf-8'), superc_out_path)
+          write_content_to_file(superc_sourcelinepc_cmd_str +"\n"+ superc_err.decode('utf-8'), superc_err_path)
+          return Klocalizer.SourcelinePcResult.ERROR_SUPERC, arch, None
+      except subprocess.TimeoutExpired:
+        logger.error("Timeout expired for SuperC, duration(sec): %.2f" % superc_timeout)
+        write_content_to_file(superc_sourcelinepc_cmd_str +"\n"+ "Timeout expired, duration(sec): %.2f" % superc_timeout, superc_out_path)
+        write_content_to_file(superc_sourcelinepc_cmd_str +"\n"+ "Timeout expired, duration(sec): %.2f" % superc_timeout, superc_err_path)
+        return Klocalizer.SourcelinePcResult.ERROR_SUPERC_TIMEOUT, arch, None
 
     assert superc_pcfile_content
     assert arch
