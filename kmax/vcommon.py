@@ -7,25 +7,29 @@ import inspect
 
 import logging
 
-def run(args, stdin=None, capture_stdout=True, capture_stderr=True, cwd=None):
+def run(args, stdin=None, capture_stdout=True, capture_stderr=True, cwd=None, timeout=None):
   """Helper for running an external process.
-  Returns a tuple of (stdout, stderr, return_code) for the process.
+  Returns a tuple of (stdout, stderr, return_code, time_elapsed) for the process.
   Arguments:
   args -- args, a list to pass to subprocess.Popen.
   stdin -- The content to be passed as stdin to the process.
-  capture_stdout -- If set, caoture stdout to be returned by the method. Otherwise, keep it at stdout.
-  capture_stderr -- If set, caoture stderr to be returned by the method. Otherwise, keep it at stdin.
+  capture_stdout -- If set, capture stdout to be returned by the method. Otherwise, keep it at stdout.
+  capture_stderr -- If set, capture stderr to be returned by the method. Otherwise, keep it at stdin.
   cwd -- Current working directory for the process.
+  timeout -- timeout in seconds. If expires, raises an subprocess.TimeoutExpired exception.
   """
   import subprocess
+  import time
   stdout_param = subprocess.PIPE if capture_stdout else None
   stderr_param = subprocess.PIPE if capture_stderr else None
+  time_start = time.time()
   popen = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=stdout_param, stderr=stderr_param, cwd=cwd)
   if stdin != None: popen.stdin.write(stdin)
-  captured_stdout, captured_stderr = popen.communicate()
+  captured_stdout, captured_stderr = popen.communicate(timeout=timeout)
+  time_elapsed = time.time() - time_start
   popen.stdin.close()
   
-  return captured_stdout, captured_stderr, popen.returncode
+  return captured_stdout, captured_stderr, popen.returncode, time_elapsed
 
 def pause(s=None):
     try: #python2
