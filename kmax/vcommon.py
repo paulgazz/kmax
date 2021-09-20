@@ -7,7 +7,7 @@ import inspect
 
 import logging
 
-def run(args, stdin=None, capture_stdout=True, capture_stderr=True, cwd=None, timeout=None):
+def run(args, stdin=None, capture_stdout=True, capture_stderr=True, cwd=None, timeout=None, shell=False):
   """Helper for running an external process.
   Returns a tuple of (stdout, stderr, return_code, time_elapsed) for the process.
   Arguments:
@@ -23,7 +23,7 @@ def run(args, stdin=None, capture_stdout=True, capture_stderr=True, cwd=None, ti
   stdout_param = subprocess.PIPE if capture_stdout else None
   stderr_param = subprocess.PIPE if capture_stderr else None
   time_start = time.time()
-  popen = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=stdout_param, stderr=stderr_param, cwd=cwd)
+  popen = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=stdout_param, stderr=stderr_param, cwd=cwd, shell=shell)
   if stdin != None: popen.stdin.write(stdin)
   captured_stdout, captured_stderr = popen.communicate(timeout=timeout)
   time_elapsed = time.time() - time_start
