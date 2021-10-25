@@ -633,6 +633,23 @@ class Klocalizer:
     #
     kmax_constraints_for_unit = get_kmax_constraints(self.__kmax_formulas, unit) # TODO: this one is not quiet
 
+    # The top makefile in the Linux kernel introduces additional constraints
+    # on the inclusion of net/ and samples/ directories. Since this is not a
+    # Kbuild makefile, kmax does not process and cannot capture the constraints.
+    # Add the missing constraints for those directories.
+    top_makefile_constraints = {
+      # Since 5.1.0-rc3 (the commit d93a18f27e3701a8cdc2228aee1c22451d1292e4)
+      "samples" : z3.Bool("CONFIG_SAMPLES"),
+      # Since 5.11.0-rc4 (the commit 8b5f4eb3ab700046b9f41d53544791fa02852551)
+      "net" : z3.Bool("CONFIG_NET")
+    }
+    if unit:
+      top_dir = unit.split('/')[0]
+      if top_dir in top_makefile_constraints:
+        if not kmax_constraints_for_unit: 
+          kmax_constraints_for_unit = []
+        kmax_constraints_for_unit.append(top_makefile_constraints[top_dir])
+
     if inclusion_prop == Klocalizer.__CompUnitInclusionProp.INCLUDE:
       self.__include_compilation_units.append(unit)
       self.__kmax_constraints.extend(kmax_constraints_for_unit)
