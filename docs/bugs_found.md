@@ -80,6 +80,10 @@
 
 2021-10-27 [Patch](https://lkml.org/lkml/2021/10/27/894)
 
+### drm: bridge: fix unmet dependency for DRM_PANEL_BRIDGE when !DRM_KMS_HELPER
+
+2021-10-25 [Patch](https://lkml.org/lkml/2021/10/25/1972)
+
 ### ASoC: fix unmet dependency when SND_SOC_INTEL_KBL_DA7219_MAX98357A_MACH && !GPIOLIB
 
 2021-10-25 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=3e701151feefc58c5194e1d9eb5af98568574f2d): Committed into linux-next.
