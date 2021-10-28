@@ -102,7 +102,7 @@
 
 2021-02-22 [Patch](https://lkml.org/lkml/2021/2/25/105)
 
-### drivers: gpu: drm: bridge: fix unmet dependency for DRM_KMS_HELPER when !DRM_KMS_HELPER
+### drivers: gpu: drm: bridge: fix unmet dependency for DRM_PANEL_BRIDGE when !DRM_KMS_HELPER
 
 2021-04-01 [Commit](https://cgit.freedesktop.org/drm/drm-misc/commit/?id=62066d3164467167fc27b2383f67d097e39bf176): Committed into drm-misc-next.
 
