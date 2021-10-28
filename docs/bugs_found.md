@@ -74,6 +74,10 @@
 
 ## Linux kernel
 
+### drm/sun4i: fix unmet dependency on RESET_CONTROLLER for PHY_SUN6I_MIPI_DPHY
+
+2021-10-28 [Patch](https://lkml.org/lkml/2021/10/28/1003)
+
 ### scsi: ufs: fix unmet dependency for RESET_TI_SYSCON when !RESET_CONTROLLER
 
 2021-10-28 [Patch](https://lkml.org/lkml/2021/10/28/905)
