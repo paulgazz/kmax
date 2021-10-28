@@ -74,6 +74,24 @@
 
 ## Linux kernel
 
+### ASoC: fix unmet dependencies on GPIOLIB for SND_SOC_DMIC
+
+2021-10-28 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/broonie/sound.git/commit/?id=5c7dee4407dcd3522a133acdd90d64bf41d00986): Committed into sound/for-next.
+
+2021-10-27 [Patch](https://lkml.org/lkml/2021/10/27/894)
+
+### ASoC: fix unmet dependency when SND_SOC_INTEL_KBL_DA7219_MAX98357A_MACH && !GPIOLIB
+
+2021-10-25 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=3e701151feefc58c5194e1d9eb5af98568574f2d): Committed into linux-next.
+
+2021-10-24 [Patch](https://lkml.org/lkml/2021/10/10/311)
+
+### ASoC: fix unmet dependency for SND_SOC_MAX98357A when !GPIOLIB
+
+2021-10-22 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=6cace797f1a8d54ecb42a3d327cbc0b231114ed0): Committed into linux-next.
+
+2021-10-10 [Patch](https://lkml.org/lkml/2021/10/27/894)
+
 ### drivers: pinctrl: qcom: fix unmet dependency for PINCTRL_MSM when !GPIOLIB
 
 2021-04-14 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=376f9e34c10faa3e94b881088b160cfda540ae5f): Committed into linux-next.
