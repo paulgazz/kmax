@@ -74,6 +74,10 @@
 
 ## Linux kernel
 
+### scsi: ufs: fix unmet dependency for RESET_TI_SYSCON when !RESET_CONTROLLER
+
+2021-10-28 [Patch](https://lkml.org/lkml/2021/10/28/905)
+
 ### ASoC: fix unmet dependencies on GPIOLIB for SND_SOC_DMIC
 
 2021-10-28 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/broonie/sound.git/commit/?id=5c7dee4407dcd3522a133acdd90d64bf41d00986): Committed into sound/for-next.
