@@ -74,6 +74,10 @@
 
 ## Linux kernel
 
+### pinctrl: qcom: fix unmet dependencies on GPIOLIB for GPIOLIB_IRQCHIP
+
+2021-10-28 [PATCH](https://lkml.org/lkml/2021/10/28/1086)
+
 ### ASoC: fix unmet dependencies on GPIOLIB for SND_SOC_RT1015P
 
 2021-10-28 [PATCH](https://lkml.org/lkml/2021/10/28/1066)
