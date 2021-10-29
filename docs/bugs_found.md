@@ -74,6 +74,10 @@
 
 ## Linux kernel
 
+### ASoC: fix unmet dependencies on GPIOLIB for SND_SOC_RT1015P
+
+2021-10-28 [PATCH](https://lkml.org/lkml/2021/10/28/1066)
+
 ### drm/sun4i: fix unmet dependency on RESET_CONTROLLER for PHY_SUN6I_MIPI_DPHY
 
 2021-10-28 [Patch](https://lkml.org/lkml/2021/10/28/1003)
