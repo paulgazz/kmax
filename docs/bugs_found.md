@@ -74,11 +74,17 @@
 
 ## Linux kernel
 
+### ARM: fix unmet dependency on BITREVERSE for HAVE_ARCH_BITREVERSE
+
+2021-10-29 [PATCH](https://lkml.org/lkml/2021/10/29/832)
+
 ### pinctrl: qcom: fix unmet dependencies on GPIOLIB for GPIOLIB_IRQCHIP
 
 2021-10-28 [PATCH](https://lkml.org/lkml/2021/10/28/1086)
 
 ### ASoC: fix unmet dependencies on GPIOLIB for SND_SOC_RT1015P
+
+2021-10-29 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/broonie/sound.git/commit/?id=2554877e4b08d258c2def27e3a0fd49d60a9a2c0): Committed into sound/for-next.
 
 2021-10-28 [PATCH](https://lkml.org/lkml/2021/10/28/1066)
 
@@ -91,6 +97,8 @@
 2021-10-28 [Patch](https://lkml.org/lkml/2021/10/28/905)
 
 ### ASoC: fix unmet dependencies on GPIOLIB for SND_SOC_DMIC
+
+2021-10-28 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=5c7dee4407dcd3522a133acdd90d64bf41d00986): Committed into linux-next.
 
 2021-10-28 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/broonie/sound.git/commit/?id=5c7dee4407dcd3522a133acdd90d64bf41d00986): Committed into sound/for-next.
 
