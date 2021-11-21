@@ -287,6 +287,7 @@ class Arch:
     self.__selects_file_delayed_dump = None
 
     # kextract summary cache
+    self.__kconfig_bool_tristate_options=None
     self.__kconfig_types=None
     self.__kconfig_visible=None
     self.__kconfig_has_def_nonbool=None
@@ -501,7 +502,8 @@ class Arch:
       - kconfig visible
       - kconfig has def nonbool
     """
-    if self.__kconfig_types != None and self.__kconfig_visible != None and self.__kconfig_has_def_nonbool != None:
+    if self.__kconfig_types is not None and self.__kconfig_visible is not None and \
+       self.__kconfig_has_def_nonbool is not None and self.__kconfig_bool_tristate_options is not None:
       # the formulas are already there
       return
 
@@ -511,10 +513,9 @@ class Arch:
     # generate kextract_summary
     self.__generate_kextract_summary()
 
-  # generates and caches kconfig_types, kconfig_visible, and kconfig_has_def_nonbool from kextract
   def __generate_kextract_summary(self):
-    """Generate and set kextract summary (kconfig_types, kconfig_visible, and
-    kconfig_has_def_nonbool) from kextract.
+    """Generate and set kextract summary (kconfig_types, kconfig_visible,
+    kconfig_has_def_nonbool, and kconfig_bool_tristate_options) from kextract.
     """
     kextract = self.get_kextract() # ensure kextract
     if kextract == None:
@@ -523,19 +524,29 @@ class Arch:
     kconfig_types = {}
     kconfig_visible = set()
     kconfig_has_def_nonbool = set()
+    kconfig_bool_tristate_options = set()
     for kconfig_line in kextract.splitlines():
       kconfig_line = kconfig_line.split(" ")
       # see docs/kextract_format.md for more info
       if kconfig_line[0] == "config":
         kconfig_types[kconfig_line[1]] = kconfig_line[2]
+        if kconfig_line[2] in {'bool', 'tristate'}:
+          kconfig_bool_tristate_options.add(kconfig_line[1])
       if kconfig_line[0] == "prompt":
         kconfig_visible.add(kconfig_line[1])
       if kconfig_line[0] == "def_nonbool":
         kconfig_has_def_nonbool.add(kconfig_line[1])
     
+    self.__kconfig_bool_tristate_options = kconfig_bool_tristate_options
     self.__kconfig_types = kconfig_types
     self.__kconfig_visible = kconfig_visible
     self.__kconfig_has_def_nonbool = kconfig_has_def_nonbool
+
+  def get_bool_tristate_options(self):
+    """Get the set of all bool or tristate configuration options.
+    """
+    self.__ensure_kextract_summary()
+    return self.__kconfig_bool_tristate_options
 
   def get_kconfig_types(self):
     """Get the mapping of kconfig symbols to their types extracted from kextract.
@@ -672,6 +683,7 @@ class Arch:
     return self.__selects
 
   def __reset_kextract_summary(self):
+    self.__kconfig_bool_tristate_options=None
     self.__kconfig_types=None
     self.__kconfig_visible=None
     self.__kconfig_has_def_nonbool=None
