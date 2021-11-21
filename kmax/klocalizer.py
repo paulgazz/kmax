@@ -1133,6 +1133,32 @@ class Klocalizer:
     with open(autoconf_path, "r") as f: assert not f.readlines()
 
     #
+    # Create header file to handle IS_ENABLED() with SuperC
+    #
+    options_header_file = os.path.join(linux_ksrc, "config_options.h")
+    logger.info("Creating a temporary header file of config options at \"%s\" to handle IS_ENABLED macro." % options_header_file)
+
+    def get_superc_header_content(config_options):
+      """Given a list of config options, create and return the header
+      content to handle IS_ENABLED macro for SuperC.
+      """
+      def get_for_option(option):
+        assert option.startswith("CONFIG_")
+        ret =     "#ifdef %s" % option
+        ret += "\n#define %s 1" % option
+        ret += "\n#else"
+        ret += "\n#undef %s" % option
+        ret += "\n#endif\n"
+        return ret
+      return "\n".join([get_for_option(option) for option in config_options])
+
+    config_options = arch.get_bool_tristate_options()
+    header_content = get_superc_header_content(config_options)
+    with open(options_header_file, 'w') as f:
+      f.write(header_content)
+    assert os.path.isfile(options_header_file)
+
+    #
     # Run SuperC
     #
     logger.info("Running SuperC.")
@@ -1142,6 +1168,7 @@ class Klocalizer:
 
       restrict_flag = " -restrictConfigToPrefix CONFIG_ " if restrict_to_config_prefix else ""
       superc_flags = "%s -sourcelinePC %s" % (restrict_flag, tmpfilename)
+      superc_flags += " -include %s" % options_header_file
       superc_sourcelinepc_cmd = [superc_linux_script, "-S%s" % superc_flags, "-L%s" % superc_configs_dir, srcfile]
       superc_sourcelinepc_cmd_str = " ".join(superc_sourcelinepc_cmd)
       logger.info("SuperC command: \"%s\"" % " ".join(superc_sourcelinepc_cmd))
