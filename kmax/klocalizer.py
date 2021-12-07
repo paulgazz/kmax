@@ -937,6 +937,7 @@ class Klocalizer:
   @staticmethod
   def get_sourceline_pc_linux_file(srcfile: str, linux_ksrc: str, archs, \
       superc_linux_script: str, makecross_script: str, \
+      build_target: str,
       restrict_to_config_prefix=True, \
       superc_configs_dir="superc_configs/", \
       skip_kconfig_config_gen=False, skip_building_unit=False, skip_superc_config_gen=False, \
@@ -972,6 +973,10 @@ class Klocalizer:
     restrict_to_config_prefix -- If set, `-restrictConfigToPrefix` is set to 
     `CONFIG_` for SuperC. This boosts the performance and results in focusing
     on config macros, while setting the rest to their default values.
+    build_target -- Build target for the given source file (srcfile).
+    Usually, replacing the source file extension with .o (src/file.c -> src/file.o)
+    is enough, but there are cases where parent or different directories need
+    to be built.
     superc_configs_dir -- Directory to read/write SuperC configs. See `skip_superc_config_gen`.
     skip_kconfig_config_gen -- Set to skip Kconfig config generation for the unit.
     skip_building_unit -- Set to skip building the unit.
@@ -1076,7 +1081,7 @@ class Klocalizer:
       olddefconf_cmd = ["make", "ARCH=%s" % arch.name, "olddefconfig"]
       assert srcfile.endswith(".c") # TODO: what if this is not a sourcefile but a header file?
 
-      compile_cmd = [makecross_script, "ARCH=%s" % arch.name, "clean", unit_name]
+      compile_cmd = [makecross_script, "ARCH=%s" % arch.name, "clean", build_target]
       compile_cmd_str = " ".join(compile_cmd)
 
       _, _, _, time_elapsed = run(olddefconf_cmd, cwd=linux_ksrc)
