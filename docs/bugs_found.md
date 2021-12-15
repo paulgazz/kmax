@@ -74,11 +74,17 @@
 
 ## Linux kernel
 
+### efi: fix unmet dependency on CRYPTO for CRYPTO_LIB_SHA256
+
+2021-12-15 [Patch](https://lkml.org/lkml/2021/12/15/1300)
+
 ### ARM: fix unmet dependency on BITREVERSE for HAVE_ARCH_BITREVERSE
 
 2021-10-29 [PATCH](https://lkml.org/lkml/2021/10/29/832)
 
 ### pinctrl: qcom: fix unmet dependencies on GPIOLIB for GPIOLIB_IRQCHIP
+
+2021-11-16 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=60430d4c4eddcdf8eac2bdbec9704f84a436eedf): Committed into linux-next.
 
 2021-10-28 [PATCH](https://lkml.org/lkml/2021/10/28/1086)
 
@@ -89,6 +95,8 @@
 2021-10-28 [PATCH](https://lkml.org/lkml/2021/10/28/1066)
 
 ### drm/sun4i: fix unmet dependency on RESET_CONTROLLER for PHY_SUN6I_MIPI_DPHY
+
+2021-11-16 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=bb162bb2b4394108c8f055d1b115735331205e28): Committed into linux-next.
 
 2021-10-28 [Patch](https://lkml.org/lkml/2021/10/28/1003)
 
