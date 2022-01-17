@@ -74,6 +74,44 @@
 
 ## Linux kernel
 
+### crypto: fix unmet dependency on CRYPTO for CRYPTO_LIB_CHACHA_GENERIC
+
+2022-1-16 [Patch](https://lkml.org/lkml/2022/1/17/74)
+
+### pinctrl: bcm63xx: fix unmet dependency on REGMAP for GPIO_REGMAP
+
+2022-1-16 [Patch](https://lkml.org/lkml/2022/1/17/55)
+
+### input: fix Kconfig dependency on IIO_BUFFER
+
+2022-1-16 [Patch](https://lkml.org/lkml/2022/1/17/55)
+
+### ASoC: au1x: fix unmet dependency on SND_SOC_I2C_AND_SPI for SND_SOC_WM8731
+
+2022-1-16 [Patch](https://lkml.org/lkml/2022/1/17/41)
+
+### ASoC: stm32: fix unmet dependency on GPIOLIB for SND_SOC_DMIC
+
+2022-1-16 [Patch](https://lkml.org/lkml/2022/1/17/5)
+
+### ASoC: mediatek: fix unmet dependency on GPIOLIB for SND_SOC_DMIC
+
+2022-1-16 [Patch](https://lkml.org/lkml/2022/1/17/1)
+
+### ASoC: intel: fix unmet dependencies on GPIOLIB for SND_SOC_DMIC and SND_SOC_MAX98357A
+
+2022-1-16 [Patch](https://lkml.org/lkml/2022/1/16/304)
+
+### ASoC: amd: fix unmet dependency on GPIOLIB for SND_SOC_DMIC
+
+2022-1-16 [Patch](https://lkml.org/lkml/2022/1/16/297)
+
+### efi: fix unmet dependency on MFD_SYSCON for PINCTRL_ASPEED
+
+2021-12-16 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=54dd5a419f26e994d64754d5f009e36825dec0db)
+
+2021-12-15 [Patch](https://lkml.org/lkml/2021/12/15/1300)
+
 ### efi: fix unmet dependency on CRYPTO for CRYPTO_LIB_SHA256
 
 2021-12-15 [Patch](https://lkml.org/lkml/2021/12/15/1300)
