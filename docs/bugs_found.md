@@ -98,6 +98,8 @@
 
 2022-1-16 [Patch](https://lkml.org/lkml/2022/1/17/1)
 
+2022-1-19 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=579b2c8f72d974f27d85bbd53846f34675ee3b01)
+
 ### ASoC: intel: fix unmet dependencies on GPIOLIB for SND_SOC_DMIC and SND_SOC_MAX98357A
 
 2022-1-16 [Patch](https://lkml.org/lkml/2022/1/16/304)
