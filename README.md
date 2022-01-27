@@ -29,22 +29,39 @@ Kmax currently depends on python 3.8 or later.  Install kmax in one of two ways:
         sudo apt install -y python3-pip flex bison bc libssl-dev libelf-dev
         sudo pip3 install kmax
 
-Download the Linux source:
+Download and enter the Linux source:
 
     wget https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.4.tar.xz
     tar -xvf linux-5.4.tar.xz
-
-Run `klocalizer`
-
     cd linux-5.4/
+
+### `klocalizer`
+
+Run `klocalizer` to generate a `.config` file that builds a given compilation unit:
+
     klocalizer drivers/usb/storage/alauda.o
 
-Build the `.config` file made by `klocalizer`:
+Build the `.config` file made by `klocalizer` to confirm inclusion of the compilation unit:
 
     make ARCH=x86_64 olddefconfig
     make ARCH=x86_64 clean drivers/usb/storage/alauda.o
+    
+### `kismet`
+    
+Run `kismet` to find unmet dependency bugs due to Kconfig's [reverse dependencies](https://www.kernel.org/doc/html/latest/kbuild/kconfig-language.html#menu-attributes):
 
-## Cross-Compiling
+    kismet --linux-ksrc="./" -a=x86_64
+
+Once finished (it can take about an hour), kismet will produce three outputs:
+
+  1. A summary of the results in `kismet_summary_x86_64.txt`
+  2. A list of results for each `select` construct in `kismet_summary_x86_64.csv` (`UNMET_ALARM` denotes the buggy ones)
+  3. A list of `.config` files meant to exercise each bug in `kismet-test-cases/`
+
+Technical details can be found in the [paper](https://paulgazzillo.com/papers/esecfse21.pdf) on `kclause` and `kismet`.  The experiment [replication script](scripts/kismet_experiments_replication.sh) can be used to run kismet on all architectures' Kconfig specifications.
+
+
+## Cross-Compiling Linux Compilation Units
 
 Get `make.cross`:
 
@@ -56,7 +73,8 @@ Run `klocalizer` with a different architecture:
     klocalizer -a powerpc drivers/block/ps3disk.o
     bash make.cross ARCH=powerpc olddefconfig; bash make.cross ARCH=powerpc clean drivers/block/ps3disk.o
 
-## Installing from Source
+
+## Installing Kmax from Source
 
 Install the prerequisites
 
