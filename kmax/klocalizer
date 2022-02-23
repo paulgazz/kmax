@@ -148,7 +148,9 @@ def klocalizerCLI():
                          help="""Print the version number.""")
   argparser.add_argument("compilation_units",
                          nargs='*',
-                         help="The path of the compilation unit (.o file) to generate a .config for, relative to the top of the source tree.")
+                         help="The path of the compilation unit (.o file) optionally with the list of lines, to generate a .config for.  Path is relative to the top of the source tree.\n"
+                              "  The list of lines may include both single lines and line ranges (inclusive of start-end lines).  List must not contain whitespaces.\n"
+                              "  Examples: kernel/fork.o (only the unit), kernel/fork.o:[5,70-72] (lines 5,70,71,72. No whitespaces in the list).")
   args = argparser.parse_args()
   
   linux_ksrc = args.linux_ksrc
@@ -177,7 +179,7 @@ def klocalizerCLI():
   sample_prefix = args.sample_prefix
   random_seed = args.random_seed
   save_dimacs = args.save_dimacs
-  compilation_units = args.compilation_units
+  compilation_units_arg = args.compilation_units
   dont_compile = args.exclude_compilation_units
   force_unmet_free = args.force_unmet_free
   allow_unmet_for = args.allow_unmet_for
@@ -187,6 +189,118 @@ def klocalizerCLI():
   kmax.common.quiet = quiet
   kmax.common.verbose = verbose
   logger = BasicLogger(quiet=quiet, verbose=verbose)
+
+  def parse_lines_list(compilation_unit_arg : str):
+    """Given compilation unit arg, parse and return the compilation unit
+    and the list of lines. Returned list of lines are unique and sorted.
+
+    Example input/outputs:
+    == Input ==                    == Output ==
+    "kernel/fork.o"                ("kernel/fork.o", [])
+    "kernel/fork.c"                ("kernel/fork.o", []) ('.c' -> '.o')
+    "kernel/fork.o:[]"             ("kernel/fork.o", [])
+    "kernel/fork.o:[5,7,10]"       ("kernel/fork.o", [5,7,10])
+    "kernel/fork.o:[10-10]"        ("kernel/fork.o", [10])
+    "kernel/fork.o:[5,7-10]"       ("kernel/fork.o", [5,7,8,9,10])
+    "kernel/fork.o:[10-7]"         Prints error and terminates
+    "kernel/fork.o:[10,"           Prints error and terminates
+    """
+    assert compilation_unit_arg
+    def arg_error(arg: str, problem: str):
+      argparser.print_help()
+      logger.error("Malformed compilation units argument (\"%s\"): %s\n" % (arg, problem))
+      exit(12)
+
+    #
+    # Split the unit path and the lines list
+    #
+    split_arg = compilation_unit_arg.split(':')
+    assert len(split_arg) > 0
+    if len(split_arg) == 1:
+      unit_str = split_arg[0]
+      lines_str = None
+    elif len(split_arg) == 2:
+      unit_str, lines_str = split_arg
+      if len(lines_str) < 2: # must at least have '[' and ']'
+        arg_error(compilation_unit_arg, "incorrect lines list format.")
+    elif len(split_arg) > 2:
+      arg_error(compilation_unit_arg, "\":\" must be used at most once to between the unit path and the lines list.")
+
+    #
+    # Check and parse the unit path into unit_str
+    #
+    if not unit_str.endswith('.c') and not unit_str.endswith('.o'):
+      arg_error(compilation_unit_arg, "unit must have \".c\" or \".o\" extension.")
+
+    # Force extension to be .o
+    if not unit_str.endswith('.o'):
+      logger.warning("Forcing file extension to be .o, since lookup is by compilation unit: \"%s\"\n" % (unit_str))
+      unit_str = "%s.o" % unit_str[:-len('.c')]
+
+    #
+    # Check and parse the lines list into lines_list
+    #
+    lines_list = []
+    if lines_str:
+      # Check line list
+      if not lines_str.startswith('[') or not lines_str.endswith(']'):
+        arg_error(compilation_unit_arg, "incorrect lines list format.")
+      assert len(lines_str) > 1 #< Has '[' and ']'
+      lines_str = lines_str[1:-1]
+
+      def parse_pos_int(num_str : str) -> int:
+        if not num_str or not set(num_str).issubset([str(n) for n in range(10)]):
+          arg_error(compilation_unit_arg, "incorrect lines list format.")
+        else:
+          num = int(num_str)
+          if num <= 0:
+            arg_error(compilation_unit_arg, "lines are 1-indexed and must be greater than 0.")
+          else:
+            return num
+
+      # Parse the lines
+      if lines_str: #< Still has lines to parse after removing list brackets
+        for el in lines_str.split(','):
+          if not el or not set(el).issubset([str(n) for n in range(10)] + ['-']):
+            arg_error(compilation_unit_arg, "incorrect lines list format")
+          if el.count('-') > 1:
+            arg_error(compilation_unit_arg, "incorrect lines list format")
+          
+          if '-' in el: #< Range
+            start, end = el.split('-')
+            start, end = parse_pos_int(start), parse_pos_int(end)
+            if end < start:
+              arg_error(compilation_unit_arg, "end of line range cannot be smaller than the start")
+            lines_list.extend(range(start, end+1))
+          else:         #< Single line
+            lines_list.append(parse_pos_int(el))
+
+      # Sort and make sure each line is unique.
+      lines_list = sorted(list(set(lines_list)))
+
+    return unit_str, lines_list
+
+  # Parse the list of lines for the compilation units. Set None if no
+  # specific line is requested in the arguments.
+  compilation_units_lines = [parse_lines_list(c_unit_arg) for c_unit_arg in compilation_units_arg]
+  # Have one entry per unique unit, all sorted.
+  uniq_compilation_units_lines = {}
+  for unit, lines in compilation_units_lines:
+    if lines is None:
+      lines = []
+    existing_lines = uniq_compilation_units_lines.get(unit, [])
+    new_lines = sorted(list(set(existing_lines + lines)))
+    uniq_compilation_units_lines[unit] = new_lines
+  compilation_units_lines = sorted(list(uniq_compilation_units_lines.items()))
+  original_compilation_units_lines = compilation_units_lines[:]
+  logger.debug("Localization targets: %s\n" % compilation_units_lines)
+
+  has_line_constraints = len([u for u, l in compilation_units_lines if l]) > 0
+  if dont_compile and has_line_constraints:
+    argparser.print_help()
+    logger.error("--exclude-compilation-units cannot be used when line lists are given for compilation units.\n")
+    exit(12)
+
   klocalizer.set_logger(logger)
 
   klocalizer.set_linux_krsc(linux_ksrc)
@@ -307,7 +421,7 @@ def klocalizerCLI():
   #
   # Set kmax file
   #
-  if len(compilation_units) > 0:
+  if len(compilation_units_lines) > 0:
     # logger.info("Getting the compilation unit constraints via kmax\n")
     if not kmax_file:
       kmax_file = os.path.join(formulas, "kmax") # default kmax file
@@ -341,8 +455,8 @@ def klocalizerCLI():
       klocalizer.include_compilation_unit(unit)
   
   if view_kbuild:
-    if len(compilation_units) > 0:
-      for unit in compilation_units:
+    if len(compilation_units_lines) > 0:
+      for unit, _ in compilation_units_lines:
         logger.info("The Kbuild constraints for %s:\n" % (unit))
         get_kmax_constraints(klocalizer.get_kmax_formulas(), unit, view=True)
       exit(0)
@@ -353,7 +467,7 @@ def klocalizerCLI():
   #
   # Update the kmax cache (now that we are done with generating new kmax formulas)
   #
-  if len(compilation_units) > 0 and is_kmax_cache:
+  if len(compilation_units_lines) > 0 and is_kmax_cache:
     logger.debug("Updating Kmax formulas cache file: %s\n" % kmax_cache_file)
     klocalizer.update_kmax_cache_file(kmax_cache_file)
     logger.debug("Kmax formulas cache file was updated.\n")
@@ -532,11 +646,11 @@ def klocalizerCLI():
 
         # Print the command for building
         if sample_count == 1:
-          if not compilation_units:
-            build_cmd = "make.cross ARCH=%s clean; make.cross ARCH=%s" % (arch.name, arch.name)
+          if not compilation_units_lines:
+            build_cmd = "%s ARCH=%s clean; %s ARCH=%s" % (cross_compiler, arch.name, cross_compiler, arch.name)
           else:
-            build_cmd = "make.cross ARCH=%s clean %s" % (arch.name, " ".join(compilation_units))
-          logger.info("Build with \"make.cross ARCH=%s olddefconfig; %s\".\n" % (arch.name, build_cmd))
+            build_cmd = "%s ARCH=%s clean %s" % (cross_compiler, arch.name, " ".join([u for u, _ in compilation_units_lines]))
+          logger.info("Build with \"%s ARCH=%s olddefconfig; %s\".\n" % (cross_compiler, arch.name, build_cmd))
 
       # Stop the SAT search with the first SAT arch if not reporting for all archs
       if not reportallarchs:
