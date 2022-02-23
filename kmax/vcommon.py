@@ -8,6 +8,10 @@ from shutil import which
 
 import logging
 
+def write_content_to_file(filepath: str, content: str):
+    with open(filepath, 'w') as f:
+        f.write(content)
+
 def get_build_system_id(linux_ksrc: str) -> str:
     """Given path to the top Linux source directory, compute a 12 chars
     build system identifier.
