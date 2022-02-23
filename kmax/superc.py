@@ -141,6 +141,23 @@ class SuperC:
     """Get the path to the SuperC header file.
     """
     return os.path.join(superc_formulas_dir, "config_options.h")
+  
+  @staticmethod
+  def get_superc_header_content(config_options: list):
+    """Given a list of config options, create and return the header
+    content to handle IS_ENABLED macro for SuperC.
+    TODO: document more
+    """
+    def get_for_option(option):
+      assert option.startswith("CONFIG_")
+      ret =     "#ifdef %s" % option
+      ret += "\n#define %s 1" % option
+      ret += "\n#else"
+      ret += "\n#undef %s" % option
+      ret += "\n#endif\n"
+      return ret
+    return "\n".join([get_for_option(option) for option in config_options])
+
 #
 # Static analysis of C source files without SuperC
 #
