@@ -104,6 +104,17 @@ def klocalizerCLI():
                          '--show-unsat-core',
                          action="store_true",
                          help="""Show the unsatisfiable core if the formula is unsatisfiable.""")
+  argparser.add_argument('--mutual-exclusion', #< TODO: better naming?
+                         action="store_true",
+                         help="""Allow mutual exclusion.  This accounts for mutual exclusion, allowing multiple configurations """
+                              """to be generated from multiple architectures, potentially more than one per architecture.  """
+                              """Despite not guaranteed, the overall goal is to cover all constraints with as little .config """
+                              """files as possible.  A coverage report will be generated (see --coverage-report).  """
+                              """klocalizer will omit constraints failed to compute (e.g., kmax or SuperC failure).""")
+  argparser.add_argument('--coverage-report',
+                         type=str,
+                         default="coverage_report.json",
+                         help="""Path to output coverage report file.  Only used if --allow-mutual-exclusion is enabled.  Defaults to \"coverage_report.json\"""")
   argparser.add_argument('-D',
                          '--define',
                          action="append",
@@ -217,6 +228,8 @@ def klocalizerCLI():
   show_unsat_core = args.show_unsat_core
   approximate = args.approximate
   modules_arg = args.modules
+  allow_mutual_exclusion = args.mutual_exclusion
+  coverage_report_file = args.coverage_report
   define = args.define
   undefine = args.undefine
   disable_config_broken = not args.allow_config_broken
@@ -433,6 +446,29 @@ def klocalizerCLI():
     logger.error("Cannot use --all-architectures when providing explicit --arch arguments.\n")
     exit(12)
 
+  if allow_mutual_exclusion:
+    if allarchs:
+      logger.error("--mutual-exclusion is incompatible with --all.\n")
+      exit(12)
+    if reportallarchs:
+      logger.error("--mutual-exclusion is incompatible with --report-all.\n")
+      exit(12)
+    if output_file != ".config":
+      logger.error("--mutual-exclusion is incompatible with --output.\n")
+      exit(12)
+    if show_unsat_core:
+      logger.error("--mutual-exclusion is incompatible with --show-unsat-core.\n")
+      exit(12)
+    if view_kbuild:
+      logger.error("--mutual-exclusion is incompatible with --view-kbuild.\n")
+      exit(12)
+    if save_dimacs:
+      logger.error("--mutual-exclusion is incompatible with --save-dimacs.\n")
+      exit(12)
+    if dont_compile:
+      logger.error("--mutual-exclusion is incompatible with --exclude-compilation-units.\n")
+      exit(12)
+    
   if save_dimacs:
     if os.path.exists(save_dimacs):
       logger.warning("Overwriting existing file with the DIMACS output: %s\n" % (save_dimacs))
@@ -592,12 +628,17 @@ def klocalizerCLI():
   #
   # Add the compilation units
   #
-  for unit in compilation_units:
-    if dont_compile:
-      klocalizer.exclude_compilation_unit(unit)
-    else:
-      klocalizer.include_compilation_unit(unit)
-  
+  if allow_mutual_exclusion:
+    # Mutual exclusion will handle compilation unit constraints differently.
+    pass
+  else:
+    for unit, lines in compilation_units_lines:
+      if dont_compile:
+        assert not lines
+        klocalizer.exclude_compilation_unit(unit)
+      else:
+        klocalizer.include_compilation_unit(unit)
+    
   if view_kbuild:
     if len(compilation_units_lines) > 0:
       for unit, _ in compilation_units_lines:
@@ -647,8 +688,8 @@ def klocalizerCLI():
   #
   # Filter archs based on unit name
   #
-  if not kclause_file:
-    for unit in compilation_units:
+  if not kclause_file and not allow_mutual_exclusion:
+    for unit, _ in compilation_units_lines:
       if unit.startswith("arch/"):
         unit_archs = Arch.get_archs_from_subdir(unit)
         archs = [ arch for arch in archs if arch.name in unit_archs ]
@@ -729,6 +770,363 @@ def klocalizerCLI():
   # Everything is set. Continue with SAT checking and config sample generation.
   seen_unsat = False # to prevent logging some info multiple times for unsat cases
   sat_archs = []
+
+  def unit2srcfile(unit):
+    assert unit.endswith('.o')
+    return unit[:-len('.o')] + '.c'
+
+  #
+  # Sampling algo 1: allow mutual exclusion
+  #
+  if allow_mutual_exclusion:
+    # None value means could not be found/computed.
+    kmax_constraints = {} # { unit: [kmax_constraints] }
+    line_constraints = {} # { unit: { arch_name: ConditionalBlock } }
+    for unit, line_list in compilation_units_lines:
+      # This will be later filled per architecture.
+      line_constraints[unit] = {}
+      # Get the kmax constraints.
+      try:
+        kmax_constraints[unit] = klocalizer.get_compilation_unit_constraints(unit)
+      except Exception as e:
+        logger.warning("The unit \"%s\" won't be localized due to kmax exception \"%s\".\n" % (unit, e.message))
+        kmax_constraints[unit] = None
+
+    # Initialize the requirements, which will be consumed and updated.
+    requirements = compilation_units_lines[:]
+    # Use 0 as the special line number, which depicts the global scope 
+    # (only the file itself). Always target to compile the file in case
+    # specific lines fail.
+    requirements = [(u, [0] + l) for u, l in requirements]
+    # Don't include units without kmax constraints.
+    requirements = [(u, l) for u, l in requirements if kmax_constraints[u] is not None]
+
+    # TODO: if an arch only compiles the file, and another arch compiles
+    # both the file and the line, we keep both configs. However, we can
+    # later remove the arch that only compiles the file, since the other
+    # one outperforms it.
+
+    # Save the covering improving z3 models, from which config files will be sampled.
+    z3_models = [] # (arch, z3_model, [(unit:line)]) tuples
+
+    # The architecture is only updated if the coverage is no longer improved
+    # by the current architecture. This means, we can do several iterations
+    # on the same architecture to account for mutually exclusive configurations.
+    arch_idx = 0
+    printed_arch_info = False
+    got_first_improvement = False
+    while arch_idx < len(archs) and requirements:
+      # Assign the architecture to work with.
+      arch = archs[arch_idx]
+
+      if not printed_arch_info:
+        logger.info("Trying \"%s\"\n" % (arch.name))
+        printed_arch_info = True
+
+      # This will be only compiled later if a SAT check is necessary.
+      compiled_arch_constraints = None
+
+      #
+      # Compute presence conditions for the architecture.
+      #
+      # This will only happen in the first try of the architecture since
+      # we set values to line_constraints[unit] for every unit, even if
+      # it is failure (None depicts failure).
+      units_to_compute_pc = []
+      for unit, lines in requirements:
+        if lines != [0] and arch.name not in line_constraints[unit]:
+          units_to_compute_pc.append(unit)
+      if units_to_compute_pc:
+        logger.info("Computing the line presence conditions under %s for the following units: %s\n" % (arch.name, " ".join(units_to_compute_pc)))
+      for unit, lines in requirements:
+        if len(lines) == 1 and lines[0] == 0:
+          # 0 is the special line number, depicting the global scope.
+          # If 0 is the only required line, it means no specific lines are
+          # required to be compiled but only the file. Therefore, presence
+          # conditions are not required.
+          pass
+        elif arch.name in line_constraints[unit]:
+          # No need to compute if already loaded in a previous iteration.
+          pass
+        else: #< Not loaded earlier, load it.
+          #
+          # Make sure SuperC configs exist.
+          #
+          logger.info("Computing line presence conditions for \"%s\"\n" % unit)
+          superc_formulas_dir = SuperC.get_superc_formulas_dir(formulas, arch.name)
+          config_exists = superc.ensure_superc_config(unit2srcfile(unit), superc_formulas_dir, linux_ksrc, arch, cross_compiler, build_targets, compile_jobs, build_timeout, logger)
+          if not config_exists:
+            logger.debug("Failed to find/create SuperC config file for \"%s\"\n" % unit)
+            logger.warning("Failed to compute line presence conditions for \"%s\": SuperC config generation error\n" % unit)
+            line_constraints[unit][arch.name] = None # Special value, depicts failure.
+          else:
+            logger.debug("SuperC config file was found for \"%s\"\n" % unit)
+            logger.debug("Computing the presence conditions for \"%s\"\n" % unit)
+          
+            #
+            # Get presence conditions, thus, line constraints
+            #
+            # Map source files to presence conditions (ConditionalBlock instances)
+            logger.debug("Computing presence conditions for \"%s\".\n" % unit)
+            cb = superc.get_pc(unit2srcfile(unit), arch, linux_ksrc, superc_formulas_dir, superc_timeout, logger)
+            if not cb:
+              logger.debug("Computing presence conditions failed for \"%s\"\n" % srcfile)
+              logger.warning("Failed to compute line presence conditions for \"%s\": SuperC sourcelinePC error\n" % unit)
+              line_constraints[unit][arch.name] = None # Special value, depicts failure.
+            else:
+              logger.debug("Computed presence conditions for \"%s\"\n" % srcfile)
+              line_constraints[unit][arch.name] = cb
+      # Presence conditions are computed.
+
+      # Accumulate constraints for the config file. This will hold file and
+      # line constraints. At the end, if there is an improvement to coverage
+      # with such satisfiable constraints, a config file will be sampled
+      # from these constraints.
+      accumulated_constraints = []
+
+      # Keep track of whether there is an improvement found to the coverage
+      # with the accumulated constraints. If not, loop will continue with
+      # the next architecture. Otherwise, the loop will give this arch
+      # another chance since there can be mutually exclusive lines to cover
+      # in the next iteration.
+      is_improved = False
+
+      # A dict of (file:[lines]) covered by the current model being
+      # built. This will be used for reporting purposes. This is empty if
+      # is_improved is False, otherwise non-empty.
+      current_coverage = {}
+
+      # This is the updated requirements, which excludes what is covered
+      # in this iteration. At the end of the iteration, this will replace
+      # the previous requirements.
+      new_requirements = []
+
+      # Visit requirements.
+      if not got_first_improvement:
+        logger.info("Searching for a constraints model that cover all or part of the constraints\n")
+      else:
+        logger.info("Searching for a constraints model that cover all or part of the remaining constraints\n")
+      for unit, lines in requirements:
+        remaining_lines = [] #< Remaining lines to cover for the unit.
+
+        # Add the Makefile constraints.
+        assert kmax_constraints[unit] is not None
+        constraints_with_file = accumulated_constraints + kmax_constraints[unit]
+
+        # Map lines into ConditionalBlocks.
+        line_to_cb = {} # key: int line number, value: ConditionalBlock instance.
+        # arch.name key exists if line_constraints were needed
+        # the value for line_constraints[unit][arch.name] is None if SuperC failed
+        if arch.name in line_constraints[unit] and line_constraints[unit][arch.name] is not None:
+          root_cb = line_constraints[unit][arch.name]
+          for line in lines:
+            line_to_cb[line] = root_cb.get_deepest_block(line)
+        
+        # Keep track of covered blocks. Different lines may point to the
+        # same block. This allows avoiding additional SAT checks for
+        # duplicate blocks.
+        covered_blocks = set()
+        cant_cover_blocks = set()
+
+        # Check for each line.
+        for line in lines:
+          logger.debug("Working on (%s:%s)\n" % (unit, line))
+          
+          #
+          # Get the line constraints
+          #
+          if line != 0 and line_constraints[unit][arch.name] is None:
+            # A specific line is required, for which the pc does not exist.
+            # Therefore, nothing to do for this.
+            remaining_lines.append(line)
+            continue
+          elif line == 0: #< Special line number: compile file only.
+            line_const = [z3_true]
+            deepest_block = None
+          else: #< A line under ifdef is required, for which we have the pc.
+            assert line > 0
+            assert line_constraints[unit][arch.name] is not None
+            cb = line_constraints[unit][arch.name]
+            deepest_block = cb.get_deepest_block(line)
+            line_const = deepest_block.pc.assertions()
+          
+          #
+          # Attempt to build the line
+          #
+          line_covered = False
+
+          if deepest_block in cant_cover_blocks:
+            # The surrounding ConditionalBlock is already determined to be
+            # non coverable while checking for a different line.
+            logger.debug("%s was already determined to be not coverable\n" % line)
+            line_covered = False
+          elif deepest_block in covered_blocks:
+            # This line is already covered as it shares the constraints
+            # with a previously covered line.
+            logger.debug("Line %s was already covered\n" % line)
+            line_covered = True
+          else: #< No info on line's coverage so far -- need additional constraints.
+            constraints_with_line = constraints_with_file[:]
+            constraints_with_line.extend(line_const)
+
+            # SAT check.
+            if compiled_arch_constraints is None:
+              compiled_arch_constraints = klocalizer.compile_constraints(arch)
+            full_constraints = compiled_arch_constraints + constraints_with_line
+            logger.debug("Checking constraints: %s\n"% constraints_with_line)
+            model_sampler = Klocalizer.Z3ModelSampler(full_constraints, random_seed=random_seed, logger=logger)
+            is_sat, z3_model = model_sampler.sample_model()
+
+            # Constraints is SAT means line is covered.
+            line_covered = is_sat
+
+            if is_sat: # Line constraints are satisfiable
+              # The constraints are approved to be SAT and improving coverage,
+              # therefore, keep them in.
+              accumulated_constraints = constraints_with_line[:]
+              constraints_with_file = constraints_with_line[:]
+
+          # End of attempting to build the line: check if line is built and
+          # account for it.
+          if line_covered:
+            logger.debug("Covered: (%s:%s)\n" % (unit, line))
+            # Signal that the current constraints improved the coverage.
+            is_improved = True
+
+            # Report the coverage for this model being built.
+            current_coverage[unit] = sorted(current_coverage.get(unit, []) + [line])
+
+            # For optimization, keep track of all blocks covered with this.
+            covered_blocks.add(None) #< Global scope, special value.
+            # Self and all ancestor blocks.
+            while deepest_block is not None:
+              covered_blocks.add(deepest_block)
+              deepest_block = deepest_block.parent
+          else:
+            logger.debug("Failed to cover: (%s:%s)\n" % (unit, line))
+            # Line is not covered -- therefore, keep it as requirement.
+            remaining_lines.append(line)
+            
+            # For optimization, keep track of blocks that cannot be covered.
+            # Self and all descendants are not coverable.
+            cant_cover_blocks.add(deepest_block)
+            if deepest_block:
+              blocks = [deepest_block]
+              while blocks:
+                b = blocks.pop()
+                cant_cover_blocks.add(b)
+                for sub_b in b.sub_block_groups:
+                  blocks.extend(sub_b)
+
+        # TODO: in some cases, we know the line is never satisfiable by
+        # syntax analysis (condition is 0). Don't keep them as requirement?
+
+        # Keep the remaining lines in the requirements.
+        if remaining_lines:
+          new_requirements.append((unit, remaining_lines))
+        else: # If no more remaining lines, then no more requirements for the file.
+          pass
+      
+      # Done with an iteration over all required file:lines with the current arch.
+      
+      # Update the requirements, which is potentially smaller with the new coverage.
+      requirements = new_requirements
+      logger.debug("Remaining requirements: %s\n" % requirements)
+
+      # Save this accumulated model, which improves coverage.
+      if is_improved:
+        got_first_improvement = True
+        logger.info("A coverage improving constraints set found: sampling a model.\n")
+        assert compiled_arch_constraints
+        assert accumulated_constraints
+        full_constraints = compiled_arch_constraints + accumulated_constraints
+        # Repair is done here only since this is where the final model to
+        # get the config file is produced.
+        apprx_constraints = approximate_constraints.get(arch.name, approximate_constraints.get("default", None))
+        model_sampler = Klocalizer.Z3ModelSampler(full_constraints, approximate_constraints=apprx_constraints, random_seed=random_seed, logger=logger)
+        is_sat, z3_model = model_sampler.sample_model()
+        assert is_sat
+        assert current_coverage
+        z3_models.append((arch, z3_model, current_coverage))
+        logger.debug("Sampled a model\n")
+      else:
+        # Continue with the next arch as this could not improve coverage anymore.
+        # We don't change the architecture right away if there is improvement
+        # because something that could not be covered in this iteration
+        # might get covered in next iteration due to mutual exclusion.
+        arch_idx += 1
+        printed_arch_info = False
+
+    logger.debug("Localization search is done. Numbers of models created: %s\n" % len(z3_models))
+
+    # "original_compilation_units_lines" has all the lines the user provided.
+    # "compilation_units_lines" is the processed list, where the lines
+    # belonging to the global scope (not under any ifdefs) are filtered out.
+    # This filtering helped us to avoid calls to SuperC if all lines were
+    # global. We have the coverage results for the filtered lines. Now,
+    # translate back to user's original list of lines for the coverage report.
+    # Structure: { "path/to/unit": { "unit": [configs_list], 1: [configs_list], ...]  }  }
+    # "unit" is special value for all configs that compile the unit, even
+    # without any line targets.
+    coverage_report = OrderedDict()
+    for unit, lines in original_compilation_units_lines:
+      coverage_report[unit] = OrderedDict()
+      # List of configs that compiles the unit, even without specific line targets.
+      # If there is some config file that does not compile any specific lines
+      # but the unit only, it will be here together with all other configs that
+      # compile the unit.
+      coverage_report[unit]["unit"] = [] 
+      for l in lines:
+        coverage_report[unit][l] = []
+      # Values will be updated before writing the report if they were covered.
+
+    #
+    # Sample configs (and create coverage report)
+    #
+    num_models = len(z3_models)
+    if num_models == 0 :
+      logger.error("No satisfying configuration found.\n")
+      exit(11)
+
+    assert z3_models # (arch, z3_model, current_coverage) tuples
+    logger.info("Sampling and writing %s configuration files from models.\n" % num_models)
+    configs = []
+    for i, (arch, model, coverage) in enumerate(z3_models):
+      config_id = "%s-%s" % (i, arch.name)
+      config_basename = "%s.config" % config_id 
+      config_file_path = config_basename # TODO: make this an argument
+      
+      # Sample the config from the model
+      logger.info("[%s/%s] Sampling and writing the configuration file to %s\n" % (i+1, num_models, config_file_path))
+      config_content = Klocalizer.get_config_from_model(model, arch, set_tristate_m=modules_arg, allow_non_visibles=allow_non_visibles)
+      # Write the config file
+      with open(config_file_path, 'w') as f:
+        f.write(config_content)
+      
+      # Create the coverage report for the config
+      for unit, lines in original_compilation_units_lines:
+        if unit in coverage:
+          coverage_report[unit]["unit"].append(config_basename)
+        for l in lines:
+          if l in global_scope_lines.get(unit, []) and unit in coverage:
+            coverage_report[unit][l].append(config_basename)
+          elif unit in coverage and l in coverage[unit]:
+            coverage_report[unit][l].append(config_basename)
+
+    # Write the coverage report
+    logger.info("Writing the coverage report to %s\n" % coverage_report_file)
+    with open(coverage_report_file, 'w') as f:
+      json.dump(coverage_report, f, indent=2)
+    
+    #
+    # end of allow_mutual_exclusion
+    #
+    exit(0)
+
+  #
+  # Sampling algo 2: single config, no mutual exclusion
+  #
+  assert not allow_mutual_exclusion
   for arch in archs:
     logger.info("Trying \"%s\"\n" % (arch.name))
 
