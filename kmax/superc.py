@@ -6,6 +6,88 @@ import pathlib
 from shutil import which
 from kmax.klocalizer import Klocalizer
 import subprocess
+
+class SuperC:
+  """
+  Arguments:
+  * superc_linux_script_path -- SuperC linux script, which is found at
+  superc/scripts/superc_linux.sh, where superc/ is the top SuperC source
+  directory. Defaults to value of the environment variable SUPERC_LINUX_SCRIPT.
+  """
+  def __init__(self, superc_linux_script_path = None, logger = BasicLogger()):
+    self.logger = logger
+
+    # Set SuperC linux script path
+    if superc_linux_script_path:
+      self.superc_linux_script_path = superc_linux_script_path
+    else: #< Defaults to value of the env variable SUPERC_LINUX_SCRIPT
+      self.superc_linux_script_path = os.getenv('SUPERC_LINUX_SCRIPT')
+    
+    self.__check_superc() #< Check SuperC
+  
+  def __check_superc(self):
+    """Check and return (bool) whether SuperC can be used for getting
+    sourceline presence conditions for Linux files.
+
+    Followings checks are done:
+    * java exists
+    * java runs
+    * SuperC runs
+    * SuperC -sourcelinePC runs
+    * SuperC linux script exists
+    * SuperC linux script runs
+    """
+    def is_success(command_to_run: list):
+      return 0 == run(command_to_run, capture_stdout=True, capture_stderr=True)[2]
+    
+    self.logger.debug("Starting SuperC checks.\n")
+
+    #
+    # Check java
+    #
+    if not which("java"):
+      self.logger.error("java could not be found.\n")
+      return False
+
+    cmd = ["java", "--help"]
+    if not is_success(cmd):
+      self.logger.error("Running java (\"%s\") failed.\n" % " ".join(cmd))
+      return False
+
+    #
+    # Check SuperC
+    #
+    cmd = ["java", "superc.SuperC"]
+    if not is_success(cmd):
+      self.logger.error("Running SuperC (\"%s\") failed.\n" % " ".join(cmd))
+      return False
+
+    cmd = ["java", "superc.SuperC", "-sourcelinePC", os.devnull, os.devnull]
+    if not is_success(cmd):
+      self.logger.error("Running SuperC -sourcelinePC (\"%s\") failed.\n" % " ".join(cmd))
+      return False
+    
+    #
+    # Check SuperC linux script
+    #
+    if not self.superc_linux_script_path:
+      self.logger.error(
+        """Path to SuperC linux script is unset: either set """
+        """while instantiating SuperC instance or set the env variable SUPERC_LINUX_SCRIPT.\n""")
+      return False
+
+    if not os.path.isfile(self.superc_linux_script_path):
+      self.logger.error("SuperC linux script cannot be found at \"%s\": file does not exist.\n" % self.superc_linux_script_path)
+      return False
+    
+    cmd = ["bash", self.superc_linux_script_path]
+    if not is_success(cmd):
+      self.logger.error("Running SuperC linux script (\"%s\") failed.\n" % cmd)
+      return False
+    
+    # None failed: checks passed
+    self.logger.debug("SuperC checks passed.\n")
+    return True
 #
 # Static analysis of C source files without SuperC
 #
