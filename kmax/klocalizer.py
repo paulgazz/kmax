@@ -614,16 +614,15 @@ class Klocalizer:
   class __CompUnitInclusionProp(enum.Enum):
     EXCLUDE=0
     INCLUDE=1
-
-  def __add_compilation_unit(self, unit: str, inclusion_prop: __CompUnitInclusionProp):
-    """Given a compilation unit, fetch the inclusion constraints using kmax,
-    and add these constraints to kmax constraints based on inclusion property.
+  
+  def get_compilation_unit_constraints(self, unit: str):
+    """Given a compilation unit, fetch and return the inclusion constraints
+    using kmax.
 
     May raise NoFormulaFoundForCompilationUnit or MultipleCompilationUnitsMatch exception.
 
     Arguments:
     unit -- compilation unit.
-    inclusion_prop -- Inclusion property, i.e., include or exclude the unit.
     """
     #
     # Format the unit name
@@ -675,6 +674,20 @@ class Klocalizer:
         if not kmax_constraints_for_unit: 
           kmax_constraints_for_unit = []
         kmax_constraints_for_unit.append(top_makefile_constraints[top_dir])
+    
+    return kmax_constraints_for_unit
+
+  def __add_compilation_unit(self, unit: str, inclusion_prop: __CompUnitInclusionProp):
+    """Given a compilation unit, fetch the inclusion constraints using kmax,
+    and add these constraints to kmax constraints based on inclusion property.
+
+    May raise NoFormulaFoundForCompilationUnit or MultipleCompilationUnitsMatch exception.
+
+    Arguments:
+    unit -- compilation unit.
+    inclusion_prop -- Inclusion property, i.e., include or exclude the unit.
+    """
+    kmax_constraints_for_unit = self.get_compilation_unit_constraints(unit)
 
     if inclusion_prop == Klocalizer.__CompUnitInclusionProp.INCLUDE:
       self.__include_compilation_units.append(unit)
