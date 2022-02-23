@@ -5,6 +5,46 @@ import z3
 quiet = False
 verbose = False
 
+class VoidLogger:
+  """A quiet logger satisfying the attribute requirements."""
+  def info(self, msg):
+    pass
+  def warning(self, msg):
+    pass
+  def error(self, msg):
+    pass
+  def debug(self, msg):
+    pass
+
+class BasicLogger:
+  """A simple logger."""
+  def __init__(self, quiet=False, verbose=False, flush=True):
+    assert (not (quiet and verbose))
+    self.quiet = quiet
+    self.verbose = verbose
+    self.flush = flush
+  
+  def __flush(self):
+    if self.flush: sys.stderr.flush()
+
+  def info(self, msg):
+    if not self.quiet:
+      sys.stderr.write("INFO: %s" % msg)
+      self.__flush()
+    
+  def warning(self, msg):
+    sys.stderr.write("WARNING: %s" % msg)
+    self.__flush()
+    
+  def error(self, msg):
+    sys.stderr.write("ERROR: %s" % msg)
+    self.__flush()
+    
+  def debug(self, msg):
+    if self.verbose:
+      sys.stderr.write("DEBUG: %s" % msg)
+      self.__flush()
+
 def info(msg, ending="\n"):
   if not quiet: sys.stderr.write("INFO: %s%s" % (msg, ending))
 
