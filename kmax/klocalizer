@@ -83,8 +83,13 @@ def klocalizerCLI():
   argparser.add_argument('-m',
                          '--approximate',
                          '--match',
-                         type=str,
-                         help="""An existing .config file to use to try to match as closely as possible while still containing the desired objective.""")
+                         '--repair',
+                         action="append",
+                         default=[],
+                         help="""One or more existing .config file to use to try to match as closely as possible while still containing the desired objective.  """
+                              """Prefix with \"arch_name:\" to specify for a specific architecture.  """
+                              """For example, \"--repair x86_64:1.config --repair arm:2.config --repair others.config\" will use """
+                              """1.config for x86_64,  2.config for arm, and others.config for any other architecture.""")
   argparser.add_argument('--modules',
                          action="store_true",
                          help="""Set tristate options to 'm' instead of 'y' to build as modules instead of built-ins.""")
@@ -391,7 +396,7 @@ def klocalizerCLI():
   if sample is not None:
     if sample_prefix is None:
       sample_prefix="config"
-    if approximate is not None:
+    if approximate:
       argparser.print_help()
       logger.error("--approximate and --sample cannot currently be used together\n")
       exit(12)
@@ -414,9 +419,40 @@ def klocalizerCLI():
     # or couldn't be downloaded
     os.makedirs(formulas)
 
-  if approximate and not os.path.isfile(approximate):
-    logger.error("Cannot find config file to approximate: %s\n" % approximate)
-    exit(6)
+  # Parse and check the config file paths to approximate
+  # {arch_name : config_file_path}. "default" is the special key, has value
+  # to default config file to approximate without arch specified.
+  approximate_configs = {} 
+  if approximate:
+    for s in approximate:
+      #
+      # Set apprx_arch_name and apprx_config_file_path
+      #
+      if len(s.split(":")) > 1: #< for a specific architecture.
+        apprx_arch_name = s.split(':')[0]
+        apprx_config_file_path = "".join(s.split(':')[1:])
+        if not apprx_arch_name:
+          logger.error("Empty architecture name for approximate config: %s\n" % s)
+          exit(6)
+        if apprx_arch_name in approximate_configs:
+          logger.error("Multiple .config files specified to approximate for an architecture: %s\n" % apprx_arch_name)
+          exit(12)
+      else: #< default
+        apprx_arch_name = "default"
+        apprx_config_file_path = s
+        if apprx_arch_name in approximate_configs:
+          logger.error("Multiple .config files as default .config to approximate.\n")
+          exit(12)
+
+      #
+      # Record the .config to approximate
+      #
+      if not os.path.isfile(apprx_config_file_path):
+        logger.error("Cannot find config file to approximate: %s\n" % apprx_config_file_path)
+        exit(6)
+      assert apprx_arch_name not in approximate_configs
+      approximate_configs[apprx_arch_name] = apprx_config_file_path
+    logger.debug("Approximate configs: %s\n" % approximate_configs)
 
   #
   # Set kmax file
@@ -607,10 +643,11 @@ def klocalizerCLI():
   #
   # Get the approximate constraints
   #
-  approximate_constraints=None
-  if approximate:
-    approximate_constraints=Klocalizer.get_config_file_constraints(approximate)
-  
+  approximate_constraints={}
+  for arch_name in approximate_configs:
+    apprx_config_file_path = approximate_configs[arch_name]
+    approximate_constraints[arch_name]=Klocalizer.get_config_file_constraints(apprx_config_file_path)
+
   # Everything is set. Continue with SAT checking and config sample generation.
   seen_unsat = False # to prevent logging some info multiple times for unsat cases
   sat_archs = []
