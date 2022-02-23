@@ -257,6 +257,8 @@ def klocalizerCLI():
   kmax.common.verbose = verbose
   logger = BasicLogger(quiet=quiet, verbose=verbose)
 
+  sys.stderr.write("klocalizer, %s %s\n" % (kmax.about.__title__, kmax.about.__version__))
+
   def parse_lines_list(compilation_unit_arg : str):
     """Given compilation unit arg, parse and return the compilation unit
     and the list of lines. Returned list of lines are unique and sorted.
