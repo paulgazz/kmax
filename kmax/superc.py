@@ -8,13 +8,19 @@ from kmax.klocalizer import Klocalizer
 import subprocess
 
 class SuperC:
-  """
-  Arguments:
-  * superc_linux_script_path -- SuperC linux script, which is found at
-  superc/scripts/superc_linux.sh, where superc/ is the top SuperC source
-  directory. Defaults to value of the environment variable SUPERC_LINUX_SCRIPT.
-  """
+  class SuperC_Exception(Exception):
+    pass
+  class SuperC_ChecksFailed(SuperC_Exception):
+    def __init__(self, reason):
+      self.reason = reason
+      super().__init__(self.reason)
+
   def __init__(self, superc_linux_script_path = None, logger = BasicLogger()):
+    """Arguments:
+    * superc_linux_script_path -- SuperC linux script, which is found at
+    superc/scripts/superc_linux.sh, where superc/ is the top SuperC source
+    directory. Defaults to value of the environment variable SUPERC_LINUX_SCRIPT.
+    """
     self.logger = logger
 
     # Set SuperC linux script path
@@ -26,8 +32,11 @@ class SuperC:
     self.__check_superc() #< Check SuperC
   
   def __check_superc(self):
-    """Check and return (bool) whether SuperC can be used for getting
-    sourceline presence conditions for Linux files.
+    """Check and whether SuperC can be used for getting sourceline presence
+    conditions for Linux files.
+    
+    Returns on success.
+    Raises SuperC_ChecksFailed exception on error.
 
     Followings checks are done:
     * java exists
@@ -46,44 +55,37 @@ class SuperC:
     # Check java
     #
     if not which("java"):
-      self.logger.error("java could not be found.\n")
-      return False
+      raise SuperC.SuperC_ChecksFailed("java could not be found")
 
     cmd = ["java", "--help"]
     if not is_success(cmd):
-      self.logger.error("Running java (\"%s\") failed.\n" % " ".join(cmd))
-      return False
+      raise SuperC.SuperC_ChecksFailed("Running java (\"%s\") failed" % " ".join(cmd))
 
     #
     # Check SuperC
     #
     cmd = ["java", "superc.SuperC"]
     if not is_success(cmd):
-      self.logger.error("Running SuperC (\"%s\") failed.\n" % " ".join(cmd))
-      return False
+      raise SuperC.SuperC_ChecksFailed("Running SuperC (\"%s\") failed" % " ".join(cmd))
 
     cmd = ["java", "superc.SuperC", "-sourcelinePC", os.devnull, os.devnull]
     if not is_success(cmd):
-      self.logger.error("Running SuperC -sourcelinePC (\"%s\") failed.\n" % " ".join(cmd))
-      return False
+      raise SuperC.SuperC_ChecksFailed("Running SuperC -sourcelinePC (\"%s\") failed" % " ".join(cmd))
     
     #
     # Check SuperC linux script
     #
     if not self.superc_linux_script_path:
-      self.logger.error(
+      raise SuperC.SuperC_ChecksFailed(
         """Path to SuperC linux script is unset: either set """
-        """while instantiating SuperC instance or set the env variable SUPERC_LINUX_SCRIPT.\n""")
-      return False
+        """while instantiating SuperC instance or set the env variable SUPERC_LINUX_SCRIPT""")
 
     if not os.path.isfile(self.superc_linux_script_path):
-      self.logger.error("SuperC linux script cannot be found at \"%s\": file does not exist.\n" % self.superc_linux_script_path)
-      return False
+      raise SuperC.SuperC_ChecksFailed("SuperC linux script cannot be found at \"%s\": file does not exist" % self.superc_linux_script_path)
     
     cmd = ["bash", self.superc_linux_script_path]
     if not is_success(cmd):
-      self.logger.error("Running SuperC linux script (\"%s\") failed.\n" % cmd)
-      return False
+      raise SuperC.SuperC_ChecksFailed("Running SuperC linux script (\"%s\") failed" % cmd)
     
     # None failed: checks passed
     self.logger.debug("SuperC checks passed.\n")
