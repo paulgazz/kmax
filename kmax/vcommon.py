@@ -55,6 +55,128 @@ def run(args, stdin=None, capture_stdout=True, capture_stderr=True, cwd=None, ti
   
   return captured_stdout, captured_stderr, popen.returncode, time_elapsed
 
+def is_linux_dir(linux_ksrc: str) -> bool:
+    """Return whether the given is a path to a top Linux source directory.
+
+    Checks are incomplete but good for sanity checks.
+    TODO: improve checks (check for certain files, attempt make kernelversion)
+    """
+    return os.path.isdir(linux_ksrc)
+
+# TODO: improvement idea: decouple everything about compilation checks including the line checker.
+def check_if_compiles(unit_paths: list, config_path: str, arch_name: str,
+    linux_ksrc: str, build_targets: dict, cross_compiler: str, jobs: int,
+    build_timeout_sec, use_olddefconfig_target: bool, logger) -> bool:
+    """Check whether the given units compile with the given configuration
+    file.
+
+    Arguments:
+    * unit_paths -- List of unit paths (e.g., ['kernel/fork.o', 'kernel/cpu.o']).
+    Paths are relative to the top Linux source directory.
+    * config_path -- Path to input Linux configuration file to use.
+    * arch_name -- Name of the architecture (e.g., x86_64)
+    * linux_ksrc -- Path to a top linux source directory.
+    * build_targets -- Unit path to build target mapping. Defaults to unit path.
+    * cross_compiler -- Executable cross compiler script (e.g., make.cross)
+    * jobs -- Num jobs for make (passed with -j). None or <=0 are infinite.
+    * build_timeout_sec -- Timeout in seconds for compilation. Pass None
+    for no timeout constraints.
+    * use_olddefconfig_target -- Whether to include olddefconfig in the
+    build targets.
+    * logger -- Logger that implements common.VoidLogger interface.
+
+    Returns: a tuple of 6 values:
+    1. List[bool] : Whether the units could be found at unit paths after
+    compilation. One bool value per unit path. If all are True, it means
+    compiled binaries can be found for all units.
+    2. bool : Whether make timed out.
+    3. int  : make return code. None if make timed out.
+    4. str  : make stdout. None if make timed out.
+    5. str  : make stderr. None if make timed out.
+    6. float: Time elapsed for running make. None if make timed out.
+
+    Whether the units could be compiled with the config file.
+    The signal for successful compilation is whether units exist at unit
+    path.  
+
+    Notes:
+    * The make target "clean" is included as the first target.
+    * The Linux source directory is NOT cleaned after the compilation,
+    i.e., the built binaries can still be found.
+    * olddefconfig is NOT run on the configuration file.
+    * -i is used on make to ignore errors thus to try all targets.
+    """
+    #
+    # Check arguments
+    #
+
+    # Check unit_paths
+    assert unit_paths
+    for u in unit_paths:
+        assert u.endswith(".o")
+
+    assert os.path.isfile(config_path) #< Check config file.
+    assert isinstance(arch_name, str) and len(arch_name) > 0 #< Check arch.
+    assert is_linux_dir(linux_ksrc)    #< Check linux source directory.
+    assert which(cross_compiler)       #< Check cross compiler.
+    assert jobs is None or isinstance(jobs, int) #< Check jobs.
+
+    # Prepare jobs parameter
+    if jobs is None or jobs <= 0:
+        jobs_param="-j" #< Infinite.
+    else:
+        jobs_param="-j%s" % jobs
+
+    #
+    # Prepare build targets
+    #
+    targets = ["clean"]  #< clean is the first target.
+    if use_olddefconfig_target:
+        targets.append("olddefconfig")
+    for u in unit_paths: #< Map units into build targets.
+        target = build_targets.get(u, u) #< Default is the unit path.
+        if target not in targets: #< Don't include duplicates.
+            targets.append(target)
+    assert len(targets) > 1 #< At least one target other than clean.
+    logger.debug("Build targets are: \"[%s]\"\n" % ", ".join(targets))
+
+    #
+    # Prepare compilation command
+    #
+    config_abspath = os.path.abspath(config_path) #< Command will run in linux as cwd.
+    assert os.path.isfile(config_abspath)
+    compile_cmd = [cross_compiler, jobs_param, "-i", "KCONFIG_CONFIG=%s" % config_abspath, "ARCH=%s" % arch_name]
+    compile_cmd.extend(targets)  #< Add the targets.
+    logger.debug("Compilation command: \"%s\"\n" % " ".join(compile_cmd))
+
+    # Function definition for preparing the first return value: whether
+    # units were found after compilation.
+    def are_units_compiled():
+        full_unit_paths = [os.path.join(linux_ksrc, u) for u in unit_paths]
+        ret = [os.path.isfile(fpath) for fpath in full_unit_paths]
+        assert len(ret) == len(unit_paths)
+        return ret
+
+    #
+    # Run the compilation command
+    #
+    logger.debug("Running the compilation command.\n")
+    from subprocess import TimeoutExpired
+    try:
+        make_out, make_err, ret, time_elapsed = run(
+            compile_cmd, cwd=linux_ksrc, timeout=build_timeout_sec)
+        logger.debug("Compilation finished in %.2f seconds, make exit code: %s\n" % (time_elapsed, ret))
+
+        # Check the method docs for what each return value mean.
+        make_out = make_out.decode('UTF-8')
+        make_err = make_err.decode('UTF-8')
+        return are_units_compiled(), False, ret, make_out, make_err, time_elapsed
+    except TimeoutExpired:
+        logger.debug("Timeout expired for compilation, duration(sec): %.2f\n" % build_timeout_sec)
+
+        # Check the method docs for what each return value mean.
+        return are_units_compiled(), True, None, None, None, None
+
 def pause(s=None):
     try: #python2
         raw_input("Press any key to continue ..." if s is None else s)
