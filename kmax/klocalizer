@@ -437,13 +437,48 @@ def klocalizerCLI():
       is_kmax_cache = False
 
   #
-  # Check compilation units' names
+  # Simplify line requirements through syntax analysis.
   #
-  for i, unit in enumerate(compilation_units):
-    if not unit.endswith(".o"):
-      logger.warning("Forcing file extension to be .o, since lookup is by compilation unit: %s\n" % (unit))
-      unit = os.path.splitext(unit)[0] + ".o"
-      compilation_units[i] = unit
+  # If a line is unconstrained by syntax (not under any conditional
+  # preprocessor directive, remove it from the list. Localizing for the unit
+  # will suffice to build the line. This may help avoid running SuperC for
+  # this file if no lines remain. Syntax analysis is faster and precise;
+  # therefore, this will improve performance.
+  global_scope_lines = {} # { unit : set(int) }, lines outside any ifdefs
+  for i, (unit, line_list) in enumerate(compilation_units_lines):
+    if line_list:
+      srcfile = "%s.c" % unit[:-len('.o')]
+      srcfile_fullpath = os.path.join(linux_ksrc, srcfile)
+      assert os.path.isfile(srcfile_fullpath)
+      logger.debug("Doing syntax analysis on \"%s\" to get constrained line ranges.\n" % srcfile)
+      
+      root_cb = SyntaxAnalysis.get_conditional_blocks_of_file(srcfile_fullpath)
+
+      # Check if given line list is valid for the file.
+      line_count = root_cb.end_line - 1 #< Root (dummy) ConditionalBlock has special end_line value.
+      for l in line_list:
+        if not 0 < l <= line_count:
+          logger.error("Requested line (%s) is invalid for the source file (\"%s\")\n" % (l, srcfile))
+          exit(12)
+
+      # Get the ConditionalBlock that cover the requested lines.
+      nodes = [root_cb.retrieve_deepest_block(l) for l in line_list]
+      assert len(nodes) == len(line_list)
+      # Get the constrained lines only (those that don't belong to dummy root)
+      # Unconstrained lines will already build with the file.
+      new_line_list = []
+      for l, n in zip(line_list, nodes):
+        if n == root_cb:
+          global_scope_lines[unit] = global_scope_lines.get(unit, set()).union([l])
+        else:
+          new_line_list.append(l)
+      removed_lines = len(line_list) - len(new_line_list)
+      assert removed_lines >= 0
+      logger.debug(
+        """Syntax analysis for \"%s\" found %s unconstrained lines, """
+        """%s lines are remaining for presence condition analysis.\n"""
+        """""" % (srcfile, removed_lines, len(new_line_list)))
+      compilation_units_lines[i] = unit, new_line_list
 
   #
   # Add the compilation units
