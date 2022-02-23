@@ -4,8 +4,32 @@ import itertools
 import subprocess as sp
 import operator
 import inspect
+from shutil import which
 
 import logging
+
+def get_build_system_id(linux_ksrc: str) -> str:
+    """Given path to the top Linux source directory, compute a 12 chars
+    build system identifier.
+
+    Following command is run in linux_ksrc:
+    find . -type f -regex '.*\(Makefile\|Kconfig\|Kbuild\).*' -exec md5sum {} \; | sort | md5sum | head -c 12
+    """
+    # Check arguments
+    assert os.path.isdir(linux_ksrc)
+    assert which("find")
+    assert which("sort")
+    assert which("md5sum")
+    assert which("head")
+
+    # Compute build system id
+    cmd = "find . -type f -regex '.*\(Makefile\|Kconfig\|Kbuild\).*' -exec md5sum {} \; | sort | md5sum | head -c 12"
+    out, _, ret, _ = run(cmd, cwd=linux_ksrc, shell=True)
+    assert ret == 0
+    id = out.decode('utf-8').lower()
+    assert len(id) == 12
+    assert id.isalnum()
+    return id
 
 def run(args, stdin=None, capture_stdout=True, capture_stderr=True, cwd=None, timeout=None, shell=False):
   """Helper for running an external process.
