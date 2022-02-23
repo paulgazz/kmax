@@ -88,6 +88,59 @@ class SuperC:
     # None failed: checks passed
     self.logger.debug("SuperC checks passed.\n")
     return True
+
+  @staticmethod
+  def get_superc_basepath_for_file(srcfile: str, superc_formulas_dir: str) -> str:
+    """The basepath, which is concat with extensions to create any kind
+    of files specific to the srcfile.
+    """
+    return os.path.join(superc_formulas_dir, srcfile)
+  
+  @staticmethod
+  def get_superc_logs_dir_for_file(srcfile: str, superc_formulas_dir: str) -> str:
+    """The directory, which is concat with log filenames to create any kind
+    of logs files specific to the given srcfile.
+    """
+    return os.path.join(superc_formulas_dir, "%s_superc_logs/" % srcfile)
+
+  @staticmethod
+  def get_superc_configs_for_file(srcfile: str, superc_formulas_dir: str) -> str:
+    """Compute and return the path to the SuperC config file for the given
+    source file.
+    """
+    return os.path.join(superc_formulas_dir, "%s.configs_superc" % srcfile)
+
+  @staticmethod
+  def get_superc_formulas_dir(formulas: str, arch_name: str) -> str:
+    """Given formulas directory and the architecture name, return the
+    path to SuperC formulas directory.
+
+    For example, formulas=".kmax/v5.13" and arch_name="x86_64" returns
+    ".kmax/v5.13/superc/x86_64/configs/".
+    
+    While this is a simple string concatenation, any changes to directory
+    structure will be maintained through this method.
+    """
+    assert arch_name
+    return os.path.join(formulas, "superc", arch_name, "configs")
+  
+  @staticmethod
+  def get_superc_pc_path(srcfile: str, superc_formulas_dir: str) -> str:
+    """Compute and return the path to the presence conditions file for the
+    given source file. Notice that we have no (efficient) way of checking
+    whether the given presence conditions file is up-to-date. Therefore,
+    this file is always recomputed/replaced as needed, and should be used
+    for diagnostic purposes only.
+
+    Otherwise, the path structure is maintained here.
+    """
+    return os.path.join(superc_formulas_dir, "%s.pc" % srcfile)
+  
+  @staticmethod
+  def get_superc_header_path(superc_formulas_dir: str) -> str:
+    """Get the path to the SuperC header file.
+    """
+    return os.path.join(superc_formulas_dir, "config_options.h")
 #
 # Static analysis of C source files without SuperC
 #
