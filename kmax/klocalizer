@@ -1340,5 +1340,8 @@ if __name__ == '__main__':
   except Arch.FormulaGenerationError as e:
     logger.error("Cannot generate %s formulas.\n" % (e.formula_type))
     exit(13)
+  except SuperC.SuperC_ChecksFailed as e:
+    logger.error("SuperC checks failed, reason: %s.  "
+                 "Either fix the issue or omit the line requirements.\n" % (e.reason))
   
   exit(0)
