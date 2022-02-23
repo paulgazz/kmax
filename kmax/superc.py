@@ -158,6 +158,329 @@ class SuperC:
       return ret
     return "\n".join([get_for_option(option) for option in config_options])
 
+  def get_pc(self,
+    srcfile_path: str, arch: Arch, linux_ksrc: str,
+    superc_formulas_dir: str, superc_timeout_sec: int,
+    logger) -> Klocalizer.ConditionalBlock:
+    """
+    Compute the presence conditions (pc) using SuperC, and return it as a
+    ConditionalBlock instance.
+
+    Arguments:
+    * srcfile_path -- Path to the source file to compute the pc for.
+    Relative to the top Linux source directory.
+    * arch -- Target architecture as an instance of kmax.Arch.
+    * linux_ksrc -- Top Linux source directory.
+    * superc_formulas_dir -- Path to the SuperC formulas directory. To use
+    the cache dir structure, get it using SuperC.get_superc_formulas_dir().
+    * superc_timeout_sec -- Timeout amount for running SuperC in seconds.
+    * logger -- Logger that implements common.VoidLogger interface.
+    
+    Returns:
+    * On success: A ConditionalBlock instance, which is a dummy root that
+    encapsulates the conditional blocks in the source file. The root has
+    special start/end line values (0 and line_count + 1).
+    * On error: None. Check the log messages for info. For advanced
+    diagnostics, check the diagnostic files created in the SuperC formulas
+    directory.
+
+    Creates the following files for diagnostics (for full path, prefix each
+    with "superc/formulas/dir///source/file/path"):
+    * Always:
+       * PREFIX.superc_sourcelinepc_cmd: SuperC command.
+    * On completion without timeout:
+       * PREFIX.superc_sourcelinepc_exit_code: SuperC exit code.
+       * PREFIX.superc_sourcelinepc_out: SuperC stdout.
+       * PREFIX.superc_sourcelinepc_err: SuperC stderr.
+       * PREFIX.superc_sourcelinepc_time_elapsed: SuperC time elapsed in sec.
+    * On time out:
+       * PREFIX.superc_sourcelinepc_timed_out: Timeout duration in sec.
+
+    Notes:
+    * SuperC config files must exist for the source file in the SuperC
+    formulas directory. Otherwise, it is error (returns None).
+    * Retrieves the config options header file (or creates it at if does
+    not exist) from the path produced by SuperC.get_superc_header_path().
+    * We have no (efficient) way of knowing whether an existing pc file
+    is up-to-date. Therefore, we don't keep a cache, and always replace
+    the pc file that may exists in the formulas directory, and keep the old
+    one with .old suffix. This file must be used for diagnostic purposes
+    only.
+    * "include/generated/autoconf.h" is cleared in the Linux source, and
+    not restored.
+    """
+    assert os.path.isfile(os.path.join(linux_ksrc, srcfile_path))
+    # Check that configs exist
+    configs_file = self.get_superc_configs_for_file(srcfile_path, superc_formulas_dir)
+    if not os.path.isfile(configs_file):
+      logger.error("Cannot find SuperC configs file at \"%s\"." % configs_file)
+      return None #< Error
+
+    assert os.path.isfile(configs_file)
+    logs_dir = SuperC.get_superc_logs_dir_for_file(srcfile_path, superc_formulas_dir)
+    def logpath(f: str):
+      return os.path.join(logs_dir, f)
+    pathlib.Path(logs_dir).mkdir(parents=True, exist_ok=True)
+
+    #
+    # Clear autoconf.h
+    #
+    logger.debug("Clearing autoconf.h.\n")
+    autoconf_path = os.path.join(linux_ksrc, "include/generated/autoconf.h")
+    with open(autoconf_path, "w") as f:
+      pass #< Remove the content but keep the file
+    assert os.path.isfile(autoconf_path)
+    with open(autoconf_path, "r") as f:
+      assert not f.readlines() #< Verify that file is empty.
+
+    #
+    # Retrieve or create header file to handle IS_ENABLED() with SuperC
+    #
+    options_header_file = SuperC.get_superc_header_path(linux_ksrc)
+    if os.path.isfile(options_header_file):
+      logger.debug("Options header file for handling IS_ENABLED macro is found at \"%s\"\n" % options_header_file)
+    else:
+      logger.debug("Computing options header file content to handle IS_ENABLED macro.\n")
+      config_options = arch.get_bool_tristate_options()
+      header_content = SuperC.get_superc_header_content(config_options)
+      assert header_content
+      logger.debug("Writing the options header file to \"%s\".\n" % options_header_file)
+      with open(options_header_file, 'w') as f:
+        f.write(header_content)
+      assert os.path.isfile(options_header_file)
+
+    #
+    # SuperC sourcelinePC
+    #
+    pc_file_path = SuperC.get_superc_pc_path(srcfile_path, superc_formulas_dir)
+    logger.debug("Presence conditions file will be created at \"%s\".\n" % pc_file_path)
+
+    # If a pc file already exists, rename it to have .old extension
+    if os.path.isfile(pc_file_path):
+      old_pc_file_path = pc_file_path + ".old"
+      logger.debug("Moving the existing presence conditions file to \"%s\".\n" % old_pc_file_path)
+      assert pathlib.Path(pc_file_path).rename(old_pc_file_path)
+      assert not os.path.isfile(pc_file_path)
+      assert os.path.isfile(old_pc_file_path)
+    
+    # Prepare the SuperC command
+    superc_flags = "-sourcelinePC %s" % pc_file_path
+    superc_flags += " -include %s" % options_header_file
+    # TODO: restrict to the list of config options instead of given prefix
+    restrict_flag = " -restrictConfigToPrefix CONFIG_ "
+    superc_flags += restrict_flag
+    superc_sourcelinepc_cmd = [self.superc_linux_script_path, "-S%s" % superc_flags, "-L%s" % superc_formulas_dir, srcfile_path]
+    superc_sourcelinepc_cmd_str = " ".join(superc_sourcelinepc_cmd)
+    logger.debug("SuperC command: \"%s\"\n" % " ".join(superc_sourcelinepc_cmd))
+    write_content_to_file(logpath("superc_sourcelinepc_cmd"), str(superc_sourcelinepc_cmd_str) + '\n')
+
+    # Run SuperC
+    try:
+      logger.debug("Running SuperC sourcelinePC.\n")
+      out, err, ret, time_elapsed = run(superc_sourcelinepc_cmd, cwd=linux_ksrc, timeout=superc_timeout_sec)
+      logger.debug("Finished running SuperC sourcelinePC.\n")
+
+      # Write diagnostic information
+      write_content_to_file(logpath("superc_sourcelinepc_exit_code"), str(ret) + '\n')
+      write_content_to_file(logpath("superc_sourcelinepc_out"), str(out.decode('UTF-8')) + '\n')
+      write_content_to_file(logpath("superc_sourcelinepc_err"), str(err.decode('UTF-8')) + '\n')
+      write_content_to_file(logpath("superc_sourcelinepc_time_elapsed"), str(time_elapsed) + '\n')
+      logger.debug("SuperC config creation diagnostic info was written to files.\n")
+
+      # Did SuperC create a presence conditions file?
+      if not os.path.isfile(pc_file_path):
+        logger.debug("SuperC failed to create presence conditions file at \"%s\".\n" % pc_file_path)
+        return None #< Error
+      
+      # Read the presence conditions file
+      with open(pc_file_path, 'r') as f:
+        superc_pcfile_content = f.read()
+      
+      # If file is empty, error
+      if not superc_pcfile_content:
+        logger.debug("Empty SuperC presence conditions file at \"%s\".\n")
+        return None #< Error
+      
+      # Parse the ConditionalBlock instance and return
+      from ast import literal_eval
+      pc = Klocalizer.ConditionalBlock._ConditionalBlock__parse_cb(literal_eval(superc_pcfile_content))
+      assert pc
+      return pc
+    except subprocess.TimeoutExpired: #< SuperC timed out
+      logger.debug("Timeout expired for SuperC, duration(sec): %.2f\n" % superc_timeout_sec)
+
+      # Write diagnostic information
+      write_content_to_file(logpath("superc_sourcelinepc_timed_out"), str(superc_timeout_sec) + '\n')
+
+      return None #< Error
+    
+    assert False #< Unreachable
+
+  def create_superc_config_on_built_unit(self,
+    srcfile_path: str, output_superc_configs_dir_path: str,
+    linux_ksrc: str, arch_name: str, cross_compiler: str) -> list:
+    """Create SuperC configs files for the given source file where the unit
+    is already built and building configuration is in the Linux source.
+
+    This method only runs the SuperC linux script for creating the SuperC
+    configuration files, and assumes the Linux source is already ready
+    for this operation. Here are the requirements:
+    * A compiled binary for the source file must exist in the same
+    directory as the source file.
+    * The linux configuration file that compiled the source file must exist
+    at linux_ksrc/.config.
+
+    The method Klocalizer.localize_config() can help setting up the Linux
+    source before running this method. Alternatively, use
+    SuperC.create_linux_superc_configs_from_scratch() that handles both the
+    setup and the SuperC configuration creation.
+
+    Arguments:
+    * srcfile_path -- A linux source file with '.c' extension. It must be
+    already compiled, i.e., corresponding binary with '.o' extension must
+    exist. Relative to linux_ksrc.
+    * output_superc_configs_dir_path -- Output SuperC configs directory
+    path. Convention is to use SuperC.get_superc_configs_dir() to obtain
+    this. Configs are created as src/file/path.configs_{all,superc}. Config
+    must not already exist.
+    * linux_ksrc -- Path to the top Linux source directory.
+    * arch_name -- Architecture name, e.g., "x86_64".
+    * cross_compiler -- Executable cross_compiler, e.g., "make.cross".
+
+    Returns a tuple of 5 values:
+    * bool: Whether SuperC config files were successfully created.
+    * int : SuperC linux script return code.
+    * str : SuperC linux script stdout.
+    * str : SuperC linux script stderr.
+    * int : Time elapsed (sec) to run SuperC linux script.
+    """
+    #
+    # Check arguments
+    #
+    assert srcfile_path
+    assert srcfile_path.endswith(".c")
+    assert os.path.isfile(os.path.join(linux_ksrc, srcfile_path))
+    assert os.path.isdir(output_superc_configs_dir_path)
+    assert os.path.isdir(linux_ksrc)
+    assert arch_name
+    assert isinstance(arch_name, str)
+    assert which(cross_compiler)
+    # The linux configuration file that compiled the source file must exist
+    # at linux_ksrc/.config
+    assert os.path.isfile(os.path.join(linux_ksrc, ".config"))
+    superc_config_path = os.path.join(output_superc_configs_dir_path, "%s.configs_superc" % srcfile_path)
+    assert not os.path.isfile(superc_config_path) #< SuperC config does not already exist.
+
+    # Check that unit is compiled
+    unit_path = "%s.o" % srcfile_path[:-len('.c')]
+    assert os.path.isfile(os.path.join(linux_ksrc, unit_path))
+
+    # Create the SuperC configs.
+    self.logger.debug("Creating SuperC configs for \"%s\"\n" % srcfile_path)
+    # use superc_linux_script
+    # /usr/bin/time bash $superc_linux_script -S"$superc_args" -w -L configs/ ${source_file} < /dev/null
+    config_gen_cmd = [self.superc_linux_script_path, "-w",
+      "-x", cross_compiler, "-a", arch_name,
+      "-L", output_superc_configs_dir_path, srcfile_path]
+    self.logger.debug("SuperC config generation command: \"%s\"\n" % " ".join(config_gen_cmd))
+    out, err, ret, time_elapsed = run(config_gen_cmd, cwd=linux_ksrc)
+    self.logger.debug("TIME: Time elapsed(sec) for SuperC config generation: %.2f\n" % time_elapsed)
+    config_created = os.path.isfile(superc_config_path)
+    if config_created:
+      self.logger.debug("SuperC configs creation was successful for \"%s\"\n" % srcfile_path)
+    else:
+      self.logger.debug("Failed to create SuperC configs for \"%s\"\n" % srcfile_path)
+
+    return config_created, ret, out.decode('UTF-8'), err.decode('UTF-8'), time_elapsed
+
+  def ensure_superc_config(self,
+    srcfile: str, output_superc_configs_dir_path: str, linux_ksrc: str,
+    arch: Arch, cross_compiler, build_targets, compile_jobs, build_timeout,
+    logger):
+    """
+    Ensure that SuperC configs exist for the input sourcefile.
+
+    First, check if it already exists.  Otherwise, attempt to create it by
+    following the below steps:
+    * Localize a .config file that builds the unit,
+    * Compile the unit,
+    * Create SuperC configuration for the unit.
+
+    If the config is found, or otherwise successfully created, returns True.
+    Otherwise, returns False.
+    """
+    assert os.path.exists(os.path.join(linux_ksrc, srcfile))
+    assert srcfile.endswith('.c')
+    unit = srcfile[:-len('.c')] + '.o'
+
+    logs_dir = SuperC.get_superc_logs_dir_for_file(srcfile, output_superc_configs_dir_path)
+    def logpath(f: str):
+      return os.path.join(logs_dir, f)
+    pathlib.Path(logs_dir).mkdir(parents=True, exist_ok=True)
+    superc_config_file = SuperC.get_superc_configs_for_file(srcfile, output_superc_configs_dir_path)
+    config_exists = os.path.isfile(superc_config_file)
+    if config_exists:
+      # All have their SuperC configuration files.
+      logger.debug("SuperC config exists for \"%s\".\n" % srcfile)
+      return True
+    else:
+      logger.debug("Creating SuperC config file for \"%s\".\n" % srcfile)
+
+      #
+      # Localize a building configuration file.
+      #
+      output_config_file = logpath("kloc_localized_config")
+      ret_status, ret_arch, ret_exception = Klocalizer.localize_config([unit], output_config_file, linux_ksrc, [arch], logger)
+      # Write diagnostic info
+      write_content_to_file(logpath("kloc_config_loc_status"), str(ret_status) + '\n')
+      # no need to write ret_arch: there is already a single architecture
+      write_content_to_file(logpath("kloc_config_loc_exception"), repr(ret_exception) + '\n')
+
+      is_config_created = ret_status == Klocalizer.Ret_LocalizeConfig.SUCCESS
+      if not is_config_created:
+        logger.debug("Failed to localize a building Linux .config file.\n")
+        return False
+      else:
+        logger.debug("A building Linux .config file was localized.\n")
+      
+      # Check if the unit compiles (also build them to prep for SuperC config creation)
+      logger.debug("Attempting to build the unit.\n")
+      ret = check_if_compiles([unit], output_config_file, arch.name, linux_ksrc,
+        build_targets, cross_compiler, compile_jobs, build_timeout, True, logger)
+      is_unit_compiled, make_timed_out, make_ret, make_out, make_err, time_elapsed = ret
+      write_content_to_file(logpath("build_unit_status"), str(is_unit_compiled) + '\n')
+      write_content_to_file(logpath("build_unit_make_timed_out"), str(make_timed_out) + '\n')
+      write_content_to_file(logpath("build_unit_make_ret"), str(make_ret) + '\n')
+      write_content_to_file(logpath("build_unit_make_out"), str(make_out) + '\n')
+      write_content_to_file(logpath("build_unit_make_err"), str(make_err) + '\n')
+      write_content_to_file(logpath("build_unit_time_elapsed"), str(time_elapsed) + '\n')
+      if not is_unit_compiled:
+        logger.debug("Unit could not be compiled.\n")
+        return False
+      else:
+        logger.debug("Unit was successfully compiled.\n")
+
+      # Create missing SuperC config files
+      logger.debug("Creating the missing SuperC config file.\n")
+      pathlib.Path(output_superc_configs_dir_path).mkdir(parents=True, exist_ok=True)
+      ret = self.create_superc_config_on_built_unit(srcfile, output_superc_configs_dir_path, linux_ksrc, arch.name, cross_compiler)
+      config_created, superc_ret, superc_out, superc_err, time_elapsed = ret
+      write_content_to_file(logpath("superc_config_gen_status"), str(config_created) + '\n')
+      write_content_to_file(logpath("superc_config_gen_ret"), str(superc_ret) + '\n')
+      write_content_to_file(logpath("superc_config_gen_out"), str(superc_out) + '\n')
+      write_content_to_file(logpath("superc_config_gen_err"), str(superc_err) + '\n')
+      write_content_to_file(logpath("superc_config_gen_time_elapsed"), str(time_elapsed) + '\n')
+      if not config_created:
+        logger.error("SuperC configuration generation failed\n")
+        return False
+
+      # All succeeded.
+      config_exists = os.path.isfile(superc_config_file)
+      assert config_exists
+      return True
+
+###########################################################################
+
 #
 # Static analysis of C source files without SuperC
 #
