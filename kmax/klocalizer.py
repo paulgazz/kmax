@@ -906,6 +906,125 @@ class Klocalizer:
       for arch in archs:
         assert type(arch) is Arch
 
+  class Ret_LocalizeConfig(enum.Enum):
+    SUCCESS=0       #< All success.
+    ERROR_UNSAT=1   #< Given archs do not compile the unit.
+    ERROR_KMAX_EXCEPTION=2       #< A Klocalizer.KmaxException was thrown for one of the units.
+    ERROR_KLOCALIZER_EXCEPTION=3 #< A Klocalizer.KlocalizerException was thrown.
+
+  @staticmethod
+  def localize_config(unit_paths: list, output_config_path: str,
+    linux_ksrc: str, archs: list, logger):
+    """Localize a linux configuration file that compiles the given units.
+
+    This is a simplified version of what klocalizer command line tool does:
+    it searches for an architecture one by one, and when found a SAT one,
+    creates a configuration file (takes a random solution).
+
+    Returns a tuple of 3 values:
+    * Ret_LocalizeConfig: An instance of Ret_LocalizeConfig, representing
+    success/error.
+    * Arch: The first Arch instance that compiles the units from the input
+    archs list. May be None on error.
+    * Exception: The exception thrown if the status is ERROR_KMAX_EXCEPTION
+    or ERROR_KLOCALIZER_EXCEPTION, which can be used for diagnostic.
+
+    Also, writes the output configuration file to output_config_path on
+    success. This is as obtained from klocalizer: may need olddefconfig.
+    A config file might be created even on error.
+
+    Arguments:
+    * unit_paths -- List of unit paths (e.g., ['kernel/fork.o', 'kernel/cpu.o'])
+    * output_config_path -- Path to non-existing output configuration file.
+    * linux_ksrc -- Path to top linux source directory.
+    * archs -- Architectures to try as a list of Arch instances.
+    * logger -- Logger that implements common.VoidLogger interface.
+    """
+    try:
+      return Klocalizer.__localize_config(unit_paths, output_config_path, linux_ksrc, archs, logger)
+    except Klocalizer.KmaxException as e:
+      logger.debug("Exception in localize_config(): \"%s\"\n" % e.message)
+      ret_status = Klocalizer.Ret_LocalizeConfig.ERROR_KMAX_EXCEPTION
+      ret_arch = None
+      ret_exception = e
+      return ret_status, ret_arch, ret_exception
+    except Klocalizer.KlocalizerException as e:
+      logger.debug("Exception in localize_config(): \"%s\"\n" % e.message)
+      ret_status = Klocalizer.Ret_LocalizeConfig.ERROR_KLOCALIZER_EXCEPTION
+      ret_arch = None
+      ret_exception = e
+      return ret_status, ret_arch, ret_exception
+
+
+  @staticmethod
+  def __localize_config(unit_paths: list, output_config_path: str,
+    linux_ksrc: str, archs: list, logger):
+    """Helper to Klocalizer.localize_config(). May throw exception to be
+    caught by Klocalizer.localize_config().
+    """
+    #
+    # Check arguments
+    #
+    assert unit_paths
+    for u in unit_paths:
+        assert u.endswith(".o")
+    assert not os.path.exists(output_config_path)
+    assert os.path.isdir(linux_ksrc)
+    assert archs
+    assert logger
+
+    #
+    # Create a klocalizer instance
+    #
+    logger.debug("Creating the klocalizer instance.\n")
+    kloc = Klocalizer()
+    kloc.set_linux_krsc(linux_ksrc)
+    kloc.add_constraints([z3.Not(z3.Bool("CONFIG_BROKEN"))])
+    
+    #
+    # Add compilation units (also retrives kmax formulas)
+    #
+    logger.debug("Adding the compilation units to klocalizer.\n")
+    for u in unit_paths:
+      kloc.include_compilation_unit(u)
+
+    #
+    # Find an architecture that compiles the unit
+    #
+    logger.debug("Detecting the architecture.\n")
+    time_start = time.time()
+    for arch in archs:
+      logger.debug("Trying \"%s\"\n" % arch.name)
+      full_constraints = kloc.compile_constraints(arch)
+      model_sampler = Klocalizer.Z3ModelSampler(full_constraints)
+      is_sat, z3_model = model_sampler.sample_model()
+      if is_sat:
+        break
+    time_elapsed = time.time() - time_start
+    logger.debug("TIME: Time elapsed(sec) for architecture search: %.2f\n" % time_elapsed)
+    if not is_sat: #< Not possible to compile with the given set of archs
+      logger.debug("Could not find an architecture that compiles the unit.\n")
+      return Klocalizer.Ret_LocalizeConfig.ERROR_UNSAT, None, None
+    else:          #< Compiles for arch
+      assert arch
+      logger.debug("The unit compiles for the architecture: \"%s\"\n" % arch.name)
+
+    #
+    # Create a config file that compiles the unit
+    #
+    logger.debug("Creating config file to compile the unit.\n")
+    time_start = time.time()
+    assert is_sat and (z3_model is not None)
+    config_content = Klocalizer.get_config_from_model(z3_model, arch, set_tristate_m=False, allow_non_visibles=False)
+    assert config_content
+    with open(output_config_path, "w") as f:
+      f.write(config_content)
+    assert os.path.isfile(output_config_path)
+    time_elapsed = time.time() - time_start
+    logger.debug("TIME: Time elapsed(sec) for creating the config file: %.2f\n" % time_elapsed)
+
+    return Klocalizer.Ret_LocalizeConfig.SUCCESS, arch, None
+
   @staticmethod
   def get_sourceline_pc_standalone_file(srcfile: str):
     """Get sourceline presence conditions for a stand-alone source file.
