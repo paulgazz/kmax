@@ -622,14 +622,26 @@ class Klocalizer:
     May raise NoFormulaFoundForCompilationUnit or MultipleCompilationUnitsMatch exception.
 
     Arguments:
-    unit -- compilation unit.
+    unit -- compilation unit or directory.
     """
     #
     # Format the unit name
     #
-    if not unit.endswith(".o"):
-      self.__logger.warning("Forcing file extension to be .o, since lookup is by compilation unit: %s\n" % (unit))
-      unit = os.path.splitext(unit)[0] + ".o"
+    # There must be '.o' extension for units, '/' suffix for directories
+    if not unit.endswith(".o") and not unit.endswith('/'):
+      # Try to understand whether it was directory or unit
+      bname = unit.split('/')[-1]
+      assert bname
+      ext = os.path.splitext(bname)[-1]
+      if ext and ext.lower() in ['.c', '.s', '.o']:
+        # This must be a single unit rather than a directory
+        self.__logger.warning("Forcing file extension to be .o, since lookup is by compilation unit: %s\n" % (unit))
+        unit = os.path.splitext(unit)[0] + ".o"
+      else:
+        # This must be a directory
+        unit = unit + '/'
+      
+    is_top_level_dir = unit.endswith('/') and unit.count('/') == 1
     
     #
     # Process the unit name get all the paths for which to pull the kmax formulas
@@ -640,7 +652,14 @@ class Klocalizer:
       # Maybe we should just do the same for all? Maybe that's the reason for the issue Jeho experienced.
       self.__fetch_kmax_constraints(unit)
       if unit not in self.__kmax_formulas:
-        raise Klocalizer.NoFormulaFoundForCompilationUnit(unit)
+        if is_top_level_dir:
+          # This is a top-level directory, which is controlled by a
+          # non-kbuild Makefile that kmax cannot work on. These are mostly
+          # unconstrained. The constrained top-level directories are
+          # handled through hard-coding of the constraints below.
+          pass
+        else:
+          raise Klocalizer.NoFormulaFoundForCompilationUnit(unit)
     else: # kmax_formulas is not cache but complete
       if unit not in self.__kmax_formulas:
         kbuild_paths = self.__resolve_kbuild_path(unit)
@@ -675,6 +694,12 @@ class Klocalizer:
           kmax_constraints_for_unit = []
         kmax_constraints_for_unit.append(top_makefile_constraints[top_dir])
     
+    if kmax_constraints_for_unit is None:
+      # "None" is allowed only for top level directories, which are outside
+      # kbuild makefiles.
+      assert is_top_level_dir
+      kmax_constraints_for_unit = []
+
     return kmax_constraints_for_unit
 
   def __add_compilation_unit(self, unit: str, inclusion_prop: __CompUnitInclusionProp):
