@@ -289,6 +289,10 @@ def klocalizerCLI():
     
   sys.stderr.write("klocalizer, %s %s\n" % (kmax.about.__title__, kmax.about.__version__))
 
+  def unit2srcfile(unit):
+    assert unit.endswith('.o')
+    return unit[:-len('.o')] + '.c'
+  
   def get_exclusion_constraints(unit_constraints, line_constraints):
     return z3.Or(z3.Not(unit_constraints), z3.Not(line_constraints))
 
@@ -690,19 +694,64 @@ def klocalizerCLI():
   has_line_constraints = len([u for u, l in include_list + include_mutex_list + exclude_list if l]) > 0
 
   #
-  # Add the compilation units
+  # SuperC: ensure configs and get presence conditions for a "srcfile" under an "arch"
   #
-  if allow_mutual_exclusion:
-    # Mutual exclusion will handle compilation unit constraints differently.
-    pass
-  else:
-    for unit, lines in compilation_units_lines:
-      if dont_compile:
-        assert not lines
-        klocalizer.exclude_compilation_unit(unit)
-      else:
-        klocalizer.include_compilation_unit(unit)
+  line_constraints = {} # { srcfile (.c): { arch_name: ConditionalBlock } }
+  for unit, lines in all_comp_units_list: # initialize
+    if not unit.endswith('/'):
+      line_constraints[unit2srcfile(unit)] = {}
+  # This function uses values from global scope (linux ksrc, formulas dir, etc.)
+  # but parametrizes the operation into srcfile and architecture.
+  def get_presence_conditions(srcfile, arch):
+    """Ensures SuperC configs for srcfile and computes the line presence
+    conditions.
     
+    Returns an instance of ConditionalBlock on success.
+    Returns None on error.
+
+    Retrieves from or fills the cache (line_constraints).
+    """
+    assert srcfile.endswith('.c')
+    # Check the cache.
+    if srcfile in line_constraints and arch.name in line_constraints[srcfile]:
+      return line_constraints[srcfile][arch.name]
+    
+    if srcfile not in line_constraints:
+      line_constraints[srcfile] = {}
+
+    #
+    # Make sure SuperC configs exist.
+    #
+    logger.info("Computing line presence conditions for \"%s\"\n" % srcfile)
+    superc_formulas_dir = SuperC.get_superc_formulas_dir(formulas, arch.name)
+    config_exists = superc.ensure_superc_config(srcfile, superc_formulas_dir, linux_ksrc, arch, cross_compiler, build_targets, compile_jobs, build_timeout, logger)
+    if not config_exists:
+      logger.debug("Failed to find/create SuperC config file for \"%s\"\n" % srcfile)
+      error_msg = "Failed to compute line presence conditions for \"%s\": SuperC config generation error\n" % srcfile
+      line_constraints[srcfile][arch.name] = None # Special value, depicts failure.
+      warn_or_err(error_msg, error_msg, exit_code_superc_config_creation_failed)
+      return None
+    else: # config exists
+      logger.debug("SuperC config file was found for \"%s\"\n" % srcfile)
+      logger.debug("Computing the presence conditions for \"%s\"\n" % srcfile)
+
+      #
+      # Get presence conditions, thus, line constraints
+      #
+      # Map source files to presence conditions (ConditionalBlock instances)
+      logger.debug("Computing presence conditions for \"%s\".\n" % srcfile)
+      cb = superc.get_pc(srcfile, arch, linux_ksrc, superc_formulas_dir, superc_timeout, logger)
+      if not cb:
+        logger.debug("Computing presence conditions failed for \"%s\"\n" % srcfile)
+        error_msg = "Failed to compute line presence conditions for \"%s\": SuperC sourcelinePC error\n" % srcfile
+        line_constraints[srcfile][arch.name] = None # Special value, depicts failure.
+        warn_or_err(error_msg, error_msg, exit_code_superc_sourcelinepc_failed)
+        return None
+      else: # pc was successfully computed
+        logger.debug("Computed presence conditions for \"%s\"\n" % srcfile)
+        line_constraints[srcfile][arch.name] = cb
+        return cb
+
   if view_kbuild:
     if len(compilation_units_lines) > 0:
       for unit, _ in compilation_units_lines:
