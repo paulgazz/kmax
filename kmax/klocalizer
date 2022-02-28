@@ -271,6 +271,22 @@ def klocalizerCLI():
   kmax.common.verbose = verbose
   logger = BasicLogger(quiet=quiet, verbose=verbose)
 
+  def warn_or_err(warn_msg, err_msg, exit_code):
+    """Takes action on warnings.  Behavior is different based on whether
+    --werror or not.
+    
+    If werror, prints err_msg on error channel and terminates with
+    exit_code.  Otherwise, prints warn_msg on warning channel and returns.
+    """
+    if werror:
+      logger.error(err_msg)
+      exit(exit_code)
+    else:
+      logger.warning(warn_msg)
+  
+  exit_code_superc_config_creation_failed = 27
+  exit_code_superc_sourcelinepc_failed = 28
+    
   sys.stderr.write("klocalizer, %s %s\n" % (kmax.about.__title__, kmax.about.__version__))
 
   def parse_lines_list(compilation_unit_arg : str):
