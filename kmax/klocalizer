@@ -289,6 +289,9 @@ def klocalizerCLI():
     
   sys.stderr.write("klocalizer, %s %s\n" % (kmax.about.__title__, kmax.about.__version__))
 
+  def get_exclusion_constraints(unit_constraints, line_constraints):
+    return z3.Or(z3.Not(unit_constraints), z3.Not(line_constraints))
+
   def parse_lines_list(compilation_unit_arg : str):
     """Given compilation unit arg, parse and return the compilation unit
     and the list of lines, or the directory path. Returned list of lines
