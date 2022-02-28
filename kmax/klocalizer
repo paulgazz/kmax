@@ -1287,7 +1287,8 @@ def klocalizerCLI():
   #
   # Sampling algo 2: single config, no mutual exclusion
   #
-  assert not allow_mutual_exclusion
+  assert not mutex_enabled
+  assert not include_mutex_list
   for arch in archs:
     logger.info("Trying \"%s\"\n" % (arch.name))
 
@@ -1325,74 +1326,46 @@ def klocalizerCLI():
       superc_formulas_dir = SuperC.get_superc_formulas_dir(formulas, arch.name)
 
       #
-      # Handle SuperC config generation for those missing
+      # Compute line presence conditions
       #
-      srcfiles_with_line_requirements = ["%s.c" % u[:-len('.o')] for u, lines in compilation_units_lines if lines]
-      srcfiles_missing_superc_config = [s for s in srcfiles_with_line_requirements if not os.path.isfile(SuperC.get_superc_configs_for_file(s, superc_formulas_dir))]
-      if not srcfiles_missing_superc_config:
-        logger.debug("SuperC configs could be found for all source files.\n")
-      else: #< Create missing SuperC config files
-        logger.debug("Creating SuperC configs for %s source files: %s\n" % (len(srcfiles_missing_superc_config), " ".join(srcfiles_missing_superc_config)))
-        
-        # Sample a building configuration file.
-        config_path = os.path.join(linux_ksrc, ".config")
-        logger.debug("Sampling a Linux configuration file at \"%s\" that builds the units.\n" % config_path)
-        linux_config_content = Klocalizer.get_config_from_model(payload, arch, set_tristate_m=modules_arg, allow_non_visibles=allow_non_visibles)
-        with open(config_path, 'w') as f:
-          f.write(linux_config_content)
-        
-        # Check if the units compile (also build them to prep for SuperC config creation)
-        logger.debug("Attempting to build the units.\n")
-        units_missing_superc_config = ["%s.o" % s[:-len('.c')] for s in srcfiles_missing_superc_config]
-        ret = check_if_compiles(units_missing_superc_config, config_path,
-         arch.name, linux_ksrc, build_targets, cross_compiler, compile_jobs,
-         build_timeout, True, logger)
-        # TODO: save diagnostic info from check_if_compiles()
-        failed_to_build_units = [unit for built, unit in zip(ret[0], units_missing_superc_config) if not built]
-        if failed_to_build_units:
-          logger.error("SuperC configuration generation failed since %s units could not be built: %s\n" % (len(failed_to_build_units), " ".join(failed_to_build_units)))
-          exit(20)
-        assert not failed_to_build_units
-        logger.debug("Units were successfully built.\n")
+      srcfiles_with_line_requirements = ["%s.c" % u[:-len('.o')] for u, lines in all_comp_units_list if lines]
+      logger.info("Computing the line presence conditions under %s for the following units: %s\n" % (arch.name, " ".join(srcfiles_with_line_requirements)))
+      for unit in srcfiles_with_line_requirements:
+        get_presence_conditions(unit2srcfile(unit), arch)
 
-        # Create missing SuperC config files
-        logger.debug("Creating the missing SuperC config files.\n")
-        pathlib.Path(superc_formulas_dir).mkdir(parents=True, exist_ok=True)
-        for s in srcfiles_missing_superc_config:
-          logger.debug("Working on \"%s\"\n" % s)
-          ret = superc.create_superc_config_on_built_unit(s, superc_formulas_dir, linux_ksrc, arch.name, cross_compiler)
-          # TODO: save diagnostic info from superc.create_superc_config_on_built_unit()
-          is_success = ret[0]
-          if not is_success:
-            logger.error("SuperC configuration generation failed for \"%s\"\n" % s)
-            exit(21)
-          assert is_success
-      
-      #
-      # Get presence conditions, thus, line constraints
-      #
-      # Map source files to presence conditions (ConditionalBlock instances)
-      logger.debug("Computing presence conditions for %s source files.\n" % len(srcfiles_with_line_requirements))
-      srcfile_to_cb = {}
-      for s in srcfiles_with_line_requirements:
-        logger.debug("Working on \"%s\"\n" % s)
-        cb = superc.get_pc(s, arch, linux_ksrc, superc_formulas_dir, superc_timeout, logger)
-        if not cb:
-          logger.error("Computing presence conditions failed for \"%s\"\n" % s)
-          exit(22)
-        assert cb
-        srcfile_to_cb[s] = cb
-      
-      # Get the additional constraints
       logger.debug("Getting additional line constraints.\n")
+
+      # For "includes"
+      logger.debug("Adding the constraints for \"include\" lines.\n")
       additional_line_constraints = []
-      for unit, lines in compilation_units_lines:
+      for unit, lines in include_list:
         if lines:
-          srcfile = "%s.c" % unit[:-len('.o')]
-          cb = srcfile_to_cb[srcfile]
-          pc_blocks = cb.get_deepest_blocks(lines)
-          for pcb in pc_blocks:
-            additional_line_constraints.extend(pcb.pc.assertions())
+          srcfile = unit2srcfile(unit)
+          if line_constraints[srcfile][arch.name] is not None: # None is SuperC failure.
+            pc_blocks = line_constraints[srcfile][arch.name].get_deepest_blocks(lines)
+            for pcb in pc_blocks:
+              additional_line_constraints.extend(pcb.pc.assertions())
+      
+      # For "excludes"
+      logger.debug("Adding the constraints for \"exclude\" lines.\n")
+      for unit, lines in exclude_list:
+        if not lines:
+          pass # Already handled
+        else: # has lines
+          # Get the line constraints
+          unit_line_c = []
+          srcfile = unit2srcfile(unit)
+          if line_constraints[srcfile][arch.name] is not None: # None is SuperC failure.
+            pc_blocks = line_constraints[srcfile][arch.name].get_deepest_blocks(lines)
+            for pcb in pc_blocks:
+              unit_line_c.extend(pcb.pc.assertions())
+          # Get kmax constraints
+          unit_kmax_c = kmax_constraints[unit]
+          unit_kmax_c = unit_kmax_c if unit_kmax_c else []
+          # Get exclusion constraints
+          c = get_exclusion_constraints(unit_kmax_c, unit_line_c)
+          additional_line_constraints.extend(c)
+
 
       # Add line constraints to the overall constraints
       logger.debug("Adding %s line constraints to the overall constraints.\n" % len(additional_line_constraints))
@@ -1466,10 +1439,10 @@ def klocalizerCLI():
 
         # Print the command for building
         if sample_count == 1:
-          if not compilation_units_lines:
+          if not include_list:
             build_cmd = "%s ARCH=%s clean; %s ARCH=%s" % (cross_compiler, arch.name, cross_compiler, arch.name)
           else:
-            build_cmd = "%s ARCH=%s clean %s" % (cross_compiler, arch.name, " ".join([u for u, _ in compilation_units_lines]))
+            build_cmd = "%s ARCH=%s clean %s" % (cross_compiler, arch.name, " ".join([u for u, _ in include_list]))
           logger.info("Build with \"%s ARCH=%s olddefconfig; %s\".\n" % (cross_compiler, arch.name, build_cmd))
 
       # Stop the SAT search with the first SAT arch if not reporting for all archs
