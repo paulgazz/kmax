@@ -482,27 +482,26 @@ def klocalizerCLI():
     logger.error("Cannot use --all-architectures when providing explicit --arch arguments.\n")
     exit(12)
 
-  if allow_mutual_exclusion:
+  mutual_exclusion_str = "--include-mutex"
+  mutex_enabled = len(include_mutex_arg) > 0
+  if mutex_enabled:
     if allarchs:
-      logger.error("--mutual-exclusion is incompatible with --all.\n")
+      logger.error("%s is incompatible with --all.\n" % mutual_exclusion_str)
       exit(12)
     if reportallarchs:
-      logger.error("--mutual-exclusion is incompatible with --report-all.\n")
+      logger.error("%s is incompatible with --report-all.\n" % mutual_exclusion_str)
       exit(12)
     if output_file != ".config":
-      logger.error("--mutual-exclusion is incompatible with --output.\n")
+      logger.error("%s is incompatible with --output.\n" % mutual_exclusion_str)
       exit(12)
     if show_unsat_core:
-      logger.error("--mutual-exclusion is incompatible with --show-unsat-core.\n")
+      logger.error("%s is incompatible with --show-unsat-core.\n" % mutual_exclusion_str)
       exit(12)
     if view_kbuild:
-      logger.error("--mutual-exclusion is incompatible with --view-kbuild.\n")
+      logger.error("%s is incompatible with --view-kbuild.\n" % mutual_exclusion_str)
       exit(12)
     if save_dimacs:
-      logger.error("--mutual-exclusion is incompatible with --save-dimacs.\n")
-      exit(12)
-    if dont_compile:
-      logger.error("--mutual-exclusion is incompatible with --exclude-compilation-units.\n")
+      logger.error("%s is incompatible with --save-dimacs.\n" % mutual_exclusion_str)
       exit(12)
     
   if save_dimacs:
@@ -587,8 +586,8 @@ def klocalizerCLI():
     logger.error("--superc-timeout must be greater than 0.\n")
     exit(12)
 
-  if allow_mutual_exclusion and view_kbuild:
-    logger.error("--allow-mutual-exclusion cannot be used with --view-kbuild.\n")
+  if mutex_enabled and view_kbuild:
+    logger.error("%s cannot be used with --view-kbuild.\n" % mutual_exclusion_str)
     exit(12)
 
   #
