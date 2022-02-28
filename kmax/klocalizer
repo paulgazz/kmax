@@ -793,8 +793,8 @@ def klocalizerCLI():
       pass
   
   if view_kbuild:
-    if len(compilation_units_lines) > 0:
-      for unit, _ in compilation_units_lines:
+    if len(all_comp_units_list) > 0:
+      for unit, _ in all_comp_units_list:
         logger.info("The Kbuild constraints for %s:\n" % (unit))
         get_kmax_constraints(klocalizer.get_kmax_formulas(), unit, view=True)
       exit(0)
@@ -805,7 +805,7 @@ def klocalizerCLI():
   #
   # Update the kmax cache (now that we are done with generating new kmax formulas)
   #
-  if len(compilation_units_lines) > 0 and is_kmax_cache:
+  if len(all_comp_units_list) > 0 and is_kmax_cache:
     logger.debug("Updating Kmax formulas cache file: %s\n" % kmax_cache_file)
     klocalizer.update_kmax_cache_file(kmax_cache_file)
     logger.debug("Kmax formulas cache file was updated.\n")
@@ -841,8 +841,8 @@ def klocalizerCLI():
   #
   # Filter archs based on unit name
   #
-  if not kclause_file and not allow_mutual_exclusion:
-    for unit, _ in compilation_units_lines:
+  if not kclause_file :
+    for unit, _ in include_list:
       if unit.startswith("arch/"):
         unit_archs = Arch.get_archs_from_subdir(unit)
         archs = [ arch for arch in archs if arch.name in unit_archs ]
@@ -916,42 +916,37 @@ def klocalizerCLI():
     approximate_constraints[arch_name]=Klocalizer.get_config_file_constraints(apprx_config_file_path)
 
   # Check if there are line constraints, which will require a SuperC instance.
-  has_line_constraints = len([u for u, l in compilation_units_lines if l]) > 0
   if has_line_constraints:
-    superc = SuperC(superc_linux_script_path=superc_linux_script, logger = logger)
+    try:
+      superc = SuperC(superc_linux_script_path=superc_linux_script, logger = logger)
+    except SuperC.SuperC_ChecksFailed as e:
+      # TODO: if superc checks fail and werror is disabled, let SuperC
+      # methods still return something for calls to superc
+
+      # Pass this to the main func to terminate until allowing klocalizer
+      # to work without SuperC
+      raise e 
+
+      # prefix  = "SuperC checks failed, reason: %s." % e.reason
+      # warn_msg = "%s.  Search will exclude line presence constraints.\n" % prefix
+      # err_msg = "%s.  Either fix the issue or omit the line requirements.\n" % prefix
+      # warn_or_err(warn_msg, err_msg, exit_code_superc_checks_failed)
 
   # Everything is set. Continue with SAT checking and config sample generation.
   seen_unsat = False # to prevent logging some info multiple times for unsat cases
   sat_archs = []
 
-  def unit2srcfile(unit):
-    assert unit.endswith('.o')
-    return unit[:-len('.o')] + '.c'
-
   #
-  # Sampling algo 1: allow mutual exclusion
+  # Algo 1: mutex enabled
   #
-  if allow_mutual_exclusion:
-    # None value means could not be found/computed.
-    kmax_constraints = {} # { unit: [kmax_constraints] }
-    line_constraints = {} # { unit: { arch_name: ConditionalBlock } }
-    for unit, line_list in compilation_units_lines:
-      # This will be later filled per architecture.
-      line_constraints[unit] = {}
-      # Get the kmax constraints.
-      try:
-        kmax_constraints[unit] = klocalizer.get_compilation_unit_constraints(unit)
-      except Exception as e:
-        logger.warning("The unit \"%s\" won't be localized due to kmax exception \"%s\".\n" % (unit, e.message))
-        kmax_constraints[unit] = None
-
+  if mutex_enabled:
     # Initialize the requirements, which will be consumed and updated.
-    requirements = compilation_units_lines[:]
+    requirements = include_mutex_list[:]
     # Use 0 as the special line number, which depicts the global scope 
     # (only the file itself). Always target to compile the file in case
-    # specific lines fail.
+    # specific lines fail and no werror.
     requirements = [(u, [0] + l) for u, l in requirements]
-    # Don't include units without kmax constraints.
+    # Don't include units without kmax constraints (failures).
     requirements = [(u, l) for u, l in requirements if kmax_constraints[u] is not None]
 
     # TODO: if an arch only compiles the file, and another arch compiles
@@ -987,48 +982,23 @@ def klocalizerCLI():
       # it is failure (None depicts failure).
       units_to_compute_pc = []
       for unit, lines in requirements:
-        if lines != [0] and arch.name not in line_constraints[unit]:
-          units_to_compute_pc.append(unit)
-      if units_to_compute_pc:
-        logger.info("Computing the line presence conditions under %s for the following units: %s\n" % (arch.name, " ".join(units_to_compute_pc)))
-      for unit, lines in requirements:
-        if len(lines) == 1 and lines[0] == 0:
+        if lines == [0]:
           # 0 is the special line number, depicting the global scope.
           # If 0 is the only required line, it means no specific lines are
           # required to be compiled but only the file. Therefore, presence
           # conditions are not required.
           pass
-        elif arch.name in line_constraints[unit]:
-          # No need to compute if already loaded in a previous iteration.
-          pass
-        else: #< Not loaded earlier, load it.
-          #
-          # Make sure SuperC configs exist.
-          #
-          logger.info("Computing line presence conditions for \"%s\"\n" % unit)
-          superc_formulas_dir = SuperC.get_superc_formulas_dir(formulas, arch.name)
-          config_exists = superc.ensure_superc_config(unit2srcfile(unit), superc_formulas_dir, linux_ksrc, arch, cross_compiler, build_targets, compile_jobs, build_timeout, logger)
-          if not config_exists:
-            logger.debug("Failed to find/create SuperC config file for \"%s\"\n" % unit)
-            logger.warning("Failed to compute line presence conditions for \"%s\": SuperC config generation error\n" % unit)
-            line_constraints[unit][arch.name] = None # Special value, depicts failure.
-          else:
-            logger.debug("SuperC config file was found for \"%s\"\n" % unit)
-            logger.debug("Computing the presence conditions for \"%s\"\n" % unit)
-          
-            #
-            # Get presence conditions, thus, line constraints
-            #
-            # Map source files to presence conditions (ConditionalBlock instances)
-            logger.debug("Computing presence conditions for \"%s\".\n" % unit)
-            cb = superc.get_pc(unit2srcfile(unit), arch, linux_ksrc, superc_formulas_dir, superc_timeout, logger)
-            if not cb:
-              logger.debug("Computing presence conditions failed for \"%s\"\n" % srcfile)
-              logger.warning("Failed to compute line presence conditions for \"%s\": SuperC sourcelinePC error\n" % unit)
-              line_constraints[unit][arch.name] = None # Special value, depicts failure.
-            else:
-              logger.debug("Computed presence conditions for \"%s\"\n" % srcfile)
-              line_constraints[unit][arch.name] = cb
+        elif arch.name not in line_constraints[unit2srcfile(unit)]:
+          units_to_compute_pc.append(unit)
+      # Also for the units with always include/excludes
+      units_to_compute_pc.extend([unit for unit, lines in (include_list + exclude_list) if lines])
+      units_to_compute_pc = [u for u in units_to_compute_pc if not u.endswith('/')] # exclude directories
+      units_to_compute_pc = sorted(list(set(units_to_compute_pc)))
+      if units_to_compute_pc:
+        logger.info("Computing the line presence conditions under %s for the following units: %s\n" % (arch.name, " ".join(units_to_compute_pc)))
+      for unit in units_to_compute_pc:
+        get_presence_conditions(unit2srcfile(unit), arch)
+
       # Presence conditions are computed.
 
       # Accumulate constraints for the config file. This will hold file and
@@ -1037,6 +1007,43 @@ def klocalizerCLI():
       # from these constraints.
       accumulated_constraints = []
 
+      #
+      # Add the constraints for "include" lines
+      #
+      # This needs to be done here since line constraints may be specific
+      # to architecture in constrast to Makefile constraints.
+      logger.debug("Adding the constraints for \"include\" lines.\n")
+      for unit, lines in include_list:
+        if lines and lines != [0]:
+          srcfile = unit2srcfile(unit)
+          if line_constraints[srcfile][arch.name] is not None: # None is SuperC failure.
+            pc_blocks = line_constraints[srcfile][arch.name].get_deepest_blocks(lines)
+            for pcb in pc_blocks:
+              accumulated_constraints.extend(pcb.pc.assertions())
+      #
+      # Add the constraints for "exclude" lines
+      #
+      # This needs to be done here since line constraints may be specific
+      # to architecture in constrast to Makefile constraints.
+      logger.debug("Adding the constraints for \"exclude\" lines.\n")
+      for unit, lines in exclude_list:
+        if not lines:
+          pass # Already handled
+        else: # has lines
+          # Get the line constraints
+          unit_line_c = []
+          srcfile = unit2srcfile(unit)
+          if line_constraints[srcfile][arch.name] is not None: # None is SuperC failure.
+            pc_blocks = line_constraints[srcfile][arch.name].get_deepest_blocks(lines)
+            for pcb in pc_blocks:
+              unit_line_c.extend(pcb.pc.assertions())
+          # Get kmax constraints
+          unit_kmax_c = kmax_constraints[unit]
+          unit_kmax_c = unit_kmax_c if unit_kmax_c else []
+          # Get exclusion constraints
+          c = get_exclusion_constraints(unit_kmax_c, unit_line_c)
+          accumulated_constraints.extend(c)
+    
       # Keep track of whether there is an improvement found to the coverage
       # with the accumulated constraints. If not, loop will continue with
       # the next architecture. Otherwise, the loop will give this arch
@@ -1070,10 +1077,11 @@ def klocalizerCLI():
         line_to_cb = {} # key: int line number, value: ConditionalBlock instance.
         # arch.name key exists if line_constraints were needed
         # the value for line_constraints[unit][arch.name] is None if SuperC failed
-        if arch.name in line_constraints[unit] and line_constraints[unit][arch.name] is not None:
-          root_cb = line_constraints[unit][arch.name]
-          for line in lines:
-            line_to_cb[line] = root_cb.get_deepest_block(line)
+        if not unit.endswith('/'):
+          if arch.name in line_constraints[unit2srcfile(unit)] and line_constraints[unit2srcfile(unit)][arch.name] is not None:
+            root_cb = line_constraints[unit2srcfile(unit)][arch.name]
+            for line in lines:
+              line_to_cb[line] = root_cb.get_deepest_block(line)
         
         # Keep track of covered blocks. Different lines may point to the
         # same block. This allows avoiding additional SAT checks for
@@ -1088,7 +1096,7 @@ def klocalizerCLI():
           #
           # Get the line constraints
           #
-          if line != 0 and line_constraints[unit][arch.name] is None:
+          if line != 0 and line_constraints[unit2srcfile(unit)][arch.name] is None:
             # A specific line is required, for which the pc does not exist.
             # Therefore, nothing to do for this.
             remaining_lines.append(line)
@@ -1098,8 +1106,8 @@ def klocalizerCLI():
             deepest_block = None
           else: #< A line under ifdef is required, for which we have the pc.
             assert line > 0
-            assert line_constraints[unit][arch.name] is not None
-            cb = line_constraints[unit][arch.name]
+            assert line_constraints[unit2srcfile(unit)][arch.name] is not None
+            cb = line_constraints[unit2srcfile(unit)][arch.name]
             deepest_block = cb.get_deepest_block(line)
             line_const = deepest_block.pc.assertions()
           
@@ -1212,8 +1220,8 @@ def klocalizerCLI():
 
     logger.debug("Localization search is done. Numbers of models created: %s\n" % len(z3_models))
 
-    # "original_compilation_units_lines" has all the lines the user provided.
-    # "compilation_units_lines" is the processed list, where the lines
+    # "original_include_mutex_list" has all the lines the user provided.
+    # "include_mutex_list" is the processed list, where the lines
     # belonging to the global scope (not under any ifdefs) are filtered out.
     # This filtering helped us to avoid calls to SuperC if all lines were
     # global. We have the coverage results for the filtered lines. Now,
@@ -1222,7 +1230,7 @@ def klocalizerCLI():
     # "unit" is special value for all configs that compile the unit, even
     # without any line targets.
     coverage_report = OrderedDict()
-    for unit, lines in original_compilation_units_lines:
+    for unit, lines in original_include_mutex_list:
       coverage_report[unit] = OrderedDict()
       # List of configs that compiles the unit, even without specific line targets.
       # If there is some config file that does not compile any specific lines
@@ -1257,7 +1265,7 @@ def klocalizerCLI():
         f.write(config_content)
       
       # Create the coverage report for the config
-      for unit, lines in original_compilation_units_lines:
+      for unit, lines in original_include_mutex_list:
         if unit in coverage:
           coverage_report[unit]["unit"].append(config_basename)
         for l in lines:
@@ -1272,7 +1280,7 @@ def klocalizerCLI():
       json.dump(coverage_report, f, indent=2)
     
     #
-    # end of allow_mutual_exclusion
+    # end of mutual exclusion algorithm
     #
     exit(0)
 
