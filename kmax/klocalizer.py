@@ -719,7 +719,7 @@ class Klocalizer:
       self.__kmax_constraints.extend(kmax_constraints_for_unit)
     elif inclusion_prop == Klocalizer.__CompUnitInclusionProp.EXCLUDE:
       self.__exclude_compilation_units.append(unit)
-      self.__kmax_constraints.extend([z3.Not(c) for c in kmax_constraints_for_unit])
+      self.__kmax_constraints.extend(z3.Not(z3.And(kmax_constraints_for_unit)))
     else:
       assert False
 
