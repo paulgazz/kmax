@@ -752,6 +752,46 @@ def klocalizerCLI():
         line_constraints[srcfile][arch.name] = cb
         return cb
 
+  #
+  # Compute kmax constraints
+  #
+  kmax_constraints = {} # { unit: [kmax_constraints] }, None value means failed
+  def compute_kmax_constraints(unit):
+    try:
+      kmax_constraints[unit] = klocalizer.get_compilation_unit_constraints(unit)
+    except Klocalizer.NoFormulaFoundForCompilationUnit as e:
+      error_msg = "No formula from kmax was found for the compilation unit: %s\n" % (e.unit)
+      warn_or_err(error_msg, error_msg, 3)
+      kmax_constraints[unit] = None
+    except Klocalizer.MultipleCompilationUnitsMatch as e:
+      error_msg = "There are multiple compilation units that match %s.  Please provide one of the Kbuild paths from below:\n%s\n" % (e.unit, "\n".join(e.matching_units))
+      warn_or_err(error_msg, error_msg, 4)
+      kmax_constraints[unit] = None
+    return kmax_constraints[unit]
+
+  # Precompute all
+  for unit, lines in all_comp_units_list:
+    compute_kmax_constraints(unit)
+
+  #
+  # Include or exclude units
+  #
+  for unit, lines in include_list:
+    if kmax_constraints[unit] is not None: #< None is failure.
+      klocalizer.add_constraints(kmax_constraints[unit])
+
+  for unit, lines in exclude_list:
+    if not lines:
+      if kmax_constraints[unit] is not None: #< None is failure.
+        constraints = kmax_constraints[unit]
+        if not constraints:
+          logger.error("The unit/directory to exclude (\"%s\") is unconstrained: no satisfying configuration is possible.\n" % unit)
+          exit(11)
+        klocalizer.add_constraints([z3.Not(z3.And(constraints))])
+    else: # has lines
+      # This is handled when the line conditions are computed.
+      pass
+  
   if view_kbuild:
     if len(compilation_units_lines) > 0:
       for unit, _ in compilation_units_lines:
