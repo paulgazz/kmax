@@ -275,7 +275,12 @@ def klocalizerCLI():
 
   def parse_lines_list(compilation_unit_arg : str):
     """Given compilation unit arg, parse and return the compilation unit
-    and the list of lines. Returned list of lines are unique and sorted.
+    and the list of lines, or the directory path. Returned list of lines
+    are unique and sorted.
+
+    Returned compilation unit names are guaranteed to end with '.o' extension.
+
+    Returned directory paths are guaranteed to end with '/' suffix.
 
     Example input/outputs:
     == Input ==                    == Output ==
@@ -285,13 +290,17 @@ def klocalizerCLI():
     "kernel/fork.o:[5,7,10]"       ("kernel/fork.o", [5,7,10])
     "kernel/fork.o:[10-10]"        ("kernel/fork.o", [10])
     "kernel/fork.o:[5,7-10]"       ("kernel/fork.o", [5,7,8,9,10])
+    "kernel"                       ("kernel/", [])
+    "kernel/"                      ("kernel/", [])
+    "kernel/power/"                ("kernel/power/", [])
+    "kernel/power:[]"              Prints error and terminates
     "kernel/fork.o:[10-7]"         Prints error and terminates
     "kernel/fork.o:[10,"           Prints error and terminates
     """
     assert compilation_unit_arg
     def arg_error(arg: str, problem: str):
       argparser.print_help()
-      logger.error("Malformed compilation units argument (\"%s\"): %s\n" % (arg, problem))
+      logger.error("Malformed compilation unit or directory argument (\"%s\"): %s\n" % (arg, problem))
       exit(12)
 
     #
@@ -308,6 +317,18 @@ def klocalizerCLI():
         arg_error(compilation_unit_arg, "incorrect lines list format.")
     elif len(split_arg) > 2:
       arg_error(compilation_unit_arg, "\":\" must be used at most once to between the unit path and the lines list.")
+
+    #
+    # Check and parse if directory
+    #
+    ext = os.path.splitext(unit_str)[-1]
+    if not ext: # directory
+      if lines_str:
+        arg_error(compilation_unit_arg, "lines cannot be specified for directory paths.")
+      if unit_str.endswith('/'):
+        return unit_str, []
+      else: # Add the '/' suffix
+        return unit_str + '/', []
 
     #
     # Check and parse the unit path into unit_str
@@ -363,26 +384,25 @@ def klocalizerCLI():
 
     return unit_str, lines_list
 
-  # Parse the list of lines for the compilation units. Set None if no
-  # specific line is requested in the arguments.
-  compilation_units_lines = [parse_lines_list(c_unit_arg) for c_unit_arg in compilation_units_arg]
-  # Have one entry per unique unit, all sorted.
-  uniq_compilation_units_lines = {}
-  for unit, lines in compilation_units_lines:
-    if lines is None:
-      lines = []
-    existing_lines = uniq_compilation_units_lines.get(unit, [])
-    new_lines = sorted(list(set(existing_lines + lines)))
-    uniq_compilation_units_lines[unit] = new_lines
-  compilation_units_lines = sorted(list(uniq_compilation_units_lines.items()))
-  original_compilation_units_lines = compilation_units_lines[:]
-  logger.debug("Localization targets: %s\n" % compilation_units_lines)
+  def parse_units_args(arg):
+    parsed_list = [parse_lines_list(c_unit_arg) for c_unit_arg in arg]
+    # Have one entry per unique unit, all sorted.
+    uniq_compilation_units_lines = {}
+    for unit, lines in parsed_list:
+      if lines is None:
+        lines = []
+      existing_lines = uniq_compilation_units_lines.get(unit, [])
+      new_lines = sorted(list(set(existing_lines + lines)))
+      uniq_compilation_units_lines[unit] = new_lines
+    return sorted(list(uniq_compilation_units_lines.items()))
 
-  has_line_constraints = len([u for u, l in compilation_units_lines if l]) > 0
-  if dont_compile and has_line_constraints:
-    argparser.print_help()
-    logger.error("--exclude-compilation-units cannot be used when line lists are given for compilation units.\n")
-    exit(12)
+  # Parse units/lines.
+  include_list = parse_units_args(include_arg)
+  include_mutex_list = parse_units_args(include_mutex_arg)
+  exclude_list = parse_units_args(exclude_arg)
+  # Make a copy of the original list since the lists will get simplified
+  # along the way, and we will need the original list for coverage reports.
+  original_include_mutex_list = include_mutex_list
 
   klocalizer.set_logger(logger)
 
