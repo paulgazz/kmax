@@ -63,6 +63,31 @@ def klocalizerCLI():
                          type=str,
                          default=None,
                          help="""The kextract module version to use for generating kextract formulas.  the latest possible version suitable for the kernel version is detected and used.  Cannot be used with --kextract.  Current default: %s.  All available versions: %s""" % (kmax.kextractcommon.latest_module, ", ".join(kmax.kextractcommon.module_versions.keys())))
+  argparser.add_argument('--include',
+                        action="append",
+                        default=[],
+                        help="Paths to one or more compilation units (.o file) optionally with a list of lines, to include for compilation in ALL output .config files."
+                             "  Path is relative to the top of the source tree."
+                             "  The list of lines may include both single lines and line ranges (inclusive of start-end lines).  List must not contain whitespaces."
+                             "  Examples: kernel/fork.o (only the unit), kernel/fork.o:[5,70-72] (lines 5,70,71,72. No whitespaces in the list).")
+  argparser.add_argument('--include-mutex',
+                        action="append",
+                        default=[],
+                        help="Paths to one or more compilation units (.o file) optionally with a list of lines, to include for compilation in the output .config files."
+                             "  Path is relative to the top of the source tree."
+                             "  The option allows coverage to be split in multiple output .config files, accounting for mutual exclusion."
+                             "  For example, two (mutually exclusive) lines from the same unit might get covered in two output .config files, one compiling each line."
+                             "  Despite not guaranteed, the greedy search algorithm aims to cover all constraints with as few .config files as possible."
+                             "  klocalizer does not fail if some of --include-mutex constraints are not met."
+                             "  A coverage report will be generated (see --coverage-report)."
+                             "  Input format is the same with --include.")
+  argparser.add_argument('--exclude',
+                        action="append",
+                        default=[],
+                        help="Paths to one or more compilation units (.o file) optionally with the list of lines, or directories, to exclude from ALL output .config files."
+                             "  Path is relative to the top of the source tree."
+                             "  If a compilation unit is given with a list of lines, either the unit is excluded, or the unit is included and the list of specific lines are excluded."
+                             "  Input format for compilation units and lines is the same with --include.")
   argparser.add_argument('--constraints-file',
                          type=str,
                          help="""A text file containing ad-hoc constraints.  One configuration option name per line.  Prefix with ! to force it off; no prefix means force on.""")
@@ -104,17 +129,10 @@ def klocalizerCLI():
                          '--show-unsat-core',
                          action="store_true",
                          help="""Show the unsatisfiable core if the formula is unsatisfiable.""")
-  argparser.add_argument('--mutual-exclusion', #< TODO: better naming?
-                         action="store_true",
-                         help="""Allow mutual exclusion.  This accounts for mutual exclusion, allowing multiple configurations """
-                              """to be generated from multiple architectures, potentially more than one per architecture.  """
-                              """Despite not guaranteed, the overall goal is to cover all constraints with as little .config """
-                              """files as possible.  A coverage report will be generated (see --coverage-report).  """
-                              """klocalizer will omit constraints failed to compute (e.g., kmax or SuperC failure).""")
   argparser.add_argument('--coverage-report',
                          type=str,
                          default="coverage_report.json",
-                         help="""Path to output coverage report file.  Only used if --allow-mutual-exclusion is enabled.  Defaults to \"coverage_report.json\"""")
+                         help="""Path to output coverage report file.  Only created if --include-mutex is used.  Only reports the units in --include-mutex.  Defaults to \"coverage_report.json\"""")
   argparser.add_argument('-D',
                          '--define',
                          action="append",
@@ -146,9 +164,6 @@ def klocalizerCLI():
   argparser.add_argument("--save-dimacs",
                          type=str,
                          help="""Save the resulting formula in DIMACS format to the given file.  This option will not create a .config file.""")
-  argparser.add_argument("--exclude-compilation-units",
-                         action="store_true",
-                         help="""Invert the z3 formula of the compilation unit (.o file) when generating .config""")
   argparser.add_argument("--force-unmet-free",
                          action="store_true",
                          help="""Force unmet direct dependency free configuration.  This requires kclause direct depedency formulas file to exist in KMAX_FORMULAS/kclause/ARCH/kclause.normal_dep, which is a pickled dictionary from configuration options to direct dependency formulas.""")
@@ -193,6 +208,9 @@ def klocalizerCLI():
                          default=300,
                          help="""Timeout in seconds for SuperC source line presence conditions analysis.  """
                               """Defaults to 300 (5 minutes).""")
+  argparser.add_argument('--werror',
+                         action="store_true",
+                         help="""Make all warnings into errors.  Warnings include kmax and SuperC failures.""")
   argparser.add_argument('-q',
                          '--quiet',
                          action="store_true",
@@ -205,11 +223,6 @@ def klocalizerCLI():
                          action="version",
                          version="%s %s" % (kmax.about.__title__, kmax.about.__version__),
                          help="""Print the version number.""")
-  argparser.add_argument("compilation_units",
-                         nargs='*',
-                         help="The path of the compilation unit (.o file) optionally with the list of lines, to generate a .config for.  Path is relative to the top of the source tree.\n"
-                              "  The list of lines may include both single lines and line ranges (inclusive of start-end lines).  List must not contain whitespaces.\n"
-                              "  Examples: kernel/fork.o (only the unit), kernel/fork.o:[5,70-72] (lines 5,70,71,72. No whitespaces in the list).")
   args = argparser.parse_args()
   
   linux_ksrc = args.linux_ksrc
@@ -222,13 +235,15 @@ def klocalizerCLI():
   archs_arg = args.arch
   allarchs = args.all
   reportallarchs = args.report_all
+  include_arg = args.include
+  include_mutex_arg = args.include_mutex
+  exclude_arg = args.exclude
   constraints_file = args.constraints_file
   constraints_file_smt2 = args.constraints_file_smt2
   output_file = args.output
   show_unsat_core = args.show_unsat_core
   approximate = args.approximate
   modules_arg = args.modules
-  allow_mutual_exclusion = args.mutual_exclusion
   coverage_report_file = args.coverage_report
   define = args.define
   undefine = args.undefine
@@ -240,8 +255,6 @@ def klocalizerCLI():
   sample_prefix = args.sample_prefix
   random_seed = args.random_seed
   save_dimacs = args.save_dimacs
-  compilation_units_arg = args.compilation_units
-  dont_compile = args.exclude_compilation_units
   force_unmet_free = args.force_unmet_free
   allow_unmet_for = args.allow_unmet_for
   superc_linux_script = args.superc_linux_script
@@ -250,6 +263,7 @@ def klocalizerCLI():
   compile_jobs = args.compile_jobs
   build_timeout = args.build_timeout
   superc_timeout = args.superc_timeout
+  werror = args.werror
   quiet = args.quiet
   verbose = args.verbose
 
