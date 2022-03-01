@@ -1,7 +1,6 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-
 - [Bugs Found by Kmax Tools](#bugs-found-by-kmax-tools)
   - [Linux kernel](#linux-kernel)
     - [drivers: pinctrl: qcom: fix unmet dependency for PINCTRL_MSM when !GPIOLIB](#drivers-pinctrl-qcom-fix-unmet-dependency-for-pinctrl_msm-when-gpiolib)

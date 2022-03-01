@@ -1,8 +1,8 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-
 - [Advanced Usage](#advanced-usage)
+  - [Installing from Source](#installing-from-source)
   - [Annotated Example](#annotated-example)
   - [Use Cases](#use-cases)
     - [A compilation unit not built by allyesconfig](#a-compilation-unit-not-built-by-allyesconfig)
@@ -32,6 +32,26 @@
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 # Advanced Usage
+
+## Installing from Source
+
+Install the prerequisites
+
+    sudo apt install -y python3-setuptools python3-dev
+    
+Clone and install kmax
+
+    git clone https://github.com/paulgazz/kmax.git
+    cd kmax
+    python3 -m venv ~/kmax_env/
+    source ~/kmax_env/bin/activate
+    python3 setup.py install
+
+Alternatively, installing for development to obviate the need to
+rereun setup.py when making changes to the code
+
+    python3 setup.py develop
+
 
 ## Annotated Example
 
