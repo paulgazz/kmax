@@ -1322,6 +1322,38 @@ def klocalizerCLI():
       # Log the build command
       build_cmd = "KCONFIG_CONFIG=%s %s ARCH=%s olddefconfig clean %s" % (config_file_path, cross_compiler, arch.name, " ".join([u for u, _ in include_list] + built_mutex_units))
       logger.info("Build with \"%s\"\n" % build_cmd)
+
+    # Compute coverage report summary
+    num_target_files = 0
+    num_target_lines = 0
+    num_files_compiled = 0
+    num_lines_compiled = 0
+    for unit in coverage_report:
+      num_target_files += 1
+      if coverage_report[unit]["unit"]:
+        num_files_compiled += 1
+      # Count lines
+      for k in coverage_report[unit]:
+        if k == "unit":
+          continue
+        num_target_lines += 1
+        if coverage_report[unit][k]:
+          num_lines_compiled += 1
+    assert num_target_files >= num_files_compiled
+    assert num_target_lines >= num_lines_compiled
+    
+    # Log coverage summary
+    if num_target_files == num_files_compiled and num_target_lines == num_lines_compiled:
+      logger.info("Coverage summary: all mutex constraints were satisfied.\n")
+      logger.warning("Despite the high accuracy, klocalizer cannot guarantee claimed coverage due to under approximations.\n")
+    elif num_files_compiled == 0: # No coverage
+      assert num_lines_compiled == 0
+      logger.info("Coverage summary: none of the mutex constraints were satisfied.\n")
+    else: # Some coverage
+      assert num_target_files > 0
+      logger.info("Coverage summary: some of the mutex constraints were satisfied: %s/%s files and %s/%s lines were covered.\n" % (num_files_compiled, num_target_files, num_lines_compiled, num_target_lines))
+      logger.warning("Despite the high accuracy, klocalizer cannot guarantee claimed coverage due to under approximations.\n")
+
     # Write the coverage report
     logger.info("Writing the coverage report to %s\n" % coverage_report_file)
     with open(coverage_report_file, 'w') as f:
