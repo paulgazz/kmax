@@ -294,6 +294,9 @@ def klocalizerCLI():
   def unit2srcfile(unit):
     assert unit.endswith('.o')
     return unit[:-len('.o')] + '.c'
+  def srcfile2unit(srcfile):
+    assert srcfile.endswith('.c')
+    return srcfile[:-len('.c')] + '.o'
   
   def get_exclusion_constraints(unit_constraints, line_constraints):
     # Exclusion means none of the lines are built
@@ -468,7 +471,7 @@ def klocalizerCLI():
   exclude_list = parse_units_args(exclude_arg)
   # Make a copy of the original list since the lists will get simplified
   # along the way, and we will need the original list for coverage reports.
-  original_include_mutex_list = include_mutex_list
+  original_include_mutex_list = include_mutex_list[:]
 
   # Determines whether kmax will be run.
   has_file_constraints = len(include_list + include_mutex_list + exclude_list) > 0
@@ -1294,7 +1297,6 @@ def klocalizerCLI():
 
     assert z3_models # (arch, z3_model, current_coverage) tuples
     logger.info("Sampling and writing %s configuration files from models.\n" % num_models)
-    configs = []
     for i, (arch, model, coverage) in enumerate(z3_models):
       config_id = "%s-%s" % (i, arch.name)
       config_basename = "%s.config" % config_id 
@@ -1403,7 +1405,6 @@ def klocalizerCLI():
       # does not compile some of these units. An optimization to SuperC
       # configuration creation pipeline might solve this.
       logger.info("The constraints are satisfiable for the units.  Trying with the line constraints.\n")
-      superc_formulas_dir = SuperC.get_superc_formulas_dir(formulas, arch.name)
 
       #
       # Compute line presence conditions
