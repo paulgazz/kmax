@@ -1308,8 +1308,10 @@ def klocalizerCLI():
         f.write(config_content)
       
       # Create the coverage report for the config
+      built_mutex_units = [] #< Use for logging the build command
       for unit, lines in original_include_mutex_list:
         if unit in coverage:
+          built_mutex_units.append(unit)
           coverage_report[unit]["unit"].append(config_basename)
         for l in lines:
           if l in global_scope_lines.get(unit, []) and unit in coverage:
@@ -1317,6 +1319,9 @@ def klocalizerCLI():
           elif unit in coverage and l in coverage[unit]:
             coverage_report[unit][l].append(config_basename)
 
+      # Log the build command
+      build_cmd = "KCONFIG_CONFIG=%s %s ARCH=%s olddefconfig clean %s" % (config_file_path, cross_compiler, arch.name, " ".join([u for u, _ in include_list] + built_mutex_units))
+      logger.info("Build with \"%s\"\n" % build_cmd)
     # Write the coverage report
     logger.info("Writing the coverage report to %s\n" % coverage_report_file)
     with open(coverage_report_file, 'w') as f:
