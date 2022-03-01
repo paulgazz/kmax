@@ -1115,6 +1115,14 @@ def klocalizerCLI():
       for unit, lines in requirements:
         remaining_lines = [] #< Remaining lines to cover for the unit.
 
+        # Check if arch is good for the unit
+        if unit.startswith("arch/") and not kclause_file:
+          unit_archs = Arch.get_archs_from_subdir(unit)
+          if arch.name not in unit_archs:
+            logger.debug("Skipping the unit (\"%s\") for this architecture (\"%s\") as the unit is architecture specific.\n" % (unit, arch.name))
+            new_requirements.append((unit, lines))
+            continue
+
         # Add the Makefile constraints.
         assert kmax_constraints[unit] is not None
         constraints_with_file = accumulated_constraints + kmax_constraints[unit]
