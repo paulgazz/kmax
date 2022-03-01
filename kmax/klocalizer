@@ -296,6 +296,12 @@ def klocalizerCLI():
     return unit[:-len('.o')] + '.c'
   
   def get_exclusion_constraints(unit_constraints, line_constraints):
+    # Exclusion means none of the lines are built
+    lines_not_built = z3.And([z3.Not(line_constraints)])
+    # Either the unit is not built, or the unit is built without any of the lines
+    unit_not_built = z3.Not(z3.And(unit_constraints))
+    return z3.Or([unit_not_built, lines_not_built])
+
   # The extension for the json file that contain { file: [lines] }, which
   # can be used as input to klocalizer.
   kloc_targets_ext = ".kloc_targets"
