@@ -19,16 +19,17 @@ class SuperC:
     """Arguments:
     * superc_linux_script_path -- SuperC linux script, which is found at
     superc/scripts/superc_linux.sh, where superc/ is the top SuperC source
-    directory. Defaults to value of the environment variable SUPERC_LINUX_SCRIPT.
+    directory. Searches "superc_linux.sh" in PATH by default.
     """
     self.logger = logger
 
     # Set SuperC linux script path
     if superc_linux_script_path:
       self.superc_linux_script_path = superc_linux_script_path
-    else: #< Defaults to value of the env variable SUPERC_LINUX_SCRIPT
-      self.superc_linux_script_path = os.getenv('SUPERC_LINUX_SCRIPT')
-    
+    else: #< Searches in PATH by default.
+      self.superc_linux_script_path = "superc_linux.sh"
+    assert self.superc_linux_script_path
+
     self.__check_superc() #< Check SuperC
   
   def __check_superc(self):
@@ -75,17 +76,14 @@ class SuperC:
     #
     # Check SuperC linux script
     #
-    if not self.superc_linux_script_path:
+    if not which(self.superc_linux_script_path):
       raise SuperC.SuperC_ChecksFailed(
-        """Path to SuperC linux script is unset: either set """
-        """while instantiating SuperC instance or set the env variable SUPERC_LINUX_SCRIPT""")
+        """SuperC linux script executable cannot be found: either set """
+        """path to the script or have script in PATH.""")
 
-    if not os.path.isfile(self.superc_linux_script_path):
-      raise SuperC.SuperC_ChecksFailed("SuperC linux script cannot be found at \"%s\": file does not exist" % self.superc_linux_script_path)
-    
-    cmd = ["bash", self.superc_linux_script_path]
+    cmd = [self.superc_linux_script_path]
     if not is_success(cmd):
-      raise SuperC.SuperC_ChecksFailed("Running SuperC linux script (\"%s\") failed" % cmd)
+      raise SuperC.SuperC_ChecksFailed("Executing SuperC linux script (\"%s\") failed" % cmd)
     
     # None failed: checks passed
     self.logger.debug("SuperC checks passed.\n")

@@ -179,8 +179,7 @@ def klocalizerCLI():
                          type=str,
                          help="""Path to the SuperC linux script, which is usually at """
                               """superc/scripts/superc_linux.sh where superc/ is the """
-                              """top SuperC source directory. Defaults to the value of """
-                              """the environment variable \"SUPERC_LINUX_SCRIPT\".""")
+                              """top SuperC source directory. Searches \"superc_linux.sh\" in PATH by default.""")
   argparser.add_argument("--cross-compiler", #< Needed for SuperC config creation
                          type=str,
                          default="make.cross",
