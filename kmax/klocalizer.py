@@ -993,7 +993,6 @@ class Klocalizer:
     assert unit_paths
     for u in unit_paths:
         assert u.endswith(".o")
-    assert not os.path.exists(output_config_path)
     assert os.path.isdir(linux_ksrc)
     assert archs
     assert logger
