@@ -4,10 +4,10 @@ import kmax.kextractcommon
 from kmax.klocalizer import *
 import logging
 from kmax.superc import SuperC, SyntaxAnalysis
-from kmax.vcommon import check_if_compiles, get_build_system_id
-import pathlib
+from kmax.vcommon import get_build_system_id
 import json
 from collections import OrderedDict
+from kmax import patch
 
 z3_true = z3.BoolVal(True)
 
@@ -69,7 +69,10 @@ def klocalizerCLI():
                         help="Paths to one or more compilation units (.o file) optionally with a list of lines, to include for compilation in ALL output .config files."
                              "  Path is relative to the top of the source tree."
                              "  The list of lines may include both single lines and line ranges (inclusive of start-end lines).  List must not contain whitespaces."
-                             "  Examples: kernel/fork.o (only the unit), kernel/fork.o:[5,70-72] (lines 5,70,71,72. No whitespaces in the list).")
+                             "  Examples: kernel/fork.o (only the unit), kernel/fork.o:[5,70-72] (lines 5,70,71,72. No whitespaces in the list)."
+                             "  When a path to a patch file in unified diff format (\".patch\" or \".diff\" extension) is given, "
+                             "klocalizer computes and uses a set of (unit, line) pairs for patch coverage.  The target lines are also written to \"INPUT.kloc_targets\", "
+                             "where INPUT is the path to the diff file.  It is assumed that the patch is applied to the Linux source.")
   argparser.add_argument('--include-mutex',
                         action="append",
                         default=[],
@@ -294,7 +297,33 @@ def klocalizerCLI():
     return unit[:-len('.o')] + '.c'
   
   def get_exclusion_constraints(unit_constraints, line_constraints):
-    return [z3.Or(z3.Not(z3.And(unit_constraints)), z3.Not(z3.And(line_constraints)))]
+  # The extension for the json file that contain { file: [lines] }, which
+  # can be used as input to klocalizer.
+  kloc_targets_ext = ".kloc_targets"
+
+  def get_patch_target_lines(patch_file_path: str):
+    # Compute the klocalizer targets from patch file
+    logger.debug("Computing the target lines from the patch file \"%s\"\n" % patch_file_path)
+    with open(patch_file_path, 'r') as f:
+      patch_txt = f.read()
+    r = patch.get_target_c_lines(patch_txt)
+
+    # Turn .c extensions into .o extensions and do additional checks on lines
+    for fpath in list(r.keys()):
+      newpath = srcfile2unit(fpath)
+      r[newpath] = sorted(list(set(r[fpath])))
+      for l in r[newpath]:
+        assert l > 0
+      del r[fpath]
+
+    # Write the klocalizer targets (for diagnostic purposes)
+    kloc_targets_filepath = patch_file_path + kloc_targets_ext
+    logger.debug("Writing the patch target c lines to \"%s\"\n" % kloc_targets_filepath)
+    with open(kloc_targets_filepath, 'w') as f:
+      json.dump(r, f)
+
+    # Return the kloc targets 
+    return r
 
   def parse_lines_list(compilation_unit_arg : str):
     """Given compilation unit arg, parse and return the compilation unit
@@ -407,8 +436,17 @@ def klocalizerCLI():
 
     return unit_str, lines_list
 
-  def parse_units_args(arg):
-    parsed_list = [parse_lines_list(c_unit_arg) for c_unit_arg in arg]
+  def parse_units_args(args):
+    def is_patch_input(a):
+      return a.endswith(".patch") or a.endswith(".diff")    
+    parsed_list = []
+    for a in args:
+      if is_patch_input(a):
+        logger.info("Diff file was given as input (\"%s\"): assuming it was applied to the Linux source.\n" % a)
+        parsed_list.extend(list(get_patch_target_lines(a).items()))
+      else:
+        parsed_list.append(parse_lines_list(a))
+
     # Have one entry per unique unit, all sorted.
     uniq_compilation_units_lines = {}
     for unit, lines in parsed_list:
