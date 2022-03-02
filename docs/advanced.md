@@ -58,12 +58,9 @@ rereun setup.py when making changes to the code
     python3 setup.py develop
 
 
-## `klocalizer` and `krepair`
+## Installing SuperC
 
-### Installing SuperC
-
-SuperC depends on several libraries, some of which need to be downloaded manually.
-
+    # SuperC depends on several libraries, some of which need to be downloaded manually.
     mkdir ~/superc/
     cd ~/superc/
     sudo apt-get install -y libz3-java libjson-java sat4j unzip
@@ -74,18 +71,15 @@ SuperC depends on several libraries, some of which need to be downloaded manuall
     wget https://github.com/appleseedlab/superc/releases/download/v2.0-rc4/xtc.jar
     wget https://github.com/appleseedlab/superc/releases/download/v2.0-rc4/superc.jar
     
-Update your java `CLASSPATH` to contain all the requisite jarfiles for SuperC.
-
+    # Update your java `CLASSPATH` to contain all the requisite jarfiles for SuperC.
     export CLASSPATH=$CLASSPATH:/usr/share/java/org.sat4j.core.jar:/usr/share/java/json-lib.jar:$PWD/z3-4.8.12-x64-glibc-2.31/bin/com.microsoft.z3.jar:$PWD/JavaBDD/javabdd-1.0b2.jar:$PWD/xtc.jar:$PWD/superc.jar
 
-Download and install the SuperC Linux runner script.
-
+    # Download and install the SuperC Linux runner script.
     wget https://raw.githubusercontent.com/appleseedlab/superc/master/scripts/superc_linux.sh
     chmod 755 superc_linux.sh
     export PATH=$PATH:~/superc/
 
-Download and install `make.cross` for cross-compiling Linux source code.
-
+    # Download and install `make.cross` for cross-compiling Linux source code.
     sudo apt install -y flex bison bc libssl-dev libelf-dev
     sudo apt install -y xz-utils lftp
     mkdir -p ~/bin/
@@ -93,6 +87,7 @@ Download and install `make.cross` for cross-compiling Linux source code.
     chmod 755 ~/bin/make.cross
     export PATH=$PATH:~/bin/
 
+## `klocalizer` and `krepair`
 
 ### Example usage
 
