@@ -8,6 +8,7 @@ from kmax.vcommon import get_build_system_id
 import json
 from collections import OrderedDict
 from kmax import patch
+import pathlib
 
 z3_true = z3.BoolVal(True)
 
@@ -117,8 +118,8 @@ def klocalizerCLI():
   argparser.add_argument('-o',
                          '--output',
                          type=str,
-                         default=".config",
-                         help="""Name of the output .config file.  Defaults to .config.""")
+                         help="""Name of the output .config file if mutex is disabled (no --include-mutex is specified).  Defaults to .config.  """
+                              """Path to the directory for output configs if mutex is enabled (--include-mutex is used).  Defaults to \"./\"""")
   argparser.add_argument('-m',
                          '--approximate',
                          '--match',
@@ -247,7 +248,9 @@ def klocalizerCLI():
   exclude_arg = args.exclude
   constraints_file = args.constraints_file
   constraints_file_smt2 = args.constraints_file_smt2
-  output_file = args.output
+  # Both mutex and non-mutex use --output for output file or dir
+  output_file = args.output if args.output else ".config"
+  output_dir = args.output if args.output else "./"
   show_unsat_core = args.show_unsat_core
   approximate = args.approximate
   modules_arg = args.modules
@@ -568,9 +571,6 @@ def klocalizerCLI():
       exit(12)
     if reportallarchs:
       logger.error("%s is incompatible with --report-all.\n" % mutual_exclusion_str)
-      exit(12)
-    if output_file != ".config":
-      logger.error("%s is incompatible with --output.\n" % mutual_exclusion_str)
       exit(12)
     if show_unsat_core:
       logger.error("%s is incompatible with --show-unsat-core.\n" % mutual_exclusion_str)
@@ -1313,7 +1313,8 @@ def klocalizerCLI():
     for i, (arch, model, coverage) in enumerate(z3_models):
       config_id = "%s-%s" % (i, arch.name)
       config_basename = "%s.config" % config_id 
-      config_file_path = config_basename # TODO: make this an argument
+      config_file_path = os.path.join(output_dir, config_basename)
+      pathlib.Path(os.path.dirname(config_file_path)).mkdir(parents=True, exist_ok=True)
       
       # Sample the config from the model
       logger.info("[%s/%s] Sampling and writing the configuration file to %s\n" % (i+1, num_models, config_file_path))
