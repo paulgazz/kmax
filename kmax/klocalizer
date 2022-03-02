@@ -1355,7 +1355,6 @@ def klocalizerCLI():
     # Log coverage summary
     if num_target_files == num_files_compiled and num_target_lines == num_lines_compiled:
       logger.info("Coverage summary: all mutex constraints were satisfied.\n")
-      logger.warning("Despite the high accuracy, klocalizer cannot guarantee claimed coverage due to under approximations.\n")
     elif num_files_compiled == 0: # No coverage
       assert num_lines_compiled == 0
       logger.info("Coverage summary: none of the mutex constraints were satisfied.\n")
@@ -1366,6 +1365,7 @@ def klocalizerCLI():
 
     # Write the coverage report
     logger.info("Writing the coverage report to %s\n" % coverage_report_file)
+    logger.info("Note coverage report is attempted coverage.  Actual coverage may be reduced due to limitations of klocalizer's constraint collection.\n")
     with open(coverage_report_file, 'w') as f:
       json.dump(coverage_report, f, indent=2)
     
