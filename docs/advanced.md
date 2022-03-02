@@ -3,6 +3,17 @@
 
 - [Advanced Usage](#advanced-usage)
   - [Installing from Source](#installing-from-source)
+  - [`klocalizer` and `krepair`](#klocalizer-and-krepair)
+    - [Installing SuperC](#installing-superc)
+    - [Example usage](#example-usage)
+    - [`ERROR: SuperC checks failed`](#error-superc-checks-failed)
+    - [Getting configuration files to build commit ranges](#getting-configuration-files-to-build-commit-ranges)
+  - [`kismet`](#kismet)
+    - [Analysis stages](#analysis-stages)
+      - [Syntactical optimization](#syntactical-optimization)
+      - [Optimized SAT check](#optimized-sat-check)
+      - [Precise SAT check](#precise-sat-check)
+    - [Summary format](#summary-format)
   - [Annotated Example](#annotated-example)
   - [Use Cases](#use-cases)
     - [A compilation unit not built by allyesconfig](#a-compilation-unit-not-built-by-allyesconfig)
@@ -22,12 +33,6 @@
     - [Example](#example)
     - [Other uses](#other-uses)
       - [Get a list of all visible configs](#get-a-list-of-all-visible-configs)
-  - [Kismet](#kismet)
-    - [Analysis stages](#analysis-stages)
-      - [Syntactical optimization](#syntactical-optimization)
-      - [Optimized SAT check](#optimized-sat-check)
-      - [Precise SAT check](#precise-sat-check)
-    - [Summary format](#summary-format)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -51,6 +56,136 @@ Alternatively, installing for development to obviate the need to
 rereun setup.py when making changes to the code
 
     python3 setup.py develop
+
+
+## `klocalizer` and `krepair`
+
+### Installing SuperC
+
+SuperC depends on several libraries, some of which need to be downloaded manually.
+
+    mkdir ~/superc/
+    cd ~/superc/
+    sudo apt-get install -y libz3-java libjson-java sat4j unzip
+    wget -O - --content-disposition -c https://sourceforge.net/projects/javabdd/files/javabdd-linux/1.0b2%20Linux%20binary/javabdd_1.0b2.tar.gz/download?use_mirror=master > javabdd.tar.bz
+    tar -xvf javabdd.tar.bz JavaBDD/javabdd-1.0b2.jar
+    wget https://github.com/Z3Prover/z3/releases/download/z3-4.8.12/z3-4.8.12-x64-glibc-2.31.zip
+    unzip z3-4.8.12-x64-glibc-2.31.zip z3-4.8.12-x64-glibc-2.31/bin/com.microsoft.z3.jar
+    wget https://github.com/appleseedlab/superc/releases/download/v2.0-rc4/xtc.jar
+    wget https://github.com/appleseedlab/superc/releases/download/v2.0-rc4/superc.jar
+    
+Update your java `CLASSPATH` to contain all the requisite jarfiles for SuperC.
+
+    export CLASSPATH=$CLASSPATH:/usr/share/java/org.sat4j.core.jar:/usr/share/java/json-lib.jar:$PWD/z3-4.8.12-x64-glibc-2.31/bin/com.microsoft.z3.jar:$PWD/JavaBDD/javabdd-1.0b2.jar:$PWD/xtc.jar:$PWD/superc.jar
+
+Download and install the SuperC Linux runner script.
+
+    wget https://raw.githubusercontent.com/appleseedlab/superc/master/scripts/superc_linux.sh
+    chmod 755 superc_linux.sh
+    export PATH=$PATH:~/superc/
+
+Download and install `make.cross` for cross-compiling Linux source code.
+
+    sudo apt install -y flex bison bc libssl-dev libelf-dev
+    sudo apt install -y xz-utils lftp
+    mkdir -p ~/bin/
+    wget -O ~/bin/make.cross https://raw.githubusercontent.com/fengguang/lkp-tests/master/sbin/make.cross
+    chmod 755 ~/bin/make.cross
+    export PATH=$PATH:~/bin/
+
+
+### Example usage
+
+`klocalizer --repair` can repair existing configuration files to include given source code directories, files, and lines from Linux kernel source code.  For instance, let's use it to repair the minimal `allnoconfig` so that it includes specific lines of `kernel/bpf/cgroup.c`.  `allnoconfig` will not even include the source file,
+
+    cd ~/linux-5.16/
+    make allnoconfig
+    make kernel/bpf/cgroup.o
+    
+results in an error: `make[2]: *** No rule to make target 'kernel/bpf/cgroup.o'.  Stop.`  We can ensure that the relevant configuration options are modified in `allnoconfig` in order to include this file and any specified lines:
+
+    make allnoconfig  # configuration file stored in .config
+    klocalizer --repair .config --include-mutex kernel/bpf/cgroup.o:[1354,1357-1359]
+
+This produces a new version of the `.config` file in `0-x86_64.config`.  To build with it, install it with `olddefconfig` and attempt to build the source file:
+
+    cp 0-x86_64.config .config
+    make olddefconfig
+    make kernel/bpf/cgroup.o
+    
+This time, the source file is successfully built: `CC      kernel/bpf/cgroup.o`.  Any number of `--include-mutex` constraints may be added.  If there is mutual-exclusion among source files, `klocalizer` will as many configuration files needed to cover all constraints.  Always on or off constraints can be added with `--include` or `--exclude`.  See the documentation on [`klocalizer` and `krepair`](docs/advanced.md#klocalizer-and-krepair) for more usage information.
+
+
+### `ERROR: SuperC checks failed`
+
+Try running `java superc.SuperC -sourcelinePC /dev/null /dev/null`.  If the class is not found, double-check the SuperC installation and your CLASSPATH.
+
+If you get a `java.lang.NoSuchMethodError: 'com.microsoft.z3.BoolExpr com.microsoft.z3.Context.mkAnd(com.microsoft.z3.BoolExpr[])'` error, then there is a mismatch between the z3 java library.  Please be sure that your `superc.jar` and `z3-4.8.12-x64-glibc-2.31/bin/com.microsoft.z3.jar` jarfiles downloaded according to the SuperC installation directions.  Or try [building SuperC](https://github.com/appleseedlab/superc) from scratch.
+
+
+
+### Getting configuration files to build commit ranges
+
+To repair `allnoconfig` to include changed lines from a range of commits, first get the diff file, checkout the version having the patch(es) applied, then call repair:
+
+    cd ~/
+    git clone git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+    cd linux
+    git diff commit1..commit2 > patch.diff
+    git checkout commit2
+    klocalizer --include{-mutex,} patchfile.diff
+    
+    
+    `klocalizer` will also take patches ending in `.patch`, e.g., from `git format-patch` in addition to `.diff` as long as the file is in the unified diff format.  Be sure to run `klocalizer` from the already-patched source tree, since this contains the constraints of the resulting code from the patch.
+
+
+<!-- - headers -->
+<!-- - difference between cosntraints for a directory vs. constraints for the files in the directory -->
+<!-- - doing patches -->
+<!-- - doing commit ranges, git diff HEAD~, git diff commit1..commitN -->
+<!-- - arch stuff, goes through one arch at a time -->
+
+
+<!-- - --include-mutex -->
+<!--   - generates N configs, each will have at least one of the include-mutex configs -->
+<!--   - if not possible to get any config with at least one, then unsat, no configs made -->
+  
+<!-- - --include -->
+<!--   - generates N configs, all will have all --include constraints  (all constraints are included) -->
+  
+<!-- - --exclude -->
+<!--   - generates N configs, none will have any of the --exclude constraints (all cosntraints are excluded) -->
+
+
+## `kismet`
+
+### Analysis stages
+
+`kismet`'s routine consists of a three step analyses pipeline, each at different precisions.
+
+After the identification of the select constructs, each construct is seen as a potential unmet direct dependency case, thus, marked to raise unmet dependency alarm. The subsequent stages works on the alarms of the previous stage, trying to rule out alarms as unmet dependency safe, thus, increasing the precision. While any stage is at least as precise as the stages before it, the earlier stages helps to increase the performance.
+
+#### Syntactical optimization
+Given the fact that a select construct is unmet dependency safe if the selectee has no direct dependency, this stage marks such constructs as unmet safe. This is very fast, and does not involve any SAT solvers but only syntactical analysis of the constructs.
+
+#### Optimized SAT check
+For a select construct to be unmet dependency free, the kclause constraints for the architecture together with the additional unmet dependency free constraints (which we call optimized constraints) must be satisfiable. We name this whole set of constraints as precise constraints. Given the observation that the optimized constraints are much smaller than the precise constraints, SAT solvers can decide the optimized constraints much faster. In this stage, `kismet` discharges the optimized constraints to a SAT solver to rule out more constructs as unmet dependency safe.
+
+#### Precise SAT check
+In this stage, `kismet` discharges the whole set of constraints (optimized and kclause architecture constraints, i.e., precise constraints) to a SAT solver to analyse remaining alarms and rule them as safe. This is the last stage of the static analysis pipeline, where any construct could not be ruled to be unmet safe raise unmet alarms.
+
+### Summary format
+Upon completing the analysis, `kismet` writes a detailed summary in CSV format to the standard output.
+
+This includes the following columns:  
+- `selectee`: The selectee of the select construct.  
+- `selector`: The selector of the select construct.  
+- `visib_id`: The visibility id of the select construct. One (selectee, selector) pair might appear multiple times on different visibility constraints (e.g., within `CONFIG_SELECTOR`, there might be two entries, such as: `select SELECTEE if VISIB1`, `select SELECTEE if VISIB2`). Such constructs are distinguished with this visibility id.  
+- `constraint_type`: There are possibly multiple ways to satisfy the optimized constraints. If exploring the whole unmet space is enabled (disabled by default, use `'--explore-whole-unmet-space` to enable), all expressions to satisfy the optimized constraints are explored individually, called as SAT options. On the other hand, some random solution to precise constraints is called generic option, which suffices to verify alarms. In the summary, generic option has `constraint_type` 0 while exhaustively explored SAT options have `constraint_type` ids starting from 1.  
+- `analysis_result`: one of: `UNMET_ALARM`, `UNMET_SAFE_SYNTACTIC_PASS`, `UNMET_SAFE_OPTIMIZED_PASS`, `UNMET_SAFE_PRECISE_PASS`.  
+- `verified`: If the analysis result is an alarm, includes whether the generated test case for the related construct verifies the alarm.  
+- `forced_target_udd_only`: If the analysis result is an alarm, includes whether forcing the target unmet dependency only was successful.  
+- `testcase`: The path to the generated test case, i.e., sample Kconfig config file.  
 
 
 ## Annotated Example
@@ -482,33 +617,3 @@ Then, from the root of a Linux source tree, run the following:
     
     # the visibles should be a subset of the configs
     diff configs.txt visible.txt  | grep ">"
-
-## Kismet
-
-`kismet`'s routine consists of a three step analyses pipeline, each at different precisions.
-
-After the identification of the select constructs, each construct is seen as a potential unmet direct dependency case, thus, marked to raise unmet dependency alarm. The subsequent stages works on the alarms of the previous stage, trying to rule out alarms as unmet dependency safe, thus, increasing the precision. While any stage is at least as precise as the stages before it, the earlier stages helps to increase the performance.
-
-### Analysis stages
-
-#### Syntactical optimization
-Given the fact that a select construct is unmet dependency safe if the selectee has no direct dependency, this stage marks such constructs as unmet safe. This is very fast, and does not involve any SAT solvers but only syntactical analysis of the constructs.
-
-#### Optimized SAT check
-For a select construct to be unmet dependency free, the kclause constraints for the architecture together with the additional unmet dependency free constraints (which we call optimized constraints) must be satisfiable. We name this whole set of constraints as precise constraints. Given the observation that the optimized constraints are much smaller than the precise constraints, SAT solvers can decide the optimized constraints much faster. In this stage, `kismet` discharges the optimized constraints to a SAT solver to rule out more constructs as unmet dependency safe.
-
-#### Precise SAT check
-In this stage, `kismet` discharges the whole set of constraints (optimized and kclause architecture constraints, i.e., precise constraints) to a SAT solver to analyse remaining alarms and rule them as safe. This is the last stage of the static analysis pipeline, where any construct could not be ruled to be unmet safe raise unmet alarms.
-
-### Summary format
-Upon completing the analysis, `kismet` writes a detailed summary in CSV format to the standard output.
-
-This includes the following columns:  
-- `selectee`: The selectee of the select construct.  
-- `selector`: The selector of the select construct.  
-- `visib_id`: The visibility id of the select construct. One (selectee, selector) pair might appear multiple times on different visibility constraints (e.g., within `CONFIG_SELECTOR`, there might be two entries, such as: `select SELECTEE if VISIB1`, `select SELECTEE if VISIB2`). Such constructs are distinguished with this visibility id.  
-- `constraint_type`: There are possibly multiple ways to satisfy the optimized constraints. If exploring the whole unmet space is enabled (disabled by default, use `'--explore-whole-unmet-space` to enable), all expressions to satisfy the optimized constraints are explored individually, called as SAT options. On the other hand, some random solution to precise constraints is called generic option, which suffices to verify alarms. In the summary, generic option has `constraint_type` 0 while exhaustively explored SAT options have `constraint_type` ids starting from 1.  
-- `analysis_result`: one of: `UNMET_ALARM`, `UNMET_SAFE_SYNTACTIC_PASS`, `UNMET_SAFE_OPTIMIZED_PASS`, `UNMET_SAFE_PRECISE_PASS`.  
-- `verified`: If the analysis result is an alarm, includes whether the generated test case for the related construct verifies the alarm.  
-- `forced_target_udd_only`: If the analysis result is an alarm, includes whether forcing the target unmet dependency only was successful.  
-- `testcase`: The path to the generated test case, i.e., sample Kconfig config file.  
