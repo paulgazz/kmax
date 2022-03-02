@@ -69,6 +69,7 @@ You should see something like `CC      drivers/usb/storage/alauda.o` to confirm 
 
 IMPORTANT: Follow the instructions to first [install SuperC](docs/advanced.md#installing-superc), which `klocalizer` depends on for per-line `#ifdef` constraints.
 
+
     cd ~/
     git clone git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
     git checkout 6fc88c354f3af

@@ -51,6 +51,10 @@ def klocalizerCLI():
                          type=str,
                          default=None,
                          help="""The file containing the a pickled tuple with a mapping from configuration option to its formulas and a list of additional constraints.  This overrides --arch.""")
+  argparser.add_argument('--disable-downloading-formulas',
+                         action="store_true",
+                         help="""Disable downloading kclause formulas and instead generate formulas when formulas cannot be found on disk.  """
+                              """By default, when formulas cannot be found on disk, klocalizer downloads the formulas from the remote cache if available.""")
   argparser.add_argument('--use-composite-kclause-formulas-files',
                          action="store_true",
                          help="""Use composite kclause formulas files where all constraints are in a single list instead of a mapping from configuration option to its formulas. """
@@ -231,6 +235,7 @@ def klocalizerCLI():
   formulas = args.formulas
   kmax_file = args.kmax_formulas
   kclause_file = args.kclause_formulas
+  disable_downloading_formulas = args.disable_downloading_formulas
   use_composite_kclause_formulas_files = args.use_composite_kclause_formulas_files
   kextract_file = args.kextract
   kextract_version = args.kextract_version
@@ -489,7 +494,7 @@ def klocalizerCLI():
     logger.debug("Build system id: %s\n" % build_system_id)
     formulas = os.path.join(linux_ksrc, ".kmax/", build_system_id)
     # try downloading a cached version if user hasn't already started generating formulas
-    if not os.path.exists(formulas):
+    if not disable_downloading_formulas and not os.path.exists(formulas):
       # get cache index; if we can't, then fatal error
       link = Klocalizer.get_kclause_cache_url(build_system_id)
       # lookup version in the cache; if we can't, then tell user it's not available

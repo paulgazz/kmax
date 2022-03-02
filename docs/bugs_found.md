@@ -73,13 +73,107 @@
 
 ## Linux kernel
 
+### crypto: fix unmet dependency on CRYPTO for CRYPTO_LIB_CHACHA_GENERIC
+
+2022-1-16 [Patch](https://lkml.org/lkml/2022/1/17/74)
+
+### pinctrl: bcm63xx: fix unmet dependency on REGMAP for GPIO_REGMAP
+
+2022-1-16 [Patch](https://lkml.org/lkml/2022/1/17/55)
+
+### input: fix Kconfig dependency on IIO_BUFFER
+
+2022-1-16 [Patch](https://lkml.org/lkml/2022/1/17/55)
+
+### ASoC: au1x: fix unmet dependency on SND_SOC_I2C_AND_SPI for SND_SOC_WM8731
+
+2022-1-16 [Patch](https://lkml.org/lkml/2022/1/17/41)
+
+### ASoC: stm32: fix unmet dependency on GPIOLIB for SND_SOC_DMIC
+
+2022-1-16 [Patch](https://lkml.org/lkml/2022/1/17/5)
+
+### ASoC: mediatek: fix unmet dependency on GPIOLIB for SND_SOC_DMIC
+
+2022-1-16 [Patch](https://lkml.org/lkml/2022/1/17/1)
+
+2022-1-19 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=579b2c8f72d974f27d85bbd53846f34675ee3b01)
+
+### ASoC: intel: fix unmet dependencies on GPIOLIB for SND_SOC_DMIC and SND_SOC_MAX98357A
+
+2022-1-16 [Patch](https://lkml.org/lkml/2022/1/16/304)
+
+### ASoC: amd: fix unmet dependency on GPIOLIB for SND_SOC_DMIC
+
+2022-1-16 [Patch](https://lkml.org/lkml/2022/1/16/297)
+
+### efi: fix unmet dependency on MFD_SYSCON for PINCTRL_ASPEED
+
+2021-12-16 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=54dd5a419f26e994d64754d5f009e36825dec0db)
+
+2021-12-15 [Patch](https://lkml.org/lkml/2021/12/15/1300)
+
+### efi: fix unmet dependency on CRYPTO for CRYPTO_LIB_SHA256
+
+2021-12-15 [Patch](https://lkml.org/lkml/2021/12/15/1300)
+
+### ARM: fix unmet dependency on BITREVERSE for HAVE_ARCH_BITREVERSE
+
+2021-10-29 [PATCH](https://lkml.org/lkml/2021/10/29/832)
+
+### pinctrl: qcom: fix unmet dependencies on GPIOLIB for GPIOLIB_IRQCHIP
+
+2021-11-16 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=60430d4c4eddcdf8eac2bdbec9704f84a436eedf): Committed into linux-next.
+
+2021-10-28 [PATCH](https://lkml.org/lkml/2021/10/28/1086)
+
+### ASoC: fix unmet dependencies on GPIOLIB for SND_SOC_RT1015P
+
+2021-10-29 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/broonie/sound.git/commit/?id=2554877e4b08d258c2def27e3a0fd49d60a9a2c0): Committed into sound/for-next.
+
+2021-10-28 [PATCH](https://lkml.org/lkml/2021/10/28/1066)
+
+### drm/sun4i: fix unmet dependency on RESET_CONTROLLER for PHY_SUN6I_MIPI_DPHY
+
+2021-11-16 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=bb162bb2b4394108c8f055d1b115735331205e28): Committed into linux-next.
+
+2021-10-28 [Patch](https://lkml.org/lkml/2021/10/28/1003)
+
+### scsi: ufs: fix unmet dependency for RESET_TI_SYSCON when !RESET_CONTROLLER
+
+2021-10-28 [Patch](https://lkml.org/lkml/2021/10/28/905)
+
+### ASoC: fix unmet dependencies on GPIOLIB for SND_SOC_DMIC
+
+2021-10-28 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=5c7dee4407dcd3522a133acdd90d64bf41d00986): Committed into linux-next.
+
+2021-10-28 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/broonie/sound.git/commit/?id=5c7dee4407dcd3522a133acdd90d64bf41d00986): Committed into sound/for-next.
+
+2021-10-27 [Patch](https://lkml.org/lkml/2021/10/27/894)
+
+### drm: bridge: fix unmet dependency for DRM_PANEL_BRIDGE when !DRM_KMS_HELPER
+
+2021-10-25 [Patch](https://lkml.org/lkml/2021/10/25/1972)
+
+### ASoC: fix unmet dependency when SND_SOC_INTEL_KBL_DA7219_MAX98357A_MACH && !GPIOLIB
+
+2021-10-25 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=3e701151feefc58c5194e1d9eb5af98568574f2d): Committed into linux-next.
+
+2021-10-24 [Patch](https://lkml.org/lkml/2021/10/10/311)
+
+### ASoC: fix unmet dependency for SND_SOC_MAX98357A when !GPIOLIB
+
+2021-10-22 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=6cace797f1a8d54ecb42a3d327cbc0b231114ed0): Committed into linux-next.
+
+2021-10-10 [Patch](https://lkml.org/lkml/2021/10/27/894)
+
 ### drivers: pinctrl: qcom: fix unmet dependency for PINCTRL_MSM when !GPIOLIB
 
 2021-04-14 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=376f9e34c10faa3e94b881088b160cfda540ae5f): Committed into linux-next.
 
 2021-02-22 [Patch](https://lkml.org/lkml/2021/2/25/105)
 
-### drivers: gpu: drm: bridge: fix unmet dependency for DRM_KMS_HELPER when !DRM_KMS_HELPER
+### drivers: gpu: drm: bridge: fix unmet dependency for DRM_PANEL_BRIDGE when !DRM_KMS_HELPER
 
 2021-04-01 [Commit](https://cgit.freedesktop.org/drm/drm-misc/commit/?id=62066d3164467167fc27b2383f67d097e39bf176): Committed into drm-misc-next.
 
