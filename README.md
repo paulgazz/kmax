@@ -17,22 +17,13 @@
 
 ## Getting started
 
-### python setup
-
-The kmax tool suite currently depends on python 3.8 or later and is recommended to be installied with pip in a virtual environment:
-
-    sudo apt install -y python3 python3-pip python3-venv
-
-
 ### Installing the kmax tool suite
 
-Create and enter a python virtual environment (optional, but recommended).
+Install the requiste python tools (the kmax tool suite currently depends on python 3.8 or later), setup a python virtual environment (recommended), and finally install the tools from pip.
 
+    sudo apt install -y python3 python3-pip python3-venv
     python3 -m venv ~/kmax_env/
     source ~/kmax_env/bin/activate
-
-Install the kmax tool suite via `pip`.
-
     pip3 install kmax
 
 Instructions to install from source can be found in the [advanced documentation](docs/advanced.md).
@@ -40,12 +31,9 @@ Instructions to install from source can be found in the [advanced documentation]
 
 ### Kicking the tires
 
-Install dependencies for compiling Linux source:
+Install dependencies for compiling Linux source, then download and enter the Linux source:
 
     sudo apt install -y flex bison bc libssl-dev libelf-dev
-
-Download and enter the Linux source:
-
     cd ~/
     wget https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.16.tar.xz
     tar -xvf linux-5.16.tar.xz
