@@ -6,8 +6,8 @@
     - [python setup](#python-setup)
     - [Installing the kmax tool suite](#installing-the-kmax-tool-suite)
     - [Kicking the tires](#kicking-the-tires)
-    - [Using `klocalizer --repair` on patches](#using-klocalizer---repair-on-patches)
-    - [Using `kismet`](#using-kismet)
+  - [Using `klocalizer --repair` on patches](#using-klocalizer---repair-on-patches)
+  - [Using `kismet`](#using-kismet)
   - [Additional Documentation](#additional-documentation)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -16,7 +16,6 @@
 # The kmax tool suite
 
 ## Getting started
-
 
 ### python setup
 
@@ -62,16 +61,23 @@ Build the `.config` file made by `klocalizer` to confirm inclusion of the compil
     make ARCH=x86_64 olddefconfig
     make ARCH=x86_64 clean drivers/usb/storage/alauda.o
     
-You should see something like `CC      drivers/usb/storage/alauda.o` to confirm inclusion.
+You should see `CC      drivers/usb/storage/alauda.o` at the end of the build.
 
 
-### Using `klocalizer --repair` on patches
+## Using `klocalizer --repair` on patches
 
-IMPORTANT: Follow the instructions to first [install SuperC](docs/advanced.md#installing-superc), which `klocalizer` depends on for per-line `#ifdef` constraints.
+First install [SuperC](https://github.com/appleseedlab/superc), which `klocalizer` depends on for per-line, `#ifdef` constraints:
 
+    sudo apt-get install -y libz3-java libjson-java sat4j unzip flex bison bc libssl-dev libelf-dev xz-utils lftp
+    wget -O - https://raw.githubusercontent.com/appleseedlab/superc/master/scripts/superc_linux.sh | bash
+    export CLASSPATH=${CLASSPATH}:/usr/share/java/org.sat4j.core.jar:/usr/share/java/json-lib.jar:/home/paul/.local/share/superc//z3-4.8.12-x64-glibc-2.31/bin/com.microsoft.z3.jar:/home/paul/.local/share/superc//JavaBDD/javabdd-1.0b2.jar:/home/paul/.local/share/superc//xtc.jar:/home/paul/.local/bin/superc.jar
+    export PATH=${PATH}:/home/paul/.local/bin/
+
+Start with a clone of the linux repository and get a patch file:
 
     cd ~/
     git clone git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+    cd ~/linux/
     git checkout 6fc88c354f3af
     git show > 6fc88c354f3af.diff
     
@@ -80,12 +86,12 @@ Repair allnoconfig to include lines of the patch:
     make allnoconfig
     klocalizer --repair .config -a x86_64 --include-mutex 6fc88c354f3af.diff
     
-Build the repaired configuration file:
+Build the repaired configuration file for the patched source files:
     
     KCONFIG_CONFIG=0-x86_64.config make.cross ARCH=x86_64 olddefconfig clean kernel/bpf/cgroup.o net/ipv4/af_inet.o net/ipv4/udp.o net/ipv6/af_inet6.o net/ipv6/udp.o
     
 
-### Using `kismet`
+## Using `kismet`
 
 This tool will check for unmet dependency bugs in [Kconfig specifications](https://www.kernel.org/doc/html/latest/kbuild/kconfig-language.html#menu-attributes) due to reverse dependencies overriding direct dependencies.
 

@@ -4,8 +4,8 @@
 - [Advanced Usage](#advanced-usage)
   - [Installing from Source](#installing-from-source)
   - [`klocalizer` and `krepair`](#klocalizer-and-krepair)
-    - [Installing SuperC](#installing-superc)
     - [Example usage](#example-usage)
+    - [Coverage report](#coverage-report)
     - [`ERROR: SuperC checks failed`](#error-superc-checks-failed)
     - [Getting configuration files to build commit ranges](#getting-configuration-files-to-build-commit-ranges)
   - [`kismet`](#kismet)
@@ -58,35 +58,6 @@ rereun setup.py when making changes to the code
     python3 setup.py develop
 
 
-## Installing SuperC
-
-    # SuperC depends on several libraries, some of which need to be downloaded manually.
-    mkdir ~/superc/
-    cd ~/superc/
-    sudo apt-get install -y libz3-java libjson-java sat4j unzip
-    wget -O - --content-disposition -c https://sourceforge.net/projects/javabdd/files/javabdd-linux/1.0b2%20Linux%20binary/javabdd_1.0b2.tar.gz/download?use_mirror=master > javabdd.tar.bz
-    tar -xvf javabdd.tar.bz JavaBDD/javabdd-1.0b2.jar
-    wget https://github.com/Z3Prover/z3/releases/download/z3-4.8.12/z3-4.8.12-x64-glibc-2.31.zip
-    unzip z3-4.8.12-x64-glibc-2.31.zip z3-4.8.12-x64-glibc-2.31/bin/com.microsoft.z3.jar
-    wget https://github.com/appleseedlab/superc/releases/download/v2.0-rc4/xtc.jar
-    wget https://github.com/appleseedlab/superc/releases/download/v2.0-rc4/superc.jar
-    
-    # Update your java `CLASSPATH` to contain all the requisite jarfiles for SuperC.
-    export CLASSPATH=$CLASSPATH:/usr/share/java/org.sat4j.core.jar:/usr/share/java/json-lib.jar:$PWD/z3-4.8.12-x64-glibc-2.31/bin/com.microsoft.z3.jar:$PWD/JavaBDD/javabdd-1.0b2.jar:$PWD/xtc.jar:$PWD/superc.jar
-
-    # Download and install the SuperC Linux runner script.
-    wget https://raw.githubusercontent.com/appleseedlab/superc/master/scripts/superc_linux.sh
-    chmod 755 superc_linux.sh
-    export PATH=$PATH:~/superc/
-
-    # Download and install `make.cross` for cross-compiling Linux source code.
-    sudo apt install -y flex bison bc libssl-dev libelf-dev
-    sudo apt install -y xz-utils lftp
-    mkdir -p ~/bin/
-    wget -O ~/bin/make.cross https://raw.githubusercontent.com/fengguang/lkp-tests/master/sbin/make.cross
-    chmod 755 ~/bin/make.cross
-    export PATH=$PATH:~/bin/
-
 ## `klocalizer` and `krepair`
 
 ### Example usage
@@ -110,6 +81,12 @@ This produces a new version of the `.config` file in `0-x86_64.config`.  To buil
     
 This time, the source file is successfully built: `CC      kernel/bpf/cgroup.o`.  Any number of `--include-mutex` constraints may be added.  If there is mutual-exclusion among source files, `klocalizer` will as many configuration files needed to cover all constraints.  Always on or off constraints can be added with `--include` or `--exclude`.  See the documentation on [`klocalizer` and `krepair`](docs/advanced.md#klocalizer-and-krepair) for more usage information.
 
+
+### Coverage report
+
+- kmax failed, superc failed
+- unconstrained
+- headers not included
 
 ### `ERROR: SuperC checks failed`
 
