@@ -58,7 +58,7 @@ First install [SuperC](https://github.com/appleseedlab/superc), which `klocalize
 
     sudo apt-get install -y libz3-java libjson-java sat4j unzip flex bison bc libssl-dev libelf-dev xz-utils lftp
     wget -O - https://raw.githubusercontent.com/appleseedlab/superc/master/scripts/install.sh | bash
-    export CLASSPATH=${CLASSPATH}:/usr/share/java/org.sat4j.core.jar:/usr/share/java/json-lib.jar:/home/paul/.local/share/superc//z3-4.8.12-x64-glibc-2.31/bin/com.microsoft.z3.jar:/home/paul/.local/share/superc//JavaBDD/javabdd-1.0b2.jar:/home/paul/.local/share/superc//xtc.jar:/home/paul/.local/bin/superc.jar
+    export CLASSPATH=${CLASSPATH}:/usr/share/java/org.sat4j.core.jar:/usr/share/java/json-lib.jar:/home/paul/.local/share/superc//z3-4.8.12-x64-glibc-2.31/bin/com.microsoft.z3.jar:/home/paul/.local/share/superc//JavaBDD/javabdd-1.0b2.jar:/home/paul/.local/share/superc//xtc.jar:/home/paul/.local/share/superc/superc.jar
     export PATH=${PATH}:/home/paul/.local/bin/
 
 Start with a clone of the linux repository and get a patch file:
