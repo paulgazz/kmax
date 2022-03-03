@@ -83,9 +83,9 @@ Build the repaired configuration file for the patched source files:
 
 This tool will check for unmet dependency bugs in [Kconfig specifications](https://www.kernel.org/doc/html/latest/kbuild/kconfig-language.html#menu-attributes) due to reverse dependencies overriding direct dependencies.
 
-Run `kismet` from the root of the Linux source tree.
+Run `kismet` on the root of the Linux source tree.
 
-    kismet --linux-ksrc="~/linux-5.16/" -a=x86_64
+    kismet --linux-ksrc="${HOME}/linux-5.16/" -a=x86_64
 
 Once finished (it can take about an hour on a commodity desktop), kismet will produce three outputs:
 
