@@ -6,6 +6,7 @@ import pathlib
 from shutil import which
 from kmax.klocalizer import Klocalizer
 import subprocess
+import shutil
 
 class SuperC:
   class SuperC_Exception(Exception):
@@ -441,6 +442,7 @@ class SuperC:
         logger.debug("Failed to localize a building Linux .config file.\n")
         return False
       else:
+        assert os.path.isfile(output_config_file)
         logger.debug("A building Linux .config file was localized.\n")
       
       # Check if the unit compiles (also build them to prep for SuperC config creation)
@@ -463,6 +465,7 @@ class SuperC:
       # Create missing SuperC config files
       logger.debug("Creating the missing SuperC config file.\n")
       pathlib.Path(output_superc_configs_dir_path).mkdir(parents=True, exist_ok=True)
+      assert shutil.copy(output_config_file, os.path.join(linux_ksrc, ".config"))
       ret = self.create_superc_config_on_built_unit(srcfile, output_superc_configs_dir_path, linux_ksrc, arch.name, cross_compiler)
       config_created, superc_ret, superc_out, superc_err, time_elapsed = ret
       write_content_to_file(logpath("superc_config_gen_status"), str(config_created) + '\n')
