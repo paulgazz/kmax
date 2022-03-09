@@ -42,7 +42,9 @@ def klocalizerCLI():
                         help="""Path to the Linux kernel source directory.  Used to generate kmax, kextract, and kclause formulas as needed.  Also, the defaults for kmax, kextract, and kclause formulas directories/files are relative to this.  Defaults to \"./\"""")
   argparser.add_argument('--formulas',
                          type=str,
-                         help="""Path to the formulas which contain one kmax file for all compilation units and one directory for each architecture containing kclause files.  Defaults to \"LINUX_KSRC/.kmax/\"""")
+                         help="""Path to the formulas which contain one build system subdirectory per unique build systems named with an identifier hash code."""
+                              """  Each directory contains one kmax file for all compilation units, one directory for kclause files, and one directory for superc files."""
+                              """  Defaults to \"LINUX_KSRC/.kmax/\"""")
   argparser.add_argument('--kmax-formulas',
                          type=str,
                          default=None,
@@ -233,7 +235,7 @@ def klocalizerCLI():
   args = argparser.parse_args()
   
   linux_ksrc = args.linux_ksrc
-  formulas = args.formulas
+  formulas_arg = args.formulas
   kmax_file = args.kmax_formulas
   kclause_file = args.kclause_formulas
   disable_downloading_formulas = args.disable_downloading_formulas
@@ -489,15 +491,24 @@ def klocalizerCLI():
 
   klocalizer.set_linux_krsc(linux_ksrc)
 
-  # set default value for formulas if not specified
-  if not formulas:
-    logger.debug("Computing the build system id for the Linux source..\n")
-    # TODO: get_build_system_id() takes about 4sec on an SSD
-    build_system_id = get_build_system_id(linux_ksrc)
-    logger.debug("Build system id: %s\n" % build_system_id)
-    formulas = os.path.join(linux_ksrc, ".kmax/", build_system_id)
-    # try downloading a cached version if user hasn't already started generating formulas
-    if not disable_downloading_formulas and not os.path.exists(formulas):
+  #
+  # Formulas directory
+  #
+  # Set default value for formulas if not specified
+  if not formulas_arg:
+    formulas_arg = os.path.join(linux_ksrc, ".kmax/")
+
+  # Get the build system id, which names the formulas cache subdirectory
+  logger.debug("Computing the build system id for the Linux source..\n")
+  build_system_id = get_build_system_id(linux_ksrc) # takes about 4sec on an SSD
+  logger.debug("Build system id: %s\n" % build_system_id)
+  formulas = os.path.join(formulas_arg, build_system_id)
+
+  # Try downloading a cached version if formulas are not available
+  if not disable_downloading_formulas:
+    # Is formulas empty: dir doesn't exist or dir is empty
+    is_formulas_empty = (not os.path.exists(formulas)) or (not os.listdir(formulas))
+    if is_formulas_empty:
       # get cache index; if we can't, then fatal error
       link = Klocalizer.get_kclause_cache_url(build_system_id)
       # lookup version in the cache; if we can't, then tell user it's not available
@@ -523,6 +534,12 @@ def klocalizerCLI():
         os.remove(local_filename)
       else:
         logger.warning("No cached formulas for %s available for download :(\n" % (build_system_id))
+    else:
+      # formulas directory exists and not empty: no need to download
+      pass
+  else:
+    # user disabled downloading formulas: compute them as needed
+    pass
 
   # flatten allow_unmet_for list of lists
   allow_unmet_for = [ item for elem in allow_unmet_for for item in elem ]
