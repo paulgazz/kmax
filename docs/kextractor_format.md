@@ -1,7 +1,6 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-
 - [Generating a DIMACS version of a Kconfig feature model](#generating-a-dimacs-version-of-a-kconfig-feature-model)
 - [Proto-DIMACS output grammar](#proto-dimacs-output-grammar)
   - [Semantics](#semantics)

@@ -1,100 +1,97 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-
-- [The Kmax Tool Suite](#the-kmax-tool-suite)
-  - [Getting Started](#getting-started)
-  - [Cross-Compiling](#cross-compiling)
-  - [Installing from Source](#installing-from-source)
-  - [Additional Documentation](#additional-documentation)
+- [The kmax tool suite](#the-kmax-tool-suite)
+  - [Getting started](#getting-started)
+    - [Installing the kmax tool suite](#installing-the-kmax-tool-suite)
+    - [Kicking the tires](#kicking-the-tires)
+  - [Using `klocalizer --repair` on patches](#using-klocalizer---repair-on-patches)
+  - [Using `kismet`](#using-kismet)
+  - [Additional documentation](#additional-documentation)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 
-# The Kmax Tool Suite
+# The kmax tool suite
 
-## Getting Started
+## Getting started
 
-Kmax currently depends on python 3.8 or later.  Install kmax in one of two ways:
+### Installing the kmax tool suite
 
-1. In a python virtual environment (_recommended_):
+Install the requiste python tools (the kmax tool suite currently depends on python 3.8 or later), setup a python virtual environment (recommended), and finally install the tools from pip.
 
-        sudo apt install -y python3-pip python3-venv flex bison bc libssl-dev libelf-dev
-        python3 -m venv kmax_env  # create the environment
-        source kmax_env/bin/activate  # enter the environment
-        pip3 install kmax  # install kmax in the environment
+    sudo apt install -y python3 python3-pip python3-venv
+    python3 -m venv ~/env_kmax/
+    source ~/env_kmax/bin/activate
+    pip3 install kmax
+
+Instructions to install from source can be found in the [advanced documentation](docs/advanced.md).
+
+
+### Kicking the tires
+
+Install dependencies for compiling Linux source, then download and enter the Linux source:
+
+    sudo apt install -y flex bison bc libssl-dev libelf-dev
+    cd ~/
+    wget https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.16.tar.xz
+    tar -xvf linux-5.16.tar.xz
+    cd ~/linux-5.16/
+
+Run `klocalizer --repair` to modify `allnoconfig` so that builds a given compilation unit:
+
+    make allnoconfig
+    klocalizer --repair .config -o allnoconfig_repaired --include drivers/usb/storage/alauda.o
+    KCONFIG_CONFIG=allnoconfig_repaired make ARCH=x86_64 olddefconfig clean drivers/usb/storage/alauda.o
     
-2. System-wide:
+You should see `CC      drivers/usb/storage/alauda.o` at the end of the build.
 
-        sudo apt install -y python3-pip flex bison bc libssl-dev libelf-dev
-        sudo pip3 install kmax
 
-Download and enter the Linux source:
+## Using `klocalizer --repair` on patches
 
-    wget https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.4.tar.xz
-    tar -xvf linux-5.4.tar.xz
-    cd linux-5.4/
+First install [SuperC](https://github.com/appleseedlab/superc), which `klocalizer` depends on for per-line, `#ifdef` constraints:
 
-### `klocalizer`
+    sudo apt-get install -y libz3-java libjson-java sat4j unzip flex bison bc libssl-dev libelf-dev xz-utils lftp
+    wget -O - https://raw.githubusercontent.com/appleseedlab/superc/master/scripts/install.sh | bash
+    export CLASSPATH=${CLASSPATH}:/usr/share/java/org.sat4j.core.jar:/usr/share/java/json-lib.jar:${HOME}/.local/share/superc/z3-4.8.12-x64-glibc-2.31/bin/com.microsoft.z3.jar:${HOME}/.local/share/superc/JavaBDD/javabdd-1.0b2.jar:${HOME}/.local/share/superc/xtc.jar:${HOME}/.local/share/superc/superc.jar
+    export PATH=${PATH}:${HOME}/.local/bin/
 
-Run `klocalizer` to generate a `.config` file that builds a given compilation unit:
+Start with a clone of the linux repository and get a patch file:
 
-    klocalizer drivers/usb/storage/alauda.o
-
-Build the `.config` file made by `klocalizer` to confirm inclusion of the compilation unit:
-
-    make ARCH=x86_64 olddefconfig
-    make ARCH=x86_64 clean drivers/usb/storage/alauda.o
+    cd ~/
+    git clone git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+    cd ~/linux/
+    git checkout 6fc88c354f3af
+    git show > 6fc88c354f3af.diff
     
-### `kismet`
+Repair allnoconfig to include lines of the patch and test the build.  When using `--include-mutex` all configuration files needed to cover the patch are exported as `NUM-ARCH.config`:
+
+    make allnoconfig
+    klocalizer --repair .config -a x86_64 --include-mutex 6fc88c354f3af.diff
+    KCONFIG_CONFIG=0-x86_64.config make ARCH=x86_64 olddefconfig clean kernel/bpf/cgroup.o net/ipv4/af_inet.o net/ipv4/udp.o net/ipv6/af_inet6.o net/ipv6/udp.o
     
-Run `kismet` to find unmet dependency bugs due to Kconfig's [reverse dependencies](https://www.kernel.org/doc/html/latest/kbuild/kconfig-language.html#menu-attributes):
 
-    kismet --linux-ksrc="./" -a=x86_64
+## Using `kismet`
 
-Once finished (it can take about an hour), kismet will produce three outputs:
+This tool will check for unmet dependency bugs in [Kconfig specifications](https://www.kernel.org/doc/html/latest/kbuild/kconfig-language.html#menu-attributes) due to reverse dependencies overriding direct dependencies.
+
+Run `kismet` on the root of the Linux source tree.
+
+    kismet --linux-ksrc="${HOME}/linux-5.16/" -a=x86_64
+
+Once finished (it can take about an hour on a commodity desktop), kismet will produce three outputs:
 
   1. A summary of the results in `kismet_summary_x86_64.txt`
   2. A list of results for each `select` construct in `kismet_summary_x86_64.csv` (`UNMET_ALARM` denotes the buggy ones)
   3. A list of `.config` files meant to exercise each bug in `kismet-test-cases/`
 
-Technical details can be found in the [paper](https://paulgazzillo.com/papers/esecfse21.pdf) on `kclause` and `kismet`.  The experiment [replication script](scripts/kismet_experiments_replication.sh) can be used to run kismet on all architectures' Kconfig specifications.
+Technical details can be found in in the [kismet documentation](docs/advanced.md#kismet) and the [publication](https://paulgazzillo.com/papers/esecfse21.pdf) on `kclause` and `kismet`.  The experiment [replication script](scripts/kismet_experiments_replication.sh) can be used to run kismet on all architectures' Kconfig specifications.
 
 
-## Cross-Compiling Linux Compilation Units
+## Additional documentation
 
-Get `make.cross`:
+[Overview](docs/overview.md)
 
-    sudo apt install -y xz-utils lftp
-    wget https://raw.githubusercontent.com/fengguang/lkp-tests/master/sbin/make.cross
+[Advanced Usage](docs/advanced.md)
 
-Run `klocalizer` with a different architecture:
-
-    klocalizer -a powerpc drivers/block/ps3disk.o
-    bash make.cross ARCH=powerpc olddefconfig; bash make.cross ARCH=powerpc clean drivers/block/ps3disk.o
-
-
-## Installing Kmax from Source
-
-Install the prerequisites
-
-    sudo apt install -y python3-setuptools python3-dev
-    
-Clone and install kmax
-
-    git clone https://github.com/paulgazz/kmax.git
-    cd kmax
-    sudo python3 setup.py install
-
-Alternatilvely, installing for development to obviate the need to
-rereun setup.py when making changes to the code
-
-    sudo python3 setup.py develop
-
-## Additional Documentation
-
-[Overview](https://github.com/paulgazz/kmax/blob/master/docs/overview.md)
-
-[Advanced Usage](https://github.com/paulgazz/kmax/blob/master/docs/advanced.md)
-
-[Bugs Found](https://github.com/paulgazz/kmax/blob/master/docs/bugs_found.md)
+[Bugs Found](docs/bugs_found.md)

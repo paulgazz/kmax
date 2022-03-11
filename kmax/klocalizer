@@ -3,6 +3,14 @@
 import kmax.kextractcommon
 from kmax.klocalizer import *
 import logging
+from kmax.superc import SuperC, SyntaxAnalysis
+from kmax.vcommon import get_build_system_id
+import json
+from collections import OrderedDict
+from kmax import patch
+import pathlib
+
+z3_true = z3.BoolVal(True)
 
 class BasicLogger:
   def __init__(self, quiet=False, verbose=False):
@@ -34,7 +42,9 @@ def klocalizerCLI():
                         help="""Path to the Linux kernel source directory.  Used to generate kmax, kextract, and kclause formulas as needed.  Also, the defaults for kmax, kextract, and kclause formulas directories/files are relative to this.  Defaults to \"./\"""")
   argparser.add_argument('--formulas',
                          type=str,
-                         help="""Path to the formulas which contain one kmax file for all compilation units and one directory for each architecture containing kclause files.  Defaults to \"LINUX_KSRC/.kmax/\"""")
+                         help="""Path to the formulas which contain one build system subdirectory per unique build systems named with an identifier hash code."""
+                              """  Each directory contains one kmax file for all compilation units, one directory for kclause files, and one directory for superc files."""
+                              """  Defaults to \"LINUX_KSRC/.kmax/\"""")
   argparser.add_argument('--kmax-formulas',
                          type=str,
                          default=None,
@@ -60,6 +70,34 @@ def klocalizerCLI():
                          type=str,
                          default=None,
                          help="""The kextract module version to use for generating kextract formulas.  the latest possible version suitable for the kernel version is detected and used.  Cannot be used with --kextract.  Current default: %s.  All available versions: %s""" % (kmax.kextractcommon.latest_module, ", ".join(kmax.kextractcommon.module_versions.keys())))
+  argparser.add_argument('--include',
+                        action="append",
+                        default=[],
+                        help="Paths to one or more compilation units (.o file) optionally with a list of lines, to include for compilation in ALL output .config files."
+                             "  Path is relative to the top of the source tree."
+                             "  The list of lines may include both single lines and line ranges (inclusive of start-end lines).  List must not contain whitespaces."
+                             "  Examples: kernel/fork.o (only the unit), kernel/fork.o:[5,70-72] (lines 5,70,71,72. No whitespaces in the list)."
+                             "  When a path to a patch file in unified diff format (\".patch\" or \".diff\" extension) is given, "
+                             "klocalizer computes and uses a set of (unit, line) pairs for patch coverage.  The target lines are also written to \"INPUT.kloc_targets\", "
+                             "where INPUT is the path to the diff file.  It is assumed that the patch is applied to the Linux source.")
+  argparser.add_argument('--include-mutex',
+                        action="append",
+                        default=[],
+                        help="Paths to one or more compilation units (.o file) optionally with a list of lines, to include for compilation in the output .config files."
+                             "  Path is relative to the top of the source tree."
+                             "  The option allows coverage to be split in multiple output .config files, accounting for mutual exclusion."
+                             "  For example, two (mutually exclusive) lines from the same unit might get covered in two output .config files, one compiling each line."
+                             "  Despite not guaranteed, the greedy search algorithm aims to cover all constraints with as few .config files as possible."
+                             "  klocalizer does not fail if some of --include-mutex constraints are not met."
+                             "  A coverage report will be generated (see --coverage-report)."
+                             "  Input format is the same with --include.")
+  argparser.add_argument('--exclude',
+                        action="append",
+                        default=[],
+                        help="Paths to one or more compilation units (.o file) optionally with the list of lines, or directories, to exclude from ALL output .config files."
+                             "  Path is relative to the top of the source tree."
+                             "  If a compilation unit is given with a list of lines, either the unit is excluded, or the unit is included and the list of specific lines are excluded."
+                             "  Input format for compilation units and lines is the same with --include.")
   argparser.add_argument('--constraints-file',
                          type=str,
                          help="""A text file containing ad-hoc constraints.  One configuration option name per line.  Prefix with ! to force it off; no prefix means force on.""")
@@ -82,13 +120,18 @@ def klocalizerCLI():
   argparser.add_argument('-o',
                          '--output',
                          type=str,
-                         default=".config",
-                         help="""Name of the output .config file.  Defaults to .config.""")
+                         help="""Name of the output .config file if mutex is disabled (no --include-mutex is specified).  Defaults to .config.  """
+                              """Path to the directory for output configs if mutex is enabled (--include-mutex is used).  Defaults to \"./\"""")
   argparser.add_argument('-m',
                          '--approximate',
                          '--match',
-                         type=str,
-                         help="""An existing .config file to use to try to match as closely as possible while still containing the desired objective.""")
+                         '--repair',
+                         action="append",
+                         default=[],
+                         help="""One or more existing .config file to use to try to match as closely as possible while still containing the desired objective.  """
+                              """Prefix with \"arch_name:\" to specify for a specific architecture.  """
+                              """For example, \"--repair x86_64:1.config --repair arm:2.config --repair others.config\" will use """
+                              """1.config for x86_64,  2.config for arm, and others.config for any other architecture.""")
   argparser.add_argument('--modules',
                          action="store_true",
                          help="""Set tristate options to 'm' instead of 'y' to build as modules instead of built-ins.""")
@@ -96,6 +139,10 @@ def klocalizerCLI():
                          '--show-unsat-core',
                          action="store_true",
                          help="""Show the unsatisfiable core if the formula is unsatisfiable.""")
+  argparser.add_argument('--coverage-report',
+                         type=str,
+                         default="coverage_report.json",
+                         help="""Path to output coverage report file.  Only created if --include-mutex is used.  Only reports the units in --include-mutex.  Defaults to \"coverage_report.json\"""")
   argparser.add_argument('-D',
                          '--define',
                          action="append",
@@ -127,9 +174,6 @@ def klocalizerCLI():
   argparser.add_argument("--save-dimacs",
                          type=str,
                          help="""Save the resulting formula in DIMACS format to the given file.  This option will not create a .config file.""")
-  argparser.add_argument("--exclude-compilation-units",
-                         action="store_true",
-                         help="""Invert the z3 formula of the compilation unit (.o file) when generating .config""")
   argparser.add_argument("--force-unmet-free",
                          action="store_true",
                          help="""Force unmet direct dependency free configuration.  This requires kclause direct depedency formulas file to exist in KMAX_FORMULAS/kclause/ARCH/kclause.normal_dep, which is a pickled dictionary from configuration options to direct dependency formulas.""")
@@ -138,6 +182,44 @@ def klocalizerCLI():
                          nargs="*",
                          default=[],
                          help="""The list of configuration symbols for which allow unmet direct dependency.  Can be used with --force-unmet-free only to relax the constraints for some symbols.""")
+  argparser.add_argument("--superc-linux-script", #< Needed for SuperC config creation
+                         type=str,
+                         help="""Path to the SuperC linux script, which is usually at """
+                              """superc/scripts/superc_linux.sh where superc/ is the """
+                              """top SuperC source directory. Searches \"superc_linux.sh\" in PATH by default.""")
+  argparser.add_argument("--cross-compiler", #< Needed for SuperC config creation
+                         type=str,
+                         default="make.cross",
+                         help="""Path to the executable make script for cross compilation.  """
+                              """It is only executed to create SuperC configuration files.  """
+                              """Otherwise, it appears in the suggested compilation command.  """
+                              """Defaults to \"make.cross\".""")
+  argparser.add_argument("--compile-jobs", #< Used for SuperC config creation
+                         type=int,
+                         default=1,
+                         help="""Number of jobs to allow while compiling units.  """
+                              """It is only used when creating SuperC configuration files.  """
+                              """Infinite if <1.  Defaults to 1.""")
+  argparser.add_argument("--build-targets", #< Needed for SuperC config creation
+                         type=str,
+                         help="""Path to the json file with source file to build target mappings.  """
+                              """Usual case (src/file.c -> src/file.o) is used for missing mappings.  """
+                              """It is only used while creating SuperC configuration files.""")
+  # TODO: allow using different timeouts values for units vs directories
+  argparser.add_argument("--build-timeout", #< Needed for SuperC config creation
+                         type=int,
+                         default=300,
+                         help="""Timeout in seconds for building a single build target.  """
+                              """It is only used while creating SuperC configuration files.  """
+                              """Defaults to 300 (5 minutes).""")
+  argparser.add_argument("--superc-timeout", #< Needed for SuperC config creation
+                         type=int,
+                         default=300,
+                         help="""Timeout in seconds for SuperC source line presence conditions analysis.  """
+                              """Defaults to 300 (5 minutes).""")
+  argparser.add_argument('--werror',
+                         action="store_true",
+                         help="""Make all warnings into errors.  Warnings include kmax and SuperC failures.""")
   argparser.add_argument('-q',
                          '--quiet',
                          action="store_true",
@@ -150,13 +232,10 @@ def klocalizerCLI():
                          action="version",
                          version="%s %s" % (kmax.about.__title__, kmax.about.__version__),
                          help="""Print the version number.""")
-  argparser.add_argument("compilation_units",
-                         nargs='*',
-                         help="The path of the compilation unit (.o file) to generate a .config for, relative to the top of the source tree.")
   args = argparser.parse_args()
   
   linux_ksrc = args.linux_ksrc
-  formulas = args.formulas
+  formulas_arg = args.formulas
   kmax_file = args.kmax_formulas
   kclause_file = args.kclause_formulas
   disable_downloading_formulas = args.disable_downloading_formulas
@@ -166,12 +245,18 @@ def klocalizerCLI():
   archs_arg = args.arch
   allarchs = args.all
   reportallarchs = args.report_all
+  include_arg = args.include
+  include_mutex_arg = args.include_mutex
+  exclude_arg = args.exclude
   constraints_file = args.constraints_file
   constraints_file_smt2 = args.constraints_file_smt2
-  output_file = args.output
+  # Both mutex and non-mutex use --output for output file or dir
+  output_file = args.output if args.output else ".config"
+  output_dir = args.output if args.output else "./"
   show_unsat_core = args.show_unsat_core
   approximate = args.approximate
   modules_arg = args.modules
+  coverage_report_file = args.coverage_report
   define = args.define
   undefine = args.undefine
   disable_config_broken = not args.allow_config_broken
@@ -182,79 +267,280 @@ def klocalizerCLI():
   sample_prefix = args.sample_prefix
   random_seed = args.random_seed
   save_dimacs = args.save_dimacs
-  compilation_units = args.compilation_units
-  dont_compile = args.exclude_compilation_units
   force_unmet_free = args.force_unmet_free
   allow_unmet_for = args.allow_unmet_for
+  superc_linux_script = args.superc_linux_script
+  cross_compiler = args.cross_compiler
+  build_targets_file = args.build_targets
+  compile_jobs = args.compile_jobs
+  build_timeout = args.build_timeout
+  superc_timeout = args.superc_timeout
+  werror = args.werror
   quiet = args.quiet
   verbose = args.verbose
 
   kmax.common.quiet = quiet
   kmax.common.verbose = verbose
   logger = BasicLogger(quiet=quiet, verbose=verbose)
+
+  def warn_or_err(warn_msg, err_msg, exit_code):
+    """Takes action on warnings.  Behavior is different based on whether
+    --werror or not.
+    
+    If werror, prints err_msg on error channel and terminates with
+    exit_code.  Otherwise, prints warn_msg on warning channel and returns.
+    """
+    if werror:
+      logger.error(err_msg)
+      exit(exit_code)
+    else:
+      logger.warning(warn_msg)
+  
+  exit_code_superc_config_creation_failed = 27
+  exit_code_superc_sourcelinepc_failed = 28
+    
+  sys.stderr.write("klocalizer, %s %s\n" % (kmax.about.__title__, kmax.about.__version__))
+
+  def unit2srcfile(unit):
+    assert unit.endswith('.o')
+    return unit[:-len('.o')] + '.c'
+  def srcfile2unit(srcfile):
+    assert srcfile.endswith('.c')
+    return srcfile[:-len('.c')] + '.o'
+  
+  def get_exclusion_constraints(unit_constraints, line_constraints):
+    # Exclusion means none of the lines are built
+    lines_not_built = z3.And([z3.Not(line_constraints)])
+    # Either the unit is not built, or the unit is built without any of the lines
+    unit_not_built = z3.Not(z3.And(unit_constraints))
+    return z3.Or([unit_not_built, lines_not_built])
+
+  # The extension for the json file that contain { file: [lines] }, which
+  # can be used as input to klocalizer.
+  kloc_targets_ext = ".kloc_targets"
+
+  def get_patch_target_lines(patch_file_path: str):
+    # Compute the klocalizer targets from patch file
+    logger.debug("Computing the target lines from the patch file \"%s\"\n" % patch_file_path)
+    with open(patch_file_path, 'r') as f:
+      patch_txt = f.read()
+    r = patch.get_target_c_lines(patch_txt)
+
+    # Turn .c extensions into .o extensions and do additional checks on lines
+    for fpath in list(r.keys()):
+      newpath = srcfile2unit(fpath)
+      r[newpath] = sorted(list(set(r[fpath])))
+      for l in r[newpath]:
+        assert l > 0
+      del r[fpath]
+
+    # Write the klocalizer targets (for diagnostic purposes)
+    kloc_targets_filepath = patch_file_path + kloc_targets_ext
+    logger.debug("Writing the patch target c lines to \"%s\"\n" % kloc_targets_filepath)
+    with open(kloc_targets_filepath, 'w') as f:
+      json.dump(r, f)
+
+    # Return the kloc targets 
+    return r
+
+  def parse_lines_list(compilation_unit_arg : str):
+    """Given compilation unit arg, parse and return the compilation unit
+    and the list of lines, or the directory path. Returned list of lines
+    are unique and sorted.
+
+    Returned compilation unit names are guaranteed to end with '.o' extension.
+
+    Returned directory paths are guaranteed to end with '/' suffix.
+
+    Example input/outputs:
+    == Input ==                    == Output ==
+    "kernel/fork.o"                ("kernel/fork.o", [])
+    "kernel/fork.c"                ("kernel/fork.o", []) ('.c' -> '.o')
+    "kernel/fork.o:[]"             ("kernel/fork.o", [])
+    "kernel/fork.o:[5,7,10]"       ("kernel/fork.o", [5,7,10])
+    "kernel/fork.o:[10-10]"        ("kernel/fork.o", [10])
+    "kernel/fork.o:[5,7-10]"       ("kernel/fork.o", [5,7,8,9,10])
+    "kernel"                       ("kernel/", [])
+    "kernel/"                      ("kernel/", [])
+    "kernel/power/"                ("kernel/power/", [])
+    "kernel/power:[]"              Prints error and terminates
+    "kernel/fork.o:[10-7]"         Prints error and terminates
+    "kernel/fork.o:[10,"           Prints error and terminates
+    """
+    assert compilation_unit_arg
+    def arg_error(arg: str, problem: str):
+      argparser.print_help()
+      logger.error("Malformed compilation unit or directory argument (\"%s\"): %s\n" % (arg, problem))
+      exit(12)
+
+    #
+    # Split the unit path and the lines list
+    #
+    split_arg = compilation_unit_arg.split(':')
+    assert len(split_arg) > 0
+    if len(split_arg) == 1:
+      unit_str = split_arg[0]
+      lines_str = None
+    elif len(split_arg) == 2:
+      unit_str, lines_str = split_arg
+      if len(lines_str) < 2: # must at least have '[' and ']'
+        arg_error(compilation_unit_arg, "incorrect lines list format.")
+    elif len(split_arg) > 2:
+      arg_error(compilation_unit_arg, "\":\" must be used at most once to between the unit path and the lines list.")
+
+    #
+    # Check and parse if directory
+    #
+    ext = os.path.splitext(unit_str)[-1]
+    if not ext: # directory
+      if lines_str:
+        arg_error(compilation_unit_arg, "lines cannot be specified for directory paths.")
+      if unit_str.endswith('/'):
+        return unit_str, []
+      else: # Add the '/' suffix
+        return unit_str + '/', []
+
+    #
+    # Check and parse the unit path into unit_str
+    #
+    if not unit_str.endswith('.c') and not unit_str.endswith('.o'):
+      arg_error(compilation_unit_arg, "unit must have \".c\" or \".o\" extension.")
+
+    # Force extension to be .o
+    if not unit_str.endswith('.o'):
+      logger.warning("Forcing file extension to be .o, since lookup is by compilation unit: \"%s\"\n" % (unit_str))
+      unit_str = "%s.o" % unit_str[:-len('.c')]
+
+    #
+    # Check and parse the lines list into lines_list
+    #
+    lines_list = []
+    if lines_str:
+      # Check line list
+      if not lines_str.startswith('[') or not lines_str.endswith(']'):
+        arg_error(compilation_unit_arg, "incorrect lines list format.")
+      assert len(lines_str) > 1 #< Has '[' and ']'
+      lines_str = lines_str[1:-1]
+
+      def parse_pos_int(num_str : str) -> int:
+        if not num_str or not set(num_str).issubset([str(n) for n in range(10)]):
+          arg_error(compilation_unit_arg, "incorrect lines list format.")
+        else:
+          num = int(num_str)
+          if num <= 0:
+            arg_error(compilation_unit_arg, "lines are 1-indexed and must be greater than 0.")
+          else:
+            return num
+
+      # Parse the lines
+      if lines_str: #< Still has lines to parse after removing list brackets
+        for el in lines_str.split(','):
+          if not el or not set(el).issubset([str(n) for n in range(10)] + ['-']):
+            arg_error(compilation_unit_arg, "incorrect lines list format")
+          if el.count('-') > 1:
+            arg_error(compilation_unit_arg, "incorrect lines list format")
+          
+          if '-' in el: #< Range
+            start, end = el.split('-')
+            start, end = parse_pos_int(start), parse_pos_int(end)
+            if end < start:
+              arg_error(compilation_unit_arg, "end of line range cannot be smaller than the start")
+            lines_list.extend(range(start, end+1))
+          else:         #< Single line
+            lines_list.append(parse_pos_int(el))
+
+      # Sort and make sure each line is unique.
+      lines_list = sorted(list(set(lines_list)))
+
+    return unit_str, lines_list
+
+  def parse_units_args(args):
+    def is_patch_input(a):
+      return a.endswith(".patch") or a.endswith(".diff")    
+    parsed_list = []
+    for a in args:
+      if is_patch_input(a):
+        logger.info("Diff file was given as input (\"%s\"): assuming it was applied to the Linux source.\n" % a)
+        parsed_list.extend(list(get_patch_target_lines(a).items()))
+      else:
+        parsed_list.append(parse_lines_list(a))
+
+    # Have one entry per unique unit, all sorted.
+    uniq_compilation_units_lines = {}
+    for unit, lines in parsed_list:
+      if lines is None:
+        lines = []
+      existing_lines = uniq_compilation_units_lines.get(unit, [])
+      new_lines = sorted(list(set(existing_lines + lines)))
+      uniq_compilation_units_lines[unit] = new_lines
+    return sorted(list(uniq_compilation_units_lines.items()))
+
+  # Parse units/lines.
+  include_list = parse_units_args(include_arg)
+  include_mutex_list = parse_units_args(include_mutex_arg)
+  exclude_list = parse_units_args(exclude_arg)
+  # Make a copy of the original list since the lists will get simplified
+  # along the way, and we will need the original list for coverage reports.
+  original_include_mutex_list = include_mutex_list[:]
+
+  # Determines whether kmax will be run.
+  has_file_constraints = len(include_list + include_mutex_list + exclude_list) > 0
+  all_comp_units_list = include_list + include_mutex_list + exclude_list
+
   klocalizer.set_logger(logger)
 
   klocalizer.set_linux_krsc(linux_ksrc)
 
-  # set default value for formulas if not specified
-  if not formulas:
-    # try to determine the version of the linux source code
-    # first try git
-    command=["git", "describe", "--abbrev=0", "--tags"]
-    popen = subprocess.Popen(command, stdin=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    linux_tag_version, _ = popen.communicate()
-    linux_tag_version = linux_tag_version.strip().decode('utf-8')
-    if popen.returncode == 0:
-      # successfully found linux version git
-      pass
-    else:
-      # apparently not a git repository, so try with make kernelversion
-      command=["make", "kernelversion"]
-      popen = subprocess.Popen(command, stdin=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-      linux_tag_version, _ = popen.communicate()
-      linux_tag_version = linux_tag_version.strip().decode('utf-8')
-      if popen.returncode == 0:
-        # successfully found linux version from make
-        pass
-      else:
-        # could not get any linux_tag_version
-        linux_tag_version = None
-    assert(type(linux_tag_version) == str or linux_tag_version is None)
-    if linux_tag_version is None:
-      # provide a hard-coded version name since we couldn't determine the version
-      formulas = os.path.join(linux_ksrc, ".kmax/", "_unknown_version")
-    else:
-      # set the formula folder based on the linux version
-      formulas = os.path.join(linux_ksrc, ".kmax/", linux_tag_version)
+  #
+  # Formulas directory
+  #
+  # Set default value for formulas if not specified
+  if not formulas_arg:
+    formulas_arg = os.path.join(linux_ksrc, ".kmax/")
 
-      # try downloading a cached version if user hasn't already started generating formulas
-      if not disable_downloading_formulas and not os.path.exists(formulas):
-        # get cache index; if we can't, then fatal error
-        link = Klocalizer.get_kclause_cache_url(linux_tag_version)
-        # lookup version in the cache; if we can't, then tell user it's not available
-        import requests
-        req = requests.get(link)
-        logger.debug("Looking up cache index: %s\n" % (link))
-        if req.status_code == 200:
-          url_to_cached_formulas = (req.text if req.encoding is None else req.text.decode(req.encoding)).strip()
-          logger.info("Found cached formulas for %s.  Downloading...\n" % (linux_tag_version))
-          # download from the url; if we can't, then error
-          import shutil
-          local_filename = url_to_cached_formulas.split('/')[-1]
-          with requests.get(url_to_cached_formulas, stream=True) as r:
-              with open(local_filename, 'wb') as f:
-                shutil.copyfileobj(r.raw, f)
-          # untar; if we can't, then error
-          import tarfile
-          logger.info("Unpacking %s...\n" % (local_filename))
-          with tarfile.open(local_filename) as t:
-            t.extractall(formulas)
-            t.close()
-          logger.debug("Removing downloaded cache file %s\n" % (local_filename))
-          os.remove(local_filename)
-        else:
-          logger.warning("No cached formulas for %s available for download :(\n" % (linux_tag_version))
-  
+  # Get the build system id, which names the formulas cache subdirectory
+  logger.debug("Computing the build system id for the Linux source..\n")
+  build_system_id = get_build_system_id(linux_ksrc) # takes about 4sec on an SSD
+  logger.debug("Build system id: %s\n" % build_system_id)
+  formulas = os.path.join(formulas_arg, build_system_id)
+
+  # Try downloading a cached version if formulas are not available
+  if not disable_downloading_formulas:
+    # Is formulas empty: dir doesn't exist or dir is empty
+    is_formulas_empty = (not os.path.exists(formulas)) or (not os.listdir(formulas))
+    if is_formulas_empty:
+      # get cache index; if we can't, then fatal error
+      link = Klocalizer.get_kclause_cache_url(build_system_id)
+      # lookup version in the cache; if we can't, then tell user it's not available
+      import requests
+      req = requests.get(link)
+      logger.debug("Looking up cache index: %s\n" % (link))
+      if req.status_code == 200:
+        url_to_cached_formulas = (req.text if req.encoding is None else req.text.decode(req.encoding)).strip()
+        logger.info("Found cached formulas for %s.  Downloading...\n" % (build_system_id))
+        # download from the url; if we can't, then error
+        import shutil
+        local_filename = url_to_cached_formulas.split('/')[-1]
+        with requests.get(url_to_cached_formulas, stream=True) as r:
+            with open(local_filename, 'wb') as f:
+              shutil.copyfileobj(r.raw, f)
+        # untar; if we can't, then error
+        import tarfile
+        logger.info("Unpacking %s...\n" % (local_filename))
+        with tarfile.open(local_filename) as t:
+          t.extractall(formulas)
+          t.close()
+        logger.debug("Removing downloaded cache file %s\n" % (local_filename))
+        os.remove(local_filename)
+      else:
+        logger.warning("No cached formulas for %s available for download :(\n" % (build_system_id))
+    else:
+      # formulas directory exists and not empty: no need to download
+      pass
+  else:
+    # user disabled downloading formulas: compute them as needed
+    pass
+
   # flatten allow_unmet_for list of lists
   allow_unmet_for = [ item for elem in allow_unmet_for for item in elem ]
 
@@ -294,6 +580,25 @@ def klocalizerCLI():
     logger.error("Cannot use --all-architectures when providing explicit --arch arguments.\n")
     exit(12)
 
+  mutual_exclusion_str = "--include-mutex"
+  mutex_enabled = len(include_mutex_arg) > 0
+  if mutex_enabled:
+    if allarchs:
+      logger.error("%s is incompatible with --all.\n" % mutual_exclusion_str)
+      exit(12)
+    if reportallarchs:
+      logger.error("%s is incompatible with --report-all.\n" % mutual_exclusion_str)
+      exit(12)
+    if show_unsat_core:
+      logger.error("%s is incompatible with --show-unsat-core.\n" % mutual_exclusion_str)
+      exit(12)
+    if view_kbuild:
+      logger.error("%s is incompatible with --view-kbuild.\n" % mutual_exclusion_str)
+      exit(12)
+    if save_dimacs:
+      logger.error("%s is incompatible with --save-dimacs.\n" % mutual_exclusion_str)
+      exit(12)
+    
   if save_dimacs:
     if os.path.exists(save_dimacs):
       logger.warning("Overwriting existing file with the DIMACS output: %s\n" % (save_dimacs))
@@ -306,7 +611,7 @@ def klocalizerCLI():
   if sample is not None:
     if sample_prefix is None:
       sample_prefix="config"
-    if approximate is not None:
+    if approximate:
       argparser.print_help()
       logger.error("--approximate and --sample cannot currently be used together\n")
       exit(12)
@@ -329,14 +634,69 @@ def klocalizerCLI():
     # or couldn't be downloaded
     os.makedirs(formulas)
 
-  if approximate and not os.path.isfile(approximate):
-    logger.error("Cannot find config file to approximate: %s\n" % approximate)
+  # Parse and check the config file paths to approximate
+  # {arch_name : config_file_path}. "default" is the special key, has value
+  # to default config file to approximate without arch specified.
+  approximate_configs = {} 
+  if approximate:
+    for s in approximate:
+      #
+      # Set apprx_arch_name and apprx_config_file_path
+      #
+      if len(s.split(":")) > 1: #< for a specific architecture.
+        apprx_arch_name = s.split(':')[0]
+        apprx_config_file_path = "".join(s.split(':')[1:])
+        if not apprx_arch_name:
+          logger.error("Empty architecture name for approximate config: %s\n" % s)
+          exit(6)
+        if apprx_arch_name in approximate_configs:
+          logger.error("Multiple .config files specified to approximate for an architecture: %s\n" % apprx_arch_name)
+          exit(12)
+      else: #< default
+        apprx_arch_name = "default"
+        apprx_config_file_path = s
+        if apprx_arch_name in approximate_configs:
+          logger.error("Multiple .config files as default .config to approximate.\n")
+          exit(12)
+
+      #
+      # Record the .config to approximate
+      #
+      if not os.path.isfile(apprx_config_file_path):
+        logger.error("Cannot find config file to approximate: %s\n" % apprx_config_file_path)
+        exit(6)
+      assert apprx_arch_name not in approximate_configs
+      approximate_configs[apprx_arch_name] = apprx_config_file_path
+    logger.debug("Approximate configs: %s\n" % approximate_configs)
+
+  if build_targets_file and not os.path.isfile(build_targets_file):
+    logger.error("Cannot find build targets file: %s\n" % build_targets_file)
     exit(6)
+  
+  if build_timeout <= 0:
+    logger.error("--build-timeout must be greater than 0.\n")
+    exit(12)
+
+  if superc_timeout <= 0:
+    logger.error("--superc-timeout must be greater than 0.\n")
+    exit(12)
+
+  if mutex_enabled and view_kbuild:
+    logger.error("%s cannot be used with --view-kbuild.\n" % mutual_exclusion_str)
+    exit(12)
+
+  #
+  # Load build targets
+  #
+  build_targets = {}
+  if build_targets_file:
+    with open(build_targets_file, 'r') as f:
+      build_targets = json.load(f)
 
   #
   # Set kmax file
   #
-  if len(compilation_units) > 0:
+  if has_file_constraints:
     # logger.info("Getting the compilation unit constraints via kmax\n")
     if not kmax_file:
       kmax_file = os.path.join(formulas, "kmax") # default kmax file
@@ -352,26 +712,157 @@ def klocalizerCLI():
       is_kmax_cache = False
 
   #
-  # Check compilation units' names
+  # Simplify line requirements through syntax analysis.
   #
-  for i, unit in enumerate(compilation_units):
-    if not unit.endswith(".o"):
-      logger.warning("Forcing file extension to be .o, since lookup is by compilation unit: %s\n" % (unit))
-      unit = os.path.splitext(unit)[0] + ".o"
-      compilation_units[i] = unit
+  # If a line is unconstrained by syntax (not under any conditional
+  # preprocessor directive, remove it from the list. Localizing for the unit
+  # will suffice to build the line. This may help avoid running SuperC for
+  # this file if no lines remain. Syntax analysis is faster and precise;
+  # therefore, this will improve performance.
+  global_scope_lines = {} # { unit : set(int) }, lines outside any ifdefs
+  for target_list in [include_list, include_mutex_list, exclude_list]:
+    for i, (unit, line_list) in enumerate(target_list):
+      if line_list:
+        srcfile = unit2srcfile(unit)
+        srcfile_fullpath = os.path.join(linux_ksrc, srcfile)
+        assert os.path.isfile(srcfile_fullpath)
+        logger.debug("Doing syntax analysis on \"%s\" to get constrained line ranges.\n" % srcfile)
+        
+        root_cb = SyntaxAnalysis.get_conditional_blocks_of_file(srcfile_fullpath)
+
+        # Check if given line list is valid for the file.
+        line_count = root_cb.end_line - 1 #< Root (dummy) ConditionalBlock has special end_line value.
+        for l in line_list:
+          if not 0 < l <= line_count:
+            logger.error("Requested line (%s) is invalid for the source file (\"%s\")\n" % (l, srcfile))
+            exit(12)
+
+        # Get the ConditionalBlock that cover the requested lines.
+        nodes = [root_cb.retrieve_deepest_block(l) for l in line_list]
+        assert len(nodes) == len(line_list)
+        # Get the constrained lines only (those that don't belong to dummy root)
+        # Unconstrained lines will already build with the file.
+        new_line_list = []
+        for l, n in zip(line_list, nodes):
+          if n == root_cb:
+            global_scope_lines[unit] = global_scope_lines.get(unit, set()).union([l])
+          else:
+            new_line_list.append(l)
+        removed_lines = len(line_list) - len(new_line_list)
+        assert removed_lines >= 0
+        logger.debug(
+          """Syntax analysis for \"%s\" found %s unconstrained lines, """
+          """%s lines are remaining for presence condition analysis.\n"""
+          """""" % (srcfile, removed_lines, len(new_line_list)))
+        target_list[i] = unit, new_line_list
+  
+  # Determines whether SuperC is needed. This is done after simplification
+  # through syntax analysis since the simplification can discard line
+  # requirements by reducing them to file inclusion.
+  has_line_constraints = len([u for u, l in include_list + include_mutex_list + exclude_list if l]) > 0
 
   #
-  # Add the compilation units
+  # SuperC: ensure configs and get presence conditions for a "srcfile" under an "arch"
   #
-  for unit in compilation_units:
-    if dont_compile:
-      klocalizer.exclude_compilation_unit(unit)
-    else:
-      klocalizer.include_compilation_unit(unit)
+  line_constraints = {} # { srcfile (.c): { arch_name: ConditionalBlock } }
+  for unit, lines in all_comp_units_list: # initialize
+    if not unit.endswith('/'):
+      line_constraints[unit2srcfile(unit)] = {}
+  # This function uses values from global scope (linux ksrc, formulas dir, etc.)
+  # but parametrizes the operation into srcfile and architecture.
+  def get_presence_conditions(srcfile, arch):
+    """Ensures SuperC configs for srcfile and computes the line presence
+    conditions.
+    
+    Returns an instance of ConditionalBlock on success.
+    Returns None on error.
+
+    Retrieves from or fills the cache (line_constraints).
+    """
+    assert srcfile.endswith('.c')
+    # Check the cache.
+    if srcfile in line_constraints and arch.name in line_constraints[srcfile]:
+      return line_constraints[srcfile][arch.name]
+    
+    if srcfile not in line_constraints:
+      line_constraints[srcfile] = {}
+
+    #
+    # Make sure SuperC configs exist.
+    #
+    logger.info("Computing line presence conditions for \"%s\"\n" % srcfile)
+    superc_formulas_dir = SuperC.get_superc_formulas_dir(formulas, arch.name)
+    config_exists = superc.ensure_superc_config(srcfile, superc_formulas_dir, linux_ksrc, arch, cross_compiler, build_targets, compile_jobs, build_timeout, logger)
+    if not config_exists:
+      logger.debug("Failed to find/create SuperC config file for \"%s\"\n" % srcfile)
+      error_msg = "Failed to compute line presence conditions for \"%s\": SuperC config generation error\n" % srcfile
+      line_constraints[srcfile][arch.name] = None # Special value, depicts failure.
+      warn_or_err(error_msg, error_msg, exit_code_superc_config_creation_failed)
+      return None
+    else: # config exists
+      logger.debug("SuperC config file was found for \"%s\"\n" % srcfile)
+      logger.debug("Computing the presence conditions for \"%s\"\n" % srcfile)
+
+      #
+      # Get presence conditions, thus, line constraints
+      #
+      # Map source files to presence conditions (ConditionalBlock instances)
+      logger.debug("Computing presence conditions for \"%s\".\n" % srcfile)
+      cb = superc.get_pc(srcfile, arch, linux_ksrc, superc_formulas_dir, superc_timeout, logger)
+      if not cb:
+        logger.debug("Computing presence conditions failed for \"%s\"\n" % srcfile)
+        error_msg = "Failed to compute line presence conditions for \"%s\": SuperC sourcelinePC error\n" % srcfile
+        line_constraints[srcfile][arch.name] = None # Special value, depicts failure.
+        warn_or_err(error_msg, error_msg, exit_code_superc_sourcelinepc_failed)
+        return None
+      else: # pc was successfully computed
+        logger.debug("Computed presence conditions for \"%s\"\n" % srcfile)
+        line_constraints[srcfile][arch.name] = cb
+        return cb
+
+  #
+  # Compute kmax constraints
+  #
+  kmax_constraints = {} # { unit: [kmax_constraints] }, None value means failed
+  def compute_kmax_constraints(unit):
+    try:
+      kmax_constraints[unit] = klocalizer.get_compilation_unit_constraints(unit)
+    except Klocalizer.NoFormulaFoundForCompilationUnit as e:
+      error_msg = "No formula from kmax was found for the compilation unit: %s\n" % (e.unit)
+      warn_or_err(error_msg, error_msg, 3)
+      kmax_constraints[unit] = None
+    except Klocalizer.MultipleCompilationUnitsMatch as e:
+      error_msg = "There are multiple compilation units that match %s.  Please provide one of the Kbuild paths from below:\n%s\n" % (e.unit, "\n".join(e.matching_units))
+      warn_or_err(error_msg, error_msg, 4)
+      kmax_constraints[unit] = None
+    return kmax_constraints[unit]
+
+  # Precompute all
+  for unit, lines in all_comp_units_list:
+    compute_kmax_constraints(unit)
+
+  #
+  # Include or exclude units
+  #
+  for unit, lines in include_list:
+    if kmax_constraints[unit] is not None: #< None is failure.
+      klocalizer.add_constraints(kmax_constraints[unit])
+
+  for unit, lines in exclude_list:
+    if not lines:
+      if kmax_constraints[unit] is not None: #< None is failure.
+        constraints = kmax_constraints[unit]
+        if not constraints:
+          logger.error("The unit/directory to exclude (\"%s\") is unconstrained: no satisfying configuration is possible.\n" % unit)
+          exit(11)
+        klocalizer.add_constraints([z3.Not(z3.And(constraints))])
+    else: # has lines
+      # This is handled when the line conditions are computed.
+      pass
   
   if view_kbuild:
-    if len(compilation_units) > 0:
-      for unit in compilation_units:
+    if len(all_comp_units_list) > 0:
+      for unit, _ in all_comp_units_list:
         logger.info("The Kbuild constraints for %s:\n" % (unit))
         get_kmax_constraints(klocalizer.get_kmax_formulas(), unit, view=True)
       exit(0)
@@ -382,7 +873,7 @@ def klocalizerCLI():
   #
   # Update the kmax cache (now that we are done with generating new kmax formulas)
   #
-  if len(compilation_units) > 0 and is_kmax_cache:
+  if len(all_comp_units_list) > 0 and is_kmax_cache:
     logger.debug("Updating Kmax formulas cache file: %s\n" % kmax_cache_file)
     klocalizer.update_kmax_cache_file(kmax_cache_file)
     logger.debug("Kmax formulas cache file was updated.\n")
@@ -418,8 +909,8 @@ def klocalizerCLI():
   #
   # Filter archs based on unit name
   #
-  if not kclause_file:
-    for unit in compilation_units:
+  if not kclause_file :
+    for unit, _ in include_list:
       if unit.startswith("arch/"):
         unit_archs = Arch.get_archs_from_subdir(unit)
         archs = [ arch for arch in archs if arch.name in unit_archs ]
@@ -487,18 +978,517 @@ def klocalizerCLI():
   #
   # Get the approximate constraints
   #
-  approximate_constraints=None
-  if approximate:
-    approximate_constraints=Klocalizer.get_config_file_constraints(approximate)
-  
+  approximate_constraints={}
+  for arch_name in approximate_configs:
+    apprx_config_file_path = approximate_configs[arch_name]
+    approximate_constraints[arch_name]=Klocalizer.get_config_file_constraints(apprx_config_file_path)
+
+  # Check if there are line constraints, which will require a SuperC instance.
+  if has_line_constraints:
+    try:
+      superc = SuperC(superc_linux_script_path=superc_linux_script, logger = logger)
+    except SuperC.SuperC_ChecksFailed as e:
+      # TODO: if superc checks fail and werror is disabled, let SuperC
+      # methods still return something for calls to superc
+
+      # Pass this to the main func to terminate until allowing klocalizer
+      # to work without SuperC
+      raise e 
+
+      # prefix  = "SuperC checks failed, reason: %s." % e.reason
+      # warn_msg = "%s.  Search will exclude line presence constraints.\n" % prefix
+      # err_msg = "%s.  Either fix the issue or omit the line requirements.\n" % prefix
+      # warn_or_err(warn_msg, err_msg, exit_code_superc_checks_failed)
+
   # Everything is set. Continue with SAT checking and config sample generation.
   seen_unsat = False # to prevent logging some info multiple times for unsat cases
   sat_archs = []
+
+  #
+  # Algo 1: mutex enabled
+  #
+  if mutex_enabled:
+    # Initialize the requirements, which will be consumed and updated.
+    requirements = include_mutex_list[:]
+    # Use 0 as the special line number, which depicts the global scope 
+    # (only the file itself). Always target to compile the file in case
+    # specific lines fail and no werror.
+    requirements = [(u, [0] + l) for u, l in requirements]
+    # Don't include units without kmax constraints (failures).
+    requirements = [(u, l) for u, l in requirements if kmax_constraints[u] is not None]
+
+    # TODO: if an arch only compiles the file, and another arch compiles
+    # both the file and the line, we keep both configs. However, we can
+    # later remove the arch that only compiles the file, since the other
+    # one outperforms it.
+
+    # Save the covering improving z3 models, from which config files will be sampled.
+    z3_models = [] # (arch, z3_model, [(unit:line)]) tuples
+
+    # The architecture is only updated if the coverage is no longer improved
+    # by the current architecture. This means, we can do several iterations
+    # on the same architecture to account for mutually exclusive configurations.
+    arch_idx = 0
+    printed_arch_info = False
+    got_first_improvement = False
+    while arch_idx < len(archs) and requirements:
+      # Assign the architecture to work with.
+      arch = archs[arch_idx]
+
+      if not printed_arch_info:
+        logger.info("Trying \"%s\"\n" % (arch.name))
+        printed_arch_info = True
+
+      # This will be only compiled later if a SAT check is necessary.
+      compiled_arch_constraints = None
+
+      #
+      # Compute presence conditions for the architecture.
+      #
+      # This will only happen in the first try of the architecture since
+      # we set values to line_constraints[unit] for every unit, even if
+      # it is failure (None depicts failure).
+      units_to_compute_pc = []
+      for unit, lines in requirements:
+        if lines == [0]:
+          # 0 is the special line number, depicting the global scope.
+          # If 0 is the only required line, it means no specific lines are
+          # required to be compiled but only the file. Therefore, presence
+          # conditions are not required.
+          pass
+        elif arch.name not in line_constraints[unit2srcfile(unit)]:
+          units_to_compute_pc.append(unit)
+      # Also for the units with always include/excludes
+      units_to_compute_pc.extend([unit for unit, lines in (include_list + exclude_list) if lines])
+      units_to_compute_pc = [u for u in units_to_compute_pc if not u.endswith('/')] # exclude directories
+      units_to_compute_pc = sorted(list(set(units_to_compute_pc)))
+      if units_to_compute_pc:
+        logger.info("Computing the line presence conditions under %s for the following units: %s\n" % (arch.name, " ".join(units_to_compute_pc)))
+      for unit in units_to_compute_pc:
+        get_presence_conditions(unit2srcfile(unit), arch)
+
+      # Presence conditions are computed.
+
+      # Accumulate constraints for the config file. This will hold file and
+      # line constraints. At the end, if there is an improvement to coverage
+      # with such satisfiable constraints, a config file will be sampled
+      # from these constraints.
+      accumulated_constraints = []
+
+      #
+      # Add the constraints for "include" lines
+      #
+      # This needs to be done here since line constraints may be specific
+      # to architecture in constrast to Makefile constraints.
+      logger.debug("Adding the constraints for \"include\" lines.\n")
+      for unit, lines in include_list:
+        if lines and lines != [0]:
+          srcfile = unit2srcfile(unit)
+          if line_constraints[srcfile][arch.name] is not None: # None is SuperC failure.
+            pc_blocks = line_constraints[srcfile][arch.name].get_deepest_blocks(lines)
+            for pcb in pc_blocks:
+              accumulated_constraints.extend(pcb.pc.assertions())
+      #
+      # Add the constraints for "exclude" lines
+      #
+      # This needs to be done here since line constraints may be specific
+      # to architecture in constrast to Makefile constraints.
+      logger.debug("Adding the constraints for \"exclude\" lines.\n")
+      for unit, lines in exclude_list:
+        if not lines:
+          pass # Already handled
+        else: # has lines
+          # Get the line constraints
+          unit_line_c = []
+          srcfile = unit2srcfile(unit)
+          if line_constraints[srcfile][arch.name] is not None: # None is SuperC failure.
+            pc_blocks = line_constraints[srcfile][arch.name].get_deepest_blocks(lines)
+            for pcb in pc_blocks:
+              unit_line_c.extend(pcb.pc.assertions())
+          # Get kmax constraints
+          unit_kmax_c = kmax_constraints[unit]
+          unit_kmax_c = unit_kmax_c if unit_kmax_c else []
+          # Get exclusion constraints
+          c = get_exclusion_constraints(unit_kmax_c, unit_line_c)
+          accumulated_constraints.extend(c)
+    
+      # Keep track of whether there is an improvement found to the coverage
+      # with the accumulated constraints. If not, loop will continue with
+      # the next architecture. Otherwise, the loop will give this arch
+      # another chance since there can be mutually exclusive lines to cover
+      # in the next iteration.
+      is_improved = False
+
+      # A dict of (file:[lines]) covered by the current model being
+      # built. This will be used for reporting purposes. This is empty if
+      # is_improved is False, otherwise non-empty.
+      current_coverage = {}
+
+      # This is the updated requirements, which excludes what is covered
+      # in this iteration. At the end of the iteration, this will replace
+      # the previous requirements.
+      new_requirements = []
+
+      # Visit requirements.
+      if not got_first_improvement:
+        logger.info("Searching for a constraints model that cover all or part of the constraints\n")
+      else:
+        logger.info("Searching for a constraints model that cover all or part of the remaining constraints\n")
+      for unit, lines in requirements:
+        remaining_lines = [] #< Remaining lines to cover for the unit.
+
+        # Check if arch is good for the unit
+        if unit.startswith("arch/") and not kclause_file:
+          unit_archs = Arch.get_archs_from_subdir(unit)
+          if arch.name not in unit_archs:
+            logger.debug("Skipping the unit (\"%s\") for this architecture (\"%s\") as the unit is architecture specific.\n" % (unit, arch.name))
+            new_requirements.append((unit, lines))
+            continue
+
+        # Add the Makefile constraints.
+        assert kmax_constraints[unit] is not None
+        constraints_with_file = accumulated_constraints + kmax_constraints[unit]
+
+        # Map lines into ConditionalBlocks.
+        line_to_cb = {} # key: int line number, value: ConditionalBlock instance.
+        # arch.name key exists if line_constraints were needed
+        # the value for line_constraints[unit][arch.name] is None if SuperC failed
+        if not unit.endswith('/'):
+          if arch.name in line_constraints[unit2srcfile(unit)] and line_constraints[unit2srcfile(unit)][arch.name] is not None:
+            root_cb = line_constraints[unit2srcfile(unit)][arch.name]
+            for line in lines:
+              line_to_cb[line] = root_cb.get_deepest_block(line)
+        
+        # Keep track of covered blocks. Different lines may point to the
+        # same block. This allows avoiding additional SAT checks for
+        # duplicate blocks.
+        covered_blocks = set()
+        cant_cover_blocks = set()
+
+        # Check for each line.
+        for line in lines:
+          logger.debug("Working on (%s:%s)\n" % (unit, line))
+          
+          #
+          # Get the line constraints
+          #
+          if line != 0 and line_constraints[unit2srcfile(unit)][arch.name] is None:
+            # A specific line is required, for which the pc does not exist.
+            # Therefore, nothing to do for this.
+            remaining_lines.append(line)
+            continue
+          elif line == 0: #< Special line number: compile file only.
+            line_const = [z3_true]
+            deepest_block = None
+          else: #< A line under ifdef is required, for which we have the pc.
+            assert line > 0
+            assert line_constraints[unit2srcfile(unit)][arch.name] is not None
+            cb = line_constraints[unit2srcfile(unit)][arch.name]
+            deepest_block = cb.get_deepest_block(line)
+            line_const = deepest_block.pc.assertions()
+          
+          #
+          # Attempt to build the line
+          #
+          line_covered = False
+
+          if deepest_block in cant_cover_blocks:
+            # The surrounding ConditionalBlock is already determined to be
+            # non coverable while checking for a different line.
+            logger.debug("%s was already determined to be not coverable\n" % line)
+            line_covered = False
+          elif deepest_block in covered_blocks:
+            # This line is already covered as it shares the constraints
+            # with a previously covered line.
+            logger.debug("Line %s was already covered\n" % line)
+            line_covered = True
+          else: #< No info on line's coverage so far -- need additional constraints.
+            constraints_with_line = constraints_with_file[:]
+            constraints_with_line.extend(line_const)
+
+            # SAT check.
+            if compiled_arch_constraints is None:
+              compiled_arch_constraints = klocalizer.compile_constraints(arch)
+            full_constraints = compiled_arch_constraints + constraints_with_line
+            logger.debug("Checking constraints: %s\n"% constraints_with_line)
+            model_sampler = Klocalizer.Z3ModelSampler(full_constraints, random_seed=random_seed, logger=logger)
+            is_sat, z3_model = model_sampler.sample_model()
+
+            # Constraints is SAT means line is covered.
+            line_covered = is_sat
+
+            if is_sat: # Line constraints are satisfiable
+              # The constraints are approved to be SAT and improving coverage,
+              # therefore, keep them in.
+              accumulated_constraints = constraints_with_line[:]
+              constraints_with_file = constraints_with_line[:]
+
+          # End of attempting to build the line: check if line is built and
+          # account for it.
+          if line_covered:
+            logger.debug("Covered: (%s:%s)\n" % (unit, line))
+            # Signal that the current constraints improved the coverage.
+            is_improved = True
+
+            # Report the coverage for this model being built.
+            current_coverage[unit] = sorted(current_coverage.get(unit, []) + [line])
+
+            # For optimization, keep track of all blocks covered with this.
+            covered_blocks.add(None) #< Global scope, special value.
+            # Self and all ancestor blocks.
+            while deepest_block is not None:
+              covered_blocks.add(deepest_block)
+              deepest_block = deepest_block.parent
+          else:
+            logger.debug("Failed to cover: (%s:%s)\n" % (unit, line))
+            # Line is not covered -- therefore, keep it as requirement.
+            remaining_lines.append(line)
+            
+            # For optimization, keep track of blocks that cannot be covered.
+            # Self and all descendants are not coverable.
+            cant_cover_blocks.add(deepest_block)
+            if deepest_block:
+              blocks = [deepest_block]
+              while blocks:
+                b = blocks.pop()
+                cant_cover_blocks.add(b)
+                for sub_b in b.sub_block_groups:
+                  blocks.extend(sub_b)
+
+        # TODO: in some cases, we know the line is never satisfiable by
+        # syntax analysis (condition is 0). Don't keep them as requirement?
+
+        # Keep the remaining lines in the requirements.
+        if remaining_lines:
+          new_requirements.append((unit, remaining_lines))
+        else: # If no more remaining lines, then no more requirements for the file.
+          pass
+      
+      # Done with an iteration over all required file:lines with the current arch.
+      
+      # Update the requirements, which is potentially smaller with the new coverage.
+      requirements = new_requirements
+      logger.debug("Remaining requirements: %s\n" % requirements)
+
+      # Save this accumulated model, which improves coverage.
+      if is_improved:
+        got_first_improvement = True
+        logger.info("A coverage improving constraints set found: sampling a model.\n")
+        assert compiled_arch_constraints
+        assert accumulated_constraints
+        full_constraints = compiled_arch_constraints + accumulated_constraints
+        # Repair is done here only since this is where the final model to
+        # get the config file is produced.
+        apprx_constraints = approximate_constraints.get(arch.name, approximate_constraints.get("default", None))
+        model_sampler = Klocalizer.Z3ModelSampler(full_constraints, approximate_constraints=apprx_constraints, random_seed=random_seed, logger=logger)
+        is_sat, z3_model = model_sampler.sample_model()
+        assert is_sat
+        assert current_coverage
+        z3_models.append((arch, z3_model, current_coverage))
+        logger.debug("Sampled a model\n")
+      else:
+        # Continue with the next arch as this could not improve coverage anymore.
+        # We don't change the architecture right away if there is improvement
+        # because something that could not be covered in this iteration
+        # might get covered in next iteration due to mutual exclusion.
+        arch_idx += 1
+        printed_arch_info = False
+
+    logger.debug("Localization search is done. Numbers of models created: %s\n" % len(z3_models))
+
+    # "original_include_mutex_list" has all the lines the user provided.
+    # "include_mutex_list" is the processed list, where the lines
+    # belonging to the global scope (not under any ifdefs) are filtered out.
+    # This filtering helped us to avoid calls to SuperC if all lines were
+    # global. We have the coverage results for the filtered lines. Now,
+    # translate back to user's original list of lines for the coverage report.
+    # Structure: { "path/to/unit": { "unit": [configs_list], 1: [configs_list], ...]  }  }
+    # "unit" is special value for all configs that compile the unit, even
+    # without any line targets.
+    coverage_report = OrderedDict()
+    for unit, lines in original_include_mutex_list:
+      coverage_report[unit] = OrderedDict()
+      # List of configs that compiles the unit, even without specific line targets.
+      # If there is some config file that does not compile any specific lines
+      # but the unit only, it will be here together with all other configs that
+      # compile the unit.
+      coverage_report[unit]["unit"] = [] 
+      for l in lines:
+        coverage_report[unit][l] = []
+      # Values will be updated before writing the report if they were covered.
+
+    #
+    # Sample configs (and create coverage report)
+    #
+    num_models = len(z3_models)
+    if num_models == 0 :
+      logger.error("No satisfying configuration found.\n")
+      exit(11)
+
+    assert z3_models # (arch, z3_model, current_coverage) tuples
+    logger.info("Sampling and writing %s configuration files from models.\n" % num_models)
+    for i, (arch, model, coverage) in enumerate(z3_models):
+      config_id = "%s-%s" % (i, arch.name)
+      config_basename = "%s.config" % config_id 
+      config_file_path = os.path.join(output_dir, config_basename)
+      pathlib.Path(os.path.dirname(config_file_path)).mkdir(parents=True, exist_ok=True)
+      
+      # Sample the config from the model
+      logger.info("[%s/%s] Sampling and writing the configuration file to %s\n" % (i+1, num_models, config_file_path))
+      config_content = Klocalizer.get_config_from_model(model, arch, set_tristate_m=modules_arg, allow_non_visibles=allow_non_visibles)
+      # Write the config file
+      with open(config_file_path, 'w') as f:
+        f.write(config_content)
+      
+      # Create the coverage report for the config
+      built_mutex_units = [] #< Use for logging the build command
+      for unit, lines in original_include_mutex_list:
+        if unit in coverage:
+          built_mutex_units.append(unit)
+          coverage_report[unit]["unit"].append(config_basename)
+        for l in lines:
+          if l in global_scope_lines.get(unit, []) and unit in coverage:
+            coverage_report[unit][l].append(config_basename)
+          elif unit in coverage and l in coverage[unit]:
+            coverage_report[unit][l].append(config_basename)
+
+      # Log the build command
+      build_cmd = "KCONFIG_CONFIG=%s %s ARCH=%s olddefconfig clean %s" % (config_file_path, cross_compiler, arch.name, " ".join([u for u, _ in include_list] + built_mutex_units))
+      logger.info("Build with \"%s\"\n" % build_cmd)
+
+    # Compute coverage report summary
+    num_target_files = 0
+    num_target_lines = 0
+    num_files_compiled = 0
+    num_lines_compiled = 0
+    for unit in coverage_report:
+      num_target_files += 1
+      if coverage_report[unit]["unit"]:
+        num_files_compiled += 1
+      # Count lines
+      for k in coverage_report[unit]:
+        if k == "unit":
+          continue
+        num_target_lines += 1
+        if coverage_report[unit][k]:
+          num_lines_compiled += 1
+    assert num_target_files >= num_files_compiled
+    assert num_target_lines >= num_lines_compiled
+    
+    # Log coverage summary
+    if num_target_files == num_files_compiled and num_target_lines == num_lines_compiled:
+      logger.info("Coverage summary: all mutex constraints were satisfied.\n")
+    elif num_files_compiled == 0: # No coverage
+      assert num_lines_compiled == 0
+      logger.info("Coverage summary: none of the mutex constraints were satisfied.\n")
+    else: # Some coverage
+      assert num_target_files > 0
+      logger.info("Coverage summary: some of the mutex constraints were satisfied: %s/%s files and %s/%s lines were covered.\n" % (num_files_compiled, num_target_files, num_lines_compiled, num_target_lines))
+      logger.warning("Despite the high accuracy, klocalizer cannot guarantee claimed coverage due to under approximations.\n")
+
+    # Write the coverage report
+    logger.info("Writing the coverage report to %s\n" % coverage_report_file)
+    logger.info("Note coverage report is attempted coverage.  Actual coverage may be reduced due to limitations of klocalizer's constraint collection.\n")
+    with open(coverage_report_file, 'w') as f:
+      json.dump(coverage_report, f, indent=2)
+    
+    #
+    # end of mutual exclusion algorithm
+    #
+    exit(0)
+
+  #
+  # Sampling algo 2: single config, no mutual exclusion
+  #
+  assert not mutex_enabled
+  assert not include_mutex_list
   for arch in archs:
     logger.info("Trying \"%s\"\n" % (arch.name))
+
+    #
+    # SAT check for units only (without line constraints)
+    #
+    # This will be final SAT check if there are no line constraints to add.
+    # Otherwise, this check will serve as architecture search, and the
+    # extended constraints with the line constraints will be checked again.
     constraints = klocalizer.compile_constraints(arch)
-    model_sampler = Klocalizer.Z3ModelSampler(constraints, approximate_constraints=approximate_constraints, random_seed=random_seed, logger=logger)
+    if has_line_constraints:
+       # Don't do approximation yet, this is only arch search, final model will come with the line constraints.
+      model_sampler = Klocalizer.Z3ModelSampler(constraints, random_seed=random_seed, logger=logger)
+    else:
+      # Do the approximation at the same time: this will be the final model.
+      apprx_constraints = approximate_constraints.get(arch.name, approximate_constraints.get("default", None))
+      model_sampler = Klocalizer.Z3ModelSampler(constraints, approximate_constraints=apprx_constraints, random_seed=random_seed, logger=logger)
     is_sat, payload = model_sampler.sample_model()
+
+    #
+    # Account for line constraints
+    #
+    if is_sat and has_line_constraints:
+      # We could have added the line constraints in the first place.
+      # However, if the line constraints are not cached, SuperC config
+      # creation takes a long time since it requires localizing a Linux
+      # configuration file to build the unit and building the unit.
+      # To avoid attempting the setup for already unsatisfiable
+      # architectures, we first find a building architecture, then request
+      # the line constraints. If, for example, we have 5 units, we avoid
+      # running SuperC setup for each of these files if the architecture
+      # does not compile some of these units. An optimization to SuperC
+      # configuration creation pipeline might solve this.
+      logger.info("The constraints are satisfiable for the units.  Trying with the line constraints.\n")
+
+      #
+      # Compute line presence conditions
+      #
+      srcfiles_with_line_requirements = ["%s.c" % u[:-len('.o')] for u, lines in all_comp_units_list if lines]
+      logger.info("Computing the line presence conditions under %s for the following units: %s\n" % (arch.name, " ".join(srcfiles_with_line_requirements)))
+      for unit in srcfiles_with_line_requirements:
+        get_presence_conditions(unit2srcfile(unit), arch)
+
+      logger.debug("Getting additional line constraints.\n")
+
+      # For "includes"
+      logger.debug("Adding the constraints for \"include\" lines.\n")
+      additional_line_constraints = []
+      for unit, lines in include_list:
+        if lines:
+          srcfile = unit2srcfile(unit)
+          if line_constraints[srcfile][arch.name] is not None: # None is SuperC failure.
+            pc_blocks = line_constraints[srcfile][arch.name].get_deepest_blocks(lines)
+            for pcb in pc_blocks:
+              additional_line_constraints.extend(pcb.pc.assertions())
+      
+      # For "excludes"
+      logger.debug("Adding the constraints for \"exclude\" lines.\n")
+      for unit, lines in exclude_list:
+        if not lines:
+          pass # Already handled
+        else: # has lines
+          # Get the line constraints
+          unit_line_c = []
+          srcfile = unit2srcfile(unit)
+          if line_constraints[srcfile][arch.name] is not None: # None is SuperC failure.
+            pc_blocks = line_constraints[srcfile][arch.name].get_deepest_blocks(lines)
+            for pcb in pc_blocks:
+              unit_line_c.extend(pcb.pc.assertions())
+          # Get kmax constraints
+          unit_kmax_c = kmax_constraints[unit]
+          unit_kmax_c = unit_kmax_c if unit_kmax_c else []
+          # Get exclusion constraints
+          c = get_exclusion_constraints(unit_kmax_c, unit_line_c)
+          additional_line_constraints.extend(c)
+
+
+      # Add line constraints to the overall constraints
+      logger.debug("Adding %s line constraints to the overall constraints.\n" % len(additional_line_constraints))
+      constraints.extend(additional_line_constraints)
+
+      # Do another SAT check to update is_sat and payload values with the
+      # overall constraints that include line constraints
+      logger.debug("Doing another SAT check with the complete set of constraints.\n")
+      apprx_constraints = approximate_constraints.get(arch.name, approximate_constraints.get("default", None))
+      model_sampler = Klocalizer.Z3ModelSampler(constraints, approximate_constraints=apprx_constraints, random_seed=random_seed, logger=logger)
+      is_sat, payload = model_sampler.sample_model()
 
     #
     # Constraints are UNSAT
@@ -561,11 +1551,11 @@ def klocalizerCLI():
 
         # Print the command for building
         if sample_count == 1:
-          if not compilation_units:
-            build_cmd = "make.cross ARCH=%s clean; make.cross ARCH=%s" % (arch.name, arch.name)
+          if not include_list:
+            build_cmd = "%s ARCH=%s clean; %s ARCH=%s" % (cross_compiler, arch.name, cross_compiler, arch.name)
           else:
-            build_cmd = "make.cross ARCH=%s clean %s" % (arch.name, " ".join(compilation_units))
-          logger.info("Build with \"make.cross ARCH=%s olddefconfig; %s\".\n" % (arch.name, build_cmd))
+            build_cmd = "%s ARCH=%s clean %s" % (cross_compiler, arch.name, " ".join([u for u, _ in include_list]))
+          logger.info("Build with \"%s ARCH=%s olddefconfig; %s\".\n" % (cross_compiler, arch.name, build_cmd))
 
       # Stop the SAT search with the first SAT arch if not reporting for all archs
       if not reportallarchs:
@@ -596,5 +1586,8 @@ if __name__ == '__main__':
   except Arch.FormulaGenerationError as e:
     logger.error("Cannot generate %s formulas.\n" % (e.formula_type))
     exit(13)
+  except SuperC.SuperC_ChecksFailed as e:
+    logger.error("SuperC checks failed, reason: %s.  "
+                 "Either fix the issue or omit the line requirements.\n" % (e.reason))
   
   exit(0)
