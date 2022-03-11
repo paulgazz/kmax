@@ -3,12 +3,11 @@
 
 - [The kmax tool suite](#the-kmax-tool-suite)
   - [Getting started](#getting-started)
-    - [python setup](#python-setup)
     - [Installing the kmax tool suite](#installing-the-kmax-tool-suite)
     - [Kicking the tires](#kicking-the-tires)
   - [Using `klocalizer --repair` on patches](#using-klocalizer---repair-on-patches)
   - [Using `kismet`](#using-kismet)
-  - [Additional Documentation](#additional-documentation)
+  - [Additional documentation](#additional-documentation)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -22,8 +21,8 @@
 Install the requiste python tools (the kmax tool suite currently depends on python 3.8 or later), setup a python virtual environment (recommended), and finally install the tools from pip.
 
     sudo apt install -y python3 python3-pip python3-venv
-    python3 -m venv ~/kmax_env/
-    source ~/kmax_env/bin/activate
+    python3 -m venv ~/env_kmax/
+    source ~/env_kmax/bin/activate
     pip3 install kmax
 
 Instructions to install from source can be found in the [advanced documentation](docs/advanced.md).
@@ -42,12 +41,8 @@ Install dependencies for compiling Linux source, then download and enter the Lin
 Run `klocalizer --repair` to modify `allnoconfig` so that builds a given compilation unit:
 
     make allnoconfig
-    klocalizer --repair .config -o .config --include drivers/usb/storage/alauda.o
-
-Build the `.config` file made by `klocalizer` to confirm inclusion of the compilation unit:
-
-    make ARCH=x86_64 olddefconfig
-    make ARCH=x86_64 clean drivers/usb/storage/alauda.o
+    klocalizer --repair .config -o allnoconfig_repaired --include drivers/usb/storage/alauda.o
+    KCONFIG_CONFIG=allnoconfig_repaired make ARCH=x86_64 olddefconfig clean drivers/usb/storage/alauda.o
     
 You should see `CC      drivers/usb/storage/alauda.o` at the end of the build.
 
@@ -69,14 +64,11 @@ Start with a clone of the linux repository and get a patch file:
     git checkout 6fc88c354f3af
     git show > 6fc88c354f3af.diff
     
-Repair allnoconfig to include lines of the patch:
+Repair allnoconfig to include lines of the patch and test the build.  When using `--include-mutex` all configuration files needed to cover the patch are exported as `NUM-ARCH.config`:
 
     make allnoconfig
     klocalizer --repair .config -a x86_64 --include-mutex 6fc88c354f3af.diff
-    
-Build the repaired configuration file for the patched source files:
-    
-    KCONFIG_CONFIG=0-x86_64.config make.cross ARCH=x86_64 olddefconfig clean kernel/bpf/cgroup.o net/ipv4/af_inet.o net/ipv4/udp.o net/ipv6/af_inet6.o net/ipv6/udp.o
+    KCONFIG_CONFIG=0-x86_64.config make ARCH=x86_64 olddefconfig clean kernel/bpf/cgroup.o net/ipv4/af_inet.o net/ipv4/udp.o net/ipv6/af_inet6.o net/ipv6/udp.o
     
 
 ## Using `kismet`
@@ -96,10 +88,10 @@ Once finished (it can take about an hour on a commodity desktop), kismet will pr
 Technical details can be found in in the [kismet documentation](docs/advanced.md#kismet) and the [publication](https://paulgazzillo.com/papers/esecfse21.pdf) on `kclause` and `kismet`.  The experiment [replication script](scripts/kismet_experiments_replication.sh) can be used to run kismet on all architectures' Kconfig specifications.
 
 
-## Additional Documentation
+## Additional documentation
 
-[Overview](https://github.com/paulgazz/kmax/blob/master/docs/overview.md)
+[Overview](docs/overview.md)
 
-[Advanced Usage](https://github.com/paulgazz/kmax/blob/master/docs/advanced.md)
+[Advanced Usage](docs/advanced.md)
 
-[Bugs Found](https://github.com/paulgazz/kmax/blob/master/docs/bugs_found.md)
+[Bugs Found](docs/bugs_found.md)
