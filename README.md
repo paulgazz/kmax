@@ -25,7 +25,7 @@ Install the requiste python tools (the kmax tool suite currently depends on pyth
     source ~/env_kmax/bin/activate
     pip3 install kmax
 
-Instructions to install from source can be found in the [advanced documentation](docs/advanced.md).
+Instructions to install from source can be found in the [advanced documentation](https://github.com/paulgazz/kmax/blob/master/docs/advanced.md).
 
 
 ### Kicking the tires
@@ -40,7 +40,7 @@ Install dependencies for compiling Linux source, then download and enter the Lin
 
 Run `klocalizer --repair` to modify `allnoconfig` so that builds a given compilation unit:
 
-    make allnoconfig
+    make ARCH=x86_64 allnoconfig
     klocalizer --repair .config -o allnoconfig_repaired --include drivers/usb/storage/alauda.o
     KCONFIG_CONFIG=allnoconfig_repaired make ARCH=x86_64 olddefconfig clean drivers/usb/storage/alauda.o
     
@@ -66,7 +66,7 @@ Start with a clone of the linux repository and get a patch file:
     
 Repair allnoconfig to include lines of the patch and test the build.  When using `--include-mutex` all configuration files needed to cover the patch are exported as `NUM-ARCH.config`:
 
-    make allnoconfig
+    make ARCH=x86_64 allnoconfig
     klocalizer --repair .config -a x86_64 --include-mutex 6fc88c354f3af.diff
     KCONFIG_CONFIG=0-x86_64.config make ARCH=x86_64 olddefconfig clean kernel/bpf/cgroup.o net/ipv4/af_inet.o net/ipv4/udp.o net/ipv6/af_inet6.o net/ipv6/udp.o
     
@@ -85,13 +85,13 @@ Once finished (it can take about an hour on a commodity desktop), kismet will pr
   2. A list of results for each `select` construct in `kismet_summary_x86_64.csv` (`UNMET_ALARM` denotes the buggy ones)
   3. A list of `.config` files meant to exercise each bug in `kismet-test-cases/`
 
-Technical details can be found in in the [kismet documentation](docs/advanced.md#kismet) and the [publication](https://paulgazzillo.com/papers/esecfse21.pdf) on `kclause` and `kismet`.  The experiment [replication script](scripts/kismet_experiments_replication.sh) can be used to run kismet on all architectures' Kconfig specifications.
+Technical details can be found in in the [kismet documentation](https://github.com/paulgazz/kmax/blob/master/docs/advanced.md#kismet) and the [publication](https://paulgazzillo.com/papers/esecfse21.pdf) on `kclause` and `kismet`.  The experiment [replication script](https://github.com/paulgazz/kmax/blob/master/scripts/kismet_experiments_replication.sh) can be used to run kismet on all architectures' Kconfig specifications.
 
 
 ## Additional documentation
 
-[Overview](docs/overview.md)
+[Overview](https://github.com/paulgazz/kmax/blob/master/docs/overview.md)
 
-[Advanced Usage](docs/advanced.md)
+[Advanced Usage](https://github.com/paulgazz/kmax/blob/master/docs/advanced.md)
 
-[Bugs Found](docs/bugs_found.md)
+[Bugs Found](https://github.com/paulgazz/kmax/blob/master/docs/bugs_found.md)

@@ -7,7 +7,7 @@
     - [Example usage](#example-usage)
     - [Coverage report](#coverage-report)
     - [`ERROR: SuperC checks failed`](#error-superc-checks-failed)
-    - [Getting configuration files to build commit ranges](#getting-configuration-files-to-build-commit-ranges)
+    - [Getting configuration files to build commit ranges and using exclude](#getting-configuration-files-to-build-commit-ranges-and-using-exclude)
   - [`kismet`](#kismet)
     - [Analysis stages](#analysis-stages)
       - [Syntactical optimization](#syntactical-optimization)
@@ -79,7 +79,7 @@ This produces a new version of the `.config` file in `0-x86_64.config`.  To buil
     make olddefconfig
     make kernel/bpf/cgroup.o
     
-This time, the source file is successfully built: `CC      kernel/bpf/cgroup.o`.  Any number of `--include-mutex` constraints may be added.  If there is mutual-exclusion among source files, `klocalizer` will as many configuration files needed to cover all constraints.  Always on or off constraints can be added with `--include` or `--exclude`.  See the documentation on [`klocalizer` and `krepair`](docs/advanced.md#klocalizer-and-krepair) for more usage information.
+This time, the source file is successfully built: `CC      kernel/bpf/cgroup.o`.  Any number of `--include-mutex` constraints may be added.  If there is mutual-exclusion among source files, `klocalizer` will as many configuration files needed to cover all constraints.  Always on or off constraints can be added with `--include` or `--exclude`.  See the documentation on [`klocalizer` and `krepair`](#klocalizer-and-krepair) for more usage information.
 
 
 ### Coverage report
@@ -95,20 +95,26 @@ Try running `java superc.SuperC -sourcelinePC /dev/null /dev/null`.  If the clas
 If you get a `java.lang.NoSuchMethodError: 'com.microsoft.z3.BoolExpr com.microsoft.z3.Context.mkAnd(com.microsoft.z3.BoolExpr[])'` error, then there is a mismatch between the z3 java library.  Please be sure that your `superc.jar` and `z3-4.8.12-x64-glibc-2.31/bin/com.microsoft.z3.jar` jarfiles downloaded according to the SuperC installation directions.  Or try [building SuperC](https://github.com/appleseedlab/superc) from scratch.
 
 
-
-### Getting configuration files to build commit ranges
+### Getting configuration files to build commit ranges and using exclude
 
 To repair `allnoconfig` to include changed lines from a range of commits, first get the diff file, checkout the version having the patch(es) applied, then call repair:
 
     cd ~/
     git clone git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
     cd linux
-    git diff commit1..commit2 > patch.diff
-    git checkout commit2
-    klocalizer --include{-mutex,} patchfile.diff
+    # create a patchset from a range of commits
+    git diff 44779a4b85abd..6fc88c354f3af > patchset.diff
+    # be sure to checkout the last commit so that krepair can see the full patched source code
+    git checkout 6fc88c354f3af
+    # get allnoconfig
+    make ARCH=x86_64 allnoconfig
+    # repair allnoconfig, excluding specific directories
+    klocalizer --repair .config -a x86_64 --include-mutex patchset.diff --exclude drivers/dma
+    # build the affected source files using the repaired configuration file
+    KCONFIG_CONFIG=./0-x86_64.config make.cross ARCH=x86_64 olddefconfig clean kernel/bpf/cgroup.o net/ipv4/af_inet.o net/ipv4/udp.o net/ipv6/af_inet6.o net/ipv6/udp.o net/unix/af_unix.o
     
-    
-    `klocalizer` will also take patches ending in `.patch`, e.g., from `git format-patch` in addition to `.diff` as long as the file is in the unified diff format.  Be sure to run `klocalizer` from the already-patched source tree, since this contains the constraints of the resulting code from the patch.
+`klocalizer` will also take patches ending in `.patch`, e.g., from `git format-patch` in addition to `.diff` as long as the file is in the unified diff format.  Be sure to run `klocalizer` from the already-patched source tree, since this contains the constraints of the resulting code from the patch.
+
 
 
 <!-- - headers -->
