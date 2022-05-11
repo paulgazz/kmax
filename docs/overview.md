@@ -45,12 +45,15 @@ the following tools:
   [ESEC/FSE 2021 research
   paper](https://doi.org/10.1145/3468264.3468578)
   ([preprint](https://paulgazzillo.com/papers/esecfse21.pdf)).
+- `koverage` checks whether a Linux configuration file includes a set of
+   (sourcefile,line) for compilation.  It utilizes the Linux build system
+   to determine coverage.
 
 ## Contributors
 
 - [Paul Gazzillo](https://paulgazzillo.com) -- kextract, kclause, kmax, klocalizer
 - [Jeho Oh](https://www.linkedin.com/in/jeho-oh-110a2092/) -- kclause
-- [Necip Yildiran](http://www.necipyildiran.com/) -- kismet, plocalizer
+- [Necip Yildiran](http://www.necipyildiran.com/) -- kismet, krepair, koverage
 - [Julian Braha](https://julianbraha.com/) -- kclause
 
 Special thanks to [Julia Lawall](https://pages.lip6.fr/Julia.Lawall/)

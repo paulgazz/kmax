@@ -14,6 +14,10 @@
       - [Optimized SAT check](#optimized-sat-check)
       - [Precise SAT check](#precise-sat-check)
     - [Summary format](#summary-format)
+  - [`koverage`](#koverage)
+      - [Checking (file:line) pairs](#checking-fileline-pairs)
+      - [Checking patch coverage](#checking-patch-coverage)
+      - [How to interpret coverage results](#how-to-interpret-coverage-results)
   - [Annotated Example](#annotated-example)
   - [Use Cases](#use-cases)
     - [A compilation unit not built by allyesconfig](#a-compilation-unit-not-built-by-allyesconfig)
@@ -158,6 +162,99 @@ This includes the following columns:
 - `verified`: If the analysis result is an alarm, includes whether the generated test case for the related construct verifies the alarm.  
 - `forced_target_udd_only`: If the analysis result is an alarm, includes whether forcing the target unmet dependency only was successful.  
 - `testcase`: The path to the generated test case, i.e., sample Kconfig config file.  
+
+## `koverage`
+
+`koverage` checks whether a Linux configuration file includes a set of
+(source/header file, line) for compilation.  It utilizes the Linux build system
+to determine code coverage.
+
+#### Checking (file:line) pairs
+```
+cd ~/linux-5.16/
+make.cross ARCH=x86_64 allyesconfig
+koverage --config .config --arch x86_64 --check kernel/fork.c:[259,261] -o coverage_results.json
+```
+
+This will check whether lines 256 and 261 of `kernel/fork.c` are included for compilation by Linux v5.16 allyesconfig.
+
+The coverage results, `coverage_results.json`, will have:
+```
+{
+  "headerfile_loc": {},
+  "sourcefile_loc": {
+    "kernel/fork.c": [
+      [259,"INCLUDED"],
+      [261,"LINE_EXCLUDED_FILE_INCLUDED"]
+    ]
+  }
+}
+```
+
+Looking at `kernel/fork.c`, lines 259 and 261 are encapsulated by two different branches of a conditional preprocessor directive (`#ifdef`).
+`koverage` reports that the line from the first branch (line 259) is included for compilation while line from the other branch (line 261) is excluded, as expected since the configuration file enables the first branch.
+
+#### Checking patch coverage
+
+`koverage` will also take patch files in unified diff format, and check patch coverage of a `.config` file.
+
+```
+cd ~/linux-5.16/  #< assuming this is a git clone
+# create the patch file for commit 7471e1afabf8 in unified diff format
+git diff 7471e1afabf8~..7471e1afabf8 > patch.diff
+# be sure to checkout to the patched source code
+git checkout 7471e1afabf8
+make.cross ARCH=x86_64 allyesconfig
+koverage --config .config --arch x86_64 --check-patch patch.diff -o coverage_results.json
+```
+
+`koverage` will determine a set of coverage requirements for covering the input patch, and check whether these are satisfied.  Below is the content of output `coverage_results.json` file, showing all modified 
+(file:line) pairs from the patch are included for compilation by the `.config` file.
+
+```
+{
+  "headerfile_loc": {
+    "include/trace/events/io_uring.h": [
+      [293,"INCLUDED"],
+      [297,"INCLUDED"],
+      [298,"INCLUDED"],
+      [299,"INCLUDED"],
+      [300,"INCLUDED"],
+      [306,"INCLUDED"],
+      [313,"INCLUDED"],
+      [315,"INCLUDED"],
+      [316,"INCLUDED"],
+      [317,"INCLUDED"],
+      [318,"INCLUDED"]
+    ]
+  },
+  "sourcefile_loc": {
+    "fs/io_uring.c": [
+      [1509,"INCLUDED"],
+      [1510,"INCLUDED"]
+    ]
+  }
+}
+```
+
+Any number of `--check` targets may be added, and mixed with `--check-patch` and `--check-covreq`.
+
+#### How to interpret coverage results
+The results may one of three values for each line for both headers and source files (compilation units), and should be interpreted as follows:
+
+* `INCLUDED`: (file,line) is included.
+* `LINE_EXCLUDED_FILE_INCLUDED`
+    * If compilation unit, unit is successfully preprocessed but line is
+    not included.
+    * If header, header file is included by some compilation unit specified in the coverage requirements, but line is not.  However, line might be included by some unseen compilation unit.
+* `FILE_EXCLUDED`
+    * If compilation unit, file is not included (preprocessing failed).
+      However, this might be a false alarm due to build issues (i.e.,
+      a compiler error that prevents preprocessing while `.config` file has
+      constraints to include (file,line)).
+    * If header, file is not included in any of the compilation units
+      preprocessed.  However, (file,line) might be included by some
+      unseen compilation unit.
 
 
 ## Annotated Example
