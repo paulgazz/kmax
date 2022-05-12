@@ -242,4 +242,4 @@ def get_target_c_lines(patch_txt: str):
 
   """
   r = get_target_lines(patch_txt)
-  return r.get["sourcefile_loc", {}]
+  return r.get("sourcefile_loc", {})
