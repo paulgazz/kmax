@@ -37,6 +37,7 @@ KOVERAGE_EXITCODE_MALFORMED_CHECK_FILELINE_FORMAT=10
 KOVERAGE_EXITCODE_MAKE_OLDDEFCONFIG_TIMEDOUT=11
 KOVERAGE_EXITCODE_CHECK_PATCH_FILE_NOT_FOUND=12
 KOVERAGE_EXITCODE_CHECK_COVREQ_FILE_NOT_FOUND=13
+KOVERAGE_EXITCODE_SCRATCHDIR_EXISTS=14
 
 import json
 import sys
@@ -850,8 +851,8 @@ def main():
              """ for missing mappings.""")
     argparser.add_argument("--scratch-dir",
         type=str,
-        help="""Path to scratch directory, where intermediate files will"""
-             """ be stored."""
+        help="""Path to non-existing or empty scratch directory, where"""
+             """ intermediate files will be stored."""
              """  Defaults to "koverage_files/".""",
         default="koverage_files/")
     argparser.add_argument("-o", "--output",
@@ -895,6 +896,15 @@ def main():
     assert arch in Arch.ARCHS
 
     # Create the scratch directory.
+    if os.path.exists(scratch_dir):
+        if os.path.isfile(scratch_dir):
+            logger.error("A file exists in the path to the scratch directory (\"%s\")."
+                "  Use a non-existing or empty scratch directory (--scratch-dir).\n" % scratch_dir)
+            exit(KOVERAGE_EXITCODE_SCRATCHDIR_EXISTS)
+        elif os.path.isdir(scratch_dir) and len(os.listdir(scratch_dir)) > 0:
+            logger.error("A non-empty scratch directory exists (\"%s\")."
+                "  Use a non-existing or empty scratch directory (--scratch-dir).\n" % scratch_dir)
+            exit(KOVERAGE_EXITCODE_SCRATCHDIR_EXISTS)
     logger.info("Intermediate files will be saved in \"%s\"\n" % scratch_dir)
     os.makedirs(scratch_dir, exist_ok=True)
     os.makedirs(os.path.join(scratch_dir, "per_srcfile/"), exist_ok=True)
