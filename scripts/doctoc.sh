@@ -1,2 +1,2 @@
 # npm install -g doctoc
-doctoc --notitle --github .
+doctoc --notitle --github --maxlevel 3 .
