@@ -191,6 +191,14 @@ def check_config(
     # Use abspath as commands are run cwd=linux_dir
     config_file = os.path.abspath(new_config_file_path)
 
+    # Clean the source tree.
+    # This is required to avoid false positives due to preprocessed/built
+    # files left behind which otherwise may not build.
+    make_clean_cmd = "%s ARCH=%s clean" % (cross_compiler, arch)
+    logger.warning("Cleaning the Linux source tree: \"%s\"\n" % make_clean_cmd)
+    _, _, retcode, time_elapsed = run(make_clean_cmd, shell=True, cwd=linux_dir)
+    assert retcode == 0
+
     # Prepare the core make command.
     make_env_settings = "KCFLAGS=\"-fdirectives-only -save-temps=obj\" KCONFIG_CONFIG=%s ARCH=%s" % (config_file, arch)
     make_flags = "-j1 -i"
