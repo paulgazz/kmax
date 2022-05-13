@@ -14,6 +14,13 @@
 
 ## Linux kernel
 
+### Intel 0-day automated reports
+
+These reports were made automatically by the [Intel 0-day](https://01.org/lkp) kernel test robot after their team included `kismet` in their automated test suite.
+
+- <https://lkml.org/lkml/2022/5/12/1042>
+- <https://lkml.org/lkml/2022/5/10/2229>
+
 
 ### Manual reports during evaluation
 
