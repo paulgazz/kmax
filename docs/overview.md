@@ -54,7 +54,7 @@ the following tools:
 - [Paul Gazzillo](https://paulgazzillo.com) -- kextract, kclause, kmax, klocalizer
 - [Jeho Oh](https://www.linkedin.com/in/jeho-oh-110a2092/) -- kclause
 - [Necip Yildiran](http://www.necipyildiran.com/) -- kismet, krepair, koverage
-- [Julian Braha](https://julianbraha.com/) -- kclause
+- [Julian Braha](https://julianbraha.com/) -- kclause, koverage
 
 Special thanks to [Julia Lawall](https://pages.lip6.fr/Julia.Lawall/)
 for posing the problem and for invaluable advice, feedback, and
