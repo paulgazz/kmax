@@ -1,0 +1,1006 @@
+#!/usr/bin/env python
+
+"""koverage is a tool that checks build coverage of a Linux configuration
+file for given set of (file:line)s.
+
+The results are represented in following enum values (also see the class
+definition for LineCoverage):
+
+* `INCLUDED`: (file,line) is included.
+* `LINE_EXCLUDED_FILE_INCLUDED`
+    * If compilation unit, unit is successfully preprocessed but line is
+      not included.
+    * If header, header file is included by some compilation unit specified
+      in the coverage requirements, but line is not.  However, line might
+      be included by some unseen compilation unit.
+* `FILE_EXCLUDED`
+    * If compilation unit, file is not included (preprocessing failed).
+      However, this might be a false alarm due to build issues (i.e.,
+      a compiler error that prevents preprocessing while `.config` file has
+      constraints to include (file,line)).
+    * If header, file is not included in any of the compilation units
+      preprocessed.  However, (file,line) might be included by some
+      unseen compilation unit.
+"""
+
+KOVERAGE_EXITCODE_CHECK_ARG_NEEDED=1
+KOVERAGE_EXITCODE_VALIDATION_PATCH_FAILED=2
+KOVERAGE_EXITCODE_VALIDATION_RPATCH_FAILED=3
+KOVERAGE_EXITCODE_NO_COVREQ_FOUND=4
+KOVERAGE_EXITCODE_NO_SOURCEFILE_FOUND=5
+KOVERAGE_EXITCODE_SOURCEFILE_NOT_FOUND_IN_LINUX_KSRC=6
+KOVERAGE_EXITCODE_INVALID_SOURCEFILE_EXT=7
+KOVERAGE_EXITCODE_COVREQ_NO_LINE_FOUND=7
+KOVERAGE_EXITCODE_COVREQ_INVALID_LINE_LESS_THAN_1=8
+KOVERAGE_EXITCODE_COVREQ_INVALID_LINE_MORE_THAN_LINECOUNT=9
+KOVERAGE_EXITCODE_MALFORMED_CHECK_FILELINE_FORMAT=10
+KOVERAGE_EXITCODE_MAKE_OLDDEFCONFIG_TIMEDOUT=11
+KOVERAGE_EXITCODE_CHECK_PATCH_FILE_NOT_FOUND=12
+KOVERAGE_EXITCODE_CHECK_COVREQ_FILE_NOT_FOUND=13
+KOVERAGE_EXITCODE_SCRATCHDIR_EXISTS=14
+
+import json
+import sys
+import argparse
+import os
+import json
+
+import kmax.about
+from kmax.vcommon import run
+from kmax.common import BasicLogger
+from kmax.superc import SyntaxAnalysis
+from kmax import patch
+from kmax.arch import Arch
+
+from subprocess import TimeoutExpired
+from shutil import copyfile, which
+from enum import Enum
+
+logger = BasicLogger()
+
+COVERAGE_REQUIREMENTS_EXT = ".covreq"
+
+# TODO: A limitation is that the tool requires a non-empty list of lines
+# for each unit.  A non-supported use case is to only check if the file
+# compiles or header included, without targeting specific lines.
+
+def argcheck_parsedcovreqarguments(covreq, linux_ksrc):
+    """After parsing every --check argument and turning them into
+    coverage requirements format, do a final check on combined set of
+    coverage requirements.  This captures issues in combined version rather
+    then errors in single arguments."""
+    if not covreq:
+        # May happen if patch input modifies no source files.
+        logger.error("No source or header files (.c/.h) found to check coverage for.\n")
+        exit(KOVERAGE_EXITCODE_NO_COVREQ_FOUND)
+
+    # Check if at least one sourcefile_loc exists.
+    if "sourcefile_loc" not in covreq or not covreq["sourcefile_loc"]:
+        logger.error("koverage needs at least one non-header .c file to work: none found.\n")
+        exit(KOVERAGE_EXITCODE_NO_SOURCEFILE_FOUND)
+    
+    # Check each requirement
+    def check_for_a_covreq(a_covreq):
+        for srcfile in a_covreq:
+            # Check if file exist in Linux source tree
+            fullpath = os.path.join(linux_ksrc, srcfile)
+            if not os.path.isfile(fullpath):
+                logger.error("Source file \"%s\" could not be found in the Linux source \"%s\".\n" % (srcfile, linux_ksrc))
+                exit(KOVERAGE_EXITCODE_SOURCEFILE_NOT_FOUND_IN_LINUX_KSRC)
+            # Check the file extension
+            if not (srcfile.endswith('.c') or srcfile.endswith('.h')):
+                logger.error("Source file must have \".c\" or \".h\" file extension, input was: \"%s\".\n" % srcfile)
+                exit(KOVERAGE_EXITCODE_INVALID_SOURCEFILE_EXT)
+            #
+            # Check the line list
+            #
+            # At least one line required.
+            lines = a_covreq[srcfile]
+            if not lines:
+                logger.error("At least one line must be specified to check, none found for \"%s\".\n" % srcfile)
+                exit(KOVERAGE_EXITCODE_COVREQ_NO_LINE_FOUND)
+            # Lines are 1-indexed, must be > 0.
+            minline = sorted(lines)[0]
+            if minline < 1:
+                logger.error("Invalid line number (%s) found for \"%s\": lines are 1-indexed.\n" % (minline, srcfile))
+                exit(KOVERAGE_EXITCODE_COVREQ_INVALID_LINE_LESS_THAN_1)
+            # Line number cannot exceed line count.
+            maxline = sorted(lines)[-1]
+            with open(fullpath, 'r') as f:
+                linecount = len(f.readlines())
+            if maxline > linecount:
+                logger.error("Line number (%s) exceeds the line count (%s) for \"%s\".\n" % (maxline, linecount, srcfile))
+                exit(KOVERAGE_EXITCODE_COVREQ_INVALID_LINE_MORE_THAN_LINECOUNT)
+    check_for_a_covreq(covreq["sourcefile_loc"])
+    check_for_a_covreq(covreq["headerfile_loc"])
+
+class LineCoverage(str, Enum):
+    """Inclusion result for a compilation unit's/header file's line.
+
+    Values:
+
+    * INCLUDED: (file:line) is included.
+
+    * LINE_EXCLUDED_FILE_INCLUDED
+       * If compilation unit, unit is successfully preprocessed but line is
+        not included.
+       * If header, header file is included by some compilation unit but
+        line is not.  However, line might be included by some unseen source
+        file.
+    
+    * FILE_EXCLUDED
+       * If compilation unit, file is not included (preprocessing failed).
+         However, this might be a false alarm due to build issues (i.e.,
+         a compiler error that prevents preprocessing while config file has
+         constraints to include file:line).
+       * If header, file is not included in any of the source files
+         preprocessed.  However, file:line might be included by some
+         unseen source file.
+    """
+    INCLUDED = 'INCLUDED'
+    LINE_EXCLUDED_FILE_INCLUDED = 'LINE_EXCLUDED_FILE_INCLUDED'
+    FILE_EXCLUDED = 'FILE_EXCLUDED'
+
+    def parse(enum_str: str):
+        """Parse a LineCoverage string into LineCoverage instance."""
+        m = {
+            'INCLUDED' : LineCoverage.INCLUDED,
+            'LINE_EXCLUDED_FILE_INCLUDED' : LineCoverage.LINE_EXCLUDED_FILE_INCLUDED,
+            'FILE_EXCLUDED' : LineCoverage.FILE_EXCLUDED
+        }
+        assert enum_str in m
+        return m[enum_str]
+
+
+def check_config(
+    cross_compiler: str, arch: str, linux_dir: str, 
+    coverage_requirements: dict, build_targets: dict, config_file: str,
+    scratch_dir: str) -> dict:
+    """
+    coverage_requirements is a dictionary describing the files to check
+    coverage in the build by the given Linux configuration file at config_file.
+    The format for coverage_requirements is:
+    {
+        "sourcefile_loc" : {
+            "srcfilepath" : [line1,],
+        },
+        "headerfile_loc" : {
+            "hdrfilepath" : [line1,],
+        }
+    }
+
+    Returns coverage results for each line in coverage_requirements in the
+    following format:
+    {
+        "sourcefile_loc": {
+            "srcfile1": [(line1, LineCoverage),],
+        },
+        "headerfile_loc": {
+            "headerfile1": [(line1, LineCoverage),],
+        }
+    }
+    """
+    # TODO: make followings variable
+    olddefconfig_timeout = 300 
+    directory_timeout = 10800
+    file_timeout = 900
+
+    # Copy the configuration file to scratch_dir as doing olddefconfig
+    # will modify the configuration file.
+    new_config_file_path = os.path.join(scratch_dir, "evaluated.config")
+    assert copyfile(config_file, new_config_file_path)
+    # Use abspath as commands are run cwd=linux_dir
+    config_file = os.path.abspath(new_config_file_path)
+
+    # Clean the source tree.
+    # This is required to avoid false positives due to preprocessed/built
+    # files left behind which otherwise may not build.
+    make_clean_cmd = "%s ARCH=%s clean" % (cross_compiler, arch)
+    logger.warning("Cleaning the Linux source tree: \"%s\"\n" % make_clean_cmd)
+    _, _, retcode, time_elapsed = run(make_clean_cmd, shell=True, cwd=linux_dir)
+    assert retcode == 0
+
+    # Prepare the core make command.
+    make_env_settings = "KCFLAGS=\"-fdirectives-only -save-temps=obj\" KCONFIG_CONFIG=%s ARCH=%s" % (config_file, arch)
+    make_flags = "-j1 -i"
+    core_make_command = "%s %s %s" % (make_env_settings, cross_compiler, make_flags)
+
+    # Run olddefconfig on the config file (if this fails, we won't continue)
+    olddef_cmd = "%s olddefconfig" % core_make_command
+    logger.debug("Running olddefconfig: \"%s\"\n" % olddef_cmd)
+
+    try:
+        _, _, retcode, time_elapsed = run(olddef_cmd, timeout=olddefconfig_timeout, shell=True, cwd=linux_dir)
+        logger.debug("Running olddefconfig completed in %.2f seconds, retcode: %s\n" % (time_elapsed, retcode))
+    except TimeoutExpired:
+        logger.error("Running olddefconfig on the input Linux configuration file timed out (timeout=%.2fsec).\n" % olddefconfig_timeout)
+        exit(KOVERAGE_EXITCODE_MAKE_OLDDEFCONFIG_TIMEDOUT)
+
+    # Copy the preprocessed config file.
+    after_olddefconfig_config_file_path = os.path.join(scratch_dir, "after_olddefconfig.config")
+    logger.debug("Copying the olddefconfig'd configuration file to \"%s\"\n" % after_olddefconfig_config_file_path)
+    assert copyfile(new_config_file_path, after_olddefconfig_config_file_path)
+
+    # Map sourcefiles to whether preprocessed file was found after running make.
+    preprocessed_file_created = {}
+
+    def withpreprocext(path):
+        assert path[-len('.c'):] in ['.c', '.i', '.o']
+        return "%s.i" % path[:-len('.c')]
+
+    # TODO: all source files can be built at once by passing all build
+    # targets to make at once.  This would decrease the level of debugging
+    # information we have (e.g., who owns make's return code?) but make
+    # things faster/cleaner.
+
+    # Map each source file to {file:[validation_lines_included]} thanks to
+    # the preprocessing of the source file.
+    all_included_lines = {}
+
+    # Iterate over each source file, attempt building, and record inclusion
+    # results.
+    for source_file in coverage_requirements["sourcefile_loc"]:
+        logger.info("Checking \"%s\"\n" % source_file)
+
+        # Create a scratch directory for the file.
+        srcfile_scratch_dir = os.path.join(scratch_dir, "per_srcfile/", source_file)
+        os.makedirs(srcfile_scratch_dir, exist_ok=True)
+
+        # Retrieve the build target for the source file.
+        # TODO: multiple can share the same target: a small optimization
+        # is to reuse results for those.
+        build_target = get_build_target(source_file, build_targets)
+        logger.debug("Build target for \"%s\" is \"%s\"\n" % (source_file, build_target))
+
+        # Use different timeout values based on whether the build target is
+        # a file or a directory.  Building directories take longer, thus,
+        # user can possibly define larger timeout values.
+        is_build_target_file = build_target.endswith(".i") or build_target.endswith(".o")
+        if is_build_target_file:
+            make_timeout = file_timeout
+        else:
+            make_timeout = directory_timeout
+
+        # Run make to get the preprocessed file.
+        make_cmd = "%s %s" % (core_make_command, build_target)
+        logger.debug("Running make to preprocess file \"%s\", command: \"%s\"\n" % (source_file, make_cmd))
+        try:
+            make_stdout, make_stderr, make_retcode, make_time_elapsed = run(make_cmd, timeout=make_timeout, shell=True, cwd = linux_dir)
+            logger.debug("Finished running make, retcode=%s time_elapsed=%.2fsec\n" % (make_retcode, make_time_elapsed))
+
+            # Check if preprocessed file can be found.
+            preproc_filepath = withpreprocext(os.path.join(linux_dir, source_file))
+            logger.debug("Looking for preprocessed file: \"%s\"\n" % preproc_filepath)
+            preprocessed_file_exists = os.path.isfile(preproc_filepath)
+            logger.debug("Can find preprocessed file: %s\n" % preprocessed_file_exists)
+            preprocessed_file_created[source_file] = preprocessed_file_exists
+
+            # Copy preprocessed file (for later debugging purposes).
+            if preprocessed_file_exists:
+                preproc_dst = os.path.join(srcfile_scratch_dir, "preprocessed.i")
+                assert copyfile(preproc_filepath, preproc_dst)
+            # Write make info
+            def w(fbname, content):
+                with open(os.path.join(srcfile_scratch_dir, fbname), 'w') as f:
+                    f.write(content)
+            w("make.stdout", make_stdout.decode('utf-8'))
+            w("make.stderr", make_stderr.decode('utf-8'))
+            w("make.time_elapsed", "%.2fsec" % make_time_elapsed)
+            w("make.retcode", "%s" % make_retcode)
+
+        except TimeoutExpired:
+            logger.debug("Running make timedout for \"%s\", (timeout=%.2fsec).\n" % (source_file, make_timeout))
+            make_stdout = make_stderr = retcode = time_elapsed = "build timed out"
+            preprocessed_file_created[source_file] = False
+
+        # Without preprocessed file, we cannot determine whether lines are included.
+        if preprocessed_file_created[source_file]:
+            inclusion_by_current_srcfile = get_all_included_validation_hint_lines(preproc_filepath)
+            # Write the inclusion results obtained from preprocessing this
+            # single source file.
+            outfile_inclusion_by_current_srcfile = os.path.join(srcfile_scratch_dir, "all_hints_included_from_preproc.json")
+            with open(outfile_inclusion_by_current_srcfile, 'w') as f:
+                json.dump(inclusion_by_current_srcfile, f, sort_keys=True, indent=2)
+            # Update the set of all found, which will later be merged.
+            all_included_lines[source_file] = inclusion_by_current_srcfile
+        else:
+            # Preprocessing failed, thus, no line inclusion results to record.
+            pass
+    
+    # Write preprocessed_file_created for debugging purposes.
+    with open(os.path.join(scratch_dir, "preprocessed_file_created.json"), 'w') as f:
+        json.dump(preprocessed_file_created, f, sort_keys=True, indent=2)
+
+    # all_included_lines has results for each source file about which 
+    # (file:line) pairs it includes.  The source of inclusion is not
+    # important at this step, and this format makes it hard to determine
+    # whether a (file:line) is included, independent of source of its
+    # inclusion.  Thus, join inclusion results such that the key is the
+    # included file, and value is the lines included lines of that file.
+    included_filelines = {}
+    for srcfile in all_included_lines:
+        for included_file in all_included_lines[srcfile]:
+            included_lines = all_included_lines[srcfile][included_file]
+            included_filelines[included_file] = included_filelines.get(included_file, set())
+            included_filelines[included_file].update(included_lines)
+    
+    # Find and record the results for the (file:line) pairs asked.
+    def get_results(filelines_to_check):
+        """Gets results for the requested file:lines to check.  This can be
+        used for both source file and header.
+        """
+        if not filelines_to_check:
+            return {}
+        ret = {}
+        for file in filelines_to_check:
+            requested_lines = filelines_to_check[file]
+            ret[file] = []
+            if file in included_filelines: #< File is included.
+                included_lines = included_filelines[file]
+                # Get and record results per line.
+                for l in requested_lines:
+                    l_result = (l, LineCoverage.INCLUDED) if l in included_lines else (l, LineCoverage.LINE_EXCLUDED_FILE_INCLUDED)
+                    ret[file].append(l_result)
+            else: #< File is not included.
+                ret[file] = [(l, LineCoverage.FILE_EXCLUDED) for l in requested_lines]
+        return ret
+
+    src_results = get_results(coverage_requirements.get("sourcefile_loc", {}))
+    header_results = get_results(coverage_requirements.get("headerfile_loc", {}))
+
+    assert src_results
+    result = {"sourcefile_loc" : src_results}
+    if header_results:
+        result.update({"headerfile_loc" : header_results})
+
+    return result
+
+def get_build_target(comp_unit: str, build_targets: dict) -> str:
+    return build_targets.get(comp_unit, comp_unit[:-len('.c')] + '.i')
+
+def get_all_included_validation_hint_lines(pp_file: str) -> dict:
+    """
+    Return value is a dictionary.  Keys are file names, values are list of
+    validation hint lines found.  The reason why we might have multiple
+    file names for a single preprocessed file is inclusion of headers."""
+    with open(pp_file, 'r') as opened_file:
+        line_count = 0
+        
+        # Format: {"file/path": [included lines]}
+        # The reason why we could results for multiple files is the headers
+        # included in the input preprocessed file.
+        results = {}
+
+        current_file = None # line directives will determine
+
+        #
+        # Define helper methods
+        #
+        def is_line_directive(line: str) -> bool:
+            """Takes a string representing a line of code. 
+            Returns whether the string is a line directive.
+            """
+            line_sections = line.split()
+            # examples of line directives:
+                # 1 "cond.c"
+                # 31 "<command-line>"
+                # 1 "/usr/include/stdc-predef.h" 1 3 4
+            if len(line_sections) > 1 and line_sections[0] == '#' and line_sections[1].isnumeric():
+                return True
+        def split_directive(line: str):
+            """Takes a line of code.  Returns the line number and the file
+            name as a tuple.  Example output: (1, /header/path.h)
+            """
+            line_sections = line.split()
+            return int(line_sections[1]), line_sections[2][1:-1]
+        def resolve_path(path: str):
+            """For amd files, the preprocessor line directives might use
+            "/../" in the middle of the file path, though the coverage
+            requirements will not.  A simple string comparison to check
+            filenames will break on these.  Resolve the path to avoid this.
+            """
+            # break the path apart by '/', and resolve ".."
+            path_parts = path.split('/')
+            res_path = []
+            for part in path_parts:
+                # don't append "..", and then remove the last thing that was added
+                if part == "..":
+                    res_path.pop()
+                # don't append '.', because this won't be in the validation conditions,
+                # and won't affect the actual path
+                elif part == ".":
+                    pass
+                else:
+                    res_path.append(part)
+            res_string = '/'.join(res_path)
+            return res_string
+
+        # iterates through the lines of the preprocessed compilation unit.
+        # each time a non-whitespace line is encountered, that line number is added
+        # to the associated file's list.
+        for line in opened_file:
+            line_count += 1
+            if is_line_directive(line):
+                # Update the current file and the line count for it.
+                num, current_file = split_directive(line)
+                # Preprocessor line directives are 1-indexed, thus we need
+                # to decrement the number encountered.
+                # TODO: How come? We are doing 1-indexed as well.
+                line_count = num - 1
+                # Resolve "/../" and "././" in the line directive's file path
+                current_file = resolve_path(current_file)
+                # Initialize the list for the current file if not already.
+                results[current_file] = results.get(current_file, [])
+            elif line.strip() == "/* krepair validation hint */":
+                # Assumption: a line directive will always be seen before
+                # seeing a krepair validation hint. Thus, current_file is
+                # already set.
+                assert current_file is not None
+                results[current_file].append(line_count)
+            else:
+                # We only consider 1) line directives for determining what
+                # the current file is and its line numbers, 2) validation
+                # hints for whether they are included.
+                pass
+
+        return results
+
+def patch_conditions_to_validation_conditions(patch_conditions, cb):
+  """Map the patch conditions into validation patch conditions.
+  
+  The output validation patch conditions can be used to validate the file
+  based on inserted validation hints.
+  """
+  # First, map the end lines into new lines.
+  # Hint lines are in fact the lines where a conditional block ends, or
+  # where the file ends. When new comment lines are added, below lines
+  # are shifted by one.
+
+  # Map hint lines into line numbers in the patched file, i.e., account
+  # for shifts due to added lines.
+  hint_lines = sorted(get_hint_lines(cb))
+  hint_to_new_lines = {}
+  shift = 0
+  for h in hint_lines:
+    hint_to_new_lines[h] = h + shift
+    shift += 1
+
+  # Map the patch conditions into hint lines (end of conditional blocks).
+  # validation_conditions_unshifted = sorted(list(set([cb.retrieve_deepest_block(line).end_line for line in patch_conditions])))
+  # Keep the same order, so that, they can be mapped back to patch_conditions.
+  validation_conditions_unshifted = [cb.retrieve_deepest_block(line).end_line for line in patch_conditions]
+  assert -1 not in validation_conditions_unshifted #< All valid.
+
+  # Now account for the shifts due to adding lines.
+  validation_conditions = [hint_to_new_lines[v] for v in validation_conditions_unshifted]
+
+  return validation_conditions
+
+def get_hint_lines(cb):
+  """Hint lines are the end lines of all blocks.
+  """
+  hint_lines = []
+  for s in cb.sub_block_groups:
+      for k in s:
+        hint_lines += get_hint_lines(k)
+  hint_lines.append(cb.end_line)
+  return hint_lines
+
+def get_validation_hints_patch(topdirpath, srcfilepath, cb):
+  """
+  Compute and return the validation patch that, when applied, inserts
+  validation hints in the sourcefile.
+
+  Paths in the output patch will be relative to topdirpath.
+
+  topdirpath: Top directory path. Can be the path to top Linux source directory.
+  srcfilepath: Source file path. Relative to topdirpath.
+  cb: Top conditional block for input source file.
+  """
+  # Get the lines where to put the hints
+  hint_lines = set(get_hint_lines(cb))
+
+  full_srcfilepath = os.path.join(topdirpath, srcfilepath)
+  assert os.path.isfile(full_srcfilepath)
+
+  # Create the edited file
+  edited_file_path = full_srcfilepath + "_edited_with_krepair_hints.tmp"
+
+  with open(full_srcfilepath, 'r') as f:
+    original_lines = f.readlines()
+
+  # Write the new file with hints  
+  hint = "/* krepair validation hint */\n"
+  # In some files, there is no newline at the end of the file (commit
+  # 88f8575bca5f, drivers/gpu/drm/amd/amdgpu/gfx_v9_4_2.c). Account for
+  # this by inserting a newline if it isn't seen.
+  seen_newline = False
+  with open(edited_file_path, 'w') as f:
+    for linenum, original_line in enumerate(original_lines):
+      if linenum + 1 in hint_lines:
+        f.write(hint)
+      seen_newline = original_line.endswith('\n')
+      f.write(original_line)
+
+    # One additional hint for the global scope
+    if not seen_newline:
+      f.write('\n')
+    f.write(hint)
+
+  # Create the patch for inserting hints
+  # TODO: to optimize the file size, -u0 can be used (excludes context lines)
+  diff_cmd = ['diff', '-u', '-L', 'a/%s' % srcfilepath, '-L', 'b/%s' % srcfilepath, full_srcfilepath, edited_file_path]
+  patch_content, _, retcode, _ = run(diff_cmd)
+  # For diff command: 0: files same, 1: different files, 2: trouble
+  assert retcode == 1 
+  patch_content = patch_content.decode('utf-8')
+
+  # Attempt to remove the temporary file
+  os.remove(edited_file_path)
+
+  return patch_content
+
+def get_validation_covreq(covreq, srcdir):
+    """
+    Returns a tuple of:
+    * validation_coverage_requirements -- maps input coverage
+      requirement (covreq) lines into validation coverage requirement
+      lines with hint comments.  Returned list of lines map 1-1 to covreq.
+      After applying the validation patch, one can use validation coverage
+      requirements to check coverage through validation hint comments.
+    * validation_patch -- patch to insert validation hint comments.
+    """
+    logger.debug("Creating validation coverage requirements and validation patch.\n")
+    vcovreq = {}
+    vcovreq.update(covreq.get("sourcefile_loc", {}))
+    vcovreq.update(covreq.get("headerfile_loc", {}))
+    assert vcovreq
+    logger.debug("get_validation_covreq() sees %s files to create validation patch for.\n" % len(vcovreq))
+
+    # For each file that has a coverage requirement:
+    # 1. Get the conditional blocks (start-end lines)
+    # 2. Create a validation patch that inserts validation hint comments.
+    # 3. Map the coverage requirement lines into hint lines and create
+    #    validation coverage requirements.
+    # Eventually, create a combined validation patch (.vpatch) and
+    # validation coverage requirements (.vcovreq).
+
+    # Map source files (.c/.h) to validation coverage requirements
+    srcfile_to_vcovreq = {}
+    
+    # Accumulate the whole validation patch, which inserts validation hints
+    # to source files.
+    whole_vpatch_content = ""
+
+    for srcfile in vcovreq:
+        logger.debug("Working on \"%s\"\n" % srcfile)
+        full_srcfpath = os.path.join(srcdir, srcfile)
+
+        # Read the source file.
+        with open(full_srcfpath, 'r') as f:
+            content = f.read()
+        # Read the line count
+        # Old method was to count the '\n' in source content but this failed
+        # for a file (commit 88f8575bca5f, drivers/gpu/drm/amd/amdgpu/gfx_v9_4_2.c)
+        # probably because there was no newline at the end of the file. Use
+        # the file system to count the lines as below, which is safer.
+        with open(full_srcfpath, 'r') as f:
+            line_count = len(f.readlines())
+        
+        # Get the conditional blocks (start-end lines).
+        cb = SyntaxAnalysis.get_conditional_blocks(content, line_count)
+
+        # Get the content of the patch file that inserts validation hints.
+        vpatch = get_validation_hints_patch(srcdir, srcfile, cb)
+
+        # Accumulate the validation patch in a large, single validation patch.
+        whole_vpatch_content += vpatch
+        
+        # Map the original coverage requirements into validation coverage
+        # requirements, i.e., lines that only target validation hint lines.
+        validation_covreq = patch_conditions_to_validation_conditions(vcovreq[srcfile], cb)
+        srcfile_to_vcovreq[srcfile] = validation_covreq
+    
+    # Create the validation coverage requirements in the final format by
+    # mapping original coverage requirements into validation coverage
+    # requirements.
+    validation_covreq = {}
+    if "sourcefile_loc" in covreq:
+        validation_covreq["sourcefile_loc"] = {}
+        for srcfile in covreq["sourcefile_loc"]:
+            validation_covreq["sourcefile_loc"][srcfile] = srcfile_to_vcovreq[srcfile]
+    if "headerfile_loc" in covreq:
+        validation_covreq["headerfile_loc"] = {}
+        for srcfile in covreq["headerfile_loc"]:
+            validation_covreq["headerfile_loc"][srcfile] = srcfile_to_vcovreq[srcfile]
+
+    return validation_covreq, whole_vpatch_content
+
+
+
+def parse_lines_list(check_file_linelist_arg : str):
+    """Given file:[linelist] argument string, parse and return the filename
+    and the list of lines.  Returned list of lines are unique and sorted.
+
+    Returned compilation unit names are guaranteed to end with '.c' or '.h'
+    extension.  '.o' is taken as '.c' with warning printed.
+
+    Example input/outputs:
+    == Input ==                    == Output ==
+    "kernel/fork.c"                ("kernel/fork.c", [])
+    "kernel/fork.o"                ("kernel/fork.c", []) ('.o' -> '.c')
+    "kernel/fork.c:[]"             ("kernel/fork.c", [])
+    "kernel/fork.c:[5,7,10]"       ("kernel/fork.c", [5,7,10])
+    "kernel/fork.c:[10-10]"        ("kernel/fork.c", [10])
+    "kernel/fork.c:[5,7-10]"       ("kernel/fork.c", [5,7,8,9,10])
+    "kernel/audit.h:[5]"           ("kernel/audit.h", [5])
+    "kernel/"                      Prints error and terminates
+    "kernel/nonc.s"                Prints error and terminates
+    "kernel/fork.c:[10-7]"         Prints error and terminates
+    "kernel/fork.c:[10,"           Prints error and terminates
+    """
+    assert check_file_linelist_arg
+    def arg_error(arg: str, problem: str):
+        # argparser.print_help()
+        logger.error("Malformed check argument (\"%s\"): %s\n" % (arg, problem))
+        exit(KOVERAGE_EXITCODE_MALFORMED_CHECK_FILELINE_FORMAT)
+
+    #
+    # Split the unit path and the lines list
+    #
+    split_arg = check_file_linelist_arg.split(':')
+    assert len(split_arg) > 0
+    if len(split_arg) == 1:
+        unit_str = split_arg[0]
+        lines_str = None
+    elif len(split_arg) == 2:
+        unit_str, lines_str = split_arg
+        if len(lines_str) < 2: # must at least have '[' and ']'
+           arg_error(check_file_linelist_arg, "incorrect lines list format.")
+    elif len(split_arg) > 2:
+        arg_error(check_file_linelist_arg, "\":\" must be used at most once to between the source file path and the lines list.")
+
+    # Check extension
+    ext = os.path.splitext(unit_str)[-1]
+    if ext not in ['.c', '.o', '.h']:
+        arg_error(check_file_linelist_arg, "expected file \".c\" or \".h\" file extension.")
+
+    # Force extension to be .c if .o
+    if unit_str.endswith('.o'):
+        logger.warning("Forcing file extension to be .c for compilation unit: \"%s\"\n" % (unit_str))
+        unit_str = "%s.c" % unit_str[:-len('.o')]
+
+    #
+    # Check and parse the lines list into lines_list
+    #
+    lines_list = []
+    if lines_str:
+        # Check line list
+        if not lines_str.startswith('[') or not lines_str.endswith(']'):
+            arg_error(check_file_linelist_arg, "incorrect lines list format.")
+        assert len(lines_str) > 1 #< Has '[' and ']'
+        lines_str = lines_str[1:-1]
+
+        def parse_pos_int(num_str : str) -> int:
+            if not num_str or not set(num_str).issubset([str(n) for n in range(10)]):
+                arg_error(check_file_linelist_arg, "incorrect lines list format.")
+            else:
+                num = int(num_str)
+                if num <= 0:
+                    arg_error(check_file_linelist_arg, "lines are 1-indexed and must be greater than 0.")
+                else:
+                    return num
+
+        # Parse the lines
+        if lines_str: #< Still has lines to parse after removing list brackets
+            for el in lines_str.split(','):
+                if not el or not set(el).issubset([str(n) for n in range(10)] + ['-']):
+                    arg_error(check_file_linelist_arg, "incorrect lines list format")
+                if el.count('-') > 1:
+                    arg_error(check_file_linelist_arg, "incorrect lines list format")
+                
+                if '-' in el: #< Range
+                    start, end = el.split('-')
+                    start, end = parse_pos_int(start), parse_pos_int(end)
+                    if end < start:
+                        arg_error(check_file_linelist_arg, "end of line range cannot be smaller than the start")
+                    lines_list.extend(range(start, end+1))
+                else:         #< Single line
+                    lines_list.append(parse_pos_int(el))
+
+        # Sort and make sure each line is unique.
+        lines_list = sorted(list(set(lines_list)))
+
+    return unit_str, lines_list
+
+def parse_lines_list_into_covreq(check_file_linelist_arg : str):
+    unit_str, lines_list = parse_lines_list(check_file_linelist_arg)
+    if unit_str.endswith('.c'):
+        covreq_type = "sourcefile_loc"
+    elif unit_str.endswith('.h'):
+        covreq_type = "headerfile_loc"
+    else:
+        assert False # only .c and .h extension expected
+    return {covreq_type : {unit_str: lines_list}}
+
+
+def get_patch_target_lines(patch_file_path: str):
+    # Compute the coverage targets from patch file
+    logger.debug("Computing the coverage requirements from the patch file \"%s\"\n" % patch_file_path)
+    if not os.path.isfile(patch_file_path):
+        logger.error("Cannot find the --check-patch argument patch file at \"%s\"\n" % patch_file_path)
+        exit(KOVERAGE_EXITCODE_CHECK_PATCH_FILE_NOT_FOUND)
+    with open(patch_file_path, 'r') as f:
+        patch_txt = f.read()
+    covreq = patch.get_target_lines(patch_txt)
+
+    # Write the covreq (coverage requirements) (for diagnostic purposes)
+    covreq_path = patch_file_path + COVERAGE_REQUIREMENTS_EXT
+    logger.info("Writing the coverage requirements for patch \"%s\" to \"%s\"\n" % (patch_file_path, covreq_path))
+    with open(covreq_path, 'w') as f:
+        json.dump(covreq, f, sort_keys=True, indent=2)
+
+    return covreq
+
+def combine_covreq(covreq1, covreq2):
+    """Given two coverage requirements, each including "sourceline_loc"
+    "headerline_loc" keys and {file:[linelist]} values, combine and
+    and return combined.  For example, if both includes for a source file,
+    combine lines from both requirements.
+    """
+    def combine(dict1, dict2):
+        """Combine into d1"""
+        # Combine into 1s
+        for file2 in dict2:
+            lines2 = dict2[file2]
+            lines1 = dict1.get(file2, [])
+            dict1[file2] = sorted(list(set(lines1 + lines2)))
+        return dict1
+    
+    src1 = covreq1.get("sourcefile_loc", {})
+    src2 = covreq2.get("sourcefile_loc", {})
+    hdr1 = covreq1.get("headerfile_loc", {})
+    hdr2 = covreq2.get("headerfile_loc", {})
+
+    return { "sourcefile_loc" : combine(src1, src2),
+             "headerfile_loc" : combine(hdr1, hdr2) }
+
+def parse_check_patch_args(args):
+    covreqs = {}
+    for a in args:
+        new_covreqs = get_patch_target_lines(a)
+        covreqs = combine_covreq(covreqs, new_covreqs)
+    return covreqs
+
+def parse_check_args(args):
+    covreqs = {}
+    for a in args:
+        new_covreqs = parse_lines_list_into_covreq(a)
+        covreqs = combine_covreq(covreqs, new_covreqs)
+    return covreqs
+
+def parse_check_covreq_args(args):
+    covreqs = {}
+    for covreq_file in args:
+        if not os.path.isfile(covreq_file):
+            logger.error("Cannot find the --check-covreq argument coverage requirements file at \"%s\"\n" % covreq_file)
+            exit(KOVERAGE_EXITCODE_CHECK_COVREQ_FILE_NOT_FOUND)
+        with open(covreq_file, 'r') as f:
+            new_covreqs = json.load(f)
+            # TODO: further format checks needed
+            assert set(list(new_covreqs.keys())).issubset(set(["sourcefile_loc", "headerfile_loc"]))
+        covreqs = combine_covreq(covreqs, new_covreqs)
+    return covreqs
+
+def main():
+    sys.stderr.write("koverage, %s %s\n" % (kmax.about.__title__, kmax.about.__version__))
+
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument("--cross-compiler",
+        type=str,
+        help="""Path to the executable make script for cross compilation."""
+             """  Defaults to \"make.cross\".""",
+        default="make.cross")
+    argparser.add_argument("--config",
+        type=str,
+        required=True,
+        help="""Path to a Linux configuration file to check coverage for.""")
+    argparser.add_argument("--arch",
+        type=str,
+        required=True,
+        help="Linux architecture name.")
+    argparser.add_argument("--linux-ksrc",
+        type=str,
+        help="""Path to a Linux kernel source directory."""
+             """  Defaults to \"./\"""",
+        default="./")
+    argparser.add_argument('--check',
+        action="append",
+        default=[],
+        help="Paths to one or more source or header files (.{c,h}) with"
+             " a non-empty list of lines, to check whether included in the"
+             " build by the input Linux configuration file."
+             "  Path is relative to the top of the source tree."
+             "  The list of lines may include both single lines and line"
+             " ranges (inclusive of start-end lines).  List must not"
+             " contain whitespaces."
+             "  Examples: kernel/fork.c:[1], kernel/audit.h:[5,70-72]"
+             " (lines 5,70,71,72).")
+    argparser.add_argument('--check-patch',
+        action="append",
+        default=[],
+        help="Paths to one or more patch files in unified diff format to"
+             " check whether included in the build by the input Linux"
+             " configuration file."
+             "  Coverage requirements for the patch is computed by koverage"
+             " and the checked coverage requirements are written to "
+             " \"INPUT.covreq\" in json format, where INPUT is the argument."
+             "  It is assumed that the patch is applied to the source.")
+    argparser.add_argument('--check-covreq',
+        action="append",
+        default=[],
+        help="""Paths to one or more coverage requirements files in koverage format."""
+             """  This is an adhoc json format for koverage as follows:"""
+             """  { "sourcefile_loc" : { "srcfilepath" : [lines], },"""
+             """    "headerfile_loc" : { "hdrfilepath" : [lines], } }""")
+    argparser.add_argument("--build-targets",
+        type=str,
+        required=False,
+        help=""" Path to the json file with source file to build target"""
+             """ mappings. Usual case (src/file.c -> src/file.o) is used"""
+             """ for missing mappings.""")
+    argparser.add_argument("--scratch-dir",
+        type=str,
+        help="""Path to non-existing or empty scratch directory, where"""
+             """ intermediate files will be stored."""
+             """  Defaults to "koverage_files/".""",
+        default="koverage_files/")
+    argparser.add_argument("-o", "--output",
+        type=str,
+        required=True,
+        help="""Path to output file where coverage results will be stored"""
+             """ in json format."""
+             """ Defaults to "koverage_output.json".""",
+        default="koverage_output.json")
+    argparser.add_argument('-v',
+        '--verbose',
+        action="store_true",
+        help="""Verbose mode prints additional messages to stderr.""")
+
+    # TODO: optimization: determine arch-specific units directly without
+    # requiring building.
+
+    args = argparser.parse_args()
+    cross_compiler = args.cross_compiler
+    config_file = args.config
+    arch = args.arch
+    check_arg = args.check
+    check_patch_arg = args.check_patch
+    check_covreq_arg = args.check_covreq
+    build_targets_file = args.build_targets
+    linux_ksrc = args.linux_ksrc
+    scratch_dir = args.scratch_dir
+    output_file = args.output
+    verbose = args.verbose
+
+    logger.verbose = verbose
+
+    #
+    # Argument checks
+    #
+    # TODO: instead print error messages
+    assert which(cross_compiler)
+    assert which("patch") # required for applying the validation covreq patch
+    assert os.path.isdir(linux_ksrc)
+    assert os.path.isfile(config_file)
+    assert arch in Arch.ARCHS
+
+    # Create the scratch directory.
+    if os.path.exists(scratch_dir):
+        if os.path.isfile(scratch_dir):
+            logger.error("A file exists in the path to the scratch directory (\"%s\")."
+                "  Use a non-existing or empty scratch directory (--scratch-dir).\n" % scratch_dir)
+            exit(KOVERAGE_EXITCODE_SCRATCHDIR_EXISTS)
+        elif os.path.isdir(scratch_dir) and len(os.listdir(scratch_dir)) > 0:
+            logger.error("A non-empty scratch directory exists (\"%s\")."
+                "  Use a non-existing or empty scratch directory (--scratch-dir).\n" % scratch_dir)
+            exit(KOVERAGE_EXITCODE_SCRATCHDIR_EXISTS)
+    logger.info("Intermediate files will be saved in \"%s\"\n" % scratch_dir)
+    os.makedirs(scratch_dir, exist_ok=True)
+    os.makedirs(os.path.join(scratch_dir, "per_srcfile/"), exist_ok=True)
+
+    # Read --check[-patch,-covreq] input.
+    if not check_arg and not check_patch_arg and not check_covreq_arg:
+        logger.error("At least one --check[-patch,-covreq] argument must be specified.\n")
+        exit(KOVERAGE_EXITCODE_CHECK_ARG_NEEDED)
+    covreq_check = parse_check_args(check_arg)
+    covreq_check_patch = parse_check_patch_args(check_patch_arg)
+    covreq_check_covreq = parse_check_covreq_args(check_covreq_arg)
+    covreq = combine_covreq(covreq_check, covreq_check_patch)
+    covreq = combine_covreq(covreq, covreq_check_covreq)
+
+    # Check parsed and combined coverage requirements arguments.
+    argcheck_parsedcovreqarguments(covreq, linux_ksrc)
+
+    # Write coverage requirements for debugging purposes.
+    logger.debug("Coverage requirements: %s\n" % covreq)
+    covreq_path = os.path.join(scratch_dir, "covreq.json")
+    logger.debug("Writing coverage requirements to \"%s\"\n" % covreq_path)
+    with open(covreq_path, 'w') as f:
+        json.dump(covreq, f, sort_keys=True, indent=2)
+
+    # Load build targets
+    build_targets = {}
+    if build_targets_file:
+        with open(build_targets_file, 'r') as cond:
+            build_targets = json.load(cond)
+    
+    # Get the validation coverage requirements and the patch to use these
+    # requirements.  This is useful to evaluate any line for coverage,
+    # independent of whether the line includes C code, cpp directives,
+    # comment, or even whitespace.
+    # Notice that the lines map 1-1, thus, can be used to map validation
+    # conditions back to lines_to_check.
+    validation_covreq, validation_patch = get_validation_covreq(covreq, linux_ksrc)
+    
+    # Write the validation patch and validation covreq
+    vcovreq_path = os.path.join(scratch_dir, "vcovreq.json")
+    vpatch_path = os.path.join(scratch_dir, "vpatch.diff")
+    logger.debug("Writing validation covreq to \"%s\"\n" % vcovreq_path)
+    with open(vcovreq_path, 'w') as f:
+        json.dump(validation_covreq, f, sort_keys=True, indent=2)
+    logger.debug("Writing validation patch to \"%s\"\n" % vpatch_path)
+    with open(vpatch_path, 'w') as f:
+        f.write(validation_patch)
+    
+    # Apply the validation patch
+    patchapply_cmd = ['patch', '--forward', '-p1']
+    logger.debug("Applying the validation patch.\n")
+    stdout, stderr, ret, _ = run(patchapply_cmd, stdin=validation_patch.encode(), cwd=linux_ksrc)
+    if ret != 0:
+        logger.error("Failed to apply the validation patch, retcode: %s, stdout: \"%s\", stderr: \"%s\".\n" % (ret, stdout, stderr))
+        exit(KOVERAGE_EXITCODE_VALIDATION_PATCH_FAILED)
+    logger.debug("Applied the validation patch.\n")
+
+    # Determine if the config builds the target (file:line)s.
+    logger.info("Starting coverage checks.\n")
+    coverage_results_vcovreq_lines = check_config(cross_compiler, arch, linux_ksrc, validation_covreq, build_targets, config_file, scratch_dir)
+    logger.info("Finished coverage checks.\n")
+    logger.debug("Coverage results in terms of validation coverage requirements: \"%s\"\n" % coverage_results_vcovreq_lines)
+    # Map line numbers in coverage results back to the lines in the
+    # original input.  Otherwise, line numbers would be after applying
+    # validation patch with hint lines.
+    coverage_results_original_lines = {}
+    for filetype in covreq:
+        coverage_results_original_lines[filetype] = {}
+        for fname in covreq[filetype]:
+            results_with_vcond_lines = coverage_results_vcovreq_lines[filetype][fname]
+            original_lines = covreq[filetype][fname]
+            assert len(results_with_vcond_lines) == len(original_lines)
+            zipped = zip(original_lines, results_with_vcond_lines)
+            # for each element el_zipped, el_zipped[0] is the original line
+            # and el_zipped[1] is the tuple of (vcondline, LineCoverage)
+            results_with_orig_lines = [(el0, el1[1]) for el0, el1 in zipped]
+            coverage_results_original_lines[filetype][fname] = results_with_orig_lines
+
+    # Write the coverage results into the output file.
+    logger.info("Writing the coverage results to \"%s\".\n" % output_file)
+    with open(output_file, 'w') as f:
+        json.dump(coverage_results_original_lines, f, sort_keys=True, indent=2)
+    
+    # TODO: Write a summary of the results, e.g., all/some/none of the
+    # coverage requirements were met.
+
+    # Reverse the validation patch
+    patchrev_cmd = ['patch', '--forward', '--reverse', '-p1']
+    logger.debug("Reversing the validation patch.\n")
+    stdout, stderr, ret, _ = run(patchrev_cmd, stdin=validation_patch.encode(), cwd=linux_ksrc)
+    if ret != 0:
+        logger.error("Failed to reverse the validation patch, retcode: %s, stdout: \"%s\", stderr: \"%s\".\n" % (ret, stdout, stderr))
+        exit(KOVERAGE_EXITCODE_VALIDATION_RPATCH_FAILED)
+    logger.debug("Reversed the validation patch.\n")
+
+    logger.debug("All done.\n")
+
+if __name__ == "__main__":
+  main()

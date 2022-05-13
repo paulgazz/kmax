@@ -17,13 +17,13 @@ def is_maybe_kernel(filepath) -> bool:
 
 def is_interesting_diff(diff) -> bool:
   """Check whether the diff is an interesting change based on:
-  * C source with .c extension
+  * C source with .c/.h extension
   * Change type (created, modified_only, or moved_modified)
   * Kernel file (based on directory, checked with is_maybe_kernel())
   """
   assert diff
   file_type = diff['file_type']
-  if file_type != SourceFileType.SOURCE:
+  if file_type != SourceFileType.SOURCE and file_type != SourceFileType.HEADER:
     return False
 
   change_type = diff['change_type']
@@ -174,25 +174,27 @@ def get_lines_to_build_for_removed(added_lines, removed_lines):
   
   return lines2build
 
-def get_target_c_lines(patch_txt: str):
-  """Given a patch file content, compute and return the C lines that need
-  building for covering the patch.
+def get_target_lines(patch_txt: str):
+  """Given a patch file content, compute and return the C and header lines
+  that need building for covering the patch.
 
   These lines are based only on parse of the patch. They include the
   added lines, and the lines with closest proximity to the removed lines.
   
   Filter out files if:
-  * The file is NOT a C file (source file with .c extension)
+  * The file is NOT a C or header file (source file with .c/.h extension)
   * The change removes the file completely or only moves it without line changes
   * The file is non-kernel code (based on directory they are in)
 
   Returned mapping has the following structure:
   {
-    "path/to/sourcefile1": [line2build_1, line2build_2, ...],
-    ...
+    "sourcefile_loc": {
+      "path/to/sourcefile1": [line2build_1,],
+    },
+    "headerfile_loc": {
+      "path/to/headerfile1": [line2build_1,],
+    }
   }
-
-  Notice that the header files are excluded.
   """
   # Summarize the patch
   patch_summary = summarize_patch(patch_txt)
@@ -212,6 +214,32 @@ def get_target_c_lines(patch_txt: str):
 
     # Add the file:lines to the results
     patched_path = diff['new_path']
-    ret[patched_path] = lines_to_build
+
+    file_type = diff['file_type']
+    if file_type == SourceFileType.SOURCE:
+      ret["sourcefile_loc"] = ret.get("sourcefile_loc", {})
+      ret["sourcefile_loc"][patched_path] = lines_to_build
+    elif file_type == SourceFileType.HEADER:
+      ret["headerfile_loc"] = ret.get("headerfile_loc", {})
+      ret["headerfile_loc"][patched_path] = lines_to_build
+    else:
+      assert False
 
   return ret
+
+def get_target_c_lines(patch_txt: str):
+  """Given a patch file content, compute and return the C lines with .c
+  extension, excluding header files, that need building for covering
+  the patch.
+
+  This only differs from patch.get_target_lines() by excluding header files.
+
+  Returned mapping has the following structure:
+  {
+    "path/to/sourcefile1": [line2build_1, line2build_2, ...],
+    ...
+  }
+
+  """
+  r = get_target_lines(patch_txt)
+  return r.get("sourcefile_loc", {})

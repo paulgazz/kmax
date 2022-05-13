@@ -37,7 +37,7 @@ setup(
         "Topic :: Utilities",
         "License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)",
     ],
-    scripts=['kmax/kmax', 'kmax/kmaxall', 'kmax/kclause', 'kmax/klocalizer', 'kmax/kextract', 'kmax/kextractlinux', 'kmax/kreader', 'kmax/kismet'],
+    scripts=['kmax/kmax', 'kmax/kmaxall', 'kmax/kclause', 'kmax/klocalizer', 'kmax/kextract', 'kmax/kextractlinux', 'kmax/kreader', 'kmax/kismet', 'kmax/koverage'],
     install_requires=[
         'enum34',
         'regex',
