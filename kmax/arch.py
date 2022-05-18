@@ -709,11 +709,7 @@ class Arch:
     major, minor, patch = kernel_version.split('.')
     major, minor = int(major), int(minor)
 
-    # TODO: make sure if this major/minor is the exact point where we start needing next-20210426
-    if major > 5 or (major == 5 and minor >= 12):
-      return "next-20210426"
-    else:
-      return "next-20200430"
+    return kmax.kextractcommon.pick_version(kernel_version)
 
   def generate_kextract(self):
     """Generate kextract using kextract tool, set, and return.

@@ -48,6 +48,7 @@ setup(
         'networkx==2.2', # for dd to work on python2
         'requests',
         'whatthepatch',
+        'packaging',
     ],
     use_2to3=True,
 )
