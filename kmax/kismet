@@ -10,6 +10,8 @@ import datetime
 from kmax.klocalizer import Klocalizer
 from kmax.arch import Arch
 from kmax.udd_warning_parser import parse_warnings
+from kmax.vcommon import get_build_system_id
+import logging
 import subprocess
 import csv
 from time import perf_counter
@@ -322,7 +324,7 @@ if __name__ == '__main__':
   selectors = args.selectors
   selectees = args.selectees
   linux_ksrc = args.linux_ksrc
-  kclause_formulas_folder = args.formulas if args.formulas != None else os.path.join(linux_ksrc, ".kmax/kclause/%s" % arch_name)
+  formulas_arg = args.formulas
   syntactical_optimization = not args.no_syntactical_optimization
   optimized_SAT_pass = not args.no_optimized_SAT_check
   precise_SAT_pass = not args.no_precise_SAT_check
@@ -376,7 +378,26 @@ if __name__ == '__main__':
   def dumps_progress(done, total):
     return '{done:{fill}{width}}/{total} (%{perc})'.format(done=done, fill=" ", width=len(str(total)), total=total, perc= int((done / total) *100))
   
-  arch = Arch(arch_name, linux_ksrc=linux_ksrc, arch_dir=kclause_formulas_folder)
+  #
+  # Formulas directory
+  #
+  # Set default value for formulas if not specified
+  if not formulas_arg:
+    formulas_arg = os.path.join(linux_ksrc, ".kmax/")
+
+  # Get the build system id, which names the formulas cache subdirectory
+  info("Computing the build system id for the Linux source..\n")
+  build_system_id = get_build_system_id(linux_ksrc) # takes about 4sec on an SSD
+  info("Build system id: %s\n" % build_system_id)
+  formulas = os.path.join(formulas_arg, build_system_id)
+
+  kismet_log_level = logging.INFO
+
+  def get_arch_formulas_dir(formulas: str, arch: str) -> str:
+    assert arch != None
+    return os.path.join(formulas, "kclause", arch)
+
+  arch = Arch(arch_name, linux_ksrc=linux_ksrc, arch_dir=get_arch_formulas_dir(formulas, arch_name), loggerLevel=kismet_log_level)
   
   info("Kismet will analyze the select constructs of the architecture \"%s\" for unmet direct dependency." % arch.name)
   info("All times reported are measured using Python's time.perf_counter() utility.")
