@@ -386,9 +386,9 @@ if __name__ == '__main__':
     formulas_arg = os.path.join(linux_ksrc, ".kmax/")
 
   # Get the build system id, which names the formulas cache subdirectory
-  info("Computing the build system id for the Linux source..\n")
+  info("Computing the build system id for the Linux source..")
   build_system_id = get_build_system_id(linux_ksrc) # takes about 4sec on an SSD
-  info("Build system id: %s\n" % build_system_id)
+  info("Build system id: %s" % build_system_id)
   formulas = os.path.join(formulas_arg, build_system_id)
 
   kismet_log_level = logging.INFO
