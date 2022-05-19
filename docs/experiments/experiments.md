@@ -3,21 +3,7 @@
 
 - [Experiments](#experiments)
   - [Results](#results)
-    - [Linux next-20191129 2019-12-02](#linux-next-20191129-2019-12-02)
-    - [Linux next-20191121 2019-12-02](#linux-next-20191121-2019-12-02)
-    - [Linux v5.4 2019-11-28](#linux-v54-2019-11-28)
-    - [Linux next-20191121 2019-11-28](#linux-next-20191121-2019-11-28)
-    - [Linux next-20191121](#linux-next-20191121)
-    - [Linux 5.3.11 2019-11-19](#linux-5311-2019-11-19)
-    - [BusyBox 1.28.0 2019-11-18](#busybox-1280-2019-11-18)
-    - [Linux 5.4-rc6 2019-11-18](#linux-54-rc6-2019-11-18)
-    - [Linux 5.3.11 2019-11-18](#linux-5311-2019-11-18)
-    - [BusyBox 1.28.0 2019-11-18](#busybox-1280-2019-11-18-1)
   - [Setup](#setup)
-    - [Machines](#machines)
-    - [Linux 5.4-rc6](#linux-54-rc6)
-    - [Linux 5.3.11](#linux-5311)
-    - [BusyBox 1.28.0](#busybox-1280)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 

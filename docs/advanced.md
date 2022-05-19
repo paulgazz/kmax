@@ -10,14 +10,8 @@
     - [Getting configuration files to build commit ranges and using exclude](#getting-configuration-files-to-build-commit-ranges-and-using-exclude)
   - [`kismet`](#kismet)
     - [Analysis stages](#analysis-stages)
-      - [Syntactical optimization](#syntactical-optimization)
-      - [Optimized SAT check](#optimized-sat-check)
-      - [Precise SAT check](#precise-sat-check)
     - [Summary format](#summary-format)
   - [`koverage`](#koverage)
-      - [Checking (file:line) pairs](#checking-fileline-pairs)
-      - [Checking patch coverage](#checking-patch-coverage)
-      - [How to interpret coverage results](#how-to-interpret-coverage-results)
   - [Annotated Example](#annotated-example)
   - [Use Cases](#use-cases)
     - [A compilation unit not built by allyesconfig](#a-compilation-unit-not-built-by-allyesconfig)
@@ -36,7 +30,6 @@
   - [Kclause](#kclause)
     - [Example](#example)
     - [Other uses](#other-uses)
-      - [Get a list of all visible configs](#get-a-list-of-all-visible-configs)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
