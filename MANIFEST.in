@@ -20,3 +20,12 @@ include kextractors/kextractor-4.12.8/symbol.c
 include kextractors/kextractor-4.12.8/util.c
 include kextractors/kextractor-4.12.8/zconf.hash.c
 include kextractors/kextractor-4.12.8/zconf.lex.c
+
+include kextractors/kextractor-4.18/confdata.c
+include kextractors/kextractor-4.18/expr.c
+include kextractors/kextractor-4.18/kconf_id.c
+include kextractors/kextractor-4.18/menu.c
+include kextractors/kextractor-4.18/preprocess.c
+include kextractors/kextractor-4.18/symbol.c
+include kextractors/kextractor-4.18/util.c
+include kextractors/kextractor-4.18/zconf.lex.c
