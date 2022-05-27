@@ -2,6 +2,7 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Advanced Usage](#advanced-usage)
+  - [Tool Overview](#tool-overview)
   - [Installing from Source](#installing-from-source)
   - [`klocalizer` and `krepair`](#klocalizer-and-krepair)
     - [Example usage](#example-usage)
@@ -27,13 +28,56 @@
     - [Simple example](#simple-example)
     - [Example on Linux](#example-on-linux)
     - [Using `kreader` to Print Kmax Results](#using-kreader-to-print-kmax-results)
+    - [A notes on solver selection](#a-notes-on-solver-selection)
   - [Kclause](#kclause)
     - [Example](#example)
     - [Other uses](#other-uses)
+    - [kextract output format](#kextract-output-format)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 # Advanced Usage
+
+## Tool Overview
+
+The Kmax Tool Suite (kmax) contains a set of tools for performing
+automated reasoning on Kconfig and Kbuild constraints.  It consists of
+the following tools:
+
+- `klocalizer` takes the name of a compilation unit and automatically
+  generates a `.config` file that, when compiled, will include the
+  given compilation unit.  It uses the logical models from `kclause`
+  and `kmax`.  The configuration localization problem is described in
+  an [SPLC 2018 challenge
+  paper](https://doi.org/10.1145/3233027.3236404)
+  ([preprint](https://paulgazzillo.com/papers/splc18challenge.pdf)).
+- `kclause` "compiles"
+  [Kconfig](https://www.kernel.org/doc/html/latest/kbuild/kconfig-language.html)
+  constraints into logical formulas.  `kextractor` uses Linux's own
+  Kconfig parser to perform an extraction of the syntax of
+  configuration option names, types, dependencies, etc.  It is
+  described in our [ESEC/FSE 2021 research
+  paper](https://doi.org/10.1145/3468264.3468578)
+  ([preprint](https://paulgazzillo.com/papers/esecfse21.pdf)).
+- `kmax` collects configuration information from [Kbuild
+  Makefiles](https://www.kernel.org/doc/html/latest/kbuild/makefiles.html).
+  It determines, for each compilation unit, a symbolic Boolean
+  expression that represents the conditions under which the file gets
+  compiled and linked into the final program.  Its algorithm is
+  described in our [ESEC/FSE 2017 research
+  paper](https://doi.org/10.1145/3106237.3106283)
+  ([preprint](https://paulgazzillo.com/papers/esecfse17.pdf)) and the
+  original implementation is in [version
+  1.0](https://github.com/paulgazz/kmax/releases/tag/v1.0).
+- `kismet` does verification-based static analysis to find unmet
+  dependency bugs and generates test cases.  It is described in our
+  [ESEC/FSE 2021 research
+  paper](https://doi.org/10.1145/3468264.3468578)
+  ([preprint](https://paulgazzillo.com/papers/esecfse21.pdf)).
+- `koverage` checks whether a Linux configuration file includes a set of
+   (sourcefile,line) for compilation.  It utilizes the Linux build system
+   to determine coverage.
+
 
 ## Installing from Source
 
@@ -657,6 +701,10 @@ kreader drivers/usb/storage/alauda.o kernel/trace/trace_i
 kreader --kmax-formula .kmax/kclause/x86_64/kmax drivers/ | grep "\.o$" | wc -l
 kreader --kmax-formula .kmax/kclause/arm/kmax drivers/ | grep "\.o$"| wc -l
 
+### A notes on solver selection
+
+Kmax uses both BDDs (as described in the original paper) and a Z3 solver.  Z3 performs better when constructing the logical formulas, but slower when checking satisfiability than BDDs.  Z3 is best for displaying the resulting formula, since it doesn't require the exhaustive enumeration of the BDD, and BDD is best for checking the (un)satisfiability of formulas, which Kmax uses to trim infeasible states during analysis.
+
 ## Kclause
 
 ### Example
@@ -685,3 +733,70 @@ Then, from the root of a Linux source tree, run the following:
     
     # the visibles should be a subset of the configs
     diff configs.txt visible.txt  | grep ">"
+
+### kextract output format
+
+#### Grammar
+
+    // whole file
+    file := line*
+    line := config_line | prompt_line | env_line | nonbool_line | clause_line | boolchoice_line | dep_line | bi_line | constraint_line
+
+    // lines
+    config_line := 'config' config_var type_name
+    prompt_line := 'prompt' config_var '(' expr ')'
+    env_line := 'env' config_var
+    def_bool_line := 'def_bool' config_var bool_value '(' expr ')'
+    def_nonbool_line := 'def_nonbool' config_var nonbool_value '|' '(' expr ')'
+    clause_line := 'clause' clause_elem+
+    choice_line := choice_type config_var+ '|' '(' expr ')'
+    choice_type := 'bool_choice' | 'tristate_choice' | 'bool_opt_choice' | 'tristate_opt_choice'
+    dep_line := dep_name config_var '(' expr ')'
+    select_line := 'select' config_var config_var '(' expr ')'
+    dep_name := 'dep' | 'rev_dep'
+    bi_line := expr '|' expr
+    contraint_line := expr
+    
+    // expressions
+    type_name := 'bool' | 'string' | 'number'
+    bool_value := '1' | '0'
+    nonbool_value := string
+    clause_elem := '-'? config_var
+    expr := expr 'and' expr | expr 'or' expr | 'not' expr | config_var | nonbool_expr | '1' | '0'
+
+    config_var := string
+
+#### Semantics
+
+- All `config_line`s should come before anything else related to the declared config var.
+- All `prompt_line`s, `def_bool_line`s, and `def_non_line`s should come before dependencies.
+- A config with no `prompt_line` is unconditionally nonvisible to the user.
+- An `env_line` says that a variable can be set by the user via an environment variable.
+- `clause`s are symbolic dimacs cnf clauses, where instead of numbers,
+  they use the string name of the variable
+- `bool_choice` is a mutually-exclusive choice between the given
+  config vars.  The entire choice can have a dependency.  Depedencies
+  on the individual choice variables' dependencies are expressed with
+  separate `dep` lines.
+- `dep`s are a kconfig dependency.  selecting `config_var` implies
+  that the `expr` holds true.  we can assume this line comes after the
+  definition of the variable with `bool_line`, etc.
+- the `expr` may contain non-boolean relations, which can themselves
+  be treated as a boolean variable.  1 and 0 mean true and false
+  respectively.
+- `select` says that the first var gets selected by the second var,
+  under the given conditional expression.  note that the given
+  conditional expression may be a duplicate of the selecting vars
+  dependencies and can be deduplicated.  note also there may be
+  repeated `select`s for the same combination of selected and
+  selecting variables, because the same config can be declared
+  multiple times, each selecting the same variable, optionally with
+  differing conditions.
+- `def_bool` defines (possibly multiple) defaults for a boolean
+  variable.  This is only meant for nonselectable booleans, since it
+  will constrain a variable to that value.
+- `def_nonbool` defines (possibly multiple) defaults for variable
+  nonboolean.
+- `bi_line` and `contraint_line` allow for converting expressions
+  directly to the DIMACS format.  Any variables used must be declared
+  first with a `config_line`.

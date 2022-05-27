@@ -6,8 +6,11 @@
     - [Installing the kmax tool suite](#installing-the-kmax-tool-suite)
     - [Kicking the tires](#kicking-the-tires)
   - [Using `klocalizer --repair` on patches](#using-klocalizer---repair-on-patches)
+  - [Using `koverage`](#using-koverage)
   - [Using `kismet`](#using-kismet)
   - [Additional documentation](#additional-documentation)
+  - [Bugs found](#bugs-found)
+  - [Credits](#credits)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -49,14 +52,14 @@ You should see `CC      drivers/usb/storage/alauda.o` at the end of the build.
 
 ## Using `klocalizer --repair` on patches
 
-First install [SuperC](https://github.com/appleseedlab/superc), which `klocalizer` depends on for per-line, `#ifdef` constraints:
+This tool will automatically "fix" your .config file so that it builds the lines from a given patchfile (or any specific files or file:line pairs).  To use it, first install [SuperC](https://github.com/appleseedlab/superc), which `klocalizer` depends on for finding`#ifdef` constraints:
 
     sudo apt-get install -y libz3-java libjson-java sat4j unzip flex bison bc libssl-dev libelf-dev xz-utils lftp
     wget -O - https://raw.githubusercontent.com/appleseedlab/superc/master/scripts/install.sh | bash
     export CLASSPATH=${CLASSPATH}:/usr/share/java/org.sat4j.core.jar:/usr/share/java/json-lib.jar:${HOME}/.local/share/superc/z3-4.8.12-x64-glibc-2.31/bin/com.microsoft.z3.jar:${HOME}/.local/share/superc/JavaBDD/javabdd-1.0b2.jar:${HOME}/.local/share/superc/xtc.jar:${HOME}/.local/share/superc/superc.jar
     export PATH=${PATH}:${HOME}/.local/bin/
 
-Start with a clone of the linux repository and get a patch file:
+Too see it in action, start with a clone of the linux repository and create a patch file:
 
     cd ~/
     git clone git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
@@ -64,12 +67,25 @@ Start with a clone of the linux repository and get a patch file:
     git checkout 6fc88c354f3af
     git show > 6fc88c354f3af.diff
     
-Repair allnoconfig to include lines of the patch and test the build.  When using `--include-mutex` all configuration files needed to cover the patch are exported as `NUM-ARCH.config`:
+Now try using repair to update allnoconfig, which doesn't build all lines from the patch.  After repair, the resulting configuration file builds the lines affected by the patch.  The last command builds the files affected by the patch, which would have failed with an unrepaired allnoconfig.
 
     make ARCH=x86_64 allnoconfig
     klocalizer --repair .config -a x86_64 --include-mutex 6fc88c354f3af.diff
     KCONFIG_CONFIG=0-x86_64.config make ARCH=x86_64 olddefconfig clean kernel/bpf/cgroup.o net/ipv4/af_inet.o net/ipv4/udp.o net/ipv6/af_inet6.o net/ipv6/udp.o
     
+When using `--include-mutex`, the generated configuration files are exported as `NUM-ARCH.config`, since several configuration files may be needed when patches contain mutually-exclusive lines.
+
+## Using `koverage`
+
+`koverage` checks whether a Linux configuration file includes a set of source file:line pairs for compilation.  This following checks whether lines 256 and 261 of `kernel/fork.c` are included for compilation by Linux v5.16 allyesconfig.
+
+    cd ~/linux-5.16/
+    make.cross ARCH=x86_64 allyesconfig
+    koverage --config .config --arch x86_64 --check kernel/fork.c:[259,261] -o coverage_results.json
+
+The coverage results are in `coverage_results.json`, which indicate that line 259 is included while 261 is excluded by allyesconfig, because the lines are under mutually-exclusive `#ifdef` branches.
+
+Use `--check-patch file.patch` to check coverage of all source lines affected by a given patch.
 
 ## Using `kismet`
 
@@ -90,8 +106,14 @@ Technical details can be found in in the [kismet documentation](https://github.c
 
 ## Additional documentation
 
-[Overview](https://github.com/paulgazz/kmax/blob/master/docs/overview.md)
-
 [Advanced Usage](https://github.com/paulgazz/kmax/blob/master/docs/advanced.md)
 
-[Bugs Found](https://github.com/paulgazz/kmax/blob/master/docs/bugs_found.md)
+
+## Bugs found
+
+[Bugs Found](https://github.com/paulgazz/kmax/blob/master/docs/bugs_found.md) by our tools
+
+
+## Credits
+
+The main developers of this project have been [Paul Gazzillo](https://paulgazzillo.com) (`kextract`, `kclause`, `kmax`, `klocalizer`), [Necip Yildiran](http://www.necipyildiran.com/) (`kismet`, `krepair`, `koverage`), [Jeho Oh](https://www.linkedin.com/in/jeho-oh-110a2092/) (`kclause`), and [Julian Braha](https://julianbraha.com/) (`koverage`).  [Julia Lawall](https://pages.lip6.fr/Julia.Lawall/) has posed new applications and provided invaluable advice, feedback, and support.  Thanks to all the users who have contributed code and issues.  Special thanks to the [Intel 0-day](https://01.org/lkp) team for working to include `kismet` into the kernel test robot and for their valuable feedback.  This work is funded in part by the National Science Foundation under awards [CCF-1840934](https://nsf.gov/awardsearch/showAward?AWD_ID=1840934) and [CCF-1941816](https://nsf.gov/awardsearch/showAward?AWD_ID=1941816).
