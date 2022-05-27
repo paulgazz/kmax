@@ -1,0 +1,12 @@
+config MODULES
+	def_bool y
+	option modules
+
+choice
+	bool "Boolean Choice"
+
+	config TRISTATE_VAL
+		tristate "Tristate Value"
+	config BOOL_VAL
+		bool "Boolean Value"
+endchoice

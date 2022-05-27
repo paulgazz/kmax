@@ -1,0 +1,9 @@
+config MODULES
+	def_bool y
+	option modules
+
+config VAR1
+	def_bool m
+
+config VAR2
+	def_tristate m

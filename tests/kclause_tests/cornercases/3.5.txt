@@ -1,0 +1,13 @@
+config BOOL_VAR
+	bool "A Boolean Variable"
+	select BOOL_VAL2
+
+choice
+	bool "A Choice"
+	
+	config BOOL_VAL1
+		bool "1st Boolean Value"
+
+	config BOOL_VAL2
+	bool "2nd Boolean Value "
+endchoice

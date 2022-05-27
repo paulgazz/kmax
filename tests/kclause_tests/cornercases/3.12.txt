@@ -1,0 +1,13 @@
+config CONST_FALSE
+	def_bool n
+
+choice
+	bool "An Empty Choice"
+	
+	config VAL_1
+		bool "Value 1"
+		depends on CONST_FALSE
+	config VAL_2
+		bool "Value 2"
+		depends on CONST_FALSE
+endchoice

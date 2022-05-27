@@ -1,0 +1,20 @@
+config H
+	bool "Prompt"
+	select A if !C
+config J
+	bool
+	default y
+	select D if X
+config J
+	bool "Prompt"
+	depends on X
+	select H
+config ZA
+	bool "ZA?"
+	select ZB
+config ZB
+	bool "ZB?"
+	depends on X
+	select ZC
+config ZC
+	bool
