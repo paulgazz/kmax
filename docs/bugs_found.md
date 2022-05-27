@@ -3,8 +3,8 @@
 
 - [Bugs Found by Kmax Tools](#bugs-found-by-kmax-tools)
   - [Linux kernel](#linux-kernel)
-    - [Intel 0-day kernel test robot reports](#intel-0-day-kernel-test-robot-reports)
-    - [From Paper](#from-paper)
+    - [Intel 0-day automated reports](#intel-0-day-automated-reports)
+    - [Manual reports during evaluation](#manual-reports-during-evaluation)
   - [axTLS](#axtls)
     - [Header compile issue when "Create Language Bindings" is used](#header-compile-issue-when-create-language-bindings-is-used)
 
@@ -16,10 +16,75 @@
 
 ### Intel 0-day automated reports
 
-These reports were made automatically by the [Intel 0-day](https://01.org/lkp) kernel test robot after their team included `kismet` in their automated test suite.
+The [Intel 0-day](https://01.org/lkp) kernel test robot after their team included `kismet` in their automated test suite.  These reports can be found in both 0-day's kbuild mailing list and by searching the Linux kernel lore site.  We list some of first reports here made in the weeks after integration during May 2022.  Subsequent reports may be searched on the Linux kernel lore site or by reading the 0-day mailing list archive.
 
-- <https://lkml.org/lkml/2022/5/12/1042>
-- <https://lkml.org/lkml/2022/5/10/2229>
+Linux kernel mailing list latest kismet reports:
+
+- <https://lore.kernel.org/all/?q=kismet>
+
+Initial reports in the weeks after integration:
+
+- <https://lore.kernel.org/all/944d0df2-d862-5a6f-a807-93271531e569@intel.com/>
+- <https://lore.kernel.org/all/202205241452.l7BgDioy-lkp@intel.com/>
+- <https://lore.kernel.org/all/202205240839.re9RD7S2-lkp@intel.com/>
+- <https://lore.kernel.org/all/202205212023.U2plpfsA-lkp@intel.com/>
+- <https://lore.kernel.org/all/202205171716.TBekpz3r-lkp@intel.com/>
+- <https://lore.kernel.org/all/1d5d45eb-d2bf-25e5-78f9-d9934d007e53@intel.com/>
+- <https://lore.kernel.org/all/2b7ec8f1-af8f-5bab-3201-bbd65d013d7b@intel.com/>
+- <https://lore.kernel.org/all/70a880bb-2f7c-c997-113e-247cdd93269d@intel.com/>
+- <https://lore.kernel.org/all/202205240839.re9RD7S2-lkp@intel.com/>
+- <https://lore.kernel.org/all/18875b54-6b39-a8fa-c4d2-4a21f3175146@intel.com/>
+- <https://lore.kernel.org/all/3aa2df14-929f-6849-00f3-31d40e9cb33a@intel.com/>
+- <https://lore.kernel.org/all/8f4702bc-a171-caaa-1a90-7d4d12908e08@intel.com/>
+- <https://lore.kernel.org/all/b9df5217-1bb5-26e7-3670-e91357bf7488@intel.com/>
+
+
+Link to the 0-day kbuild mailing:
+
+- <https://lists.01.org/postorius/lists/kbuild.lists.01.org/>
+
+Initial reports in the weeks after integration:
+
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/REPWK3PDUBKWIXJBVRNNQ2U5WBPIXWJN/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/VM5BTDECGS26T4KO2MKMTJLJJTJS4MKV/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/LMXRPWRYZN2DBKSSAXCQJGYRQLQRS5RM/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/7MJZ72H37LMOR5OLZZ7UMYB5WX2QBU7J/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/56GG7KDLC75UYYTNGBDHYIEGEH73QUA4/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/4V64IS4KLZCZFOSDMKPNRY5TOVGLXWXV/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/2J4NW5RAEEWDDSY3UQXLMG3IB4UGT4TM/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/O6OCFIXRETRLYUMXJWWL2BSJFBY75NBW/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/BOXDZTEFXIZJUPLUKJA2JK6ME74GXTXQ/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/55C3PAJTTNYVSXPWT6FZDGBFHAQTAKSP/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/Q4AAW65UWJTTMHFSRPYC7VFWB7VJVBUS/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/JKMMKXGE4XZGGQDRBWO7NIAATLHTE35B/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/S2E6EG37EVLRHF74GNOK4W3BBHC5KOYE/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/OQJ3DRKRHAK5KECKNCZB7YHHJ3PMHTSS/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/GSXTKLA7VFWKO5JKRXUA5KPEPO7IAPBC/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/5RCNGZRV3VLHFQK4Z7TYQ2YTUJHPQCGX/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/GFCBNSEBTRT6C7C7RBKGJHT4U4KKIFPO/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/CK3L57JCFPEWWBCKWCXVOCKXYLFHWNUI/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/TQFTAA3OVQ35MS6GG5TIL7RWZZ53QBWE/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/TQFTAA3OVQ35MS6GG5TIL7RWZZ53QBWE/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/RB6TMCWFBSEGR6QNYCQB2YZQZVYILPEH/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/N7NWIPI7EJ7QQW45VEZFS75E3FLZ4OAG/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/I32SSPQ5NAY3E2BBOUTDYXELTEALLTTL/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/22AE2YWJAJMJA6VTMLQALCXISM4V5FAN/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/OZOQS454GW23BQYR3BHMMPFGDXOB3G4D/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/Y2P6IT6GOCFKRMP6UDKLKJMPQFQ4BDFU/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/437PLL56YNVEJUYVVFI6FYNJ7IAXH7VR/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/IFGUJVMGSSC6IHAG4IBPUKDY4UE5XHKN/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/UJD34HD75IAH4R6DZSLKCQCTOCWSHCV4/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/YPNNEXJPM2CNLO5OEXDJ2MISNYP5DLXE/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/AKBGTWKZTMBPXGIMYJNBI7HKWRSXW5AV/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/F2KJPPTJVPC4TRFMVWPYHEB4EVEDPXUP/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/QTKJ5W6JCB57N4C3523QZ6R5NIBYGTXV/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/DZRMPVG7N26LP5XLYEARRQHCSJMD3G5E/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/4ZCIH2VAXUON7Q3SBPHA5ZUNRADEFF5A/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/T7A5ETKC3T5M7V4LCEQJSR4GFDT53JZW/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/JAKBJXKL4NHS2ZXK6RA5AQVHATWS2UGJ/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/QO7HLKE4OO6ULMP7VIYNEW4SQ3G6RTXN/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/4I2FSQIAC25FQJJCPLSX6NB6FTG2WEV2/>
+- <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/32IKPTYPPJ7MHOVUHZ2URQ36SBYTFDJT/>
 
 
 ### Manual reports during evaluation

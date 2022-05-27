@@ -8,6 +8,8 @@
   - [Using `klocalizer --repair` on patches](#using-klocalizer---repair-on-patches)
   - [Using `kismet`](#using-kismet)
   - [Additional documentation](#additional-documentation)
+  - [Bugs found](#bugs-found)
+  - [Credits](#credits)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -90,8 +92,14 @@ Technical details can be found in in the [kismet documentation](https://github.c
 
 ## Additional documentation
 
-[Overview](https://github.com/paulgazz/kmax/blob/master/docs/overview.md)
-
 [Advanced Usage](https://github.com/paulgazz/kmax/blob/master/docs/advanced.md)
 
+
+## Bugs found
+
 [Bugs Found](https://github.com/paulgazz/kmax/blob/master/docs/bugs_found.md)
+
+
+## Credits
+
+The main developers of this project have been [Paul Gazzillo](https://paulgazzillo.com) (`kextract`, `kclause`, `kmax`, `klocalizer`), [Necip Yildiran](http://www.necipyildiran.com/) (`kismet`, `krepair`, `koverage`), [Jeho Oh](https://www.linkedin.com/in/jeho-oh-110a2092/) (`kclause`), and [Julian Braha](https://julianbraha.com/) (`koverage`).  [Julia Lawall](https://pages.lip6.fr/Julia.Lawall/) has posed new applications and provided invaluable advice, feedback, and support.  Thanks to all the users who have contributed code and issues.  Special thanks to the [Intel 0-day](https://01.org/lkp) team for working to include `kismet` into the kernel test robot and for their valuable feedback.  This work is funded in part by the National Science Foundation under awards [CCF 1840934](https://nsf.gov/awardsearch/showAward?AWD_ID=1840934) [CCF 1941816](https://nsf.gov/awardsearch/showAward?AWD_ID=1941816).
