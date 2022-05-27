@@ -6,6 +6,7 @@
     - [Installing the kmax tool suite](#installing-the-kmax-tool-suite)
     - [Kicking the tires](#kicking-the-tires)
   - [Using `klocalizer --repair` on patches](#using-klocalizer---repair-on-patches)
+  - [Using `koverage`](#using-koverage)
   - [Using `kismet`](#using-kismet)
   - [Additional documentation](#additional-documentation)
   - [Bugs found](#bugs-found)
