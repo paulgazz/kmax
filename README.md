@@ -52,7 +52,7 @@ You should see `CC      drivers/usb/storage/alauda.o` at the end of the build.
 
 ## Using `klocalizer --repair` on patches
 
-This tool will automatically "fix" your .config file so that it builds the lines from a given patchfile (or any specific files or file:line pairs).  To use, first install [SuperC](https://github.com/appleseedlab/superc), which `klocalizer` depends on for finding`#ifdef` constraints:
+This tool will automatically "fix" your .config file so that it builds the lines from a given patchfile (or any specific files or file:line pairs).  To use it, first install [SuperC](https://github.com/appleseedlab/superc), which `klocalizer` depends on for finding`#ifdef` constraints:
 
     sudo apt-get install -y libz3-java libjson-java sat4j unzip flex bison bc libssl-dev libelf-dev xz-utils lftp
     wget -O - https://raw.githubusercontent.com/appleseedlab/superc/master/scripts/install.sh | bash
@@ -111,7 +111,7 @@ Technical details can be found in in the [kismet documentation](https://github.c
 
 ## Bugs found
 
-[Bugs Found](https://github.com/paulgazz/kmax/blob/master/docs/bugs_found.md)
+[Bugs Found](https://github.com/paulgazz/kmax/blob/master/docs/bugs_found.md) by our tools
 
 
 ## Credits
