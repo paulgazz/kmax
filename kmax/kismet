@@ -376,7 +376,11 @@ if __name__ == '__main__':
   assert os.path.isdir(samples_dir)
   
   def dumps_progress(done, total):
-    return '{done:{fill}{width}}/{total} (%{perc})'.format(done=done, fill=" ", width=len(str(total)), total=total, perc= int((done / total) *100))
+    if (total > 0):
+      perc_string = " (%{perc})".format(perc=int((done / total) *100))
+    else:
+      perc_string = ""
+    return '{done:{fill}{width}}/{total}{perc_string}'.format(done=done, fill=" ", width=len(str(total)), total=total, perc_string=perc_string)
   
   #
   # Formulas directory
