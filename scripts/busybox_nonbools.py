@@ -11,7 +11,7 @@ for line in sys.stdin:
     assert(varname.startswith("CONFIG_"))
     configname = varname[7:]
     if typename == "bool" or "tristate":
-      print("""
+      print(("""
 #ifdef CONFIG_%s
 # define CONFIG_%s 1
 # define ENABLE_%s 1
@@ -27,7 +27,7 @@ for line in sys.stdin:
 # define IF_%s(...)
 # define IF_NOT_%s(...) __VA_ARGS__
 #endif
-""" % (configname, configname, configname, configname, configname, configname, configname, configname, configname, configname, configname))
+""" % (configname, configname, configname, configname, configname, configname, configname, configname, configname, configname, configname)))
     elif typename == "string":
       pass
     elif typename == "number":

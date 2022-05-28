@@ -7,11 +7,11 @@ def get_kclause_constraints(kclause_file):
     kclause = pickle.load(fp)
 
     kclause_constraints = {}
-    for var in kclause.keys():
+    for var in list(kclause.keys()):
       kclause_constraints[var] = [ z3.parse_smt2_string(clause) for clause in kclause[var] ]
 
     constraints = []
-    for var in kclause_constraints.keys():
+    for var in list(kclause_constraints.keys()):
       for z3_clause in kclause_constraints[var]:
         constraints.extend(z3_clause)
 
@@ -31,4 +31,4 @@ if use_tseitin:
 else:
   solver.add(constraints)
 
-print(solver.dimacs())
+print((solver.dimacs()))

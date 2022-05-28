@@ -78,7 +78,7 @@ class SelectableVisitor(ast.NodeVisitor):
 
   def visit_Name(self, node):
     option = node.id
-    if option in self.find_selectable.selectable_options.keys():
+    if option in list(self.find_selectable.selectable_options.keys()):
       node.selectable = self.find_selectable.selectable_options[option]
     else:
       node.selectable = self.find_selectable.get_selectable_one(option)
@@ -113,13 +113,13 @@ class FindSelectable:
     return self.selectable_options
 
   def get_selectable_one(self, current_option):
-    if current_option not in self.selectable_options.keys():  # not yet memoized
+    if current_option not in list(self.selectable_options.keys()):  # not yet memoized
       # if no (direct or reverse) dependencies, assume it is selectable
-      if current_option not in self.dep_exprs.keys() and current_option not in self.rev_dep_exprs.keys():
+      if current_option not in list(self.dep_exprs.keys()) and current_option not in list(self.rev_dep_exprs.keys()):
         self.selectable_options[current_option] = True
       else:
         result = False
-        if current_option in self.dep_exprs.keys():
+        if current_option in list(self.dep_exprs.keys()):
           try:
             tree = ast.parse(self.dep_exprs[current_option])
           except RuntimeError as e:
@@ -137,7 +137,7 @@ class FindSelectable:
           visitor.visit(tree)
           result = result or visitor.result()
 
-        if current_option in self.rev_dep_exprs.keys():
+        if current_option in list(self.rev_dep_exprs.keys()):
           try:
             tree = ast.parse(self.rev_dep_exprs[current_option])
           except RuntimeError as e:

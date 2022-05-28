@@ -15,7 +15,7 @@ module_versions["3.19"] = kextractor_3_19
 module_versions["4.12.8"] = kextractor_4_12_8
 module_versions["4.18"] = kextractor_4_18
 
-available_versions = "Available versions: %s" % (", ".join(module_versions.keys()))
+available_versions = "Available versions: %s" % (", ".join(list(module_versions.keys())))
 
 def pick_version(kernel_version: str):
   """Given a kernel_version string, returns the kextract version string to use."""

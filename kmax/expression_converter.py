@@ -98,7 +98,7 @@ class Converter(ast.NodeVisitor):
     if result is not None:
       node.z3 = result
     else:
-      print(traceback.format_exc())
+      print((traceback.format_exc()))
       sys.stderr.write("error: cannot process value \"%s\"\n" % (value))
       exit(1)
       node.z3 = None
@@ -116,7 +116,7 @@ class Converter(ast.NodeVisitor):
     if result is not None:
       node.z3 = result
     else:
-      print(traceback.format_exc())
+      print((traceback.format_exc()))
       sys.stderr.write("error: cannot process value \"%s\"\n" % (value))
       exit(1)
       node.z3 = None
@@ -235,7 +235,7 @@ def convert_to_z3(expr):
 
 if __name__ == '__main__':
   # tests
-  print(convert_to_z3('((((not ((((CONFIG_GCOV_KERNEL and CONFIG_CC_IS_GCC and 1)) and (((1 and CONFIG_GCC_VERSION < "40700")) or ((1)))))) or (CONFIG_GCOV_FORMAT_3_4 or CONFIG_GCOV_FORMAT_4_7))) and (((not (CONFIG_GCOV_FORMAT_3_4 or CONFIG_GCOV_FORMAT_4_7)) or ((CONFIG_GCOV_KERNEL and CONFIG_CC_IS_GCC and 1)))))'))
+  print((convert_to_z3('((((not ((((CONFIG_GCOV_KERNEL and CONFIG_CC_IS_GCC and 1)) and (((1 and CONFIG_GCC_VERSION < "40700")) or ((1)))))) or (CONFIG_GCOV_FORMAT_3_4 or CONFIG_GCOV_FORMAT_4_7))) and (((not (CONFIG_GCOV_FORMAT_3_4 or CONFIG_GCOV_FORMAT_4_7)) or ((CONFIG_GCOV_KERNEL and CONFIG_CC_IS_GCC and 1)))))')))
   # print(convert_to_z3('((((not ((((1)) and (((1)) or ((1 and CONFIG_GCC_PLUGINS)) or ((1 and CONFIG_GCC_PLUGINS and ( not CONFIG_KASAN or CONFIG_KASAN_STACK!="1"))) or ((1 and CONFIG_GCC_PLUGINS and ( not CONFIG_KASAN or CONFIG_KASAN_STACK!="1"))) or ((1 and CONFIG_CC_HAS_AUTO_VAR_INIT)))))) or (CONFIG_INIT_STACK_NONE or CONFIG_GCC_PLUGIN_STRUCTLEAK_USER or CONFIG_GCC_PLUGIN_STRUCTLEAK_BYREF or CONFIG_GCC_PLUGIN_STRUCTLEAK_BYREF_ALL or CONFIG_INIT_STACK_ALL))) and (((not (CONFIG_INIT_STACK_NONE or CONFIG_GCC_PLUGIN_STRUCTLEAK_USER or CONFIG_GCC_PLUGIN_STRUCTLEAK_BYREF or CONFIG_GCC_PLUGIN_STRUCTLEAK_BYREF_ALL or CONFIG_INIT_STACK_ALL)) or ((1)))))'))
   # print(convert_to_z3('((((not ((((1)) and (((1 and CONFIG_X86_64)) or ((1)) or ((1 and CONFIG_EXPERT and  not CONFIG_STACKDEPOT)))))) or (CONFIG_UNWINDER_ORC or CONFIG_UNWINDER_FRAME_POINTER or CONFIG_UNWINDER_GUESS))) and (((not (CONFIG_UNWINDER_ORC or CONFIG_UNWINDER_FRAME_POINTER or CONFIG_UNWINDER_GUESS)) or ((1)))))'))
   # print(get_identifiers('((((not ((((1)) and (((1 and CONFIG_X86_64)) or ((1)) or ((1 and CONFIG_EXPERT and  not CONFIG_STACKDEPOT)))))) or (CONFIG_UNWINDER_ORC or CONFIG_UNWINDER_FRAME_POINTER or CONFIG_UNWINDER_GUESS))) and (((not (CONFIG_UNWINDER_ORC or CONFIG_UNWINDER_FRAME_POINTER or CONFIG_UNWINDER_GUESS)) or ((1)))))'))

@@ -261,14 +261,14 @@ def resolve_path(path):
   return resolved
 
 if __name__ == '__main__':    
-  available_versions = "Available Linux versions: %s\n" % (" ".join(explanations_by_version.keys()))
+  available_versions = "Available Linux versions: %s\n" % (" ".join(list(explanations_by_version.keys())))
   
   if len(sys.argv) <= 2:
     sys.stderr.write("USAGE: python3 completeness.py linux_version units_file_pattern1 [units_file_pattern2] [...]\n\n  %s" % (available_versions))
     exit(0)
   else:
     version = sys.argv[1]
-    if version not in explanations_by_version.keys():
+    if version not in list(explanations_by_version.keys()):
       sys.stderr.write("ERROR: invalid version.  %s" % (available_versions))
       exit(1)
 
@@ -425,12 +425,12 @@ if __name__ == '__main__':
                                       c.startswith("arch/um/sys-ia64") # not compiled via Kbuild
   ])
 
-  for explanation in explanations.keys():
-    assert explanation not in file_sets.keys()
+  for explanation in list(explanations.keys()):
+    assert explanation not in list(file_sets.keys())
     file_sets[explanation] = set(explanations[explanation])
 
   # filter file sets by actual .c files
-  for key in file_sets.keys():
+  for key in list(file_sets.keys()):
     file_sets[key] = set([ elem for elem in file_sets[key] if elem in everycfile ])
     # sys.stderr.write("%s %s\n\n" % (key, ("\n%s " % (key)).join(sorted(file_sets[key]))))
 
@@ -458,7 +458,7 @@ if __name__ == '__main__':
   unidentified_c_files = set(everycfile)  
     
   key_list = [ 'compilation_units', 'unconfigurable_units', 'hostprog_units', 'extra_units', 'target_units', 'nonkernel_files', 'clean_files', 'included_c_files', 'additional_offsets', 'unidentified_staging_c_files', 'unidentified_skeleton_c_files', 'generated_c_files', 'tools', 'nonkbuild_units']
-  key_list.extend(explanations.keys())
+  key_list.extend(list(explanations.keys()))
 
   results = {}
   for key in key_list:
@@ -478,24 +478,24 @@ if __name__ == '__main__':
 
   sum = 0
   for key in key_list:
-    print("%s %d" % (key, results[key]))
+    print(("%s %d" % (key, results[key])))
     sum = sum + results[key]
 
-  print("%d identified" % (sum))
-  print("%d c files" % (len(everycfile)))
-  print("\n".join(unidentified_c_files))
+  print(("%d identified" % (sum)))
+  print(("%d c files" % (len(everycfile))))
+  print(("\n".join(unidentified_c_files)))
 
   print()
   print("table fields:")
-  print("Identified by Kmax", (results['compilation_units']))
-  print("In Non-Kbuild directories", (results['nonkernel_files']))
-  print("Helper programs", (results['hostprog_units']) + (results['extra_units']) + (results['target_units']) + (results['clean_files']) + (results['additional_offsets']) + (results['generated_c_files']) + (results['tools']) + (results['nonkbuild_units']) + (results['helpers']) + (results['offsets']))
-  print("#included C files", (results['included_c_files']))
-  print("Examples", (results['unidentified_skeleton_c_files']))
-  print("Orphaned", (results['unidentified_staging_c_files']) + (results['orphaned']))
-  print("No configuration option", (results['unconfigurable']) + (results['unconfigurable_units']))
-  print("Not built with Kbuild", (results['make_target']))
-  print("All C files in source tree", len(everycfile))
+  print(("Identified by Kmax", (results['compilation_units'])))
+  print(("In Non-Kbuild directories", (results['nonkernel_files'])))
+  print(("Helper programs", (results['hostprog_units']) + (results['extra_units']) + (results['target_units']) + (results['clean_files']) + (results['additional_offsets']) + (results['generated_c_files']) + (results['tools']) + (results['nonkbuild_units']) + (results['helpers']) + (results['offsets'])))
+  print(("#included C files", (results['included_c_files'])))
+  print(("Examples", (results['unidentified_skeleton_c_files'])))
+  print(("Orphaned", (results['unidentified_staging_c_files']) + (results['orphaned'])))
+  print(("No configuration option", (results['unconfigurable']) + (results['unconfigurable_units'])))
+  print(("Not built with Kbuild", (results['make_target'])))
+  print(("All C files in source tree", len(everycfile)))
   
   exit(0)
 
@@ -694,7 +694,7 @@ if __name__ == '__main__':
   #   unidentified_c_files.difference_update([x[:-2] + ".c" for x in compilation_units[key]])
   # sys.stderr.write(str(len(unidentified_c_files)) + "\n")
 
-  print("\n".join(sorted(unidentified_c_files)))
+  print(("\n".join(sorted(unidentified_c_files))))
 
   sys.stderr.write("%d count\n" % (lastcount - len(unidentified_c_files)))
   sys.stderr.write("%s remaining\n" % (str(len(unidentified_c_files))))
@@ -815,7 +815,7 @@ if __name__ == '__main__':
           print(r"\multicolumn{2}{l}{\emph{Found by hand or additional scripts}} \\")
       if n != "TOTAL":
           # print r"\hspace{1.5em} %s & %s & %s \\" % (n, d, count)
-          print(r"\hspace{1em} %s & %s \\" % (n, count))
+          print((r"\hspace{1em} %s & %s \\" % (n, count)))
           total += c
       # else:
       #     total = count
@@ -823,10 +823,10 @@ if __name__ == '__main__':
       #     print "\hline"
       lines += 1
   print("\hline")
-  print(r"TOTAL C FILES & %s \\" % (kmaxdata.format_number(total)))
+  print((r"TOTAL C FILES & %s \\" % (kmaxdata.format_number(total))))
   print("\hline")
   print("\hline")
-  print(r"All C files in source tree & %s \\" % kmaxdata.format_number(recon_data[0]))
+  print((r"All C files in source tree & %s \\" % kmaxdata.format_number(recon_data[0])))
 
   print(r"""
   \end{tabular*}

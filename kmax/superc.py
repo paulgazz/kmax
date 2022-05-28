@@ -1,5 +1,5 @@
-from common import BasicLogger
-from vcommon import run, write_content_to_file, check_if_compiles
+from .common import BasicLogger
+from .vcommon import run, write_content_to_file, check_if_compiles
 from kmax.arch import Arch
 import os
 import pathlib

@@ -1,4 +1,4 @@
-from common import SourceFileType, FileChangeType
+from .common import SourceFileType, FileChangeType
 import whatthepatch
 
 def is_maybe_kernel(filepath) -> bool:

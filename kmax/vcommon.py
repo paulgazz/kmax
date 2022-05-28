@@ -7,6 +7,7 @@ import inspect
 from shutil import which
 
 import logging
+from functools import reduce
 
 def write_content_to_file(filepath: str, content: str):
     with open(filepath, 'w') as f:
@@ -183,9 +184,9 @@ def check_if_compiles(unit_paths: list, config_path: str, arch_name: str,
 
 def pause(s=None):
     try: #python2
-        raw_input("Press any key to continue ..." if s is None else s)
-    except NameError:
         input("Press any key to continue ..." if s is None else s)
+    except NameError:
+        eval(input("Press any key to continue ..." if s is None else s))
 
 
 def whoami():
@@ -197,7 +198,7 @@ def vcmd(cmd, inp=None, shell=True):
         
 def vload(filename,mode='rb'):
     try:
-        import cPickle as pickle
+        import pickle as pickle
     except ImportError:  #Python3
         import pickle
 
@@ -208,7 +209,7 @@ def vload(filename,mode='rb'):
 
 def vsave(filename,sobj,mode='wb'):
     try:
-        import cPickle as pickle
+        import pickle as pickle
     except ImportError:  #Python3
         import pickle
         

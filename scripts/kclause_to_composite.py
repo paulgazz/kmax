@@ -13,16 +13,16 @@ for f in all_kclause_files:
     assert os.path.isfile(f)
 
 for kclause_file in all_kclause_files:
-    print("Processing %s" % kclause_file)
+    print(("Processing %s" % kclause_file))
     with open(kclause_file, 'rb') as fp:
         kclause = pickle.load(fp)
 
         kclause_constraints = {}
-        for var in kclause.keys():
+        for var in list(kclause.keys()):
             kclause_constraints[var] = [ z3.parse_smt2_string(clause) for clause in kclause[var] ]
 
         vec = z3.AstVector()
-        for var in kclause_constraints.keys():
+        for var in list(kclause_constraints.keys()):
             for z3_clause in kclause_constraints[var]:
                 for cl in z3_clause:
                     vec.push(cl)
@@ -35,5 +35,5 @@ for kclause_file in all_kclause_files:
         composite_kclause_file = kclause_file
         with open(composite_kclause_file, 'w') as fp:
             fp.write(solver.to_smt2())
-        print("Written the composite kclause file to '%s'" % composite_kclause_file)
+        print(("Written the composite kclause file to '%s'" % composite_kclause_file))
         
