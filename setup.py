@@ -50,5 +50,4 @@ setup(
         'whatthepatch',
         'packaging',
     ],
-    use_2to3=True,
 )
