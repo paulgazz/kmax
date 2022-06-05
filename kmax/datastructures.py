@@ -77,7 +77,7 @@ class Multiverse(list):
                 cache[val] = (cond, zcond)
 
         mv = Multiverse([CondDef(c, zc, v)
-                         for v, (c, zc)  in cache.iteritems()])
+                         for v, (c, zc)  in cache.items()])
         assert mv
         return mv
 
@@ -145,7 +145,7 @@ class Results:
             # legacy output format
             f = lambda k, s: "{}: {}".format(k, ', '.join(s) if details else len(s))
             delim = '\n' if details else ', '
-            ss = delim.join(f(k, s) for k, s in self.__dict__.iteritems() if s)
+            ss = delim.join(f(k, s) for k, s in self.__dict__.items() if s)
             if self.presence_conditions:
                 ss += '\n{} presence conditions: \n{}'.format(len(self.presence_conditions), self.z3_str(self.presence_conditions))
             # if self.unit_pcs:
@@ -155,7 +155,7 @@ class Results:
             return ss
         else:
             z3_pcs = {}
-            for filename in self.presence_conditions.keys():
+            for filename in list(self.presence_conditions.keys()):
                 solver = z3.Solver()
                 solver.add(self.presence_conditions[filename])
                 z3_pcs[filename] = solver.to_smt2()
@@ -257,5 +257,5 @@ class Results:
         #         if subsubpath in subdir_pcs: print subsubpath, subdir_pcs[subsubpath]
 
         result = '\n'.join(self.get_line_format(filename).format(filename, self.to_exp(z3.simplify(path_conds[filename])))
-                           for filename in path_conds.keys())
+                           for filename in list(path_conds.keys()))
         return result

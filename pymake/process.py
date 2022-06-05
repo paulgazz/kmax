@@ -10,9 +10,9 @@ import site
 from collections import deque
 # XXXkhuey Work around http://bugs.python.org/issue1731717
 subprocess._cleanup = lambda: None
-import command, util
+from . import command, util
 if sys.platform=='win32':
-    import win32process
+    from . import win32process
 
 _log = logging.getLogger('pymake.process')
 
@@ -28,7 +28,7 @@ def tokens2re(tokens):
     # which matches the pattern and captures it in a named match group.
     # The group names and patterns come are given as a dict in the function
     # argument.
-    nonescaped = r'(?<!\\)(?:%s)' % '|'.join('(?P<%s>%s)' % (name, value) for name, value in tokens.iteritems())
+    nonescaped = r'(?<!\\)(?:%s)' % '|'.join('(?P<%s>%s)' % (name, value) for name, value in tokens.items())
     # The final pattern matches either the above pattern, or an escaped
     # backslash, captured in the "escape" match group.
     return re.compile('(?:%s|%s)' % (nonescaped, r'(?P<escape>\\\\)'))
@@ -115,7 +115,7 @@ class ClineSplitter(list):
                 self._push(self.cline[:m.start()])
             self.cline = self.cline[m.end():]
 
-            match = dict([(name, value) for name, value in m.groupdict().items() if value])
+            match = dict([(name, value) for name, value in list(m.groupdict().items()) if value])
             if 'quote' in match:
                 # " or ' start a quoted string
                 if match['quote'] == '"':
@@ -129,7 +129,7 @@ class ClineSplitter(list):
             elif 'special' in match:
                 # Unquoted, non-escaped special characters need to be sent to a
                 # shell.
-                raise MetaCharacterException, match['special']
+                raise MetaCharacterException(match['special'])
             elif 'whitespace' in match:
                 # Whitespaces terminate current argument.
                 self._next()
@@ -145,7 +145,7 @@ class ClineSplitter(list):
                 self.glob = True
                 self._push(m.group(0))
             else:
-                raise Exception, "Shouldn't reach here"
+                raise Exception("Shouldn't reach here")
         if self.arg:
             self._next()
 
@@ -153,20 +153,20 @@ class ClineSplitter(list):
         # Single quoted strings are preserved, except for the final quote
         index = self.cline.find("'")
         if index == -1:
-            raise Exception, 'Unterminated quoted string in command'
+            raise Exception('Unterminated quoted string in command')
         self._push(self.cline[:index])
         self.cline = self.cline[index+1:]
 
     def _parse_doubly_quoted(self):
         if not self.cline:
-            raise Exception, 'Unterminated quoted string in command'
+            raise Exception('Unterminated quoted string in command')
         while self.cline:
             m = _doubly_quoted_tokens.search(self.cline)
             if not m:
-                raise Exception, 'Unterminated quoted string in command'
+                raise Exception('Unterminated quoted string in command')
             self._push(self.cline[:m.start()])
             self.cline = self.cline[m.end():]
-            match = dict([(name, value) for name, value in m.groupdict().items() if value])
+            match = dict([(name, value) for name, value in list(m.groupdict().items()) if value])
             if 'quote' in match:
                 # a double quote ends the quoted string, so go back to
                 # unquoted parsing
@@ -175,7 +175,7 @@ class ClineSplitter(list):
                 # Unquoted, non-escaped special characters in a doubly quoted
                 # string still have a special meaning and need to be sent to a
                 # shell.
-                raise MetaCharacterException, match['special']
+                raise MetaCharacterException(match['special'])
             elif 'escape' in match:
                 # Escaped backslashes turn into a single backslash
                 self._push('\\')
@@ -194,7 +194,7 @@ def clinetoargv(cline, cwd):
     str = _escapednewlines.sub('', cline)
     try:
         args = ClineSplitter(str, cwd)
-    except MetaCharacterException, e:
+    except MetaCharacterException as e:
         return None, e.char
 
     if len(args) and args[0].find('=') != -1:
@@ -327,12 +327,12 @@ class PopenJob(Job):
         # general overview of "subprocess PATH semantics and portability".
         oldpath = os.environ['PATH']
         try:
-            if self.env is not None and self.env.has_key('PATH'):
+            if self.env is not None and 'PATH' in self.env:
                 os.environ['PATH'] = self.env['PATH']
             p = subprocess.Popen(self.argv, executable=self.executable, shell=self.shell, env=self.env, cwd=self.cwd)
             return p.wait()
-        except OSError, e:
-            print >>sys.stderr, e
+        except OSError as e:
+            print(e, file=sys.stderr)
             return -127
         finally:
             os.environ['PATH'] = oldpath
@@ -383,30 +383,30 @@ class PythonJob(Job):
                 try:
                     __import__(self.module)
                 except Exception as e:
-                    print >>sys.stderr, 'Error importing %s: %s' % (
-                        self.module, e)
+                    print('Error importing %s: %s' % (
+                        self.module, e), file=sys.stderr)
                     return -127
 
             m = sys.modules[self.module]
             if self.method not in m.__dict__:
-                print >>sys.stderr, "No method named '%s' in module %s" % (self.method, self.module)
+                print("No method named '%s' in module %s" % (self.method, self.module), file=sys.stderr)
                 return -127
             rv = m.__dict__[self.method](self.argv)
             if rv != 0 and rv is not None:
-                print >>sys.stderr, (
+                print((
                     "Native command '%s %s' returned value '%s'" %
-                    (self.module, self.method, rv))
+                    (self.module, self.method, rv)), file=sys.stderr)
                 return (rv if isinstance(rv, int) else 1)
 
-        except PythonException, e:
-            print >>sys.stderr, e
+        except PythonException as e:
+            print(e, file=sys.stderr)
             return e.exitcode
         except:
             e = sys.exc_info()[1]
             if isinstance(e, SystemExit) and (e.code == 0 or e.code is None):
                 pass # sys.exit(0) is not a failure
             else:
-                print >>sys.stderr, e
+                print(e, file=sys.stderr)
                 traceback.print_exc()
                 return -127
         finally:
@@ -461,7 +461,7 @@ class ParallelContext(object):
 
     def _docall_generic(self, pool, job, cb, echo, justprint):
         if echo is not None:
-            print echo
+            print(echo)
         processcb = job.get_callback(ParallelContext._condition)
         if justprint:
             processcb(0)
@@ -491,7 +491,7 @@ class ParallelContext(object):
         def _checkdone():
             jobs = []
             for c in ParallelContext._allcontexts:
-                for i in xrange(0, len(c.running)):
+                for i in range(0, len(c.running)):
                     if c.running[i][0].done:
                         jobs.append(c.running[i])
                 for j in jobs:

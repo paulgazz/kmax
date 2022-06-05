@@ -1,6 +1,6 @@
 import logging, re, os
-import data, parser, functions, util
-from cStringIO import StringIO
+from . import data, parser, functions, util
+from io import StringIO
 from pymake.globrelative import hasglob, glob
 
 _log = logging.getLogger('pymake.data')
@@ -76,7 +76,7 @@ def parsecommandlineargs(args):
     overrides = []
     stmts = StatementList()
     r = []
-    for i in xrange(0, len(args)):
+    for i in range(0, len(args)):
         a = args[i]
 
         vname, t, val = util.strpartition(a, ':=')
@@ -195,7 +195,7 @@ class Rule(Statement):
 
         deps = list(_expandwildcards(makefile, data.stripdotslashes(self.depexp.resolvesplit(makefile, makefile.variables))))
         if ispattern:
-            rule = data.PatternRule(targets, map(data.Pattern, deps), self.doublecolon, loc=self.targetexp.loc)
+            rule = data.PatternRule(targets, list(map(data.Pattern, deps)), self.doublecolon, loc=self.targetexp.loc)
             makefile.appendimplicitrule(rule)
         else:
             rule = data.Rule(deps, self.doublecolon, loc=self.targetexp.loc, weakdeps=False)
@@ -207,7 +207,7 @@ class Rule(Statement):
         context.currule = rule
 
     def dump(self, fd, indent):
-        print >>fd, "%sRule %s: %s" % (indent, self.targetexp, self.depexp)
+        print("%sRule %s: %s" % (indent, self.targetexp, self.depexp), file=fd)
 
     def to_source(self):
         sep = ':'
@@ -285,7 +285,7 @@ class StaticPatternRule(Statement):
         context.currule = rule
 
     def dump(self, fd, indent):
-        print >>fd, "%sStaticPatternRule %s: %s: %s" % (indent, self.targetexp, self.patternexp, self.depexp)
+        print("%sStaticPatternRule %s: %s: %s" % (indent, self.targetexp, self.patternexp, self.depexp), file=fd)
 
     def to_source(self):
         sep = ':'
@@ -339,7 +339,7 @@ class Command(Statement):
         context.currule.addcommand(self.exp)
 
     def dump(self, fd, indent):
-        print >>fd, "%sCommand %s" % (indent, self.exp,)
+        print("%sCommand %s" % (indent, self.exp,), file=fd)
 
     def to_source(self):
         # Commands have some interesting quirks when it comes to source
@@ -438,7 +438,7 @@ class SetVariable(Statement):
             v.set(vname, flavor, self.source, value)
 
     def dump(self, fd, indent):
-        print >>fd, "%sSetVariable<%s> %s %s\n%s %r" % (indent, self.valueloc, self.vnameexp, self.token, indent, self.value)
+        print("%sSetVariable<%s> %s %s\n%s %r" % (indent, self.valueloc, self.vnameexp, self.token, indent, self.value), file=fd)
 
     def __eq__(self, other):
         if not isinstance(other, SetVariable):
@@ -452,7 +452,7 @@ class SetVariable(Statement):
 
     def to_source(self):
         chars = []
-        for i in xrange(0, len(self.value)):
+        for i in range(0, len(self.value)):
             c = self.value[i]
 
             # Literal # is escaped in variable assignment otherwise it would be
@@ -651,14 +651,14 @@ class ConditionBlock(Statement):
             i += 1
 
     def dump(self, fd, indent):
-        print >>fd, "%sConditionBlock" % (indent,)
+        print("%sConditionBlock" % (indent,), file=fd)
 
         indent2 = indent + '  '
         for c, statements in self._groups:
-            print >>fd, "%s Condition %s" % (indent, c)
+            print("%s Condition %s" % (indent, c), file=fd)
             statements.dump(fd, indent2)
-            print >>fd, "%s ~Condition" % (indent,)
-        print >>fd, "%s~ConditionBlock" % (indent,)
+            print("%s ~Condition" % (indent,), file=fd)
+        print("%s~ConditionBlock" % (indent,), file=fd)
 
     def to_source(self):
         lines = []
@@ -681,7 +681,7 @@ class ConditionBlock(Statement):
         if len(self) != len(other):
             return False
 
-        for i in xrange(0, len(self)):
+        for i in range(0, len(self)):
             our_condition, our_statements = self[i]
             other_condition, other_statements = other[i]
 
@@ -793,7 +793,7 @@ class Include(Statement):
             makefile.include(f, self.required, loc=self.exp.loc, weak=self.weak)
 
     def dump(self, fd, indent):
-        print >>fd, "%sInclude %s" % (indent, self.exp)
+        print("%sInclude %s" % (indent, self.exp), file=fd)
 
     def to_source(self):
         prefix = ''
@@ -840,7 +840,7 @@ class VPathDirective(Statement):
                     makefile.addvpath(pattern, dirs)
 
     def dump(self, fd, indent):
-        print >>fd, "%sVPath %s" % (indent, self.exp)
+        print("%sVPath %s" % (indent, self.exp), file=fd)
 
     def to_source(self):
         return 'vpath %s' % self.exp.to_source()
@@ -885,7 +885,7 @@ class ExportDirective(Statement):
             makefile.exportedvars[v] = True
 
     def dump(self, fd, indent):
-        print >>fd, "%sExport (single=%s) %s" % (indent, self.single, self.exp)
+        print("%sExport (single=%s) %s" % (indent, self.single, self.exp), file=fd)
 
     def to_source(self):
         return ('export %s' % self.exp.to_source()).rstrip()
@@ -915,7 +915,7 @@ class UnexportDirective(Statement):
             makefile.exportedvars[v] = False
 
     def dump(self, fd, indent):
-        print >>fd, "%sUnexport %s" % (indent, self.exp)
+        print("%sUnexport %s" % (indent, self.exp), file=fd)
 
     def to_source(self):
         return 'unexport %s' % self.exp.to_source()
@@ -947,7 +947,7 @@ class EmptyDirective(Statement):
             raise data.DataError("Line expands to non-empty value", self.exp.loc)
 
     def dump(self, fd, indent):
-        print >>fd, "%sEmptyDirective: %s" % (indent, self.exp)
+        print("%sEmptyDirective: %s" % (indent, self.exp), file=fd)
 
     def to_source(self):
         return self.exp.to_source()

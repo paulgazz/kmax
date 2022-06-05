@@ -11,7 +11,7 @@ except when a submake specifies -j1 when the parent make is building in parallel
 
 import os, subprocess, sys, logging, time, traceback, re
 from optparse import OptionParser
-import data, parserdata, process, util
+from . import data, parserdata, process, util
 
 # TODO: If this ever goes from relocatable package to system-installed, this may need to be
 # a configured-in path.
@@ -62,7 +62,7 @@ def parsemakeflags(env):
     return opts
 
 def _version(*args):
-    print """pymake: GNU-compatible make program
+    print("""pymake: GNU-compatible make program
 Copyright (C) 2009 The Mozilla Foundation <http://www.mozilla.org/>
 This is free software; see the source for copying conditions.
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
@@ -71,7 +71,7 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE."""
+DEALINGS IN THE SOFTWARE.""")
 
 _log = logging.getLogger('pymake.execution')
 
@@ -95,7 +95,7 @@ class _MakeContext(object):
 
     def remakecb(self, remade, error=None):
         if error is not None:
-            print error
+            print(error)
             self.context.defer(self.cb, 2)
             return
 
@@ -124,15 +124,15 @@ class _MakeContext(object):
                     self.makefile.include(f)
                 self.makefile.finishparsing()
                 self.makefile.remakemakefiles(self.remakecb)
-            except util.MakeError, e:
-                print e
+            except util.MakeError as e:
+                print(e)
                 self.context.defer(self.cb, 2)
 
             return
 
         if len(self.targets) == 0:
             if self.makefile.defaulttarget is None:
-                print "No target specified and no default target found."
+                print("No target specified and no default target found.")
                 self.context.defer(self.cb, 2)
                 return
 
@@ -154,7 +154,7 @@ class _MakeContext(object):
 
         if not len(self.realtargets):
             if self.options.printdir:
-                print "make.py[%i]: Leaving directory '%s'" % (self.makelevel, self.workdir)
+                print("make.py[%i]: Leaving directory '%s'" % (self.makelevel, self.workdir))
             sys.stdout.flush()
 
             self.context.defer(self.cb, 0)
@@ -255,24 +255,24 @@ def main(args, env, cwd, cb):
         context = process.getcontext(options.jobcount)
 
         if options.printdir:
-            print "make.py[%i]: Entering directory '%s'" % (makelevel, workdir)
+            print("make.py[%i]: Entering directory '%s'" % (makelevel, workdir))
             sys.stdout.flush()
 
         if len(options.makefiles) == 0:
             if os.path.exists(util.normaljoin(workdir, 'Makefile')):
                 options.makefiles.append('Makefile')
             else:
-                print "No makefile found"
+                print("No makefile found")
                 cb(2)
                 return
 
         ostmts, targets, overrides = parserdata.parsecommandlineargs(arguments)
 
         _MakeContext(makeflags, makelevel, workdir, context, env, targets, options, ostmts, overrides, cb)
-    except (util.MakeError), e:
-        print e
+    except (util.MakeError) as e:
+        print(e)
         if options.printdir:
-            print "make.py[%i]: Leaving directory '%s'" % (makelevel, workdir)
+            print("make.py[%i]: Leaving directory '%s'" % (makelevel, workdir))
         sys.stdout.flush()
         cb(2)
         return

@@ -250,7 +250,7 @@ class Klocalizer:
         current_path = os.path.join(parent_path, elem)
         if i < len(elems) - 1:
           current_path = current_path + "/"
-        if current_path not in self.__kmax_formulas.keys():
+        if current_path not in list(self.__kmax_formulas.keys()):
           # run kmax on the parent to find the constraint
           paths_to_try = []
           # paths are relative to ksrc
@@ -587,7 +587,7 @@ class Klocalizer:
         token_pattern = regex.compile("CONFIG_[A-Za-z0-9_]+")
         for kmax_constraint in self.__kmax_constraints:
           used_vars = z3.z3util.get_vars(kmax_constraint)
-          vars_not_in_arch = [ used_var for used_var in used_vars if str(used_var) not in kconfig_types.keys() and token_pattern.match(str(used_var)) ]
+          vars_not_in_arch = [ used_var for used_var in used_vars if str(used_var) not in list(kconfig_types.keys()) and token_pattern.match(str(used_var)) ]
           for used_var in vars_not_in_arch:
             constraints.append(z3.Not(used_var))
 

@@ -9,11 +9,12 @@ from pymake import parser, parserdata, data, functions
 from collections import defaultdict
 
 import pdb
+from functools import reduce
 trace = pdb.set_trace
 import z3
 import kmax.vcommon as CM
 
-from datastructures import CondDef, Multiverse, VarEntry, BoolVar, Results
+from .datastructures import CondDef, Multiverse, VarEntry, BoolVar, Results
 
 import kmax.settings
 mlog = CM.getLogger(__name__, kmax.settings.logger_level)
@@ -166,11 +167,11 @@ class Kbuild:
     def get_presence_conditions(self, vars, pcs, cond, zcond, visited=set()):
         names = set()
         for var in vars:
-            if var in self.variables.keys():
+            if var in list(self.variables.keys()):
                 names = names.union(self.get_var_equiv_set(var))
 
         # ignore undefined vars
-        names = [ name for name in names if name in self.variables.keys() ]
+        names = [ name for name in names if name in list(self.variables.keys()) ]
 
         # prevent cycles, e.g., linux-3.19/net/mac80211/Makefile
         names = [ name for name in names if name not in visited ]
@@ -190,7 +191,7 @@ class Kbuild:
                 for token in tokens:
                     and_cond = conj(cond, bdd_condition)
                     and_zcond = zconj(zcond, z3_condition)
-                    if token not in pcs.keys():
+                    if token not in list(pcs.keys()):
                         pcs[token] = and_zcond
                     else:
                         pcs[token] = zdisj(pcs[token], and_zcond)
@@ -216,7 +217,7 @@ class Kbuild:
         for token in presence_conditions:
             # resolve any uses of ../ or ./
             filename = os.path.join(path, token)
-            if filename not in updated_presence_conditions.keys():
+            if filename not in list(updated_presence_conditions.keys()):
                 updated_presence_conditions[filename] = presence_conditions[token]
             else:
                 updated_presence_conditions[filename] = zdisj(updated_presence_conditions[filename], presence_conditions[token])
@@ -823,12 +824,10 @@ class Kbuild:
         assert value is not None, value
 
         update_vars = lambda name: \
-                    map(lambda (old_value, old_cond, old_zcond, old_flavor): 
-                            VarEntry(old_value, 
-                                    conj(old_cond, neg(presence_cond)),
-                                    zconj(old_zcond, z3.Not(presence_zcond)),
-                                    old_flavor), 
-                        self.variables[name])
+                    [VarEntry(old_value_old_cond_old_zcond_old_flavor[0], 
+                                    conj(old_value_old_cond_old_zcond_old_flavor[1], neg(presence_cond)),
+                                    zconj(old_value_old_cond_old_zcond_old_flavor[2], z3.Not(presence_zcond)),
+                                    old_value_old_cond_old_zcond_old_flavor[3]) for old_value_old_cond_old_zcond_old_flavor in self.variables[name]]
 
         if token == "=":
             # Recursively-expanded variable defs are expanded at use-time
@@ -1240,10 +1239,10 @@ class Run:
         presence_conditions = {}
         kbuild.get_presence_conditions([ "subdir-y", "subdir-m", "SPECIAL-subdir-simple" ], presence_conditions, kbuild.T, ZSolver.T)
         subdirs_pcs = kbuild.deduplicate_and_add_path(presence_conditions, path)
-        subdirs = subdirs_pcs.keys()
+        subdirs = list(subdirs_pcs.keys())
 
         subdirs_pcs_fixed = {}
-        for subdir in subdirs_pcs.keys():
+        for subdir in list(subdirs_pcs.keys()):
             # add / to end of subdirs
             if not subdir.endswith("/"):
                 fixed_subdir = subdir + "/"
@@ -1256,27 +1255,27 @@ class Run:
             self.results.units_by_type['subdirs'] = subdirs
 
             # mapping from unit type name to structure holding them
-            self.results.units_by_type['compilation_units'] = self.results.presence_conditions.keys()
+            self.results.units_by_type['compilation_units'] = list(self.results.presence_conditions.keys())
 
             kbuild.process_stmts(parser.parsestring("SPECIAL-extra := $(extra-y)", makefile.name), kbuild.T, ZSolver.T)
             presence_conditions = {}
             kbuild.get_presence_conditions([ "SPECIAL-extra", "extra-y" ], presence_conditions, kbuild.T, ZSolver.T)
-            self.results.units_by_type['extra'] = kbuild.deduplicate_and_add_path(presence_conditions, path).keys()
+            self.results.units_by_type['extra'] = list(kbuild.deduplicate_and_add_path(presence_conditions, path).keys())
 
             kbuild.process_stmts(parser.parsestring("SPECIAL-hostprogs := $(hostprogs-y) $(hostprogs-m) $(hostprogs) $(always)", makefile.name), kbuild.T, ZSolver.T)
             presence_conditions = {}
             kbuild.get_presence_conditions([ "SPECIAL-hostprogs", "hostprogs-y", "hostprogs-m", "hostprogs", "always" ], presence_conditions, kbuild.T, ZSolver.T)
-            self.results.units_by_type['hostprog_units'] = kbuild.deduplicate_and_add_path(presence_conditions, path).keys()
+            self.results.units_by_type['hostprog_units'] = list(kbuild.deduplicate_and_add_path(presence_conditions, path).keys())
 
             kbuild.process_stmts(parser.parsestring("SPECIAL-targets := $(targets)", makefile.name), kbuild.T, ZSolver.T)
             presence_conditions = {}
             kbuild.get_presence_conditions([ "SPECIAL-targets", "targets" ], presence_conditions, kbuild.T, ZSolver.T)
-            self.results.units_by_type['targets'] = kbuild.deduplicate_and_add_path(presence_conditions, path).keys()
+            self.results.units_by_type['targets'] = list(kbuild.deduplicate_and_add_path(presence_conditions, path).keys())
 
             kbuild.process_stmts(parser.parsestring("SPECIAL-clean-files := $(clean-files)", makefile.name), kbuild.T, ZSolver.T)
             presence_conditions = {}
             kbuild.get_presence_conditions([ "SPECIAL-clean-files", "clean-files" ], presence_conditions, kbuild.T, ZSolver.T)
-            self.results.units_by_type['clean_files'] = kbuild.deduplicate_and_add_path(presence_conditions, path).keys()
+            self.results.units_by_type['clean_files'] = list(kbuild.deduplicate_and_add_path(presence_conditions, path).keys())
 
             # finds compilation units in obj-, lib-.  such units were
             # specified to be buildable, but the configuration options
@@ -1306,7 +1305,7 @@ class Run:
 
             presence_conditions = {}
             kbuild.get_presence_conditions(unconfigurable_variables, presence_conditions, kbuild.T, ZSolver.T)
-            self.results.units_by_type['unconfigurable_units'] = kbuild.deduplicate_and_add_path(presence_conditions, path).keys()
+            self.results.units_by_type['unconfigurable_units'] = list(kbuild.deduplicate_and_add_path(presence_conditions, path).keys())
 
         if kmax.settings.do_table:
             mlog.info(kbuild.getSymbTable(printCond=kbuild.bdd_to_str))
