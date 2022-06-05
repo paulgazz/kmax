@@ -329,10 +329,10 @@ def klocalizerCLI():
   sys.stderr.write("klocalizer, %s %s\n" % (kmax.about.__title__, kmax.about.__version__))
 
   def unit2srcfile(unit):
-    assert unit.endswith('.o')
+    assert unit.endswith('.c') or unit.endswith('.o')
     return unit[:-len('.o')] + '.c'
   def srcfile2unit(srcfile):
-    assert srcfile.endswith('.c')
+    assert srcfile.endswith('.c') or srcfile.endswith('.o')
     return srcfile[:-len('.c')] + '.o'
   
   def get_exclusion_constraints(unit_constraints, line_constraints):
