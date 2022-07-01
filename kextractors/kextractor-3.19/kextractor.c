@@ -2044,23 +2044,23 @@ int main(int argc, char **argv)
 
         if (enable_reverse_dependencies) {
           // print all the variables selected by this variable
-          /* struct property *prop; */
-          /* for_all_properties(sym, prop, P_SELECT) { */
-          /*   // the current var itself is the var doing the select */
-          /*   // prop->expr is the variable being selected */
-          /*   // prop->visible.expr is the "if ..." after the select */
-          /*   fprintf(output_fp, "select "); */
-          /*   // note: this assumes that prop->expr is only a single */
-          /*   // variable name, which zconf.y guarantees */
-          /*   print_python_expr(prop->expr, output_fp, E_NONE); */
-          /*   fprintf(output_fp, " %s%s (", config_prefix, sym->name); */
-          /*   if (NULL != prop->original_expr) { */
-          /*     print_python_expr(prop->original_expr, output_fp, E_NONE); */
-          /*   } else { */
-          /*     fprintf(output_fp, "1"); */
-          /*   } */
-          /*   fprintf(output_fp, ")\n"); */
-          /* } */
+          struct property *prop;
+          for_all_properties(sym, prop, P_SELECT) {
+            // the current var itself is the var doing the select
+            // prop->expr is the variable being selected
+            // prop->visible.expr is the "if ..." after the select
+            fprintf(output_fp, "select ");
+            // note: this assumes that prop->expr is only a single
+            // variable name, which zconf.y guarantees
+            print_python_expr(prop->expr, output_fp, E_NONE);
+            fprintf(output_fp, " %s%s (", config_prefix, sym->name);
+            if (NULL != prop->visible.expr) {
+              print_python_expr(prop->visible.expr, output_fp, E_NONE);
+            } else {
+              fprintf(output_fp, "1");
+            }
+            fprintf(output_fp, ")\n");
+          }
 
           if (sym->rev_dep.expr) {
             no_dependencies = false;
