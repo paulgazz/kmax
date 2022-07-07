@@ -9,6 +9,7 @@ import sys
 import argparse
 import kmax.about
 import kmax.kextractcommon
+import os
 
 def get_srcarch(arch):
   srcarch = {
@@ -69,6 +70,11 @@ if __name__ == '__main__':
   args.extend([ "--extract" ])  # tell kextract to do an extract oepration
   args.extend([ "-o", output ]) # set the output file
   # setup the linux-specific environment variables
+  # srctree is ./
+  archdir = os.path.join(".", arch)
+  if not os.path.isdir(archdir):
+    sys.stderr.write("Architecture directory not available \"%s\", so not attempting kextractlinux.\n" % (archdir))
+    exit(2)
   args.extend([ "-e", "ARCH=%s" % (arch), "-e", "SRCARCH=%s" % (srcarch), "-e", "KERNELVERSION=kcu", "-e", "srctree=./", "-e", "CC=cc", "-e", "LD=ld", "-e", "RUSTC=rustc" ])
   # set arch-specific environment variables
   args.extend(arch_specific(arch))
