@@ -2054,6 +2054,9 @@ int main(int argc, char **argv)
           case S_TRISTATE:
             fprintf(output_fp, "tristate_choice");
             break;
+          default:
+            fprintf(stderr, "fatal: choice type can only be bool or tristate, otherwise is impossible due to the parser.\n");
+            exit(1);
         }
 
         expr_list_for_each_sym(prop->expr, e, def_sym) {
