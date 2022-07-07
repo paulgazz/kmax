@@ -2065,19 +2065,6 @@ int main(int argc, char **argv)
         }
         fprintf(output_fp, "|(");
 
-        // for formatting
-        int printed_expr = 0;
-
-        // TODO: issue with the visible_expr, dir_dep.expr, and rev_dep.expr of choices
-        // The content of visible, direct dependency, and reverse dependency expressions are strange for choices:
-        // Seems like direct dependency expression is always NULL.
-        // visib_expr == NULL && rev_dep_expr != NULL -> rev_dep_expr == 1
-        // visib_expr != NULL && rev_dep_expr == NULL -> valid constraint in visib_expr. Example: check for CONFIG_USB_ZERO.
-        // visib_expr != NULL && rev_dep_expr != NULL -> they are the same most of the time except a few cases. Example: check for CONFIG_VMSPLIT_3G.
-        // In conclusion, I (Necip) cannot deduce what leads to those different behaviours looking at the specific examples.
-        // To understand, we need to have a deeper analysis on how Kconfig parser processes choice symbols.
-        // Until then, let's have the conjunction of all to ensure we have valid (yet more in complex/repetitive form than needed) results.
-	
 	// Both depends on and visibility shoul be satisfied for 
 	// the choice to be selectable.
 	// Kconfig conjuncts depends on constraint to the 
@@ -2089,20 +2076,26 @@ int main(int argc, char **argv)
 	// 'm' which is currently not needed for kclause.
 	// In sum, only visibility is needed as the condition of
 	// choice.
-        
+
+        // for formatting
+        int printed_expr = 0;
 	prop = NULL;
         for_all_prompts(sym, prop) {
           if ((NULL != prop)) {
-	    // commented code below can handle the case where multiple
-	    // prompts are defined, where satisfying any of them makes
-	    // the config option visible. However, multiple prompts 
-	    // raises a warning by Kconfig and we consider it as an 
-	    // invalid use of Kconfig language. Thus, this code is 
-	    // commented for now. Note that, using this code here
-	    // means the code for prompt keyword should also reflect
-	    // this case.
-	    //if (printed_expr)
-	    //  fprintf(output_fp, " or ");
+
+	    if (printed_expr) {
+        fprintf(stderr, "warning: encountered multiple prompts, ignoring.");
+        break;
+        // commented code below can handle the case where multiple
+	      // prompts are defined, where satisfying any of them makes
+	      // the config option visible. However, multiple prompts 
+        // raises a warning by Kconfig and we consider it as an 
+        // invalid use of Kconfig language. Thus, this code is 
+        // commented for now. Note that, using this code here
+        // means the code for prompt keyword should also reflect
+        // this case.
+	      //fprintf(output_fp, " or ");
+      }
 	    
 	    printed_expr = 1;
 	    fprintf(output_fp, "(");
@@ -2114,37 +2107,6 @@ int main(int argc, char **argv)
             fprintf(output_fp, ")");
           }
         }
- 
-	// below code for visible is not correct as the prop came
-	// from sym_get_choice_prop, which returns the choice values
-	// that this choice has.
-	
-	// visible
-        //if (prop->visible.expr) {
-        //  if (printed_expr) fprintf(output_fp, " and ");
-        //  printed_expr = 1;
-        //  fprintf(output_fp, "(");
-        //  print_python_expr(prop->visible.expr, output_fp, E_NONE);
-        //  fprintf(output_fp, ")");
-        //}
-
-        // direct dependency
-        //if (sym->dir_dep.expr) {
-        //  if (printed_expr) fprintf(output_fp, " and ");
-        //  printed_expr = 1;
-        //  fprintf(output_fp, "(");
-        //  print_python_expr(sym->dir_dep.expr, output_fp, E_NONE);
-        //  fprintf(output_fp, ")");
-        //}
-
-        // reverse dependency
-        //if (sym->rev_dep.expr) {
-        //  if (printed_expr) fprintf(output_fp, " and ");
-        //  printed_expr = 1;
-        //  fprintf(output_fp, "(");
-        //  print_python_expr(sym->rev_dep.expr, output_fp, E_NONE);
-        //  fprintf(output_fp, ")");
-        //}
 
         if (!printed_expr)
           fprintf(output_fp, "1");
