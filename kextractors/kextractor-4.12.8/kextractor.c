@@ -2046,13 +2046,14 @@ int main(int argc, char **argv)
         struct expr *e;
 
         prop = sym_get_choice_prop(sym);
-
-        switch(sym->type) {
+	
+	// print choice type, depending on config type and optional statement
+	switch(sym->type) {
           case S_BOOLEAN:
-            fprintf(output_fp, "bool_choice");
+            sym_is_optional(sym) ? fprintf(output_fp, "bool_opt_choice") : fprintf(output_fp, "bool_choice");
             break;
           case S_TRISTATE:
-            fprintf(output_fp, "tristate_choice");
+            sym_is_optional(sym) ? fprintf(output_fp, "tristate_opt_choice") : fprintf(output_fp, "tristate_choice");
             break;
           default:
             fprintf(stderr, "fatal: choice type can only be bool or tristate, otherwise is impossible due to the parser.\n");
