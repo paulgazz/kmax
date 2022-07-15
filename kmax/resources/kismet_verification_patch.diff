@@ -1,0 +1,11 @@
+diff --git a/scripts/kconfig/symbol.c b/scripts/kconfig/symbol.c
+index 2220bc4b051b..c10911a11b36 100644
+--- a/scripts/kconfig/symbol.c
++++ b/scripts/kconfig/symbol.c
+@@ -12,1 +12,2 @@
+ #include "lkc.h"
++#include "kismet_udd_printer_extension.h"
+@@ -415,1 +416,3 @@ void sym_calc_value(struct symbol *sym)
+ 		calc_newval:
++			if (sym->dir_dep.tri < sym->rev_dep.tri)
++				kismet_sym_warn_unmet_dep(sym);

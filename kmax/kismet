@@ -9,8 +9,8 @@ import sys
 import datetime
 from kmax.klocalizer import Klocalizer
 from kmax.arch import Arch
-from kmax.udd_warning_parser import parse_warnings
 from kmax.vcommon import get_build_system_id
+from kmax import udd_warning_parser
 import logging
 import subprocess
 import csv
@@ -61,6 +61,10 @@ def warning(msg, ending="\n"):
 
 def error(msg, ending="\n"):
   sys.stderr.write("ERROR: %s%s" % (msg, ending))
+
+def debug(msg, enabled, ending="\n"):
+  if enabled:
+    sys.stderr.write("DEBUG: %s%s" % (msg, ending))
 
 # model might be the shortcut solution, e.g., the sat model for Or(A,B,C)
 # might be just A. Get a complete model the input model.
@@ -318,6 +322,9 @@ if __name__ == '__main__':
   argparser.add_argument('--allow-config-broken',
                         action="store_true",
                         help="""Allow CONFIG_BROKEN dependencies.  """)
+  argparser.add_argument('--verbose',
+                        action="store_true",
+                        help="""Verbose mode prints additional messages to stderr.""")
   
   args = argparser.parse_args()
   arch_name = args.arch
@@ -343,6 +350,7 @@ if __name__ == '__main__':
   summary_txt_path = args.summary_txt if args.summary_txt != None else "kismet_summary_%s.txt" % arch_name
   summary_use_testcase_realpath= args.use_fullpath_in_summary
   disable_config_broken = not args.allow_config_broken
+  verbose = args.verbose
 
   if not precise_SAT_pass:
     if generate_sample:
@@ -802,6 +810,7 @@ if __name__ == '__main__':
     selectee and selector assumed to have CONFIG_ prefix.
     """
     assert os.path.isfile(cfgfilepath)
+    debug("Verifying the alarm for (%s,%s) with config file %s (arch=%s)" % (selectee, selector, cfgfilepath, arch_name), verbose)
 
     # use a copy so the original won't change
     kismetcopy_path = "kismet_verifcopy_" + os.path.basename(cfgfilepath)
@@ -810,11 +819,13 @@ if __name__ == '__main__':
 
     command = ["make", "ARCH=%s" % arch_name, "KCONFIG_CONFIG=%s" % os.path.realpath(kismets_copy), "olddefconfig"]
     popen = subprocess.Popen(command, stdin=DEVNULL, stdout=DEVNULL, stderr=subprocess.PIPE, cwd=linux_ksrc)
-    stderr = popen.communicate()[1].decode("utf-8")
-    parsed_warnings = parse_warnings(str(stderr))
+    make_stderr = str(popen.communicate()[1].decode("utf-8"))
+    debug("Kconfig output is: \"%s\"" % make_stderr, verbose)
+    parsed_warnings = udd_warning_parser.parse_warnings(make_stderr)
     rm_cfg_prefix = lambda text: text[text.startswith("CONFIG_") and len("CONFIG_"):]
     nocfg_selector, nocfg_selectee = rm_cfg_prefix(selector), rm_cfg_prefix(selectee)
     verified = nocfg_selectee in parsed_warnings and nocfg_selector in parsed_warnings[nocfg_selectee]
+    debug("Verification result: %s" % verified, verbose)
 
     # remove the copy
     os.remove(kismets_copy)
@@ -827,7 +838,27 @@ if __name__ == '__main__':
     current_time = datetime.datetime.now().strftime("%H:%M:%S")
     info("%s Verification from test cases progress: %s." % (current_time, dumps_progress(num_checked, count_testcasgen_configscreated)), ending="\r")
 
+  kconfig_ready_for_verification = False
+  kconfig_extension_applied = False
   if verify:
+    # If needed, apply the Kconfig extension patch, which modifies Kconfig
+    # code to print unmet direct dependency warnings in explicit format
+    # that is amenable to use in verification.
+    kconfig_extension_needed = not udd_warning_parser.does_kconfig_print_uddwarning_in_explicit_format(linux_ksrc)
+    if not kconfig_extension_needed:
+      debug("Kconfig is ready for verification without extension patch.", verbose)
+      kconfig_ready_for_verification = True
+      kconfig_extension_applied = False
+    else: #< Kconfig extension is needed.
+      debug("Kconfig extension is needed for verification: applying the patch.", verbose)
+      ret = udd_warning_parser.patch_kconfig_udd_printer_extension(linux_ksrc)
+      debug("Kconfig extension patch success result: %s" % ret, verbose)
+      kconfig_ready_for_verification = ret
+      kconfig_extension_applied = ret
+      if not ret:
+        error("Failed to apply Kconfig verification patch: kismet will skip verification.")
+
+  if verify and kconfig_ready_for_verification:
     num_verified = 0
     unique_verified = 0
     some_testcase_verifies = 0 # the count of constructs with alarms that at least one related test case verifies the alarm
@@ -894,6 +925,15 @@ if __name__ == '__main__':
     info_str += " For %d constructs, test cases had contradictory results." % (count_verification_some_verified_per_unique_construct - count_verification_all_verified_per_unique_construct)
     info_str += " For %d constructs, no test case verified the alarm." % (count_testcasgen_configscreated - count_verification_some_verified_per_unique_construct)
     info(info_str)
+
+  # If applied, reverse the kconfig extension.
+  if kconfig_extension_applied:
+    debug("Reversing the Kconfig extension patch that was applied for verification.", verbose)
+    ret = udd_warning_parser.reverse_patch_kconfig_udd_printer_extension(linux_ksrc)
+    if ret:
+      debug("Reversing the Kconfig extension patch was successful.", verbose)
+    else:
+      warning("Failed to reverse the Kconfig extension patch: the Linux source is left modified.")
 
   #
   # Dump summary txt

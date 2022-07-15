@@ -50,4 +50,5 @@ setup(
         'whatthepatch',
         'packaging',
     ],
+    include_package_data=True,
 )

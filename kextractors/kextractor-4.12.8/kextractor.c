@@ -2014,36 +2014,104 @@ int main(int argc, char **argv)
     /*   } */
     /* } */
 
+    // for choice symbols, add choice's visibility and dependency conditions to config_vars' direct dependency
+    // This is disabled because kclause already accounts for this dependency by adding the implication
+    // clause of "implication(possible_choices, dep_expr)". This is saying that possible_choices cannot
+    // be enabled without having dep_expr enabled.
+    // for_all_symbols(i, sym) {
+    //   if (sym_is_choice(sym)) {
+    //     struct expr *e;
+    //     struct symbol *def_sym;
+    //     struct property* prop = sym_get_choice_prop(sym);
+
+    //     if (prop && prop->visible.expr) {
+    //       expr_list_for_each_sym(prop->expr, e, def_sym) {
+    //         if (!def_sym->dir_dep.expr) {
+    //           // use the visibility expression
+    //           def_sym->dir_dep.expr = expr_copy(prop->visible.expr);
+    //         } else {
+    //           // conjuct the direct dependency with the visibility condition of the <choice>
+    //           def_sym->dir_dep.expr = expr_alloc_and(def_sym->dir_dep.expr, prop->visible.expr);
+    //         }
+    //       }
+    //     }
+    //   }
+    // }
     // print all dependent config vars
     for_all_symbols(i, sym) {
       // TODO: deal with choice nodes
-      if (sym_is_choice(sym) && sym->type == S_BOOLEAN) {
+      if (sym_is_choice(sym)) {
         struct property *prop;
         struct symbol *def_sym;
         struct expr *e;
 
         prop = sym_get_choice_prop(sym);
+	
+	// print choice type, depending on config type and optional statement
+	switch(sym->type) {
+          case S_BOOLEAN:
+            sym_is_optional(sym) ? fprintf(output_fp, "bool_opt_choice") : fprintf(output_fp, "bool_choice");
+            break;
+          case S_TRISTATE:
+            sym_is_optional(sym) ? fprintf(output_fp, "tristate_opt_choice") : fprintf(output_fp, "tristate_choice");
+            break;
+          default:
+            fprintf(stderr, "fatal: choice type can only be bool or tristate, otherwise is impossible due to the parser.\n");
+            exit(1);
+        }
 
-        fprintf(output_fp, "bool_choice");
         expr_list_for_each_sym(prop->expr, e, def_sym) {
           fprintf(output_fp, " %s%s", config_prefix, def_sym->name);  // any dependencies should be handled below with 'dep'
         }
         fprintf(output_fp, "|(");
-        if ((NULL != sym->dir_dep.expr) && (NULL != sym->rev_dep.expr)) {
-          fprintf(output_fp, "(");
-          print_python_expr(sym->dir_dep.expr, output_fp, E_NONE);
-          fprintf(output_fp, ") and (");
-          print_python_expr(sym->rev_dep.expr, output_fp, E_NONE);
-          fprintf(output_fp, ")");
-        } else if (NULL != sym->dir_dep.expr) {
-          print_python_expr(sym->dir_dep.expr, output_fp, E_NONE);
-        } else if (NULL != sym->rev_dep.expr) {
-          print_python_expr(sym->rev_dep.expr, output_fp, E_NONE);
-        } else {
-          fprintf(output_fp, "1");
+
+	// Both depends on and visibility shoul be satisfied for 
+	// the choice to be selectable.
+	// Kconfig conjuncts depends on constraint to the 
+	// visibility constraint, so that for choice, looking at
+	// only the visibility is sufficient.
+	// rev_dep of choice copies the visibility to prevent
+	// non-optional choices have no selection (menu.c, l854) 
+	// Thus, rev_dep is the same as visibiltiy except conjoing
+	// 'm' which is currently not needed for kclause.
+	// In sum, only visibility is needed as the condition of
+	// choice.
+
+        // for formatting
+        int printed_expr = 0;
+	prop = NULL;
+        for_all_prompts(sym, prop) {
+          if ((NULL != prop)) {
+
+	    if (printed_expr) {
+	      fprintf(stderr, "warning: encountered multiple prompts, ignoring.");
+	      break;
+	      // commented code below can handle the case where multiple
+	      // prompts are defined, where satisfying any of them makes
+	      // the config option visible. However, multiple prompts 
+	      // raises a warning by Kconfig and we consider it as an 
+	      // invalid use of Kconfig language. Thus, this code is 
+              // commented for now. Note that, using this code here
+              // means the code for prompt keyword should also reflect
+              // this case.
+	      //fprintf(output_fp, " or ");
+	    }
+	    
+	    printed_expr = 1;
+	    fprintf(output_fp, "(");
+            if (NULL != prop->visible.expr) {
+              print_python_expr(prop->visible.expr, output_fp, E_NONE);
+            } else {
+              fprintf(output_fp, "1");
+            }
+            fprintf(output_fp, ")");
+          }
         }
-        fprintf(output_fp, ")");
-        fprintf(output_fp, "\n");
+
+        if (!printed_expr)
+          fprintf(output_fp, "1");
+        
+        fprintf(output_fp, ")\n");
       }
       
       if (!sym->name || strlen(sym->name) == 0)
