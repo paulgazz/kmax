@@ -29,3 +29,5 @@ include kextractors/kextractor-4.18/preprocess.c
 include kextractors/kextractor-4.18/symbol.c
 include kextractors/kextractor-4.18/util.c
 include kextractors/kextractor-4.18/zconf.lex.c
+
+recursive-include kmax/resources *
