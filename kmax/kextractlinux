@@ -71,7 +71,7 @@ if __name__ == '__main__':
   args.extend([ "-o", output ]) # set the output file
   # setup the linux-specific environment variables
   # srctree is ./
-  archdir = os.path.join(".", arch)
+  archdir = os.path.join("./arch/", srcarch)
   if not os.path.isdir(archdir):
     sys.stderr.write("Architecture directory not available \"%s\", so not attempting kextractlinux.\n" % (archdir))
     exit(2)
