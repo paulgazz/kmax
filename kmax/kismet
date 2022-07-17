@@ -54,7 +54,7 @@ class UnmetDepResult(enum.Enum):
   UNMET_SAFE_PRECISE_PASS = 3
 
 def info(msg, ending="\n"):
-  sys.stderr.write("INFO: %s%s" % (msg, ending))
+  sys.stdout.write("INFO: %s%s" % (msg, ending))
 
 def warning(msg, ending="\n"):
   sys.stderr.write("WARNING: %s%s" % (msg, ending))
