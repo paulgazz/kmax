@@ -101,7 +101,7 @@ Once finished (it can take about an hour on a commodity desktop), kismet will pr
   2. A list of results for each `select` construct in `kismet_summary_x86_64.csv` (`UNMET_ALARM` denotes the buggy ones)
   3. A list of `.config` files meant to exercise each bug in `kismet-test-cases/`
 
-Technical details can be found in in the [kismet documentation](https://github.com/paulgazz/kmax/blob/master/docs/advanced.md#kismet) and the [publication](https://paulgazzillo.com/papers/esecfse21.pdf) on `kclause` and `kismet`.  The experiment [replication script](https://github.com/paulgazz/kmax/blob/master/scripts/kismet_experiments_replication.sh) can be used to run kismet on all architectures' Kconfig specifications.
+Technical details can be found in in the [kismet documentation](https://github.com/paulgazz/kmax/blob/master/docs/advanced.md#kismet) and the [publication](https://paulgazzillo.com/papers/esecfse21.pdf) on `kclause` and `kismet`.  The experiment [replication script](https://github.com/paulgazz/kmax/blob/master/scripts/kismet_evaluation/kismet_experiments_replication.sh) can be used to run kismet on all architectures' Kconfig specifications.
 
 
 ## Additional documentation
