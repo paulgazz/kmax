@@ -237,7 +237,7 @@ def get_unmet_constraints(arch, selectors=None, selectees=None, syntactical_opti
   
   return unmet_constraints_mapping
 
-if __name__ == '__main__':
+def main():
   t_start_main = __get_time_refpoint()
 
   argparser = argparse.ArgumentParser()
@@ -1073,3 +1073,15 @@ if __name__ == '__main__':
               row = get_row(entry = sat_option, constraint_type=i+1)
               if row: csv_writer.writerow(row)
     info("Summary csv was written.")
+
+if __name__ == '__main__':
+  try:
+    main()
+  except Arch.CantOpenKconfigFiles as e:
+    kc = e.kextract_complaints
+    message = "Can't open Kconfig files:"
+    for i in kc:
+      message += "\n  %s" % i
+    error(message)
+    exit(1)
+

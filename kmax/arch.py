@@ -1,13 +1,13 @@
 
 import os
-import sys
+import re
 import subprocess
 import random
 import string
 import pickle
 import z3
 import logging
-from kmax.vcommon import getLogger
+from kmax.vcommon import getLogger, run
 import kmax.kextractcommon
 
 # TODO(necip): test: test compatibility with the existing file formats
@@ -764,11 +764,26 @@ class Arch:
 
     assert kextract_module_versions
 
+    missing_kconfig_files = []
+    def get_missing_kconfig_file_messages(make_stderr: str) -> list:
+      """Example: drivers/media/platform/Kconfig:69: can't open file "drivers/media/platform/am437x/Kconfig"
+
+      For instance, the Linux kernel version at the commit 012e3ca3cb4d7f
+      has this issue.
+      """
+      ret = []
+      for l in make_stderr.split('\n'): 
+        l = l.strip()
+        found = re.findall(r"^.*: can't open file \".*$", l)
+        if found:
+          ret.extend(found)
+      return ret
+
     while kextract_module_versions:
       kextract_version=kextract_module_versions.pop() # pop the next version to try
       command = [ "kextractlinux", self.name, kextract_file, "--module-version", kextract_version]
       self.__logger.debug("Running kextract tool to generate kextract (module version: %s)." % kextract_version)
-      _, _, ret_code = self.__run_command(command, cwd=self.__linux_ksrc)
+      _, ke_stderr_bytes, ret_code = self.__run_command(command, cwd=self.__linux_ksrc)
       if ret_code == 0:
         break
       if ret_code == 2:
@@ -776,13 +791,26 @@ class Arch:
         raise Arch.ArchitectureUnavailableError()
       else:
         self.__logger.debug("Kextract failed (module version: %s, return code: %d)." % (kextract_version, ret_code))
-        if kextract_module_versions: self.__logger.debug("Trying next latest kextract module version: %s" % kextract_module_versions[-1])
+        # Check for missing Kconfig files.  Only report missing Kconfig
+        # files after all kextract versions are tried to give all versions
+        # a chance.
+        ke_stderr_str = str(ke_stderr_bytes.decode('utf-8'))
+        missing_files = get_missing_kconfig_file_messages(ke_stderr_str)
+        if missing_files:
+          self.__logger.debug("Detected missing Kconfig files: %s" % missing_files)
+          missing_kconfig_files = missing_files
+        if kextract_module_versions:
+          self.__logger.debug("Trying next latest kextract module version: %s" % kextract_module_versions[-1])
         os.remove(kextract_file)
+    
 
     if ret_code != 0:
       assert not kextract_module_versions
-      self.__logger.error("Error running kextract: kextract file couldn't be generated.")
-      raise Arch.KextractFormulaGenerationError()
+      if missing_kconfig_files: #< Known reason: Kconfig files were missing
+        raise Arch.CantOpenKconfigFiles(missing_kconfig_files)
+      else: #< Unknown reason, raise a generic assertion.
+        self.__logger.error("Error running kextract: kextract file couldn't be generated.")
+        raise Arch.KextractFormulaGenerationError()
     else:
       self.__logger.debug("kextract was successfully generated.")
 
@@ -1265,6 +1293,12 @@ class Arch:
   class KextractFormulaGenerationError(FormulaGenerationError):
     def __init__(self):
       super().__init__(formula_type="kextract")
+
+  class CantOpenKconfigFiles(KextractFormulaGenerationError):
+    def __init__(self, kextract_complaints):
+      super().__init__()
+      self.kextract_complaints = kextract_complaints
+      self.message = "kextract formulas couldn't be generated: can't open Kconfig files: %s" % kextract_complaints
 
   ### Can't generate formula: kclause
   class KclauseFormulaGenerationError(FormulaGenerationError):
