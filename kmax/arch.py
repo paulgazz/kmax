@@ -771,6 +771,9 @@ class Arch:
       _, _, ret_code = self.__run_command(command, cwd=self.__linux_ksrc)
       if ret_code == 0:
         break
+      if ret_code == 2:
+        self.__logger.error("Architecture directory for \"%s\" is not available, so kextract not generated." % (self.name))
+        raise Arch.ArchitectureUnavailableError()
       else:
         self.__logger.debug("Kextract failed (module version: %s, return code: %d)." % (kextract_version, ret_code))
         if kextract_module_versions: self.__logger.debug("Trying next latest kextract module version: %s" % kextract_module_versions[-1])
@@ -1252,6 +1255,11 @@ class Arch:
       self.formula_type=formula_type
       self.message="%s formulas couldn't be generated." % (formula_type)
       super().__init__(self.message)
+
+  ### Can't generate formula: kextract
+  class ArchitectureUnavailableError(FormulaGenerationError):
+    def __init__(self):
+      super().__init__(formula_type="kextract")
 
   ### Can't generate formula: kextract
   class KextractFormulaGenerationError(FormulaGenerationError):
