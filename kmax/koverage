@@ -21,6 +21,9 @@ definition for LineCoverage):
     * If header, file is not included in any of the compilation units
       preprocessed.  However, (file,line) might be included by some
       unseen compilation unit.
+* TIMEOUT_MAKE_OLDDEFCONFIG: Running make olddefconfig on the input
+    configuration file timed out.
+* TIMEOUT_MAKE: Running make on the build target timed out.
 """
 
 KOVERAGE_EXITCODE_CHECK_ARG_NEEDED=1
@@ -34,7 +37,7 @@ KOVERAGE_EXITCODE_COVREQ_NO_LINE_FOUND=7
 KOVERAGE_EXITCODE_COVREQ_INVALID_LINE_LESS_THAN_1=8
 KOVERAGE_EXITCODE_COVREQ_INVALID_LINE_MORE_THAN_LINECOUNT=9
 KOVERAGE_EXITCODE_MALFORMED_CHECK_FILELINE_FORMAT=10
-KOVERAGE_EXITCODE_MAKE_OLDDEFCONFIG_TIMEDOUT=11
+# KOVERAGE_EXITCODE_MAKE_OLDDEFCONFIG_TIMEDOUT=11 #< No longer used.
 KOVERAGE_EXITCODE_CHECK_PATCH_FILE_NOT_FOUND=12
 KOVERAGE_EXITCODE_CHECK_COVREQ_FILE_NOT_FOUND=13
 KOVERAGE_EXITCODE_SCRATCHDIR_EXISTS=14
@@ -137,17 +140,26 @@ class LineCoverage(str, Enum):
        * If header, file is not included in any of the source files
          preprocessed.  However, file:line might be included by some
          unseen source file.
+
+    * TIMEOUT_MAKE_OLDDEFCONFIG: Running make olddefconfig on the input
+     configuration file timed out.
+
+    * TIMEOUT_MAKE: Running make on the build target timed out.
     """
     INCLUDED = 'INCLUDED'
     LINE_EXCLUDED_FILE_INCLUDED = 'LINE_EXCLUDED_FILE_INCLUDED'
     FILE_EXCLUDED = 'FILE_EXCLUDED'
+    TIMEOUT_MAKE_OLDDEFCONFIG = 'TIMEOUT_MAKE_OLDDEFCONFIG'
+    TIMEOUT_MAKE = 'TIMEOUT_MAKE'
 
     def parse(enum_str: str):
         """Parse a LineCoverage string into LineCoverage instance."""
         m = {
             'INCLUDED' : LineCoverage.INCLUDED,
             'LINE_EXCLUDED_FILE_INCLUDED' : LineCoverage.LINE_EXCLUDED_FILE_INCLUDED,
-            'FILE_EXCLUDED' : LineCoverage.FILE_EXCLUDED
+            'FILE_EXCLUDED' : LineCoverage.FILE_EXCLUDED,
+            'TIMEOUT_MAKE_OLDDEFCONFIG' : LineCoverage.TIMEOUT_MAKE_OLDDEFCONFIG,
+            'TIMEOUT_MAKE' : LineCoverage.TIMEOUT_MAKE
         }
         assert enum_str in m
         return m[enum_str]
@@ -211,8 +223,27 @@ def check_config(
         _, _, retcode, time_elapsed = run(olddef_cmd, timeout=timeout_olddefconfig, shell=True, cwd=linux_dir)
         logger.debug("Running olddefconfig completed in %.2f seconds, retcode: %s\n" % (time_elapsed, retcode))
     except TimeoutExpired:
-        logger.error("Running olddefconfig on the input Linux configuration file timed out (timeout=%.2fsec).\n" % timeout_olddefconfig)
-        exit(KOVERAGE_EXITCODE_MAKE_OLDDEFCONFIG_TIMEDOUT)
+        logger.warning("Running make olddefconfig on the input configuration file timed out (timeout=%.2fsec).\n" % timeout_olddefconfig)
+        # Write info in scratch dir.
+        scratch_dir_olddef_timeout_file = os.path.join(scratch_dir, "make_olddefconfig.timeout")
+        with open(scratch_dir_olddef_timeout_file, 'w') as f:
+            f.write("make olddefconfig timed out after %.2f seconds" % timeout_olddefconfig)
+        # Fill all results with LineCoverage.TIMEOUT_MAKE_OLDDEFCONFIG and return.
+        def get_results_filled_with_value(filelines_to_check, value):
+            ret = {}
+            for file in filelines_to_check:
+                requested_lines = filelines_to_check[file]
+                ret[file] = []
+                for l in requested_lines:
+                    ret[file].append((l, value))
+            return ret
+        src_results = get_results_filled_with_value(coverage_requirements.get("sourcefile_loc", {}), LineCoverage.TIMEOUT_MAKE_OLDDEFCONFIG)
+        header_results = get_results_filled_with_value(coverage_requirements.get("headerfile_loc", {}), LineCoverage.TIMEOUT_MAKE_OLDDEFCONFIG)
+        assert src_results
+        result = {"sourcefile_loc" : src_results}
+        if header_results:
+            result.update({"headerfile_loc" : header_results})
+        return result
 
     # Copy the preprocessed config file.
     after_olddefconfig_config_file_path = os.path.join(scratch_dir, "after_olddefconfig.config")
@@ -262,6 +293,7 @@ def check_config(
         # Run make to get the preprocessed file.
         make_cmd = "%s %s" % (core_make_command, build_target)
         logger.debug("Running make to preprocess file \"%s\", command: \"%s\"\n" % (source_file, make_cmd))
+        make_timedout = False
         try:
             make_stdout, make_stderr, make_retcode, make_time_elapsed = run(make_cmd, timeout=make_timeout, shell=True, cwd = linux_dir)
             logger.debug("Finished running make, retcode=%s time_elapsed=%.2fsec\n" % (make_retcode, make_time_elapsed))
@@ -287,9 +319,13 @@ def check_config(
             w("make.retcode", "%s" % make_retcode)
 
         except TimeoutExpired:
-            logger.debug("Running make timedout for \"%s\", (timeout=%.2fsec).\n" % (source_file, make_timeout))
-            make_stdout = make_stderr = retcode = time_elapsed = "build timed out"
+            make_timedout = True
             preprocessed_file_created[source_file] = False
+            logger.debug("Running make timed out for \"%s\", (timeout=%.2fsec).\n" % (source_file, make_timeout))
+            # Save timeout information.
+            make_timeout_fpath = os.path.join(srcfile_scratch_dir, "make.timeout")
+            with open(make_timeout_fpath, 'w') as f:
+                f.write("build timed out after %.2f seconds" % make_timeout)
 
         # Without preprocessed file, we cannot determine whether lines are included.
         if preprocessed_file_created[source_file]:
@@ -333,7 +369,10 @@ def check_config(
         for file in filelines_to_check:
             requested_lines = filelines_to_check[file]
             ret[file] = []
-            if file in included_filelines: #< File is included.
+            if make_timedout:
+                for l in requested_lines:
+                    ret[file].append((l, LineCoverage.TIMEOUT_MAKE))
+            elif file in included_filelines: #< File is included.
                 included_lines = included_filelines[file]
                 # Get and record results per line.
                 for l in requested_lines:
