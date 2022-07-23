@@ -38,6 +38,7 @@ KOVERAGE_EXITCODE_MAKE_OLDDEFCONFIG_TIMEDOUT=11
 KOVERAGE_EXITCODE_CHECK_PATCH_FILE_NOT_FOUND=12
 KOVERAGE_EXITCODE_CHECK_COVREQ_FILE_NOT_FOUND=13
 KOVERAGE_EXITCODE_SCRATCHDIR_EXISTS=14
+KOVERAGE_EXITCODE_INVALID_TIMEOUT_ARG=15
 
 import json
 import sys
@@ -155,7 +156,9 @@ class LineCoverage(str, Enum):
 def check_config(
     cross_compiler: str, arch: str, linux_dir: str, 
     coverage_requirements: dict, build_targets: dict, config_file: str,
-    scratch_dir: str) -> dict:
+    scratch_dir: str, timeout_olddefconfig : int, timeout_make_dir : int,
+    timeout_make_unit : int
+    ) -> dict:
     """
     coverage_requirements is a dictionary describing the files to check
     coverage in the build by the given Linux configuration file at config_file.
@@ -180,11 +183,6 @@ def check_config(
         }
     }
     """
-    # TODO: make followings variable
-    olddefconfig_timeout = 300 
-    directory_timeout = 10800
-    file_timeout = 900
-
     # Copy the configuration file to scratch_dir as doing olddefconfig
     # will modify the configuration file.
     new_config_file_path = os.path.join(scratch_dir, "evaluated.config")
@@ -210,10 +208,10 @@ def check_config(
     logger.debug("Running olddefconfig: \"%s\"\n" % olddef_cmd)
 
     try:
-        _, _, retcode, time_elapsed = run(olddef_cmd, timeout=olddefconfig_timeout, shell=True, cwd=linux_dir)
+        _, _, retcode, time_elapsed = run(olddef_cmd, timeout=timeout_olddefconfig, shell=True, cwd=linux_dir)
         logger.debug("Running olddefconfig completed in %.2f seconds, retcode: %s\n" % (time_elapsed, retcode))
     except TimeoutExpired:
-        logger.error("Running olddefconfig on the input Linux configuration file timed out (timeout=%.2fsec).\n" % olddefconfig_timeout)
+        logger.error("Running olddefconfig on the input Linux configuration file timed out (timeout=%.2fsec).\n" % timeout_olddefconfig)
         exit(KOVERAGE_EXITCODE_MAKE_OLDDEFCONFIG_TIMEDOUT)
 
     # Copy the preprocessed config file.
@@ -257,9 +255,9 @@ def check_config(
         # user can possibly define larger timeout values.
         is_build_target_file = build_target.endswith(".i") or build_target.endswith(".o")
         if is_build_target_file:
-            make_timeout = file_timeout
+            make_timeout = timeout_make_unit
         else:
-            make_timeout = directory_timeout
+            make_timeout = timeout_make_dir
 
         # Run make to get the preprocessed file.
         make_cmd = "%s %s" % (core_make_command, build_target)
@@ -801,6 +799,21 @@ def main():
         help="""Path to the executable make script for cross compilation."""
              """  Defaults to \"make.cross\".""",
         default="make.cross")
+    argparser.add_argument("--timeout-olddefconfig",
+        type=int,
+        help="""Timeout duration for "make olddefconfig" in seconds."""
+             """  0 means no limits.  Defaults to 300 (5 minutes).""",
+        default=300)
+    argparser.add_argument("--timeout-make-dir",
+        type=int,
+        help="""Timeout duration for make'ing directory targets (e.g., kernel/), in seconds."""
+             """  0 means no limits.  Defaults to 10800 (3 hours).""",
+        default=10800)
+    argparser.add_argument("--timeout-make-unit",
+        type=int,
+        help="""Timeout duration for make'ing unit targets (e.g., kernel/fork.o), in seconds."""
+             """  0 means no limits.  Defaults to 900 (15 minutes).""",
+        default=900)
     argparser.add_argument("--config",
         type=str,
         required=True,
@@ -872,6 +885,9 @@ def main():
 
     args = argparser.parse_args()
     cross_compiler = args.cross_compiler
+    timeout_olddefconfig = args.timeout_olddefconfig
+    timeout_make_dir = args.timeout_make_dir
+    timeout_make_unit = args.timeout_make_unit
     config_file = args.config
     arch = args.arch
     check_arg = args.check
@@ -894,6 +910,17 @@ def main():
     assert os.path.isdir(linux_ksrc)
     assert os.path.isfile(config_file)
     assert arch in Arch.ARCHS
+    def check_timeout(timeout_duration : int, option: str):
+        if timeout_duration < 0:
+            logger.error("Timeout duration (%s) must be >= 0 (%s was given).\n" % (option, timeout_duration))
+            exit(KOVERAGE_EXITCODE_INVALID_TIMEOUT_ARG)
+        elif timeout_duration == 0:
+            return None
+        else:
+            return timeout_duration
+    timeout_olddefconfig = check_timeout(timeout_olddefconfig, "--timeout-olddefconfig")
+    timeout_make_dir = check_timeout(timeout_make_dir, "--timeout-make-dir")
+    timeout_make_unit = check_timeout(timeout_make_unit, "--timeout-make-unit")
 
     # Create the scratch directory.
     if os.path.exists(scratch_dir):
@@ -964,7 +991,9 @@ def main():
 
     # Determine if the config builds the target (file:line)s.
     logger.info("Starting coverage checks.\n")
-    coverage_results_vcovreq_lines = check_config(cross_compiler, arch, linux_ksrc, validation_covreq, build_targets, config_file, scratch_dir)
+    coverage_results_vcovreq_lines = check_config(cross_compiler, arch,
+        linux_ksrc, validation_covreq, build_targets, config_file, scratch_dir,
+        timeout_olddefconfig, timeout_make_dir, timeout_make_unit)
     logger.info("Finished coverage checks.\n")
     logger.debug("Coverage results in terms of validation coverage requirements: \"%s\"\n" % coverage_results_vcovreq_lines)
     # Map line numbers in coverage results back to the lines in the
