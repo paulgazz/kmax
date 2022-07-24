@@ -298,6 +298,8 @@ The results may one of three values for each line for both headers and source fi
     * If header, file is not included in any of the compilation units
       preprocessed.  However, (file,line) might be included by some
       unseen compilation unit.
+* `TIMEOUT_MAKE_OLDDEFCONFIG`: Running `make olddefconfig` on the input configuration file timed out.
+* `TIMEOUT_MAKE`: Running `make` on the build target timed out.
 
 
 ## Annotated Example
