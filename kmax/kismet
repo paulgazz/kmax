@@ -15,6 +15,7 @@ import logging
 import subprocess
 import csv
 from time import perf_counter
+import kmax.about # to enable the --version flag
 
 def __get_time_refpoint():
   return perf_counter()
@@ -325,6 +326,12 @@ def main():
   argparser.add_argument('--verbose',
                         action="store_true",
                         help="""Verbose mode prints additional messages to stderr.""")
+  
+  # version
+  argparser.add_argument('--version',
+                         action="version",
+                         version="%s %s" % (kmax.about.__title__, kmax.about.__version__),
+                         help="""Print the version number.""")
   
   args = argparser.parse_args()
   arch_name = args.arch
