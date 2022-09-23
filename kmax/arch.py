@@ -57,6 +57,9 @@ class Arch:
   # architecture-specific configs for known linux architectures
   ARCH_CONFIGS = set([ "CONFIG_ALPHA", "CONFIG_ARC", "CONFIG_ARM", "CONFIG_ARM64", "CONFIG_C6X", "CONFIG_CSKY", "CONFIG_H8300", "CONFIG_HEXAGON", "CONFIG_IA64", "CONFIG_M68K", "CONFIG_MICROBLAZE", "CONFIG_MIPS", "CONFIG_NDS32", "CONFIG_NIOS2", "CONFIG_OPENRISC", "CONFIG_PARISC", "CONFIG_PPC64", "CONFIG_PPC32", "CONFIG_PPC", "CONFIG_RISCV", "CONFIG_S390", "CONFIG_SUPERH64", "CONFIG_SUPERH32", "CONFIG_SUPERH", "CONFIG_SPARC64", "CONFIG_SPARC32", "CONFIG_SPARC", "CONFIG_UML", "CONFIG_UNICORE32", "CONFIG_X86_64", "CONFIG_X86_32", "CONFIG_X86", "CONFIG_XTENSA" ])
 
+  def __repr__(self):
+    return "Arch(%s)" % self.name
+
   @staticmethod
   def get_archs_from_subdir(kbuild_path: str) -> list:
     """Get the architectures associated with the given arch/ subdirectory."""

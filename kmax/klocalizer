@@ -9,6 +9,7 @@ import json
 from collections import OrderedDict
 from kmax import patch
 import pathlib
+from functools import reduce
 
 z3_true = z3.BoolVal(True)
 
@@ -941,14 +942,34 @@ def klocalizerCLI():
   # Filter archs based on unit name
   #
   if not kclause_file :
+    # when the mandatory include list has an arch/ directory file, we
+    # know we must use that arch
     for unit, _ in include_list:
+      print(unit)
       if unit.startswith("arch/"):
         unit_archs = Arch.get_archs_from_subdir(unit)
         archs = [ arch for arch in archs if arch.name in unit_archs ]
         if not archs:
           logger.error("Resolved compilation unit is architecture-specific, but its architecture is not available: %s\n" % (unit))
           exit(9)
-  
+
+    # when the include-mutex flag includes an arch/ directory, we
+    # can't rule out other archs, since some lines may be in different
+    # architectures (unless all lines are arch/-specific).  we can,
+    # however, try those architectures first.
+    arch_specific = [ unit for unit, _ in include_mutex_list if unit.startswith("arch/") ]
+    non_arch = [ unit for unit, _ in include_mutex_list if unit not in arch_specific ]
+    # fold sets of archs found from the unit's path into a single set
+    arch_specific_archs = reduce(lambda accset, unit: accset.union(set(Arch.get_archs_from_subdir(unit))), arch_specific, set())
+    # get the set of corresponding arch objects
+    arch_specific_arch_objects = [ arch for arch in archs if arch.name in arch_specific_archs ]
+    # put the other arch_objects at the end of the list
+    other_arch_objects = [ arch for arch in archs if arch not in arch_specific_archs ]
+    if len(arch_specific_arch_objects) > 0:
+      logger.info("Unit(s) looks arch-specific.  Moving those architectures %s to the beginning of the list.\n" % (arch_specific_arch_objects))
+      archs = arch_specific_arch_objects + other_arch_objects
+    # print(archs)
+
   assert len(archs) > 0
   
   #
