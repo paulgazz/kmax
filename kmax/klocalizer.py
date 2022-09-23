@@ -321,7 +321,40 @@ class Klocalizer:
       return constraints
   
   @staticmethod
-  def get_config_from_model(model: z3.Model, arch: Arch, set_tristate_m, allow_non_visibles: bool, logger=None) -> str:
+  def get_config_file_settings(config_file):
+    """Given a path to a Kconfig configuration file, parse and return a
+    mapping of non-Boolean (string, number, hex) config option names
+    to their original settings in the config file.  Excludes options
+    that are turned off.
+
+    Arguments:
+    config_file -- Path to a Kconfig config file.
+
+    """
+    assert os.path.isfile(config_file)
+    on_pattern = regex.compile("^(CONFIG_[A-Za-z0-9_]+)=[ym]")
+    on_pattern_nonbool = regex.compile("^(CONFIG_[A-Za-z0-9_]+)=.*$")
+    
+    # todo: don't allow invisible defaults to be turned off (get them from kclause), reduces size of constraints
+
+    config_settings = {}
+    with open(config_file, 'r') as approximate_fp:
+      lines = approximate_fp.readlines()
+      for line in lines:
+        line = line.strip()
+        on = on_pattern.match(line)
+        if on:
+          # exclude bool/tristate
+          pass
+        else:
+          on_nonbool = on_pattern_nonbool.match(line)
+          if on_nonbool:
+            config_settings[on_nonbool.group(1)] = line
+      
+      return config_settings
+  
+  @staticmethod
+  def get_config_from_model(model: z3.Model, arch: Arch, set_tristate_m, allow_non_visibles: bool, approximate_config=None, logger=None) -> str:
     """Given a z3_model, return a Kconfig config in string representation,
     which can be later dumped as a Kconfig config file and used against Kbuild
     build system.
@@ -335,6 +368,7 @@ class Klocalizer:
     set_tristate_m -- If set, set tristate symbols to `m` if on.
     allow_non_visibles -- Allow non-visible Kconfig configuration options to
     be set in the resulting config file.
+    approximate_config -- the original config file to approximate.  if set, will use this to set nonbool values instead of the default values
     logger -- Logger.
     
     """
@@ -358,6 +392,11 @@ class Klocalizer:
       kconfig_types = None
       kconfig_has_def_nonbool = None
 
+    if approximate_config is not None:
+      approximate_config_original = Klocalizer.get_config_file_settings(approximate_config)
+    else:
+      # make it an empty set so it will never contain config settings to use
+      approximate_config_original = {}
     for entry in model: # the model has some problem, we can't get the entry
       str_entry = str(entry)
       matches = token_pattern.match(str_entry)
@@ -383,11 +422,20 @@ class Klocalizer:
                     elif kconfig_types[str_entry] == "tristate":
                       write_to_content( "%s=%s\n" % (str_entry, "y" if not set_tristate_m else "m") )
                     elif kconfig_types[str_entry] == "string":
-                      write_to_content( "%s=\n" % (str_entry) )
+                      if str_entry in approximate_config_original.keys():
+                        write_to_content("%s\n" % (approximate_config_original[str_entry]))
+                      else:
+                        write_to_content( "%s=\n" % (str_entry) )
                     elif kconfig_types[str_entry] == "number":
-                      write_to_content( "%s=0\n" % (str_entry) )
+                      if str_entry in approximate_config_original.keys():
+                        write_to_content("%s\n" % (approximate_config_original[str_entry]))
+                      else:
+                        write_to_content( "%s=0\n" % (str_entry) )
                     elif kconfig_types[str_entry] == "hex":
-                      write_to_content( "%s=0x0\n" % (str_entry) )
+                      if str_entry in approximate_config_original.keys():
+                        write_to_content("%s\n" % (approximate_config_original[str_entry]))
+                      else:
+                        write_to_content( "%s=0x0\n" % (str_entry) )
                     else:
                       assert(False)
                   break
@@ -400,11 +448,20 @@ class Klocalizer:
             elif kconfig_types[str_entry] == "tristate":
               write_to_content( "%s=%s\n" % (str_entry, "y" if not set_tristate_m else "m") )
             elif kconfig_types[str_entry] == "string":
-              write_to_content( "%s=\n" % (str_entry) )
+              if str_entry in approximate_config_original.keys():
+                write_to_content("%s\n" % (approximate_config_original[str_entry]))
+              else:
+                write_to_content( "%s=\n" % (str_entry) )
             elif kconfig_types[str_entry] == "number":
-              write_to_content( "%s=0\n" % (str_entry) )
+              if str_entry in approximate_config_original.keys():
+                write_to_content("%s\n" % (approximate_config_original[str_entry]))
+              else:
+                write_to_content( "%s=0\n" % (str_entry) )
             elif kconfig_types[str_entry] == "hex":
-              write_to_content( "%s=0x0\n" % (str_entry) )
+              if str_entry in approximate_config_original.keys():
+                write_to_content("%s\n" % (approximate_config_original[str_entry]))
+              else:
+                write_to_content( "%s=0x0\n" % (str_entry) )
             else:
               assert(False)
           else:

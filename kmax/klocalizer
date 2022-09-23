@@ -158,6 +158,9 @@ def klocalizerCLI():
                          nargs="*",
                          default=[],
                          help="""The list of configuration symbols for which allow unmet direct dependency.  Can be used with --force-unmet-free only to relax the constraints for some symbols.""")
+  argparser.add_argument("--no-nonbool-preservation",
+                         action="store_true",
+                         help="""The list of configuration symbols for which allow unmet direct dependency.  Can be used with --force-unmet-free only to relax the constraints for some symbols.""")
 
 
   # path to source code that uses kconfig/kbuild
@@ -296,6 +299,7 @@ def klocalizerCLI():
   save_dimacs = args.save_dimacs
   force_unmet_free = args.force_unmet_free
   allow_unmet_for = args.allow_unmet_for
+  no_nonbool_preservation = args.no_nonbool_preservation
   superc_linux_script = args.superc_linux_script
   cross_compiler = args.cross_compiler
   build_targets_file = args.build_targets
@@ -1362,7 +1366,16 @@ def klocalizerCLI():
       
       # Sample the config from the model
       logger.info("[%s/%s] Sampling and writing the configuration file to %s\n" % (i+1, num_models, config_file_path))
-      config_content = Klocalizer.get_config_from_model(model, arch, set_tristate_m=modules_arg, allow_non_visibles=allow_non_visibles)
+      if arch.name in approximate_configs:
+        approximate_config = approximate_configs[arch.name]
+      elif "default" in approximate_configs:
+        approximate_config = approximate_configs["default"]
+      else:
+        assert(False)
+        approximate_config = None
+      if no_nonbool_preservation:
+        approximate_config = None
+      config_content = Klocalizer.get_config_from_model(model, arch, set_tristate_m=modules_arg, allow_non_visibles=allow_non_visibles, approximate_config=approximate_config)
       # Write the config file
       with open(config_file_path, 'w') as f:
         f.write(config_content)
