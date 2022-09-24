@@ -231,9 +231,12 @@ def klocalizerCLI():
                          help="""Number of jobs to allow while compiling units.  """
                               """It is only used when creating SuperC configuration files.  """
                               """Infinite if <1.  Defaults to 1.""")
+  argparser.add_argument("--no-builtin-build-targets",
+                         action="store_true",
+                         help="""Do not use builtin build targets.  Not recommended.""")
   argparser.add_argument("--build-targets", #< Needed for SuperC config creation
                          type=str,
-                         help="""Path to the json file with source file to build target mappings.  """
+                         help="""Path to the json file with source file to additional build targets.  """
                               """Usual case (src/file.c -> src/file.o) is used for missing mappings.  """
                               """It is only used while creating SuperC configuration files.""")
   # TODO: allow using different timeouts values for units vs directories
@@ -312,6 +315,7 @@ def klocalizerCLI():
   no_nonbool_preservation = args.no_nonbool_preservation
   superc_linux_script = args.superc_linux_script
   cross_compiler = args.cross_compiler
+  no_builtin_build_targets = args.no_builtin_build_targets
   build_targets_file = args.build_targets
   compile_jobs = args.compile_jobs
   build_timeout = args.build_timeout
@@ -754,10 +758,18 @@ def klocalizerCLI():
   #
   # Load build targets
   #
-  build_targets = {}
+  builtin_build_targets = {
+    
+  }
+  if no_builtin_build_targets:
+    build_targets = {}
+  else:
+    build_targets = builtin_build_targets
   if build_targets_file:
     with open(build_targets_file, 'r') as f:
-      build_targets = json.load(f)
+      user_build_targets = json.load(f)
+      build_targets.update(user_build_targets)
+  
 
   #
   # Set kmax file

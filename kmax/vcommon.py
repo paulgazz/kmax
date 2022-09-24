@@ -139,9 +139,11 @@ def check_if_compiles(unit_paths: list, config_path: str, arch_name: str,
     if use_olddefconfig_target:
         targets.append("olddefconfig")
     for u in unit_paths: #< Map units into build targets.
-        target = build_targets.get(u, u) #< Default is the unit path.
-        if target not in targets: #< Don't include duplicates.
-            targets.append(target)
+        rewritten_targets = [ rewrite for (target, rewrite) in build_targets.items() if u.startswith(target) ]
+        # target = build_targets.get(u, u) #< Default is the unit path.
+        for target in rewritten_targets:
+            if target not in targets: #< Don't include duplicates.
+                targets.append(target)
     assert len(targets) > 1 #< At least one target other than clean.
     logger.debug("Build targets are: \"[%s]\"\n" % ", ".join(targets))
 
