@@ -802,7 +802,7 @@ def klocalizerCLI():
       line_constraints[unit2srcfile(unit)] = {}
   # This function uses values from global scope (linux ksrc, formulas dir, etc.)
   # but parametrizes the operation into srcfile and architecture.
-  def get_presence_conditions(srcfile, arch):
+  def get_presence_conditions(srcfile, arch, approximate_config):
     """Ensures SuperC configs for srcfile and computes the line presence
     conditions.
     
@@ -824,7 +824,7 @@ def klocalizerCLI():
     #
     logger.info("Computing line presence conditions for \"%s\"\n" % srcfile)
     superc_formulas_dir = SuperC.get_superc_formulas_dir(formulas, arch.name)
-    config_exists = superc.ensure_superc_config(srcfile, superc_formulas_dir, linux_ksrc, arch, cross_compiler, build_targets, compile_jobs, build_timeout, logger)
+    config_exists = superc.ensure_superc_config(srcfile, superc_formulas_dir, linux_ksrc, arch, approximate_config, cross_compiler, build_targets, compile_jobs, build_timeout, logger)
     if not config_exists:
       logger.debug("Failed to find/create SuperC config file for \"%s\"\n" % srcfile)
       error_msg = "Failed to compute line presence conditions for \"%s\": SuperC config generation error\n" % srcfile
@@ -1117,7 +1117,16 @@ def klocalizerCLI():
       if units_to_compute_pc:
         logger.info("Computing the line presence conditions under %s for the following units: %s\n" % (arch.name, " ".join(units_to_compute_pc)))
       for unit in units_to_compute_pc:
-        get_presence_conditions(unit2srcfile(unit), arch)
+        if arch.name in approximate_configs:
+          approximate_config = approximate_configs[arch.name]
+        elif "default" in approximate_configs:
+          approximate_config = approximate_configs["default"]
+        else:
+          assert(False)
+          approximate_config = None
+        if no_nonbool_preservation:
+          approximate_config = None
+        get_presence_conditions(unit2srcfile(unit), arch, approximate_config)
 
       # Presence conditions are computed.
 
@@ -1513,7 +1522,7 @@ def klocalizerCLI():
       srcfiles_with_line_requirements = ["%s.c" % u[:-len('.o')] for u, lines in all_comp_units_list if lines]
       logger.info("Computing the line presence conditions under %s for the following units: %s\n" % (arch.name, " ".join(srcfiles_with_line_requirements)))
       for unit in srcfiles_with_line_requirements:
-        get_presence_conditions(unit2srcfile(unit), arch)
+        get_presence_conditions(unit2srcfile(unit), arch, approximate_config)
 
       logger.debug("Getting additional line constraints.\n")
 

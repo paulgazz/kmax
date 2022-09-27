@@ -996,7 +996,7 @@ class Klocalizer:
 
   @staticmethod
   def localize_config(unit_paths: list, output_config_path: str,
-    linux_ksrc: str, archs: list, logger):
+    linux_ksrc: str, archs: list, approximate_configs: dict, logger):
     """Localize a linux configuration file that compiles the given units.
 
     This is a simplified version of what klocalizer command line tool does:
@@ -1020,10 +1020,11 @@ class Klocalizer:
     * output_config_path -- Path to non-existing output configuration file.
     * linux_ksrc -- Path to top linux source directory.
     * archs -- Architectures to try as a list of Arch instances.
+    * approximate_configs -- each arch's original config files to approximate.   used to get a config to pass through to get_config_from_model
     * logger -- Logger that implements common.VoidLogger interface.
     """
     try:
-      return Klocalizer.__localize_config(unit_paths, output_config_path, linux_ksrc, archs, logger)
+      return Klocalizer.__localize_config(unit_paths, output_config_path, linux_ksrc, archs, approximate_configs, logger)
     except Klocalizer.KmaxException as e:
       logger.debug("Exception in localize_config(): \"%s\"\n" % e.message)
       ret_status = Klocalizer.Ret_LocalizeConfig.ERROR_KMAX_EXCEPTION
@@ -1040,7 +1041,7 @@ class Klocalizer:
 
   @staticmethod
   def __localize_config(unit_paths: list, output_config_path: str,
-    linux_ksrc: str, archs: list, logger):
+    linux_ksrc: str, archs: list, approximate_configs: dict, logger):
     """Helper to Klocalizer.localize_config(). May throw exception to be
     caught by Klocalizer.localize_config().
     """
@@ -1096,7 +1097,13 @@ class Klocalizer:
     logger.debug("Creating config file to compile the unit.\n")
     time_start = time.time()
     assert is_sat and (z3_model is not None)
-    config_content = Klocalizer.get_config_from_model(z3_model, arch, set_tristate_m=False, allow_non_visibles=False)
+    if arch.name in approximate_configs:
+      approximate_config = approximate_configs[arch.name]
+    elif "default" in approximate_configs:
+      approximate_config = approximate_configs["default"]
+    else:
+      approximate_config = None
+    config_content = Klocalizer.get_config_from_model(z3_model, arch, approximate_config=approximate_config, set_tristate_m=False, allow_non_visibles=False)
     assert config_content
     with open(output_config_path, "w") as f:
       f.write(config_content)
