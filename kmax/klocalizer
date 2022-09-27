@@ -1465,7 +1465,16 @@ def klocalizerCLI():
   assert not include_mutex_list
   for arch in archs:
     logger.info("Trying \"%s\"\n" % (arch.name))
-
+    if arch.name in approximate_configs:
+      approximate_config = approximate_configs[arch.name]
+    elif "default" in approximate_configs:
+      approximate_config = approximate_configs["default"]
+    else:
+      assert(False)
+      approximate_config = None
+    if no_nonbool_preservation:
+      approximate_config = None
+    
     #
     # SAT check for units only (without line constraints)
     #
@@ -1589,11 +1598,11 @@ def klocalizerCLI():
       if not reportallarchs and sample_count > 0:
 
         # Prepare the configs by sampling models
-        configs = [Klocalizer.get_config_from_model(model, arch, set_tristate_m=modules_arg, allow_non_visibles=allow_non_visibles)]
+        configs = [Klocalizer.get_config_from_model(model, arch, set_tristate_m=modules_arg, allow_non_visibles=allow_non_visibles, approximate_config=approximate_config)]
         for _ in range(sample_count-1):
           is_sat, model = model_sampler.sample_model()
           assert is_sat
-          configs.append(Klocalizer.get_config_from_model(model, arch, set_tristate_m=modules_arg, allow_non_visibles=allow_non_visibles))
+          configs.append(Klocalizer.get_config_from_model(model, arch, set_tristate_m=modules_arg, allow_non_visibles=allow_non_visibles, approximate_config=approximate_config))
         
         # Prepare the config filenames
         if sample_count == 1:
