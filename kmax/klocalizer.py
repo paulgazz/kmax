@@ -368,7 +368,7 @@ class Klocalizer:
     set_tristate_m -- If set, set tristate symbols to `m` if on.
     allow_non_visibles -- Allow non-visible Kconfig configuration options to
     be set in the resulting config file.
-    approximate_config -- the original config file to approximate.  if set, will use this to set nonbool values instead of the default values
+    approximate_config -- the original config file to approximate.  if set, will use this to set nonbool values instead of the default values.  otherwise, set to None (the default)
     logger -- Logger.
     
     """
