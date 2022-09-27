@@ -83,6 +83,13 @@ def klocalizerCLI():
                              "  Path is relative to the top of the source tree."
                              "  If a compilation unit is given with a list of lines, either the unit is excluded, or the unit is included and the list of specific lines are excluded."
                              "  Input format for compilation units and lines is the same with --include.")
+  argparser.add_argument('--no-builtin-kbuild-path-rewrites',
+                         action="store_true",
+                         help="""Do not rewrite compilation unit paths.  Not recommended, since this will prevent kmax from finding which Makefiles contain constraints in cases where the realpath is not the same as the kbuild path.""")
+  argparser.add_argument("--user-kbuild-path-rewrites", #< Needed for SuperC config creation
+                         type=str,
+                         help="""Path to a json file containing kbuild path rewritings, e.g., {
+  \"drivers/gpu/drm/amd/\": \"drivers/gpu/drm/amd/amdgpu/../\" }.  These will override any built-in mappings.""")
   argparser.add_argument('-D',
                          '--define',
                          action="append",
@@ -279,6 +286,8 @@ def klocalizerCLI():
   include_arg = args.include
   include_mutex_arg = args.include_mutex
   exclude_arg = args.exclude
+  no_builtin_kbuild_path_rewrites = args.no_builtin_kbuild_path_rewrites
+  user_kbuild_path_rewrites = args.user_kbuild_path_rewrites
   constraints_file = args.constraints_file
   constraints_file_smt2 = args.constraints_file_smt2
   # Both mutex and non-mutex use --output for output file or dir
@@ -515,9 +524,34 @@ def klocalizerCLI():
   # along the way, and we will need the original list for coverage reports.
   original_include_mutex_list = include_mutex_list[:]
 
+  # directory rewriting
+  if not no_builtin_kbuild_path_rewrites:
+    builtin_rewrite_mapping = {
+      "drivers/gpu/drm/amd/": "drivers/gpu/drm/amd/amdgpu/../",
+      "virt/kvm/": "arch/x86/kvm/../../../virt/kvm", # note that virt/kvm also applies to arm
+    }
+  else:
+    builtin_rewrite_mapping = {}
+  if user_kbuild_path_rewrites and os.path.exists(user_kbuild_path_rewrites):
+    with open(user_kbuild_path_rewrites, 'r') as f:
+      user_rewrite_mapping = json.load(f)
+  else:
+    user_rewrite_mapping = {}
+  rewrite_mapping = builtin_rewrite_mapping
+  rewrite_mapping.update(user_rewrite_mapping)
+  def rewrite_directories(unit, rewrite_mapping):
+    for (path, newpath) in rewrite_mapping.items():
+      if newpath not in unit[0]:
+        unit = (unit[0].replace(path, newpath), unit[1])
+    return unit
+  include_list = [ rewrite_directories(unit, rewrite_mapping) for unit in include_list ]
+  include_mutex_list = [ rewrite_directories(unit, rewrite_mapping) for unit in include_mutex_list ]
+  exclude_list = [ rewrite_directories(unit, rewrite_mapping) for unit in exclude_list ]
+  
   # Determines whether kmax will be run.
   has_file_constraints = len(include_list + include_mutex_list + exclude_list) > 0
   all_comp_units_list = include_list + include_mutex_list + exclude_list
+  # print(all_comp_units_list)
 
   klocalizer.set_logger(logger)
 
