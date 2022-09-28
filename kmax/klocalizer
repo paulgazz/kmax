@@ -858,7 +858,14 @@ def klocalizerCLI():
     #
     logger.info("Computing line presence conditions for \"%s\"\n" % srcfile)
     superc_formulas_dir = SuperC.get_superc_formulas_dir(formulas, arch.name)
-    config_exists = superc.ensure_superc_config(srcfile, superc_formulas_dir, linux_ksrc, arch, approximate_config, cross_compiler, build_targets, compile_jobs, build_timeout, logger)
+    try:
+      config_exists = superc.ensure_superc_config(srcfile, superc_formulas_dir, linux_ksrc, arch, approximate_config, cross_compiler, build_targets, compile_jobs, build_timeout, logger)
+    except Arch.FormulaFileNotFound as e:
+      logger.warning("Cannot find %s formulas file, %s, so moving on.\n" % (e.formula_type, e.filepath))
+      config_exists = None
+    except Arch.FormulaGenerationError as e:
+      logger.warning("Cannot generate %s formulas, so moving on.\n" % (e.formula_type))
+      config_exists = None
     if not config_exists:
       logger.debug("Failed to find/create SuperC config file for \"%s\"\n" % srcfile)
       error_msg = "Failed to compute line presence conditions for \"%s\": SuperC config generation error\n" % srcfile
@@ -1301,22 +1308,32 @@ def klocalizerCLI():
             constraints_with_line = constraints_with_file[:]
             constraints_with_line.extend(line_const)
 
-            # SAT check.
-            if compiled_arch_constraints is None:
-              compiled_arch_constraints = klocalizer.compile_constraints(arch)
-            full_constraints = compiled_arch_constraints + constraints_with_line
-            logger.debug("Checking constraints: %s\n"% constraints_with_line)
-            model_sampler = Klocalizer.Z3ModelSampler(full_constraints, random_seed=random_seed, logger=logger)
-            is_sat, z3_model = model_sampler.sample_model()
+            try:
+              # SAT check.
+              if compiled_arch_constraints is None:
+                compiled_arch_constraints = klocalizer.compile_constraints(arch)
 
-            # Constraints is SAT means line is covered.
-            line_covered = is_sat
+              full_constraints = compiled_arch_constraints + constraints_with_line
+              logger.debug("Checking constraints: %s\n"% constraints_with_line)
+              model_sampler = Klocalizer.Z3ModelSampler(full_constraints, random_seed=random_seed, logger=logger)
+              is_sat, z3_model = model_sampler.sample_model()
 
-            if is_sat: # Line constraints are satisfiable
-              # The constraints are approved to be SAT and improving coverage,
-              # therefore, keep them in.
-              accumulated_constraints = constraints_with_line[:]
-              constraints_with_file = constraints_with_line[:]
+              # Constraints is SAT means line is covered.
+              line_covered = is_sat
+
+              if is_sat: # Line constraints are satisfiable
+                # The constraints are approved to be SAT and improving coverage,
+                # therefore, keep them in.
+                accumulated_constraints = constraints_with_line[:]
+                constraints_with_file = constraints_with_line[:]
+            except Arch.FormulaFileNotFound as e:
+              logger.warning("Cannot find %s formulas file, %s, so moving on.\n" % (e.formula_type, e.filepath))
+              # arch_idx += 1
+              # printed_arch_info = False
+            except Arch.FormulaGenerationError as e:
+              logger.warning("Cannot generate %s formulas, so moving on.\n" % (e.formula_type))
+              # arch_idx += 1
+              # printed_arch_info = False
 
           # End of attempting to build the line: check if line is built and
           # account for it.
