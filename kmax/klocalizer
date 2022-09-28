@@ -861,8 +861,10 @@ def klocalizerCLI():
     try:
       config_exists = superc.ensure_superc_config(srcfile, superc_formulas_dir, linux_ksrc, arch, approximate_config, cross_compiler, build_targets, compile_jobs, build_timeout, logger)
     except Arch.FormulaFileNotFound as e:
+      logger.warning("Cannot find %s formulas file, %s, so moving on.\n" % (e.formula_type, e.filepath))
       config_exists = None
     except Arch.FormulaGenerationError as e:
+      logger.warning("Cannot generate %s formulas, so moving on.\n" % (e.formula_type))
       config_exists = None
     if not config_exists:
       logger.debug("Failed to find/create SuperC config file for \"%s\"\n" % srcfile)
