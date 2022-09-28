@@ -17,6 +17,18 @@ from kmax.arch import Arch
 from kmax.common import get_kmax_constraints, unpickle_kmax_file
 from kmax.vcommon import getLogLevel, getLogger, run
 
+builtin_rewrite_mapping = {
+  "drivers/gpu/drm/amd/": "drivers/gpu/drm/amd/amdgpu/../",
+  "virt/kvm/": "arch/x86/kvm/../../../virt/kvm", # note that virt/kvm also applies to arm
+}
+
+def rewrite_directories(unit, rewrite_mapping):
+  for (path, newpath) in rewrite_mapping.items():
+    if newpath not in unit[0]:
+      unit = (unit[0].replace(path, newpath), unit[1])
+  return unit
+
+
 # TODO(necip): automated testing
 
 def __parse_cb(cb_string_rep: str):
