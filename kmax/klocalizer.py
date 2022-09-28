@@ -22,10 +22,10 @@ builtin_rewrite_mapping = {
   "virt/kvm/": "arch/x86/kvm/../../../virt/kvm", # note that virt/kvm also applies to arm
 }
 
-def rewrite_directories(unit, rewrite_mapping):
+def rewrite_directories(unit: str, rewrite_mapping: dict):
   for (path, newpath) in rewrite_mapping.items():
-    if newpath not in unit[0]:
-      unit = (unit[0].replace(path, newpath), unit[1])
+    if newpath not in unit:
+      unit = unit.replace(path, newpath)
   return unit
 
 

@@ -535,9 +535,9 @@ def klocalizerCLI():
   else:
     user_rewrite_mapping = {}
   rewrite_mapping.update(user_rewrite_mapping)
-  include_list = [ rewrite_directories(unit, rewrite_mapping) for unit in include_list ]
-  include_mutex_list = [ rewrite_directories(unit, rewrite_mapping) for unit in include_mutex_list ]
-  exclude_list = [ rewrite_directories(unit, rewrite_mapping) for unit in exclude_list ]
+  include_list = [ (rewrite_directories(unit_str, rewrite_mapping)) for (unit_str, lines) in include_list ]
+  include_mutex_list = [ (rewrite_directories(unit_str, rewrite_mapping), lines) for (unit_str, lines) in include_mutex_list ]
+  exclude_list = [ (rewrite_directories(unit_str, rewrite_mapping)) for (unit_str, lines) in exclude_list ]
   
   # Determines whether kmax will be run.
   has_file_constraints = len(include_list + include_mutex_list + exclude_list) > 0
