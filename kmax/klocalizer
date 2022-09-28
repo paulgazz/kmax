@@ -858,7 +858,12 @@ def klocalizerCLI():
     #
     logger.info("Computing line presence conditions for \"%s\"\n" % srcfile)
     superc_formulas_dir = SuperC.get_superc_formulas_dir(formulas, arch.name)
-    config_exists = superc.ensure_superc_config(srcfile, superc_formulas_dir, linux_ksrc, arch, approximate_config, cross_compiler, build_targets, compile_jobs, build_timeout, logger)
+    try:
+      config_exists = superc.ensure_superc_config(srcfile, superc_formulas_dir, linux_ksrc, arch, approximate_config, cross_compiler, build_targets, compile_jobs, build_timeout, logger)
+    except Arch.FormulaFileNotFound as e:
+      config_exists = None
+    except Arch.FormulaGenerationError as e:
+      config_exists = None
     if not config_exists:
       logger.debug("Failed to find/create SuperC config file for \"%s\"\n" % srcfile)
       error_msg = "Failed to compute line presence conditions for \"%s\": SuperC config generation error\n" % srcfile
