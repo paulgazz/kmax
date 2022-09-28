@@ -858,6 +858,7 @@ def main():
         required=True,
         help="""Path to a Linux configuration file to check coverage for.""")
     argparser.add_argument("--arch",
+        "-a",
         type=str,
         required=True,
         help="Linux architecture name.")
