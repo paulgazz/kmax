@@ -534,7 +534,6 @@ def klocalizerCLI():
       user_rewrite_mapping = json.load(f)
   else:
     user_rewrite_mapping = {}
-  rewrite_mapping = builtin_rewrite_mapping
   rewrite_mapping.update(user_rewrite_mapping)
   include_list = [ rewrite_directories(unit, rewrite_mapping) for unit in include_list ]
   include_mutex_list = [ rewrite_directories(unit, rewrite_mapping) for unit in include_mutex_list ]
