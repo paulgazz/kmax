@@ -456,7 +456,7 @@ arch: Arch, approximate_config, cross_compiler, build_targets, compile_jobs, bui
       write_content_to_file(logpath("build_unit_make_out"), str(make_out) + '\n')
       write_content_to_file(logpath("build_unit_make_err"), str(make_err) + '\n')
       write_content_to_file(logpath("build_unit_time_elapsed"), str(time_elapsed) + '\n')
-      if not is_unit_compiled:
+      if False in is_unit_compiled:
         logger.debug("Unit could not be compiled.\n")
         return False
       else:
