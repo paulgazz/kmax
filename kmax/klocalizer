@@ -526,27 +526,18 @@ def klocalizerCLI():
 
   # directory rewriting
   if not no_builtin_kbuild_path_rewrites:
-    builtin_rewrite_mapping = {
-      "drivers/gpu/drm/amd/": "drivers/gpu/drm/amd/amdgpu/../",
-      "virt/kvm/": "arch/x86/kvm/../../../virt/kvm", # note that virt/kvm also applies to arm
-    }
+    rewrite_mapping = builtin_rewrite_mapping
   else:
-    builtin_rewrite_mapping = {}
+    rewrite_mapping = {}
   if user_kbuild_path_rewrites and os.path.exists(user_kbuild_path_rewrites):
     with open(user_kbuild_path_rewrites, 'r') as f:
       user_rewrite_mapping = json.load(f)
   else:
     user_rewrite_mapping = {}
-  rewrite_mapping = builtin_rewrite_mapping
   rewrite_mapping.update(user_rewrite_mapping)
-  def rewrite_directories(unit, rewrite_mapping):
-    for (path, newpath) in rewrite_mapping.items():
-      if newpath not in unit[0]:
-        unit = (unit[0].replace(path, newpath), unit[1])
-    return unit
-  include_list = [ rewrite_directories(unit, rewrite_mapping) for unit in include_list ]
-  include_mutex_list = [ rewrite_directories(unit, rewrite_mapping) for unit in include_mutex_list ]
-  exclude_list = [ rewrite_directories(unit, rewrite_mapping) for unit in exclude_list ]
+  include_list = [ (rewrite_directories(unit_str, rewrite_mapping)) for (unit_str, lines) in include_list ]
+  include_mutex_list = [ (rewrite_directories(unit_str, rewrite_mapping), lines) for (unit_str, lines) in include_mutex_list ]
+  exclude_list = [ (rewrite_directories(unit_str, rewrite_mapping)) for (unit_str, lines) in exclude_list ]
   
   # Determines whether kmax will be run.
   has_file_constraints = len(include_list + include_mutex_list + exclude_list) > 0

@@ -13,9 +13,31 @@ import pprint
 import enum
 import z3
 import time
+from functools import reduce
 from kmax.arch import Arch
 from kmax.common import get_kmax_constraints, unpickle_kmax_file
 from kmax.vcommon import getLogLevel, getLogger, run
+
+builtin_rewrite_mapping = {
+  "drivers/gpu/drm/amd/": "drivers/gpu/drm/amd/amdgpu/../",
+  "drivers/gpu/drm/amd/amdgpu/": "drivers/gpu/drm/amd/amdgpu/",  # this path is more specific, so the parent directory will not be rewritten for amdgpu
+  "virt/kvm/": "arch/x86/kvm/../../../virt/kvm", # note that virt/kvm also applies to arm
+}
+
+def rewrite_directories(unit: str, rewrite_mapping: dict):
+  """Rewrite the longest path prefix from the rewrite mapping."""
+  # slow algorithm to find the longest matching string prefix from the keyset
+  # TODO: cache a trie of the prefix strings to find the longest match instead
+  candidates = [ s for s in rewrite_mapping.keys() if unit.startswith(s) ]
+  # two equivalently long candidates shouldn't be possible unless they
+  # are identical, since they are first filtered by being a prefix of
+  # unit
+  if len(candidates) > 0:
+    longest = reduce(lambda acc, key: key if len(str(key)) > len(str(acc)) else acc, candidates, "")
+    updated_unit = unit.replace(longest, rewrite_mapping[longest])
+    return updated_unit
+  else:
+    return unit
 
 # TODO(necip): automated testing
 
