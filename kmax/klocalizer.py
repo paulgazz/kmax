@@ -35,7 +35,6 @@ def rewrite_directories(unit: str, rewrite_mapping: dict):
   if len(candidates) > 0:
     longest = reduce(lambda acc, key: key if len(str(key)) > len(str(acc)) else acc, candidates, "")
     updated_unit = unit.replace(longest, rewrite_mapping[longest])
-    print(updated_unit)
     return updated_unit
   else:
     return unit
