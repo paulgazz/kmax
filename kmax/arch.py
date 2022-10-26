@@ -50,12 +50,12 @@ class Arch:
   once kextract is loaded, kclause formulas can be generated from kextract.
 
   """
-  # known linux architecture names -- ordered from most popular to least
+  # known linux architecture names, present and past, ordered from more popular to less
   # TODO: kextract doesn't work for um32 (error msg: "arch/Kconfig:10: can't open file "arch/um64/Kconfig"")
-  ARCHS = ["x86_64", "i386", "arm", "arm64", "sparc64", "sparc", "powerpc", "mips", "alpha", "arc", "c6x", "csky", "h8300", "hexagon", "ia64", "m68k", "microblaze", "nds32", "nios2", "openrisc", "parisc", "riscv", "s390", "sh", "sh64", "um", "unicore32",  "xtensa"]
+  ARCHS = ["x86_64", "arm", "arm64", "i386", "sparc64", "sparc", "powerpc", "mips", "alpha", "arc", "c6x", "csky", "h8300", "hexagon", "ia64", "loongarch", "m68k", "microblaze", "mips", "nds32", "nios2", "openrisc", "parisc", "riscv", "s390", "sh", "sh64", "um", "unicore32",  "xtensa"]
   CUSTOM_ARCH_NAME = "CUSTOM_ARCH"
   # architecture-specific configs for known linux architectures
-  ARCH_CONFIGS = set([ "CONFIG_ALPHA", "CONFIG_ARC", "CONFIG_ARM", "CONFIG_ARM64", "CONFIG_C6X", "CONFIG_CSKY", "CONFIG_H8300", "CONFIG_HEXAGON", "CONFIG_IA64", "CONFIG_M68K", "CONFIG_MICROBLAZE", "CONFIG_MIPS", "CONFIG_NDS32", "CONFIG_NIOS2", "CONFIG_OPENRISC", "CONFIG_PARISC", "CONFIG_PPC64", "CONFIG_PPC32", "CONFIG_PPC", "CONFIG_RISCV", "CONFIG_S390", "CONFIG_SUPERH64", "CONFIG_SUPERH32", "CONFIG_SUPERH", "CONFIG_SPARC64", "CONFIG_SPARC32", "CONFIG_SPARC", "CONFIG_UML", "CONFIG_UNICORE32", "CONFIG_X86_64", "CONFIG_X86_32", "CONFIG_X86", "CONFIG_XTENSA" ])
+  ARCH_CONFIGS = set([ "CONFIG_ALPHA", "CONFIG_ARC", "CONFIG_ARM", "CONFIG_ARM64", "CONFIG_C6X", "CONFIG_CSKY", "CONFIG_H8300", "CONFIG_HEXAGON", "CONFIG_IA64", "CONFIG_LOONGARCH", "CONFIG_M68K", "CONFIG_MICROBLAZE", "CONFIG_MIPS", "CONFIG_NDS32", "CONFIG_NIOS2", "CONFIG_OPENRISC", "CONFIG_PARISC", "CONFIG_PPC64", "CONFIG_PPC32", "CONFIG_PPC", "CONFIG_RISCV", "CONFIG_S390", "CONFIG_SUPERH64", "CONFIG_SUPERH32", "CONFIG_SUPERH", "CONFIG_SPARC64", "CONFIG_SPARC32", "CONFIG_SPARC", "CONFIG_UML", "CONFIG_UNICORE32", "CONFIG_X86_64", "CONFIG_X86_32", "CONFIG_X86", "CONFIG_XTENSA" ])
 
   def __repr__(self):
     return "Arch(%s)" % self.name

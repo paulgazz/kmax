@@ -55,6 +55,7 @@ from kmax.common import BasicLogger
 from kmax.superc import SyntaxAnalysis
 from kmax import patch
 from kmax.arch import Arch
+from kmax.klocalizer import builtin_rewrite_mapping, rewrite_directories
 
 from subprocess import TimeoutExpired
 from shutil import copyfile, which
@@ -167,7 +168,7 @@ class LineCoverage(str, Enum):
 
 def check_config(
     cross_compiler: str, arch: str, linux_dir: str, 
-    coverage_requirements: dict, build_targets: dict, config_file: str,
+    coverage_requirements: dict, build_targets: dict, rewrite_mapping: dict, config_file: str,
     scratch_dir: str, timeout_olddefconfig : int, timeout_make_dir : int,
     timeout_make_unit : int
     ) -> dict:
@@ -278,7 +279,7 @@ def check_config(
         # Retrieve the build target for the source file.
         # TODO: multiple can share the same target: a small optimization
         # is to reuse results for those.
-        build_target = get_build_target(source_file, build_targets)
+        build_target = get_build_target(rewrite_directories(source_file, rewrite_mapping), build_targets)
         logger.debug("Build target for \"%s\" is \"%s\"\n" % (source_file, build_target))
 
         # Use different timeout values based on whether the build target is
@@ -858,6 +859,7 @@ def main():
         required=True,
         help="""Path to a Linux configuration file to check coverage for.""")
     argparser.add_argument("--arch",
+        "-a",
         type=str,
         required=True,
         help="Linux architecture name.")
@@ -901,6 +903,12 @@ def main():
         help=""" Path to the json file with source file to build target"""
              """ mappings. Usual case (src/file.c -> src/file.o) is used"""
              """ for missing mappings.""")
+    argparser.add_argument('--no-builtin-kbuild-path-rewrites',
+        action="store_true",
+        help="""Do not rewrite compilation unit paths.  Not recommended, since this will prevent kmax from finding which Makefiles contain constraints in cases where the realpath is not the same as the kbuild path.""")
+    argparser.add_argument("--user-kbuild-path-rewrites", #< Needed for SuperC config creation
+        type=str,
+        help="""Path to a json file containing kbuild path rewritings, e.g., { \"drivers/gpu/drm/amd/\": \"drivers/gpu/drm/amd/amdgpu/../\" }.  These will override any built-in mappings.""")
     argparser.add_argument("--scratch-dir",
         type=str,
         help="""Path to non-existing or empty scratch directory, where"""
@@ -933,6 +941,8 @@ def main():
     check_patch_arg = args.check_patch
     check_covreq_arg = args.check_covreq
     build_targets_file = args.build_targets
+    no_builtin_kbuild_path_rewrites = args.no_builtin_kbuild_path_rewrites
+    user_kbuild_path_rewrites = args.user_kbuild_path_rewrites
     linux_ksrc = args.linux_ksrc
     scratch_dir = args.scratch_dir
     output_file = args.output
@@ -961,6 +971,18 @@ def main():
     timeout_make_dir = check_timeout(timeout_make_dir, "--timeout-make-dir")
     timeout_make_unit = check_timeout(timeout_make_unit, "--timeout-make-unit")
 
+    # directory rewriting
+    if not no_builtin_kbuild_path_rewrites:
+        rewrite_mapping = builtin_rewrite_mapping
+    else:
+        rewrite_mapping = {}
+    if user_kbuild_path_rewrites and os.path.exists(user_kbuild_path_rewrites):
+      with open(user_kbuild_path_rewrites, 'r') as f:
+          user_rewrite_mapping = json.load(f)
+    else:
+        user_rewrite_mapping = {}
+    rewrite_mapping.update(user_rewrite_mapping)
+    
     # Create the scratch directory.
     if os.path.exists(scratch_dir):
         if os.path.isfile(scratch_dir):
@@ -1031,7 +1053,7 @@ def main():
     # Determine if the config builds the target (file:line)s.
     logger.info("Starting coverage checks.\n")
     coverage_results_vcovreq_lines = check_config(cross_compiler, arch,
-        linux_ksrc, validation_covreq, build_targets, config_file, scratch_dir,
+        linux_ksrc, validation_covreq, build_targets, rewrite_mapping, config_file, scratch_dir,
         timeout_olddefconfig, timeout_make_dir, timeout_make_unit)
     logger.info("Finished coverage checks.\n")
     logger.debug("Coverage results in terms of validation coverage requirements: \"%s\"\n" % coverage_results_vcovreq_lines)

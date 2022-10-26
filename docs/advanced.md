@@ -123,6 +123,27 @@ This produces a new version of the `.config` file in `0-x86_64.config`.  To buil
 This time, the source file is successfully built: `CC      kernel/bpf/cgroup.o`.  Any number of `--include-mutex` constraints may be added.  If there is mutual-exclusion among source files, `klocalizer` will as many configuration files needed to cover all constraints.  Always on or off constraints can be added with `--include` or `--exclude`.  See the documentation on [`klocalizer` and `krepair`](#klocalizer-and-krepair) for more usage information.
 
 
+#### Additional examples
+
+```
+git clone git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+cd linux/
+```
+
+
+```
+git checkout -f 775da83005cb; git diff HEAD~~ > patch.diff; make defconfig; cp .config defconfig; klocalizer -v -a x86_64 --repair defconfig --include-mutex patch.diff --formulas ../formulacache; rm -rf koverage_files/; koverage -v --arch x86_64 --config 0-x86_64.config --check-patch patch.diff -o out;
+```
+
+```
+commit=1fc31638eb79eff8b1fb0e1bfcd5f9dbddbf16e2; git checkout -f $commit; git show > patch.diff; make defconfig; cp .config defconfig; klocalizer -v --arch x86_64 --repair defconfig --include-mutex patch.diff; rm -rf koverage_files/; koverage -v --config 0-x86_64.config --check-patch patch.diff -o out1 --arch x86_64;
+```
+
+```
+commit=64ba2eb35fa076d5914e3a3e374898ca31c29e84; git checkout -f $commit; git show > patch.diff; make defconfig; cp .config defconfig; klocalizer -v -a x86_64 --repair defconfig --include-mutex patch.diff; rm -rf koverage_files/; koverage -v --config 0-x86_64.config --check-patch patch.diff -o out2 --arch x86_64
+```
+
+
 ### Coverage report
 
 - kmax failed, superc failed

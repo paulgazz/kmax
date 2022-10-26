@@ -396,7 +396,7 @@ class SuperC:
 
   def ensure_superc_config(self,
     srcfile: str, output_superc_configs_dir_path: str, linux_ksrc: str,
-    arch: Arch, cross_compiler, build_targets, compile_jobs, build_timeout,
+arch: Arch, approximate_config, cross_compiler, build_targets, compile_jobs, build_timeout,
     logger):
     """
     Ensure that SuperC configs exist for the input sourcefile.
@@ -431,7 +431,7 @@ class SuperC:
       # Localize a building configuration file.
       #
       output_config_file = logpath("kloc_localized_config")
-      ret_status, ret_arch, ret_exception = Klocalizer.localize_config([unit], output_config_file, linux_ksrc, [arch], logger)
+      ret_status, ret_arch, ret_exception = Klocalizer.localize_config([unit], output_config_file, linux_ksrc, [arch], {arch.name: approximate_config}, logger)
       # Write diagnostic info
       write_content_to_file(logpath("kloc_config_loc_status"), str(ret_status) + '\n')
       # no need to write ret_arch: there is already a single architecture
@@ -456,7 +456,7 @@ class SuperC:
       write_content_to_file(logpath("build_unit_make_out"), str(make_out) + '\n')
       write_content_to_file(logpath("build_unit_make_err"), str(make_err) + '\n')
       write_content_to_file(logpath("build_unit_time_elapsed"), str(time_elapsed) + '\n')
-      if not is_unit_compiled:
+      if False in is_unit_compiled:
         logger.debug("Unit could not be compiled.\n")
         return False
       else:

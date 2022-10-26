@@ -530,27 +530,18 @@ def klocalizerCLI():
 
   # directory rewriting
   if not no_builtin_kbuild_path_rewrites:
-    builtin_rewrite_mapping = {
-      "drivers/gpu/drm/amd/": "drivers/gpu/drm/amd/amdgpu/../",
-      "virt/kvm/": "arch/x86/kvm/../../../virt/kvm", # note that virt/kvm also applies to arm
-    }
+    rewrite_mapping = builtin_rewrite_mapping
   else:
-    builtin_rewrite_mapping = {}
+    rewrite_mapping = {}
   if user_kbuild_path_rewrites and os.path.exists(user_kbuild_path_rewrites):
     with open(user_kbuild_path_rewrites, 'r') as f:
       user_rewrite_mapping = json.load(f)
   else:
     user_rewrite_mapping = {}
-  rewrite_mapping = builtin_rewrite_mapping
   rewrite_mapping.update(user_rewrite_mapping)
-  def rewrite_directories(unit, rewrite_mapping):
-    for (path, newpath) in rewrite_mapping.items():
-      if newpath not in unit[0]:
-        unit = (unit[0].replace(path, newpath), unit[1])
-    return unit
-  include_list = [ rewrite_directories(unit, rewrite_mapping) for unit in include_list ]
-  include_mutex_list = [ rewrite_directories(unit, rewrite_mapping) for unit in include_mutex_list ]
-  exclude_list = [ rewrite_directories(unit, rewrite_mapping) for unit in exclude_list ]
+  include_list = [ (rewrite_directories(unit_str, rewrite_mapping), lines) for (unit_str, lines) in include_list ]
+  include_mutex_list = [ (rewrite_directories(unit_str, rewrite_mapping), lines) for (unit_str, lines) in include_mutex_list ]
+  exclude_list = [ (rewrite_directories(unit_str, rewrite_mapping), lines) for (unit_str, lines) in exclude_list ]
   
   # Determines whether kmax will be run.
   has_file_constraints = len(include_list + include_mutex_list + exclude_list) > 0
@@ -848,7 +839,7 @@ def klocalizerCLI():
       line_constraints[unit2srcfile(unit)] = {}
   # This function uses values from global scope (linux ksrc, formulas dir, etc.)
   # but parametrizes the operation into srcfile and architecture.
-  def get_presence_conditions(srcfile, arch):
+  def get_presence_conditions(srcfile, arch, approximate_config):
     """Ensures SuperC configs for srcfile and computes the line presence
     conditions.
     
@@ -870,7 +861,14 @@ def klocalizerCLI():
     #
     logger.info("Computing line presence conditions for \"%s\"\n" % srcfile)
     superc_formulas_dir = SuperC.get_superc_formulas_dir(formulas, arch.name)
-    config_exists = superc.ensure_superc_config(srcfile, superc_formulas_dir, linux_ksrc, arch, cross_compiler, build_targets, compile_jobs, build_timeout, logger)
+    try:
+      config_exists = superc.ensure_superc_config(srcfile, superc_formulas_dir, linux_ksrc, arch, approximate_config, cross_compiler, build_targets, compile_jobs, build_timeout, logger)
+    except Arch.FormulaFileNotFound as e:
+      logger.warning("Cannot find %s formulas file, %s, so moving on.\n" % (e.formula_type, e.filepath))
+      config_exists = None
+    except Arch.FormulaGenerationError as e:
+      logger.warning("Cannot generate %s formulas, so moving on.\n" % (e.formula_type))
+      config_exists = None
     if not config_exists:
       logger.debug("Failed to find/create SuperC config file for \"%s\"\n" % srcfile)
       error_msg = "Failed to compute line presence conditions for \"%s\": SuperC config generation error\n" % srcfile
@@ -1163,7 +1161,16 @@ def klocalizerCLI():
       if units_to_compute_pc:
         logger.info("Computing the line presence conditions under %s for the following units: %s\n" % (arch.name, " ".join(units_to_compute_pc)))
       for unit in units_to_compute_pc:
-        get_presence_conditions(unit2srcfile(unit), arch)
+        if arch.name in approximate_configs:
+          approximate_config = approximate_configs[arch.name]
+        elif "default" in approximate_configs:
+          approximate_config = approximate_configs["default"]
+        else:
+          assert(False)
+          approximate_config = None
+        if no_nonbool_preservation:
+          approximate_config = None
+        get_presence_conditions(unit2srcfile(unit), arch, approximate_config)
 
       # Presence conditions are computed.
 
@@ -1304,22 +1311,32 @@ def klocalizerCLI():
             constraints_with_line = constraints_with_file[:]
             constraints_with_line.extend(line_const)
 
-            # SAT check.
-            if compiled_arch_constraints is None:
-              compiled_arch_constraints = klocalizer.compile_constraints(arch)
-            full_constraints = compiled_arch_constraints + constraints_with_line
-            logger.debug("Checking constraints: %s\n"% constraints_with_line)
-            model_sampler = Klocalizer.Z3ModelSampler(full_constraints, random_seed=random_seed, logger=logger)
-            is_sat, z3_model = model_sampler.sample_model()
+            try:
+              # SAT check.
+              if compiled_arch_constraints is None:
+                compiled_arch_constraints = klocalizer.compile_constraints(arch)
 
-            # Constraints is SAT means line is covered.
-            line_covered = is_sat
+              full_constraints = compiled_arch_constraints + constraints_with_line
+              logger.debug("Checking constraints: %s\n"% constraints_with_line)
+              model_sampler = Klocalizer.Z3ModelSampler(full_constraints, random_seed=random_seed, logger=logger)
+              is_sat, z3_model = model_sampler.sample_model()
 
-            if is_sat: # Line constraints are satisfiable
-              # The constraints are approved to be SAT and improving coverage,
-              # therefore, keep them in.
-              accumulated_constraints = constraints_with_line[:]
-              constraints_with_file = constraints_with_line[:]
+              # Constraints is SAT means line is covered.
+              line_covered = is_sat
+
+              if is_sat: # Line constraints are satisfiable
+                # The constraints are approved to be SAT and improving coverage,
+                # therefore, keep them in.
+                accumulated_constraints = constraints_with_line[:]
+                constraints_with_file = constraints_with_line[:]
+            except Arch.FormulaFileNotFound as e:
+              logger.warning("Cannot find %s formulas file, %s, so moving on.\n" % (e.formula_type, e.filepath))
+              # arch_idx += 1
+              # printed_arch_info = False
+            except Arch.FormulaGenerationError as e:
+              logger.warning("Cannot generate %s formulas, so moving on.\n" % (e.formula_type))
+              # arch_idx += 1
+              # printed_arch_info = False
 
           # End of attempting to build the line: check if line is built and
           # account for it.
@@ -1511,7 +1528,16 @@ def klocalizerCLI():
   assert not include_mutex_list
   for arch in archs:
     logger.info("Trying \"%s\"\n" % (arch.name))
-
+    if arch.name in approximate_configs:
+      approximate_config = approximate_configs[arch.name]
+    elif "default" in approximate_configs:
+      approximate_config = approximate_configs["default"]
+    else:
+      assert(False)
+      approximate_config = None
+    if no_nonbool_preservation:
+      approximate_config = None
+    
     #
     # SAT check for units only (without line constraints)
     #
@@ -1550,7 +1576,7 @@ def klocalizerCLI():
       srcfiles_with_line_requirements = ["%s.c" % u[:-len('.o')] for u, lines in all_comp_units_list if lines]
       logger.info("Computing the line presence conditions under %s for the following units: %s\n" % (arch.name, " ".join(srcfiles_with_line_requirements)))
       for unit in srcfiles_with_line_requirements:
-        get_presence_conditions(unit2srcfile(unit), arch)
+        get_presence_conditions(unit2srcfile(unit), arch, approximate_config)
 
       logger.debug("Getting additional line constraints.\n")
 
@@ -1635,11 +1661,11 @@ def klocalizerCLI():
       if not reportallarchs and sample_count > 0:
 
         # Prepare the configs by sampling models
-        configs = [Klocalizer.get_config_from_model(model, arch, set_tristate_m=modules_arg, allow_non_visibles=allow_non_visibles)]
+        configs = [Klocalizer.get_config_from_model(model, arch, set_tristate_m=modules_arg, allow_non_visibles=allow_non_visibles, approximate_config=approximate_config)]
         for _ in range(sample_count-1):
           is_sat, model = model_sampler.sample_model()
           assert is_sat
-          configs.append(Klocalizer.get_config_from_model(model, arch, set_tristate_m=modules_arg, allow_non_visibles=allow_non_visibles))
+          configs.append(Klocalizer.get_config_from_model(model, arch, set_tristate_m=modules_arg, allow_non_visibles=allow_non_visibles, approximate_config=approximate_config))
         
         # Prepare the config filenames
         if sample_count == 1:
