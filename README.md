@@ -73,6 +73,8 @@ Now try using repair to update allnoconfig, which doesn't build all lines from t
     make ARCH=x86_64 allnoconfig
     klocalizer --repair .config -a x86_64 --include-mutex 6fc88c354f3af.diff
     KCONFIG_CONFIG=0-x86_64.config make ARCH=x86_64 olddefconfig clean kernel/bpf/cgroup.o net/ipv4/af_inet.o net/ipv4/udp.o net/ipv6/af_inet6.o net/ipv6/udp.o
+    koverage --config 0-x86_64.config --arch x86_64 --check-patch 6fc88c354f3af.diff -o coverage_results.json
+    cat coverage_results.json
     
 When using `--include-mutex`, the generated configuration files are exported as `NUM-ARCH.config`, since several configuration files may be needed when patches contain mutually-exclusive lines.
 
