@@ -58,7 +58,7 @@ This tool will automatically "fix" your .config file so that it builds the lines
     wget -O - https://raw.githubusercontent.com/appleseedlab/superc/master/scripts/install.sh | bash
     export COMPILER_INSTALL_PATH=$HOME/0day
     export CLASSPATH=/usr/share/java/org.sat4j.core.jar:/usr/share/java/json-lib.jar:${HOME}/.local/share/superc/z3-4.8.12-x64-glibc-2.31/bin/com.microsoft.z3.jar:${HOME}/.local/share/superc/JavaBDD/javabdd-1.0b2.jar:${HOME}/.local/share/superc/xtc.jar:${HOME}/.local/share/superc/superc.jar:${CLASSPATH}
-    export PATH=${PATH}:${HOME}/.local/bin/
+    export PATH=${HOME}/.local/bin/:${PATH}
 
 Too see it in action, start with a clone of the linux repository and create a patch file:
 
