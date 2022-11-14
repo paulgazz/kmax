@@ -8,6 +8,8 @@
 # mkdir repair_results
 # bash /data1/paul/kmax/scripts/krepair_evaluation/randconfig_client.sh localhost 45678 randconfig_test patchconditions build_targets.json inputs/linux0 x86_64
 
+# example:  experiment@church:/data2/test_experiment$ # bash /data1/paul/kmax/scripts/krepair_evaluation/randconfig_client.sh localhost 45678 randconfig_test patchconditions build_targets.json inputs/linux0 x86_64
+
 set -x
 
 script_dir=$(dirname $(realpath $0))

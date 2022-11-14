@@ -3,6 +3,8 @@
 # example: bash build_repair.sh ~/tmp/test_output/14522-210f563b0979 ~/src/linux 14522-210f563b0979 ~/tmp/build_repair/14522-210f563b0979 x86_64
 # example: bash /data1/paul/kmax/scripts/krepair_evaluation/build_patch.sh aggregated/repair/7585-400086d7c113 inputs/linux0 7585-400086d7 c113 test_build_repair/7585-400086d7c113 x86_64
 
+# example: experiment@church:/data1/test_experiment$ # for i in {0..3}; do bash /data1/paul/kmax/scripts/krepair_evaluation/build_client.sh localhost 45678 /data2/test_experiment/aggregated build_patch inputs/linux$i x86_64 > build_patch$i 2>&1 & sleep 1; done
+
 set -x
 
 if [ "$#" -ne 5 ]; then
@@ -84,7 +86,7 @@ do_build () {
 }
 
 # do_build ${repairout}/allnoconfig/configs ${arch} $outdir/build_results_allnoconfig_after_makej8 "-j 8"
-do_build ${repairout}/allnoconfig/configs ${arch} $outdir/build_results_defconfig_after_makej8 "-j 8"
+do_build ${repairout}/defconfig/configs ${arch} $outdir/build_results_defconfig_after_makej8 "-j 8"
 do_build ${repairout}/allyesconfig/configtorepair ${arch} $outdir/build_results_allyesconfig_before_makej8 "-j 8"
 
 # do_build ${repairout}/allnoconfig/configs ${arch} $outdir/build_results_allnoconfig_after

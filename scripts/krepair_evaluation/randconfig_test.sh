@@ -83,7 +83,7 @@ do_testrand () {
     # koverage takes a single config, but we may have multiple ones
     # $configs handle multiple configs dir for repaired configs
 
-    for randnum in {1..${numconfigs}}; do
+    for randnum in $(seq 1 ${numconfigs}); do
 	randtestoutdir=${outdir}/${randnum}
 	mkdir ${randtestoutdir}
 	timefile=${randtestoutdir}/time
