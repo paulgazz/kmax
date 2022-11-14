@@ -1,3 +1,14 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [Intro](#intro)
+- [Measuring the changes](#measuring-the-changes)
+- [How to run for a single case](#how-to-run-for-a-single-case)
+- [Output format](#output-format)
+- [Measuring repair size for all patches](#measuring-repair-size-for-all-patches)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Intro
 `krepair` repairs given configuration files to cover patches. The amount of change on the original configuration file is an important metric since the user wants to preserve the settings from the original configuration file as much as possible.
 
