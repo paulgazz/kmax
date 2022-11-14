@@ -749,9 +749,6 @@ def klocalizerCLI():
   #
   # Load build targets
   #
-  builtin_build_targets = {
-    
-  }
   if no_builtin_build_targets:
     build_targets = {}
   else:
