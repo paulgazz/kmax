@@ -1,3 +1,13 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [Release process](#release-process)
+  - [Versioning](#versioning)
+  - [Release candidates](#release-candidates)
+  - [Steps](#steps)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Release process
 
 ## Versioning

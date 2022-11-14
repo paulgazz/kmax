@@ -1,3 +1,17 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [krepair evaluation scripts](#krepair-evaluation-scripts)
+  - [running the evaluation](#running-the-evaluation)
+  - [parallelized experiments](#parallelized-experiments)
+  - [summarizing the results](#summarizing-the-results)
+    - [coverage](#coverage)
+    - [repair size](#repair-size)
+    - [repair time](#repair-time)
+- [requirements](#requirements)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # krepair evaluation scripts
 
 ## running the evaluation

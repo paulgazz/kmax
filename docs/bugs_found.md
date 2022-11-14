@@ -4,7 +4,8 @@
 - [Bugs Found by Kmax Tools](#bugs-found-by-kmax-tools)
   - [Linux kernel](#linux-kernel)
     - [Intel 0-day automated reports](#intel-0-day-automated-reports)
-    - [Manual reports during evaluation](#manual-reports-during-evaluation)
+    - [Manual reports during the evaluation of krepair](#manual-reports-during-the-evaluation-of-krepair)
+    - [Manual reports during the evaluation of kismet](#manual-reports-during-the-evaluation-of-kismet)
   - [axTLS](#axtls)
     - [Header compile issue when "Create Language Bindings" is used](#header-compile-issue-when-create-language-bindings-is-used)
 
@@ -87,7 +88,14 @@ Initial reports in the weeks after integration:
 - <https://lists.01.org/hyperkitty/list/kbuild@lists.01.org/thread/32IKPTYPPJ7MHOVUHZ2URQ36SBYTFDJT/>
 
 
-### Manual reports during evaluation
+### Manual reports during the evaluation of krepair
+
+#### iio: light: rpr0521: build error when IIO_TRIGGERED_BUFFER is disabled
+
+2022-11-10 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=216678)
+2022-11-10 [Patch](https://lore.kernel.org/lkml/20221110214729.ls5ixav5kxpeftk7@device/)
+
+### Manual reports during the evaluation of kismet
 
 These bug reports were made by hand based on the alarms from the ESEC/FSE 2021 evaluation of `kismet`.
 
