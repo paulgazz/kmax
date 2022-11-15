@@ -55,7 +55,7 @@ from kmax.common import BasicLogger
 from kmax.superc import SyntaxAnalysis
 from kmax import patch
 from kmax.arch import Arch
-from kmax.klocalizer import builtin_rewrite_mapping, rewrite_directories
+from kmax.klocalizer import builtin_rewrite_mapping, rewrite_directories, rewrite_build_target, builtin_build_targets
 
 from subprocess import TimeoutExpired
 from shutil import copyfile, which
@@ -279,7 +279,9 @@ def check_config(
         # Retrieve the build target for the source file.
         # TODO: multiple can share the same target: a small optimization
         # is to reuse results for those.
-        build_target = get_build_target(rewrite_directories(source_file, rewrite_mapping), build_targets)
+        rewritten_source_file = rewrite_directories(source_file, rewrite_mapping)
+        rewritten_build_target = get_build_target(rewritten_source_file, build_targets)
+        build_target = withpreprocext(rewritten_build_target) if rewritten_build_target[-len('.c'):] in ['.c', '.i', '.o'] else rewritten_build_target
         logger.debug("Build target for \"%s\" is \"%s\"\n" % (source_file, build_target))
 
         # Use different timeout values based on whether the build target is
@@ -394,7 +396,7 @@ def check_config(
     return result
 
 def get_build_target(comp_unit: str, build_targets: dict) -> str:
-    return build_targets.get(comp_unit, comp_unit[:-len('.c')] + '.i')
+    return rewrite_build_target(comp_unit, build_targets)
 
 def get_all_included_validation_hint_lines(pp_file: str) -> dict:
     """
@@ -897,6 +899,9 @@ def main():
              """  This is an adhoc json format for koverage as follows:"""
              """  { "sourcefile_loc" : { "srcfilepath" : [lines], },"""
              """    "headerfile_loc" : { "hdrfilepath" : [lines], } }""")
+    argparser.add_argument("--no-builtin-build-targets",
+        action="store_true",
+        help="""Do not use builtin build targets.  Not recommended.""")
     argparser.add_argument("--build-targets",
         type=str,
         required=False,
@@ -940,6 +945,7 @@ def main():
     check_arg = args.check
     check_patch_arg = args.check_patch
     check_covreq_arg = args.check_covreq
+    no_builtin_build_targets = args.no_builtin_build_targets
     build_targets_file = args.build_targets
     no_builtin_kbuild_path_rewrites = args.no_builtin_kbuild_path_rewrites
     user_kbuild_path_rewrites = args.user_kbuild_path_rewrites
@@ -1018,10 +1024,14 @@ def main():
         json.dump(covreq, f, sort_keys=True, indent=2)
 
     # Load build targets
-    build_targets = {}
+    if no_builtin_build_targets:
+        build_targets = {}
+    else:
+        build_targets = builtin_build_targets
     if build_targets_file:
-        with open(build_targets_file, 'r') as cond:
-            build_targets = json.load(cond)
+        with open(build_targets_file, 'r') as f:
+            user_build_targets = json.load(f)
+            build_targets.update(user_build_targets)
     
     # Get the validation coverage requirements and the patch to use these
     # requirements.  This is useful to evaluate any line for coverage,

@@ -13,6 +13,7 @@ import pprint
 import enum
 import z3
 import time
+import fnmatch
 from functools import reduce
 from kmax.arch import Arch
 from kmax.common import get_kmax_constraints, unpickle_kmax_file
@@ -22,6 +23,17 @@ builtin_rewrite_mapping = {
   "drivers/gpu/drm/amd/": "drivers/gpu/drm/amd/amdgpu/../",
   "drivers/gpu/drm/amd/amdgpu/": "drivers/gpu/drm/amd/amdgpu/",  # this path is more specific, so the parent directory will not be rewritten for amdgpu
   "virt/kvm/": "arch/x86/kvm/../../../virt/kvm", # note that virt/kvm also applies to arm
+}
+
+builtin_build_targets = {
+  "arch/arm/mach-omap1/*": "arch/arm/mach-omap1/",
+  "arch/arm/mach-pxa/*": "arch/arm/mach-pxa/",
+  "arch/arm/mach-s3c/*": "arch/arm/mach-s3c/",
+  "arch/arm/plat-omap/*": "arch/arm/plat-omap/",
+  "arch/x86/boot/compressed/*": "all",
+  "arch/x86/kvm/mmu/*": "arch/x86/kvm/",
+  "arch/x86/lib/*": "arch/x86/kvm/",
+  "virt/kvm/*": "arch/x86/kvm/",
 }
 
 def rewrite_directories(unit: str, rewrite_mapping: dict):
@@ -39,6 +51,14 @@ def rewrite_directories(unit: str, rewrite_mapping: dict):
   else:
     return unit
 
+def rewrite_build_target(unit: str, build_targets: dict):
+  """Rewrite the first matching build target pattern to build target mapping, or leave the original unit as is."""
+  for pattern, rewrite in build_targets.items():
+    if fnmatch.fnmatch(unit, pattern):
+      return rewrite
+  # when there is no rewrite, just return the original
+  return unit
+  
 # TODO(necip): automated testing
 
 def __parse_cb(cb_string_rep: str):
