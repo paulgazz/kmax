@@ -280,7 +280,8 @@ def check_config(
         # TODO: multiple can share the same target: a small optimization
         # is to reuse results for those.
         rewritten_source_file = rewrite_directories(source_file, rewrite_mapping)
-        build_target = get_build_target(rewritten_source_file, build_targets)
+        rewritten_build_target = get_build_target(rewritten_source_file, build_targets)
+        build_target = withpreprocext(rewritten_build_target) if rewritten_build_target[-len('.c'):] in ['.c', '.i', '.o'] else rewritten_build_target
         logger.debug("Build target for \"%s\" is \"%s\"\n" % (source_file, build_target))
 
         # Use different timeout values based on whether the build target is
@@ -395,8 +396,7 @@ def check_config(
     return result
 
 def get_build_target(comp_unit: str, build_targets: dict) -> str:
-    # TODO: use rewrite_build_target
-    return build_targets.get(comp_unit, comp_unit[:-len('.c')] + '.i')
+    return rewrite_build_target(comp_unit, build_targets)
 
 def get_all_included_validation_hint_lines(pp_file: str) -> dict:
     """

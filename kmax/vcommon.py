@@ -70,7 +70,7 @@ def is_linux_dir(linux_ksrc: str) -> bool:
 
 # TODO: improvement idea: decouple everything about compilation checks including the line checker.
 def check_if_compiles(unit_paths: list, config_path: str, arch_name: str,
-    linux_ksrc: str, build_targets: dict, cross_compiler: str, jobs: int,
+    linux_ksrc: str, build_targets: dict, rewrite_build_target, cross_compiler: str, jobs: int,
     build_timeout_sec, use_olddefconfig_target: bool, logger) -> bool:
     """Check whether the given units compile with the given configuration
     file.
@@ -78,10 +78,11 @@ def check_if_compiles(unit_paths: list, config_path: str, arch_name: str,
     Arguments:
     * unit_paths -- List of unit paths (e.g., ['kernel/fork.o', 'kernel/cpu.o']).
     Paths are relative to the top Linux source directory.
-    * config_path -- Path to input Linux configuration file to use.
+    * config_path -- Path to input Linux configuration file to` use.
     * arch_name -- Name of the architecture (e.g., x86_64)
     * linux_ksrc -- Path to a top linux source directory.
     * build_targets -- Unit path to build target mapping. Defaults to unit path.
+    * rewrite_build_target -- function to rewrite build targets TODO: move check_if_compiles into klocalizer.py or superc.py if it isn't used elsewhere
     * cross_compiler -- Executable cross compiler script (e.g., make.cross)
     * jobs -- Num jobs for make (passed with -j). None or <=0 are infinite.
     * build_timeout_sec -- Timeout in seconds for compilation. Pass None
@@ -138,16 +139,10 @@ def check_if_compiles(unit_paths: list, config_path: str, arch_name: str,
     targets = ["clean"]  #< clean is the first target.
     if use_olddefconfig_target:
         targets.append("olddefconfig")
-    print(build_targets)
-    for u in unit_paths: #< Map units into build targets.
-        # TODO: use rewrite_build_target
-        # rewritten_targets = [ rewrite for (target, rewrite) in build_targets.items() if u.startswith(target) ]
-        target = build_targets.get(u, u) #< Default is the unit path.
+    for unit in unit_paths: #< Map units into build targets.
+        target = rewrite_build_target(unit, build_targets)
         if target not in targets: #< Don't include duplicates.
             targets.append(target)
-        # for target in rewritten_targets:
-        #     if target not in targets: #< Don't include duplicates.
-        #         targets.append(target)
     assert len(targets) > 1 #< At least one target other than clean.
     logger.debug("Build targets are: \"[%s]\"\n" % ", ".join(targets))
 

@@ -859,7 +859,7 @@ def klocalizerCLI():
     logger.info("Computing line presence conditions for \"%s\"\n" % srcfile)
     superc_formulas_dir = SuperC.get_superc_formulas_dir(formulas, arch.name)
     try:
-      config_exists = superc.ensure_superc_config(srcfile, superc_formulas_dir, linux_ksrc, arch, approximate_config, cross_compiler, build_targets, compile_jobs, build_timeout, logger)
+      config_exists = superc.ensure_superc_config(srcfile, superc_formulas_dir, linux_ksrc, arch, approximate_config, cross_compiler, build_targets, rewrite_build_target, compile_jobs, build_timeout, logger)
     except Arch.FormulaFileNotFound as e:
       logger.warning("Cannot find %s formulas file, %s, so moving on.\n" % (e.formula_type, e.filepath))
       config_exists = None

@@ -396,7 +396,7 @@ class SuperC:
 
   def ensure_superc_config(self,
     srcfile: str, output_superc_configs_dir_path: str, linux_ksrc: str,
-arch: Arch, approximate_config, cross_compiler, build_targets, compile_jobs, build_timeout,
+    arch: Arch, approximate_config, cross_compiler, build_targets, rewrite_build_target, compile_jobs, build_timeout,
     logger):
     """
     Ensure that SuperC configs exist for the input sourcefile.
@@ -448,7 +448,7 @@ arch: Arch, approximate_config, cross_compiler, build_targets, compile_jobs, bui
       # Check if the unit compiles (also build them to prep for SuperC config creation)
       logger.debug("Attempting to build the unit.\n")
       ret = check_if_compiles([unit], output_config_file, arch.name, linux_ksrc,
-        build_targets, cross_compiler, compile_jobs, build_timeout, True, logger)
+      build_targets, rewrite_build_target, cross_compiler, compile_jobs, build_timeout, True, logger)
       is_unit_compiled, make_timed_out, make_ret, make_out, make_err, time_elapsed = ret
       write_content_to_file(logpath("build_unit_status"), str(is_unit_compiled) + '\n')
       write_content_to_file(logpath("build_unit_make_timed_out"), str(make_timed_out) + '\n')
