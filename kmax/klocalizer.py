@@ -439,6 +439,15 @@ class Klocalizer:
     else:
       # make it an empty set so it will never contain config settings to use
       approximate_config_original = {}
+    nonbool_defs = {}
+    for line in arch.get_kextract().splitlines():
+      if line.startswith("def_nonbool "):
+        instr, data = line.strip().split(" ", 1)
+        var, val_and_expr = data.split(" ", 1)
+        val, expr = val_and_expr.split("|", 1)
+        # TODO: this will use the last def if there are multiple ones.
+        # use constraint solver to pick the right one.
+        nonbool_defs[var] = val[1:-1] # strip the quotes
     for entry in model: # the model has some problem, we can't get the entry
       str_entry = str(entry)
       matches = token_pattern.match(str_entry)
@@ -466,18 +475,24 @@ class Klocalizer:
                     elif kconfig_types[str_entry] == "string":
                       if str_entry in approximate_config_original.keys():
                         write_to_content("%s\n" % (approximate_config_original[str_entry]))
+                      elif str_entry in nonbool_defs.keys():
+                        write_to_content("%s=\"%s\"\n" % (str_entry, nonbool_defs[str_entry]))
                       else:
-                        write_to_content( "%s=\n" % (str_entry) )
+                        write_to_content("%s=\n" % (str_entry) )
                     elif kconfig_types[str_entry] == "number":
                       if str_entry in approximate_config_original.keys():
                         write_to_content("%s\n" % (approximate_config_original[str_entry]))
+                      elif str_entry in nonbool_defs.keys():
+                        write_to_content("%s=%s\n" % (str_entry, nonbool_defs[str_entry]))
                       else:
                         write_to_content( "%s=0\n" % (str_entry) )
                     elif kconfig_types[str_entry] == "hex":
                       if str_entry in approximate_config_original.keys():
                         write_to_content("%s\n" % (approximate_config_original[str_entry]))
+                      elif str_entry in nonbool_defs.keys():
+                        write_to_content("%s=%s\n" % (str_entry, nonbool_defs[str_entry]))
                       else:
-                        write_to_content( "%s=0x0\n" % (str_entry) )
+                        write_to_content("%s=0x0\n" % (str_entry) )
                     else:
                       assert(False)
                   break
@@ -492,18 +507,24 @@ class Klocalizer:
             elif kconfig_types[str_entry] == "string":
               if str_entry in approximate_config_original.keys():
                 write_to_content("%s\n" % (approximate_config_original[str_entry]))
+              elif str_entry in nonbool_defs.keys():
+                write_to_content("%s=\"%s\"\n" % (str_entry, nonbool_defs[str_entry]))
               else:
-                write_to_content( "%s=\n" % (str_entry) )
+                write_to_content("%s=\n" % (str_entry) )
             elif kconfig_types[str_entry] == "number":
               if str_entry in approximate_config_original.keys():
                 write_to_content("%s\n" % (approximate_config_original[str_entry]))
+              elif str_entry in nonbool_defs.keys():
+                write_to_content("%s=%s\n" % (str_entry, nonbool_defs[str_entry]))
               else:
-                write_to_content( "%s=0\n" % (str_entry) )
+                write_to_content("%s=0\n" % (str_entry) )
             elif kconfig_types[str_entry] == "hex":
               if str_entry in approximate_config_original.keys():
                 write_to_content("%s\n" % (approximate_config_original[str_entry]))
+              elif str_entry in nonbool_defs.keys():
+                write_to_content("%s=%s\n" % (str_entry, nonbool_defs[str_entry]))
               else:
-                write_to_content( "%s=0x0\n" % (str_entry) )
+                write_to_content("%s=0x0\n" % (str_entry) )
             else:
               assert(False)
           else:
