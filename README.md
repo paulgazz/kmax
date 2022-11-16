@@ -58,7 +58,7 @@ This tool will automatically "fix" your .config file so that it builds the lines
     wget -O - https://raw.githubusercontent.com/appleseedlab/superc/master/scripts/install.sh | bash
     export COMPILER_INSTALL_PATH=$HOME/0day
     export CLASSPATH=/usr/share/java/org.sat4j.core.jar:/usr/share/java/json-lib.jar:${HOME}/.local/share/superc/z3-4.8.12-x64-glibc-2.31/bin/com.microsoft.z3.jar:${HOME}/.local/share/superc/JavaBDD/javabdd-1.0b2.jar:${HOME}/.local/share/superc/xtc.jar:${HOME}/.local/share/superc/superc.jar:${CLASSPATH}
-    export PATH=${PATH}:${HOME}/.local/bin/
+    export PATH=${HOME}/.local/bin/:${PATH}
 
 Too see it in action, start with a clone of the linux repository and create a patch file:
 
@@ -73,6 +73,8 @@ Now try using repair to update allnoconfig, which doesn't build all lines from t
     make ARCH=x86_64 allnoconfig
     klocalizer --repair .config -a x86_64 --include-mutex 6fc88c354f3af.diff
     KCONFIG_CONFIG=0-x86_64.config make ARCH=x86_64 olddefconfig clean kernel/bpf/cgroup.o net/ipv4/af_inet.o net/ipv4/udp.o net/ipv6/af_inet6.o net/ipv6/udp.o
+    koverage --config 0-x86_64.config --arch x86_64 --check-patch 6fc88c354f3af.diff -o coverage_results.json
+    cat coverage_results.json
     
 When using `--include-mutex`, the generated configuration files are exported as `NUM-ARCH.config`, since several configuration files may be needed when patches contain mutually-exclusive lines.
 
@@ -83,6 +85,7 @@ When using `--include-mutex`, the generated configuration files are exported as 
     cd ~/linux-5.16/
     make.cross ARCH=x86_64 allyesconfig
     koverage --config .config --arch x86_64 --check kernel/fork.c:[259,261] -o coverage_results.json
+    make allnoconfig; klocalizer -v --repair .config --include kernel/fork.c:[259]; rm -rf koverage_files/; koverage -v -a x86 --config .config --check kernel/fork.c:[259] -o coverage.out
 
 The coverage results are in `coverage_results.json`, which indicate that line 259 is included while 261 is excluded by allyesconfig, because the lines are under mutually-exclusive `#ifdef` branches.
 
