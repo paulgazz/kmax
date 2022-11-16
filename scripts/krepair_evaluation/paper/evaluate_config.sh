@@ -35,7 +35,7 @@ while getopts ${optstring} arg; do
 done
 shift $((OPTIND-1))
 
-if [ "$#" -lt 7 ]; then
+if [ "$#" -lt 6 ]; then
   echo "Illegal number of parameters"
   exit -1
 fi
@@ -59,16 +59,12 @@ config=$(realpath ${config})
 # the linux architecture to use
 arch=$4
 
-# mapping from source files to compilation unit names
-build_targets=$5
-build_targets=$(realpath ${build_targets})
-
 # formula cache storage directory for klocalizer
-formulacache=$6
+formulacache=$5
 formulacache=$(realpath ${formulacache})
 
 # this is the directory where output and intermediate files go
-outdir=$7
+outdir=$6
 if [ -d $outdir ]; then
   echo "ERROR: output directory already exists"
   exit 1
@@ -77,14 +73,14 @@ else
 fi
 outdir=$(realpath $outdir)
 
-build_flags=$8
+build_flags=$7
 
 # 1. check the coverage of the input configuration
 (cd ${linuxsrclone}; git clean -dfx)  # clean the repo
 koverage_time=${outdir}/koverage_time
 koverage_scratch=${outdir}/koverage_scratch
 koverage_outfile=${outdir}/koverage_outfile
-(cd ${linuxsrclone}; /usr/bin/time -f %e -o ${koverage_time} koverage --build-targets ${build_targets} --config ${config} --arch ${arch} --linux-ksrc ${linuxsrclone} --check-patch ${patch} --scratch-dir ${koverage_scratch} -o ${koverage_outfile})
+(cd ${linuxsrclone}; /usr/bin/time -f %e -o ${koverage_time} koverage --config ${config} --arch ${arch} --linux-ksrc ${linuxsrclone} --check-patch ${patch} --scratch-dir ${koverage_scratch} -o ${koverage_outfile})
 
 if [[ "${build_before}" != "" ]]; then
     # 2. build
@@ -109,8 +105,7 @@ if [[ "$?" == "0" ]]; then
     krepair_time=${outdir}/krepair.time
     krepair_configs=${outdir}/krepair_configs
     krepair_report=${outdir}/krepair_report
-    # (cd ${linuxsrclone}; /usr/bin/time -f %e -o ${krepair_time} klocalizer -v --build-targets ${build_targets} -a ${arch} --repair ${config} --include-mutex ${patch} --build-timeout ${make_timeout} --superc-timeout ${superc_timeout} --output ${krepair_configs} --coverage-report ${krepair_report} --formulas ${formulacache})
-    (cd ${linuxsrclone}; /usr/bin/time -f %e -o ${krepair_time} klocalizer -v --build-targets ${build_targets} --repair ${config} --include-mutex ${patch} --build-timeout ${make_timeout} --superc-timeout ${superc_timeout} --output ${krepair_configs} --coverage-report ${krepair_report} --formulas ${formulacache})
+    (cd ${linuxsrclone}; /usr/bin/time -f %e -o ${krepair_time} klocalizer -v --repair ${config} --include-mutex ${patch} --build-timeout ${make_timeout} --superc-timeout ${superc_timeout} --output ${krepair_configs} --coverage-report ${krepair_report} --formulas ${formulacache})
     if [[ "$?" == 0 ]]; then
 	numconfigs=$(ls ${krepair_configs} | wc -l)
 	if [[ ${numconfigs} -eq 1 ]]; then
@@ -121,7 +116,7 @@ if [[ "$?" == "0" ]]; then
 	    repaired_koverage_time=${outdir}/repaired_koverage_time
 	    repaired_koverage_scratch=${outdir}/repaired_koverage_scratch
 	    repaired_koverage_outfile=${outdir}/repaired_koverage_outfile
-	    (cd ${linuxsrclone}; /usr/bin/time -f %e -o ${repaired_koverage_time} koverage --build-targets ${build_targets} --config ${repaired_config} --arch ${discovered_arch} --linux-ksrc ${linuxsrclone} --check-patch ${patch} --scratch-dir ${repaired_koverage_scratch} -o ${repaired_koverage_outfile})
+	    (cd ${linuxsrclone}; /usr/bin/time -f %e -o ${repaired_koverage_time} koverage --config ${repaired_config} --arch ${discovered_arch} --linux-ksrc ${linuxsrclone} --check-patch ${patch} --scratch-dir ${repaired_koverage_scratch} -o ${repaired_koverage_outfile})
 
 	    grep EXCLUDED ${repaired_koverage_outfile}
 	    if [[ -f ${repaired_koverage_outfile} && "$?" != "0" ]]; then
@@ -156,7 +151,7 @@ if [[ "$?" == "0" ]]; then
 		repaired_koverage_time=${outdir}/repaired_koverage_time.${basename}
 		repaired_koverage_scratch=${outdir}/repaired_koverage_scratch.${basename}
 		repaired_koverage_outfile=${outdir}/repaired_koverage_outfile.${basename}
-		(cd ${linuxsrclone}; /usr/bin/time -f %e -o ${repaired_koverage_time} koverage --build-targets ${build_targets} --config ${repaired_config} --arch ${discovered_arch} --linux-ksrc ${linuxsrclone} --check-patch ${patch} --scratch-dir ${repaired_koverage_scratch} -o ${repaired_koverage_outfile})
+		(cd ${linuxsrclone}; /usr/bin/time -f %e -o ${repaired_koverage_time} koverage --config ${repaired_config} --arch ${discovered_arch} --linux-ksrc ${linuxsrclone} --check-patch ${patch} --scratch-dir ${repaired_koverage_scratch} -o ${repaired_koverage_outfile})
 	    done
 
 	    repaired_koverage_total=${outdir}/repaired_koverage_outfile

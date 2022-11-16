@@ -42,7 +42,7 @@ while getopts ${optstring} arg; do
 done
 shift $((OPTIND-1))
 
-if [ "$#" -lt 6 ]; then
+if [ "$#" -lt 5 ]; then
   echo "Illegal number of parameters"
   exit -1
 fi
@@ -51,9 +51,8 @@ linuxsrclone=${1}
 linuxsrclone=$(realpath ${linuxsrclone})
 commit=${2}
 arch=${3}
-build_targets=${4}
-formulacache=${5}
-outdir=${6}
+formulacache=${4}
+outdir=${5}
 if [ -d $outdir ]; then
   echo "ERROR: output directory already exists"
   exit 1
@@ -62,7 +61,7 @@ else
 fi
 outdir=$(realpath $outdir)
 
-build_flags=$7
+build_flags=$6
 
 patch=${outdir}/commit.patch
 
@@ -79,7 +78,7 @@ if [[ "${allnoconfig}" != "" ||  "${all}" != "" ]]; then
   (cd ${linuxsrclone}; KCONFIG_CONFIG=${config} make.cross ARCH=${arch} allnoconfig)
 
   results=${config_outdir}/results
-  bash ${script_dir}/evaluate_config.sh ${linuxsrclone} ${patch} ${config} ${arch} ${build_targets} ${formulacache} ${results} ${build_flags}
+  bash ${script_dir}/evaluate_config.sh ${linuxsrclone} ${patch} ${config} ${arch} ${formulacache} ${results} ${build_flags}
 fi
 
 # defconfig
@@ -97,7 +96,7 @@ if [[ "${defconfig}" != "" ||  "${all}" != "" || "${krepaironly}" != "" ]]; then
   fi
   
   results=${config_outdir}/results
-  bash ${script_dir}/evaluate_config.sh ${build_flags} ${linuxsrclone} ${patch} ${config} ${arch} ${build_targets} ${formulacache} ${results} ${build_flags}
+  bash ${script_dir}/evaluate_config.sh ${build_flags} ${linuxsrclone} ${patch} ${config} ${arch} ${formulacache} ${results} ${build_flags}
 fi
 
 # allyesconfig
@@ -109,5 +108,5 @@ if [[ "${allyesconfig}" != "" ||  "${all}" != "" ]]; then
   (cd ${linuxsrclone}; KCONFIG_CONFIG=${config} make.cross ARCH=${arch} allyesconfig)
 
   results=${config_outdir}/results
-  bash ${script_dir}/evaluate_config.sh -1 ${linuxsrclone} ${patch} ${config} ${arch} ${build_targets} ${formulacache} ${results} ${build_flags}
+  bash ${script_dir}/evaluate_config.sh -1 ${linuxsrclone} ${patch} ${config} ${arch} ${formulacache} ${results} ${build_flags}
 fi
