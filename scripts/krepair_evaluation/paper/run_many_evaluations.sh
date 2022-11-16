@@ -21,7 +21,7 @@ set -x
 # used to find other scripts called
 script_dir=$(dirname $(realpath $0))
 
-if [ "$#" -lt 6 ]; then
+if [ "$#" -lt 5 ]; then
   echo "Illegal number of parameters"
   exit -1
 fi
@@ -31,15 +31,14 @@ source=${1}
 linuxsrclone=${2}
 linuxsrclone=$(realpath ${linuxsrclone})
 arch=${3}
-build_targets=${4}
-formulacache=${5}
-outdir=${6}
-build_flags=${7}
+formulacache=${4}
+outdir=${5}
+build_flags=${6}
 
 run_eval() {
   commit=$1
   outdir_commit=${outdir}/${commit}
-  bash ${script_dir}/run_evaluate_config.sh ${linuxsrclone} ${commit} ${arch} ${build_targets} ${formulacache} ${outdir_commit} ${build_flags}
+  bash ${script_dir}/run_evaluate_config.sh ${linuxsrclone} ${commit} ${arch} ${formulacache} ${outdir_commit} ${build_flags}
 }
 
 # assume it's a server:port if there is a colon
