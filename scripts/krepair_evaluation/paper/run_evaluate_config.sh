@@ -90,13 +90,13 @@ if [[ "${defconfig}" != "" ||  "${all}" != "" || "${krepaironly}" != "" ]]; then
   (cd ${linuxsrclone}; KCONFIG_CONFIG=${config} make.cross ARCH=${arch} defconfig)
 
   if [[ "${krepaironly}" != "" ]]; then
-    build_flags=
+    build_stages=
   else
-    build_flags="-1 -2"
+    build_stages="-1 -2"
   fi
   
   results=${config_outdir}/results
-  bash ${script_dir}/evaluate_config.sh ${build_flags} ${linuxsrclone} ${patch} ${config} ${arch} ${formulacache} ${results} ${build_flags}
+  bash ${script_dir}/evaluate_config.sh ${build_stages} ${linuxsrclone} ${patch} ${config} ${arch} ${formulacache} ${results} ${build_flags}
 fi
 
 # allyesconfig
