@@ -58,7 +58,7 @@ from kmax.arch import Arch
 from kmax.klocalizer import builtin_rewrite_mapping, rewrite_directories, rewrite_build_target, builtin_build_targets
 
 from subprocess import TimeoutExpired
-from shutil import copyfile, which
+from shutil import copyfile, which, rmtree
 from enum import Enum
 
 logger = BasicLogger()
@@ -920,6 +920,9 @@ def main():
              """ intermediate files will be stored."""
              """  Defaults to "koverage_files/".""",
         default="koverage_files/")
+    argparser.add_argument("-f", "--force-overwrite-scratch-dir",
+        action="store_true",
+        help="""Remove and overwrite the scratch-dir if it exists.""")
     argparser.add_argument("-o", "--output",
         type=str,
         required=True,
@@ -951,6 +954,7 @@ def main():
     user_kbuild_path_rewrites = args.user_kbuild_path_rewrites
     linux_ksrc = args.linux_ksrc
     scratch_dir = args.scratch_dir
+    force_overwrite = args.force_overwrite_scratch_dir
     output_file = args.output
     verbose = args.verbose
 
@@ -993,12 +997,16 @@ def main():
     if os.path.exists(scratch_dir):
         if os.path.isfile(scratch_dir):
             logger.error("A file exists in the path to the scratch directory (\"%s\")."
-                "  Use a non-existing or empty scratch directory (--scratch-dir).\n" % scratch_dir)
+                "  Use a directory (--scratch-dir).\n" % scratch_dir)
             exit(KOVERAGE_EXITCODE_SCRATCHDIR_EXISTS)
         elif os.path.isdir(scratch_dir) and len(os.listdir(scratch_dir)) > 0:
-            logger.error("A non-empty scratch directory exists (\"%s\")."
-                "  Use a non-existing or empty scratch directory (--scratch-dir).\n" % scratch_dir)
-            exit(KOVERAGE_EXITCODE_SCRATCHDIR_EXISTS)
+            if force_overwrite:
+                logger.info("Removing existing scratch-dir (\"%s\").\n" % (scratch_dir))
+                rmtree(scratch_dir)
+            else:
+                logger.error("A non-empty scratch directory exists (\"%s\")."
+                    "  Use a non-existing or empty scratch directory (--scratch-dir).\n" % scratch_dir)
+                exit(KOVERAGE_EXITCODE_SCRATCHDIR_EXISTS)
     logger.info("Intermediate files will be saved in \"%s\"\n" % scratch_dir)
     os.makedirs(scratch_dir, exist_ok=True)
     os.makedirs(os.path.join(scratch_dir, "per_srcfile/"), exist_ok=True)
