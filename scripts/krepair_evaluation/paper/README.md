@@ -1,3 +1,12 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [Evaluation](#evaluation)
+  - [Sampling patches](#sampling-patches)
+    - [Filtering out non-source code patches](#filtering-out-non-source-code-patches)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Evaluation
 
 ## Sampling patches

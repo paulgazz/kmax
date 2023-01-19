@@ -1,3 +1,18 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [Test documentation](#test-documentation)
+  - [Longer test](#longer-test)
+    - [x86_64 on README.md version v5.16](#x86_64-on-readmemd-version-v516)
+    - [Replicate kismet paper](#replicate-kismet-paper)
+    - [Do v4.16](#do-v416)
+  - [Shorter tests](#shorter-tests)
+    - [Unavailable arch exception](#unavailable-arch-exception)
+    - [Missing Kconfig file error](#missing-kconfig-file-error)
+    - [False negative caused due to Kconfig output format](#false-negative-caused-due-to-kconfig-output-format)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Test documentation
 
 ## Longer test
