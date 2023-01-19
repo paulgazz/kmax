@@ -94,6 +94,7 @@ Initial reports in the weeks after integration:
 
 2022-11-10 [Report](https://bugzilla.kernel.org/show_bug.cgi?id=216678)
 2022-11-10 [Patch](https://lore.kernel.org/lkml/20221110214729.ls5ixav5kxpeftk7@device/)
+2022-12-05 [Commit](https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/?id=6ac12303572ef9ace5603c2c07f5f1b00a33f580)
 
 ### Manual reports during the evaluation of kismet
 
