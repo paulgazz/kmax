@@ -326,7 +326,7 @@ void print_python_symbol_detail(FILE *out, struct symbol *sym, bool force_naked)
     } else if (strcmp(sym->name, "n") == 0) {
       fprintf(out, "0");
     } else if (S_UNKNOWN == sym->type) {
-      fprintf(out, "\"%s\"", sym->name);
+      fprintf(out, "%s", sym_escape_string_value(sym->name));
     } else {
       if (! force_naked) {
         fprintf(out, "%s%s", config_prefix, sym->name);

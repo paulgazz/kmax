@@ -1,0 +1,4 @@
+config CONFIG_VISUAL_STUDIO_7_0_BASE
+    string "Base"
+    depends on CONFIG_VISUAL_STUDIO_7_0
+    default "c:\\Program Files\\Microsoft Visual Studio .NET 2003"
