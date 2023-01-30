@@ -1163,7 +1163,6 @@ def klocalizerCLI():
         elif "default" in approximate_configs:
           approximate_config = approximate_configs["default"]
         else:
-          assert(False)
           approximate_config = None
         if no_nonbool_preservation:
           approximate_config = None
@@ -1452,7 +1451,6 @@ def klocalizerCLI():
       elif "default" in approximate_configs:
         approximate_config = approximate_configs["default"]
       else:
-        assert(False)
         approximate_config = None
       if no_nonbool_preservation:
         approximate_config = None
@@ -1530,7 +1528,6 @@ def klocalizerCLI():
     elif "default" in approximate_configs:
       approximate_config = approximate_configs["default"]
     else:
-      assert(False)
       approximate_config = None
     if no_nonbool_preservation:
       approximate_config = None
