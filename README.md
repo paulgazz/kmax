@@ -85,7 +85,7 @@ When using `--include-mutex`, the generated configuration files are exported as 
     cd ~/linux-5.16/
     make.cross ARCH=x86_64 allyesconfig
     koverage --config .config --arch x86_64 --check kernel/fork.c:[259,261] -o coverage_results.json
-    make allnoconfig; klocalizer -v --repair .config --include kernel/fork.c:[259]; rm -rf koverage_files/; koverage -v -a x86 --config .config --check kernel/fork.c:[259] -o coverage.out
+    make allnoconfig; klocalizer -v --repair .config --include kernel/fork.c:[259]; rm -rf koverage_files/; koverage -v -a x86_64 --config .config --check kernel/fork.c:[259] -o coverage.out
 
 The coverage results are in `coverage_results.json`, which indicate that line 259 is included while 261 is excluded by allyesconfig, because the lines are under mutually-exclusive `#ifdef` branches.
 
