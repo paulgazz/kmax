@@ -87,12 +87,13 @@ if [[ "${build_before}" != "" ]]; then
     build_time=${outdir}/build.time
     build_size=${outdir}/build.size
     build_out=${outdir}/build.out
+    build_errcode=${outdir}/build.errcode
     olddefconfig=${outdir}/olddefconfig
     (cd ${linuxsrclone}; git clean -dfx)  # clean the repo
     cp ${config} ${linuxsrclone}/.config
     (cd ${linuxsrclone}; make.cross ARCH=${arch} olddefconfig)  # clean the repo
     cp ${linuxsrclone}/.config ${olddefconfig}
-    (cd ${linuxsrclone}; /usr/bin/time -f %e -o ${build_time} make.cross ${build_flags} ARCH=${arch} > ${build_out} 2>&1)
+    (cd ${linuxsrclone}; /usr/bin/time -f %e -o ${build_time} make.cross ${build_flags} ARCH=${arch} > ${build_out} 2>&1; echo ${?} > ${build_errcode})
     # measure size of build
     (cd ${linuxsrclone}; ls -lSrh arch/*/boot; find | grep "\.ko$" | xargs ls -lSrh) > ${build_size}
 fi
@@ -130,13 +131,14 @@ if [[ "$?" == "0" ]]; then
                 repaired_build_time=${outdir}/repaired_build.time
                 repaired_build_size=${outdir}/repaired_build.size
                 repaired_build_out=${outdir}/repaired_build.out
+		repaired_build_errcode=${outdir}/repaired_build.errcode
                 repaired_olddefconfig=${outdir}/repaired_olddefconfig
                 (cd ${linuxsrclone}; git clean -dfx)  # clean the repo
                 cp ${repaired_config} ${linuxsrclone}/.config
                 sed -i 's/CONFIG_PHYSICAL_START=0/CONFIG_PHYSICAL_START=0x1000000/' ${linuxsrclone}/.config
                 (cd ${linuxsrclone}; make.cross ARCH=${discovered_arch} olddefconfig)  # clean the repo
                 cp ${linuxsrclone}/.config ${repaired_olddefconfig}
-                (cd ${linuxsrclone}; /usr/bin/time -f %e -o ${repaired_build_time} make.cross ${build_flags} ARCH=${discovered_arch} > ${repaired_build_out} 2>&1)
+                (cd ${linuxsrclone}; /usr/bin/time -f %e -o ${repaired_build_time} make.cross ${build_flags} ARCH=${discovered_arch} > ${repaired_build_out} 2>&1; echo ${?} > ${repaired_build_errcode})
                 # measure size of build
                 (cd ${linuxsrclone}; ls -lSrh arch/*/boot; find | grep "\.ko$" | xargs ls -lSrh) > ${repaired_build_size}
 	    fi
@@ -172,6 +174,7 @@ if [[ "$?" == "0" ]]; then
 	    	    repaired_build_time=${outdir}/repaired_build.time.${basename}
 	    	    repaired_build_size=${outdir}/repaired_build.size.${basename}
 	    	    repaired_build_out=${outdir}/repaired_build.out.${basename}
+		    repaired_build_errcode=${outdir}/repaired_build.errcode.${basename}
 	    	    repaired_olddefconfig=${outdir}/repaired_olddefconfig.${basename}
 	    	    (cd ${linuxsrclone}; git clean -dfx)  # clean the repo
 	    	    cp ${repaired_config} ${linuxsrclone}/.config
