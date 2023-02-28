@@ -155,6 +155,9 @@ def klocalizerCLI():
   argparser.add_argument('--view-kbuild',
                          action="store_true",
                          help="""Just show the Kbuild constraints for the given compilation unit.  All other arguments are ignored.""")
+  argparser.add_argument("--save-smt",
+                         type=str,
+                         help="""Save the resulting formula in SMTLIB format to the given file.  This option will not create a .config file.""")
   argparser.add_argument("--save-dimacs",
                          type=str,
                          help="""Save the resulting formula in DIMACS format to the given file.  This option will not create a .config file.""")
@@ -309,6 +312,7 @@ def klocalizerCLI():
   sample_count = sample if sample is not None else 1
   sample_prefix = args.sample_prefix
   random_seed = args.random_seed
+  save_smt = args.save_smt
   save_dimacs = args.save_dimacs
   force_unmet_free = args.force_unmet_free
   allow_unmet_for = args.allow_unmet_for
@@ -656,6 +660,9 @@ def klocalizerCLI():
     if view_kbuild:
       logger.error("%s is incompatible with --view-kbuild.\n" % mutual_exclusion_str)
       exit(12)
+    if save_smt:
+      logger.error("%s is incompatible with --save-smt.\n" % mutual_exclusion_str)
+      exit(12)
     if save_dimacs:
       logger.error("%s is incompatible with --save-dimacs.\n" % mutual_exclusion_str)
       exit(12)
@@ -667,6 +674,15 @@ def klocalizerCLI():
       logger.error("--save-dimacs is incompatible with --report-all\n")
       exit(12)
     # current behavior is to not sample with z3 when outputting constraints in the DIMACS format
+    sample_count = 0
+
+  if save_smt:
+    if os.path.exists(save_smt):
+      logger.warning("Overwriting existing file with the SMT output: %s\n" % (save_smt))
+    if reportallarchs or sample:
+      logger.error("--save-smt is incompatible with --report-all\n")
+      exit(12)
+    # current behavior is to not sample with z3 when outputting constraints in the SMT format
     sample_count = 0
 
   if sample is not None:
@@ -1648,6 +1664,14 @@ def klocalizerCLI():
         solver.add(constraints)
         with open(dimacs_file_name, 'w') as dimacsf:
           dimacsf.write(solver.dimacs())
+
+      if save_smt:
+        smt_file_name = save_smt
+        logger.info("Writing constraints in SMT format to \"%s\".\n" % smt_file_name)
+        solver = z3.Solver()
+        solver.add(constraints)
+        with open(smt_file_name, 'w') as smtf:
+          smtf.write(solver.to_smt2())
 
       #
       # Sample configs
