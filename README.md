@@ -78,6 +78,17 @@ Now try using repair to update allnoconfig, which doesn't build all lines from t
     
 When using `--include-mutex`, the generated configuration files are exported as `NUM-ARCH.config`, since several configuration files may be needed when patches contain mutually-exclusive lines.
 
+## Using `klocalizer --save-dimacs` and `klocalizer --save-smt`
+
+This tool extracts a DIMACS or a SMT formula.
+Therefore, execute the following commands in the root directory of your Linux kernel:
+
+    klocalizer -a x86_64 --save-dimacs <Path>
+    klocalizer -a x86_64 --save-smt <Path>
+
+Note that `<Path>` should be replaced by the absolute path to the file, the formulae should be written to.
+If you intend to use a Docker container, feel free to use the Dockerfile provided in [Advanced Usage](https://github.com/paulgazz/kmax/blob/master/docs/advanced.md).
+
 ## Using `koverage`
 
 `koverage` checks whether a Linux configuration file includes a set of source file:line pairs for compilation.  This following checks whether lines 256 and 261 of `kernel/fork.c` are included for compilation by Linux v5.16 allyesconfig.
@@ -106,41 +117,6 @@ Once finished (it can take about an hour on a commodity desktop), kismet will pr
   3. A list of `.config` files meant to exercise each bug in `kismet-test-cases/`
 
 Technical details can be found in in the [kismet documentation](https://github.com/paulgazz/kmax/blob/master/docs/advanced.md#kismet) and the [publication](https://paulgazzillo.com/papers/esecfse21.pdf) on `kclause` and `kismet`.  The experiment [replication script](https://github.com/paulgazz/kmax/blob/master/scripts/kismet_evaluation/kismet_experiments_replication.sh) can be used to run kismet on all architectures' Kconfig specifications.
-
-## Extracting DIMACS and SMT models from Linux kernel
-
-We provide a Dockerfile for extracting the Linux kernel model as DIMACS and SMT as well.
-Refer to [Docker installation site](https://docs.docker.com/get-docker/) if you have not already installed Docker.
-The provided script works on v3.x and newer Linux kernels and takes the Linux version as an argument for the build command.
-Check out the [Linux kernel archive](https://mirrors.edge.kernel.org/pub/linux/kernel/) to select the Linux version of interest.
-For instance, we can use the script to generate the Linux kernel model for version `5.16`.
-
-Make sure that your docker service is running.
-If you use systemd, you can use:
-
-    sudo systemctl start docker
-
-To build the docker image, execute the following from the root directory of this repository and replace `<version>` by the kernel version number of interest (e.g., `5.16`):
-
-    sudo docker build -t kmax ./ --build-arg linux_version=<version>
-
-The build process takes some time.
-In the end, it produced a DIMACS and SMT model inside the image.
-To extract it, you have to start a container:
-
-    sudo docker run -d -t kmax
-
-You should get a container id. If not, you can additionally use the following command to retrieve the docker container id:
-
-    sudo docker container ls
-
-Afterwards, you can copy the files using `docker cp` to your current directory:
-
-    sudo docker cp <containerID>:/home/linux-<version>.smt .
-    sudo docker cp <containerID>:/home/linux-<version>.dimacs .
-
-Be aware to replace `<version>` by your provided version number.
-Now you can find a model in DIMACS and SMT of the given linux version.
 
 ## Additional documentation
 
