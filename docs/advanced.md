@@ -602,6 +602,41 @@ e.g., `allnoconfig`, with the `--approximate` flag.
         make.cross ARCH=mips olddefconfig
         make.cross ARCH=mips drivers/watchdog/pnx833x_wdt.o  # won't be included in the build, due to CONFIG_BROKEN
 
+## Extracting DIMACS and SMT models from Linux kernel
+
+We provide a Dockerfile for extracting the Linux kernel model as DIMACS and SMT as well.
+Refer to [Docker installation site](https://docs.docker.com/get-docker/) if you have not already installed Docker.
+The provided script works on v3.x and newer Linux kernels and takes the Linux version as an argument for the build command.
+Check out the [Linux kernel archive](https://mirrors.edge.kernel.org/pub/linux/kernel/) to select the Linux version of interest.
+For instance, we can use the script to generate the Linux kernel model for version `5.16`.
+
+Make sure that your docker service is running.
+If you use systemd, you can use:
+
+    sudo systemctl start docker
+
+To build the docker image, execute the following from the `scripts` directory of this repository and replace `<version>` by the kernel version number of interest (e.g., `5.16`):
+
+    sudo docker build -t kmax ./ --build-arg linux_version=<version>
+
+The build process takes some time.
+In the end, it produced a DIMACS and SMT model inside the image.
+To extract it, you have to start a container:
+
+    sudo docker run -d -t kmax
+
+You should get a container id. If not, you can additionally use the following command to retrieve the docker container id:
+
+    sudo docker container ls
+
+Afterwards, you can copy the files using `docker cp` to your current directory:
+
+    sudo docker cp <containerID>:/home/linux-<version>.smt .
+    sudo docker cp <containerID>:/home/linux-<version>.dimacs .
+
+Be aware to replace `<version>` by your provided version number.
+Now you can find a model in DIMACS and SMT of the given linux version.
+
 ## Formulas Cache Directory Structure
 
 The `.kmax` holds the formula cache to avoid having to regenerate

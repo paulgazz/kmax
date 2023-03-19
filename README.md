@@ -78,6 +78,17 @@ Now try using repair to update allnoconfig, which doesn't build all lines from t
     
 When using `--include-mutex`, the generated configuration files are exported as `NUM-ARCH.config`, since several configuration files may be needed when patches contain mutually-exclusive lines.
 
+## Using `klocalizer --save-dimacs` and `klocalizer --save-smt`
+
+This tool extracts a DIMACS or a SMT formula.
+Therefore, execute the following commands in the root directory of your Linux kernel:
+
+    klocalizer -a x86_64 --save-dimacs <Path>
+    klocalizer -a x86_64 --save-smt <Path>
+
+Note that `<Path>` should be replaced by the absolute path to the file, the formulae should be written to.
+If you intend to use a Docker container, feel free to use the Dockerfile provided in [Advanced Usage](https://github.com/paulgazz/kmax/blob/master/docs/advanced.md).
+
 ## Using `koverage`
 
 `koverage` checks whether a Linux configuration file includes a set of source file:line pairs for compilation.  This following checks whether lines 256 and 261 of `kernel/fork.c` are included for compilation by Linux v5.16 allyesconfig.
@@ -106,7 +117,6 @@ Once finished (it can take about an hour on a commodity desktop), kismet will pr
   3. A list of `.config` files meant to exercise each bug in `kismet-test-cases/`
 
 Technical details can be found in in the [kismet documentation](https://github.com/paulgazz/kmax/blob/master/docs/advanced.md#kismet) and the [publication](https://paulgazzillo.com/papers/esecfse21.pdf) on `kclause` and `kismet`.  The experiment [replication script](https://github.com/paulgazz/kmax/blob/master/scripts/kismet_evaluation/kismet_experiments_replication.sh) can be used to run kismet on all architectures' Kconfig specifications.
-
 
 ## Additional documentation
 
