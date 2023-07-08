@@ -37,8 +37,8 @@ def pick_version(kernel_version: str):
   elif version.parse(kernel_version) >= version.parse("3.19"):
     return "3.19"
   else:
-    # TODO: warn user that v3.19 is the current oldest version of kconfig supported
-    return "3.19"
+    # TODO: warn user that v3.2 is the current oldest version of kconfig supported
+    return "3.2"
 
 
 def kextract(module_version, args):
