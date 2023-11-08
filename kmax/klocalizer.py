@@ -447,7 +447,12 @@ class Klocalizer:
         val, expr = val_and_expr.split("|", 1)
         # TODO: this will use the last def if there are multiple ones.
         # use constraint solver to pick the right one.
-        nonbool_defs[var] = val[1:-1] # strip the quotes
+        if val.startswith('"') and val.endswith('"'):
+          nonbool_defs[var] = val[1:-1] # strip the quotes
+        else:
+          # default value is from another variable, so it won't have a quoted value
+          # TODO: support assigning default values from other config options
+          pass
     for entry in model: # the model has some problem, we can't get the entry
       str_entry = str(entry)
       matches = token_pattern.match(str_entry)
