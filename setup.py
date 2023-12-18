@@ -44,7 +44,7 @@ setup(
         'enum34',
         'regex',
         'z3-solver',
-        'dd',
+        'dd==0.5.7', # dd requires networkx >= 2.4 starting from 0.6.0
         'networkx==2.2', # for dd to work on python2
         'requests',
         'whatthepatch',
