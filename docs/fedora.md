@@ -41,15 +41,6 @@ Install dependencies for compiling Linux source, then download and enter the Lin
     tar -xvf linux-5.16.tar.xz
     cd ~/linux-5.16/
 
-<!-- EVERYTHING PAST HERE IS CURRENTLY UNCHANGED FROM THE DEFAULT INSTALL INSTRUCTIONS, STILL NEED TO TEST ABOVE CHANGES -->
-
-
-
-
-
-
-
-
 Run `klocalizer --repair` to modify `allnoconfig` so that builds a given compilation unit:
 
     make ARCH=x86_64 allnoconfig
@@ -63,7 +54,8 @@ You should see `CC      drivers/usb/storage/alauda.o` at the end of the build.
 
 This tool will automatically "fix" your .config file so that it builds the lines from a given patchfile (or any specific files or file:line pairs).  To use it, first install [SuperC](https://github.com/appleseedlab/superc), which `klocalizer` depends on for finding`#ifdef` constraints:
 
-    sudo apt-get install -y libz3-java libjson-java sat4j unzip flex bison bc libssl-dev libelf-dev xz-utils lftp
+<!-- TODO: Seems there is no RHEL equivalent of libjson-java and xz-utils. The rest of these packages are available. If these packages are critical krepair may not work on Fedora. -->
+    sudo dnf install -y java-z3 libjson-java sat4j unzip flex bison bc openssl-devel elfutils-libelf-devel xz-utils lftp
     wget -O - https://raw.githubusercontent.com/appleseedlab/superc/master/scripts/install.sh | bash
     export COMPILER_INSTALL_PATH=$HOME/0day
     export CLASSPATH=/usr/share/java/org.sat4j.core.jar:/usr/share/java/json-lib.jar:${HOME}/.local/share/superc/z3-4.8.12-x64-glibc-2.31/bin/com.microsoft.z3.jar:${HOME}/.local/share/superc/JavaBDD/javabdd-1.0b2.jar:${HOME}/.local/share/superc/xtc.jar:${HOME}/.local/share/superc/superc.jar:${CLASSPATH}
