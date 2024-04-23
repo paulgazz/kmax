@@ -21,30 +21,48 @@
 
 ### Installing the kmax tool suite
 
-Install the requiste python tools (the kmax tool suite currently depends on python 3.8 or later), setup a python virtual environment (recommended), and finally install the tools from pip.
+Install using pipx.
 
-    sudo apt install -y python3 python3-pip python3-venv
-    python3 -m venv ~/env_kmax/
-    source ~/env_kmax/bin/activate
-    pip3 install kmax
+    sudo apt install -y pipx
+    pipx install kmax
 
 Instructions to install from source can be found in the [advanced documentation](https://github.com/paulgazz/kmax/blob/master/docs/advanced.md).
 
+#### Installing SuperC (recommended)
+
+[SuperC](https://github.com/appleseedlab/superc) allows `klocalizer` to find `#ifdef` constraints.
+
+    # install superc
+    sudo apt-get install -y libz3-java libjson-java sat4j unzip flex bison bc libssl-dev libelf-dev xz-utils lftp
+    wget -O - https://raw.githubusercontent.com/appleseedlab/superc/master/scripts/install.sh | bash
+    
+    # setup environment
+    export COMPILER_INSTALL_PATH=$HOME/0day
+    export CLASSPATH=/usr/share/java/org.sat4j.core.jar:/usr/share/java/json-lib.jar:${HOME}/.local/share/superc/z3-4.8.12-x64-glibc-2.31/bin/com.microsoft.z3.jar:${HOME}/.local/share/superc/JavaBDD/javabdd-1.0b2.jar:${HOME}/.local/share/superc/xtc.jar:${HOME}/.local/share/superc/superc.jar:${CLASSPATH}
+    export PATH=${HOME}/.local/bin/:${PATH}
+
+Add the environment variables to your `.bash_profile` to make them permanent.
 
 ### Kicking the tires
 
-Install dependencies for compiling Linux source, then download and enter the Linux source:
+Install Linux kernel compilation dependencies:
 
     sudo apt install -y flex bison bc libssl-dev libelf-dev
+    
+Get the Linux kernel source:
+
     cd ~/
     wget https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.16.tar.xz
     tar -xvf linux-5.16.tar.xz
     cd ~/linux-5.16/
 
-Run `klocalizer --repair` to modify `allnoconfig` so that builds a given compilation unit:
+Test `klocalizer` by automatically repair `allnoconfig` to build `drivers/usb/storage/alauda.o`, which would normally be omitted by `allnoconfig`.
 
+    # create allnoconfig
     make ARCH=x86_64 allnoconfig
+    # run klocalizer to repair allnoconfig to build alauda.c
     klocalizer --repair .config -o allnoconfig_repaired --include drivers/usb/storage/alauda.o
+    # clean and build the kernel with the repair config file
     KCONFIG_CONFIG=allnoconfig_repaired make ARCH=x86_64 olddefconfig clean drivers/usb/storage/alauda.o
     
 You should see `CC      drivers/usb/storage/alauda.o` at the end of the build.
@@ -52,31 +70,40 @@ You should see `CC      drivers/usb/storage/alauda.o` at the end of the build.
 
 ## Using `klocalizer --repair` on patches
 
-This tool will automatically "fix" your .config file so that it builds the lines from a given patchfile (or any specific files or file:line pairs).  To use it, first install [SuperC](https://github.com/appleseedlab/superc), which `klocalizer` depends on for finding`#ifdef` constraints:
+`klocalizer` will take config file that fails to build lines of a patch and repairs it to build the whole patch.  This requires installing [SuperC](https://github.com/appleseedlab/superc) as described above.
 
-    sudo apt-get install -y libz3-java libjson-java sat4j unzip flex bison bc libssl-dev libelf-dev xz-utils lftp
-    wget -O - https://raw.githubusercontent.com/appleseedlab/superc/master/scripts/install.sh | bash
-    export COMPILER_INSTALL_PATH=$HOME/0day
-    export CLASSPATH=/usr/share/java/org.sat4j.core.jar:/usr/share/java/json-lib.jar:${HOME}/.local/share/superc/z3-4.8.12-x64-glibc-2.31/bin/com.microsoft.z3.jar:${HOME}/.local/share/superc/JavaBDD/javabdd-1.0b2.jar:${HOME}/.local/share/superc/xtc.jar:${HOME}/.local/share/superc/superc.jar:${CLASSPATH}
-    export PATH=${HOME}/.local/bin/:${PATH}
-
-Too see it in action, start with a clone of the linux repository and create a patch file:
+Let's first get an example patch from the Linux kernel's mainline repository:
 
     cd ~/
     git clone git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
     cd ~/linux/
     git checkout 6fc88c354f3af
     git show > 6fc88c354f3af.diff
-    
-Now try using repair to update allnoconfig, which doesn't build all lines from the patch.  After repair, the resulting configuration file builds the lines affected by the patch.  The last command builds the files affected by the patch, which would have failed with an unrepaired allnoconfig.
 
+Next, let's repair allnoconfig, which does not build all lines from the patch.
+
+    # create allnoconfig
     make ARCH=x86_64 allnoconfig
+    # run klocalizer to repair allnoconfig to include the patch
     klocalizer --repair .config -a x86_64 --include-mutex 6fc88c354f3af.diff
+    # clean and build the files modified by the patch (optionally build the whole kernel)
     KCONFIG_CONFIG=0-x86_64.config make ARCH=x86_64 olddefconfig clean kernel/bpf/cgroup.o net/ipv4/af_inet.o net/ipv4/udp.o net/ipv6/af_inet6.o net/ipv6/udp.o
+
+We can use `koverage` to check how much of patch is covered by a given config file:
+
     koverage --config 0-x86_64.config --arch x86_64 --check-patch 6fc88c354f3af.diff -o coverage_results.json
     cat coverage_results.json
-    
-When using `--include-mutex`, the generated configuration files are exported as `NUM-ARCH.config`, since several configuration files may be needed when patches contain mutually-exclusive lines.
+
+In contrast, we can see that `allnoconfig` omits coverage of the patch:
+
+    make ARCH=x86_64 allnoconfig
+    koverage -f --config .config --arch x86_64 --check-patch 6fc88c354f3af.diff -o allnoconfig_coverage_results.json
+    cat allnoconfig_coverage_results.json
+
+Notes:
+
+- While repair usually covers all lines of a patch, some lines may still be omitted, for instance if they are dead code or in header files.
+- If a patch modifies both arms of an `#ifdef`, multiple config files are needed to cover all lines.  These are exported as `NUM-ARCH.config`.
 
 ## Using `klocalizer --save-dimacs` and `klocalizer --save-smt`
 
