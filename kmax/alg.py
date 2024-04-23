@@ -1025,7 +1025,7 @@ class Kbuild:
                 for include_file in include_files.split():
                     obj = os.path.dirname(include_file)
                     if os.path.exists(include_file):
-                        include_makefile = open(include_file, "rU")
+                        include_makefile = open(include_file, "r")
                         s = include_makefile.read()
                         include_makefile.close()
                         include_stmts = parser.parsestring(s, include_makefile.name)
@@ -1096,7 +1096,7 @@ class Run:
         makefile = self.get_makefile(path)
 
         path = os.path.dirname(makefile)
-        makefile = open(makefile, "rU")
+        makefile = open(makefile, "r")
 
         s = makefile.read()
         makefile.close()
