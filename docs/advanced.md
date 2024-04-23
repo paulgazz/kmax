@@ -91,12 +91,12 @@ Clone and install kmax
     cd kmax
     python3 -m venv ~/kmax_env/
     source ~/kmax_env/bin/activate
-    python3 setup.py install
+    pip3 install ./
 
 Alternatively, installing for development to obviate the need to
-rereun setup.py when making changes to the code
+reinstall when making changes to the code
 
-    python3 setup.py develop
+    pip3 install -e ./
 
 
 ## `klocalizer` and `krepair`
