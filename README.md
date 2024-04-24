@@ -30,7 +30,7 @@ Instructions to install from source can be found in the [advanced documentation]
 
 #### Installing SuperC (recommended)
 
-[SuperC](https://github.com/appleseedlab/superc) allows `klocalizer` to find `#ifdef` constraints.
+[SuperC](https://github.com/appleseedlab/superc) allows `klocalizer` to find `#ifdef` constraints.  This also installs `make.cross`, which is necessary for Linux cross-compilation, used when running klocalizer for architectures other than `x86_64`.
 
     # install superc
     sudo apt-get install -y wget libz3-java libjson-java sat4j unzip flex bison bc libssl-dev libelf-dev xz-utils lftp
