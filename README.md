@@ -106,6 +106,20 @@ Notes:
 - While repair usually covers all lines of a patch, some lines may still be omitted, for instance if they are dead code or in header files.
 - If a patch modifies both arms of an `#ifdef`, multiple config files are needed to cover all lines.  These are exported as `NUM-ARCH.config`.
 
+### The paper example
+
+Here is another example from the [krepair paper](https://paulgazzillo.com/papers/fse24.pdf).  This [patch](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=8594c3b85171b6f68e34e07b533ec2f1bf7fb065) modifies code in both arms of an `#ifdef`, so a single `.config` file cannot cover all patched lines.  `klocalizer` emits two `.config` files, which together cover all lines.
+
+    git checkout 8594c3b85171b
+    git show > 8594c3b85171b.diff
+	make ARCH=arm allnoconfig
+    klocalizer --repair .config -a arm --include-mutex 8594c3b85171b.diff
+    koverage -f --config 0-arm.config --arch arm --check-patch 8594c3b85171b.diff -o 0-coverage_results.json
+    koverage -f --config 1-arm.config --arch arm --check-patch 8594c3b85171b.diff -o 1-coverage_results.json
+    cat 0-coverage_results.json
+    cat 1-coverage_results.json
+	diff -y 0-coverage_results.json 1-coverage_results.json | less
+
 ## Using `klocalizer --save-dimacs` and `klocalizer --save-smt`
 
 This tool extracts a DIMACS or a SMT formula.
