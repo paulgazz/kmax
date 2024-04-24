@@ -23,7 +23,7 @@
 
 Install using pipx.
 
-    sudo apt install -y pipx
+    sudo apt install -y pipx python3-dev gcc build-essential
     pipx install kmax
 
 Instructions to install from source can be found in the [advanced documentation](https://github.com/paulgazz/kmax/blob/master/docs/advanced.md).
@@ -33,7 +33,7 @@ Instructions to install from source can be found in the [advanced documentation]
 [SuperC](https://github.com/appleseedlab/superc) allows `klocalizer` to find `#ifdef` constraints.
 
     # install superc
-    sudo apt-get install -y libz3-java libjson-java sat4j unzip flex bison bc libssl-dev libelf-dev xz-utils lftp
+    sudo apt-get install -y wget libz3-java libjson-java sat4j unzip flex bison bc libssl-dev libelf-dev xz-utils lftp
     wget -O - https://raw.githubusercontent.com/appleseedlab/superc/master/scripts/install.sh | bash
     
     # setup environment
@@ -74,6 +74,7 @@ You should see `CC      drivers/usb/storage/alauda.o` at the end of the build.
 
 Let's first get an example patch from the Linux kernel's mainline repository:
 
+    apt install -y git
     cd ~/
     git clone git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
     cd ~/linux/
