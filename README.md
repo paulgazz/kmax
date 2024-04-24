@@ -87,8 +87,8 @@ Next, let's repair allnoconfig, which does not build all lines from the patch.
     make ARCH=x86_64 allnoconfig
     # run klocalizer to repair allnoconfig to include the patch
     klocalizer --repair .config -a x86_64 --include-mutex 6fc88c354f3af.diff
-    # clean and build the files modified by the patch (optionally build the whole kernel)
-    KCONFIG_CONFIG=0-x86_64.config make ARCH=x86_64 olddefconfig clean kernel/bpf/cgroup.o net/ipv4/af_inet.o net/ipv4/udp.o net/ipv6/af_inet6.o net/ipv6/udp.o
+    # clean and build the files modified by the patch (WERROR=0 for tools/lib/subcmd/subcmd-util.h which triggers a use-after-free on gcc 13)
+    KCONFIG_CONFIG=0-x86_64.config make WERROR=0 ARCH=x86_64 olddefconfig clean kernel/bpf/cgroup.o net/ipv4/af_inet.o net/ipv4/udp.o net/ipv6/af_inet6.o net/ipv6/udp.o
 
 We can use `koverage` to check how much of patch is covered by a given config file:
 
