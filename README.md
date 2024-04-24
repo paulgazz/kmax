@@ -92,7 +92,7 @@ Next, let's repair allnoconfig, which does not build all lines from the patch.
 
 We can use `koverage` to check how much of patch is covered by a given config file:
 
-    koverage --config 0-x86_64.config --arch x86_64 --check-patch 6fc88c354f3af.diff -o coverage_results.json
+    koverage -f --config 0-x86_64.config --arch x86_64 --check-patch 6fc88c354f3af.diff -o coverage_results.json
     cat coverage_results.json
 
 In contrast, we can see that `allnoconfig` omits coverage of the patch:
