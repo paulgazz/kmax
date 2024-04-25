@@ -40,34 +40,38 @@ Add these environment variables to your shell, e.g., `.bash_profile`:
 
     pipx install kmax
 
+### Quick test
     
-Get the Linux kernel source:
+Get Linux kernel source:
 
     cd ~/
     wget https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.16.tar.xz
     tar -xvf linux-5.16.tar.xz
     cd ~/linux-5.16/
 
-Test `klocalizer` by automatically repair `allnoconfig` to build `drivers/usb/storage/alauda.o`, which would normally be omitted by `allnoconfig`.
+Test `krepair` by automatically repairing `allnoconfig` to include `drivers/usb/storage/alauda.o`, which would normally be omitted by `allnoconfig`.
 
     # create allnoconfig
     make ARCH=x86_64 allnoconfig
-    # run klocalizer to repair allnoconfig to build alauda.c
+    # run klocalizer --repair allnoconfig to build alauda.c
     klocalizer --repair .config -o allnoconfig_repaired --include drivers/usb/storage/alauda.o
     # clean and build the kernel with the repair config file
     KCONFIG_CONFIG=allnoconfig_repaired make ARCH=x86_64 olddefconfig clean drivers/usb/storage/alauda.o
     
 You should see `CC      drivers/usb/storage/alauda.o` at the end of the build.
 
+## Using `krepair` on patches
 
-## Using `klocalizer --repair` on patches
+`klocalizer --repair` will take a config file that fails to build lines of a patch and repairs it to build the whole patch. 
+This uses [SuperC](https://github.com/appleseedlab/superc) to find `#ifdef` constraints.
 
-`klocalizer` will take config file that fails to build lines of a patch and repairs it to build the whole patch.  This requires installing [SuperC](https://github.com/appleseedlab/superc) as described above.
-
-Let's first get an example patch from the Linux kernel's mainline repository:
+Let's first get the Linux source code:
 
     cd ~/
     git clone git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+	
+Now let's get an example patch from the Linux kernel's mainline repository:	
+	
     cd ~/linux/
     git checkout 6fc88c354f3af
     git show > 6fc88c354f3af.diff
@@ -75,11 +79,11 @@ Let's first get an example patch from the Linux kernel's mainline repository:
 Next, let's repair allnoconfig, which does not build all lines from the patch.
 
     # create allnoconfig
-    make ARCH=x86_64 allnoconfig
+    make.cross ARCH=x86_64 allnoconfig
     # run klocalizer to repair allnoconfig to include the patch
     klocalizer --repair .config -a x86_64 --include-mutex 6fc88c354f3af.diff
     # clean and build the files modified by the patch (WERROR=0 for tools/lib/subcmd/subcmd-util.h which triggers a use-after-free on gcc 13)
-    KCONFIG_CONFIG=0-x86_64.config make WERROR=0 ARCH=x86_64 olddefconfig clean kernel/bpf/cgroup.o net/ipv4/af_inet.o net/ipv4/udp.o net/ipv6/af_inet6.o net/ipv6/udp.o
+    KCONFIG_CONFIG=0-x86_64.config make.cross WERROR=0 ARCH=x86_64 olddefconfig clean kernel/bpf/cgroup.o net/ipv4/af_inet.o net/ipv4/udp.o net/ipv6/af_inet6.o net/ipv6/udp.o
 
 We can use `koverage` to check how much of patch is covered by a given config file:
 
@@ -88,7 +92,7 @@ We can use `koverage` to check how much of patch is covered by a given config fi
 
 In contrast, we can see that `allnoconfig` omits coverage of the patch:
 
-    make ARCH=x86_64 allnoconfig
+    make.cross ARCH=x86_64 allnoconfig
     koverage -f --config .config --arch x86_64 --check-patch 6fc88c354f3af.diff -o allnoconfig_coverage_results.json
     cat allnoconfig_coverage_results.json
 
@@ -103,7 +107,7 @@ Here is another example from the [krepair paper](https://paulgazzillo.com/papers
 
     git checkout 8594c3b85171b
     git show > 8594c3b85171b.diff
-	make ARCH=arm allnoconfig
+	make.cross ARCH=arm allnoconfig
     klocalizer --repair .config -a arm --include-mutex 8594c3b85171b.diff
     koverage -f --config 0-arm.config --arch arm --check-patch 8594c3b85171b.diff -o 0-coverage_results.json
     koverage -f --config 1-arm.config --arch arm --check-patch 8594c3b85171b.diff -o 1-coverage_results.json
@@ -111,33 +115,20 @@ Here is another example from the [krepair paper](https://paulgazzillo.com/papers
     cat 1-coverage_results.json
 	diff -y 0-coverage_results.json 1-coverage_results.json | less
 
-## Using `klocalizer --save-dimacs` and `klocalizer --save-smt`
-
-This tool extracts a DIMACS or a SMT formula.
-Therefore, execute the following commands in the root directory of your Linux kernel:
-
-    klocalizer -a x86_64 --save-dimacs <Path>
-    klocalizer -a x86_64 --save-smt <Path>
-
-Note that `<Path>` should be replaced by the absolute path to the file, the formulae should be written to.
-If you intend to use a Docker container, feel free to use the Dockerfile provided in [Advanced Usage](https://github.com/paulgazz/kmax/blob/master/docs/advanced.md).
-
-## Using `koverage`
-
-`koverage` checks whether a Linux configuration file includes a set of source file:line pairs for compilation.  This following checks whether lines 256 and 261 of `kernel/fork.c` are included for compilation by Linux v5.16 allyesconfig.
-
-    cd ~/linux-5.16/
-    make.cross ARCH=x86_64 allyesconfig
-    koverage --config .config --arch x86_64 --check kernel/fork.c:[259,261] -o coverage_results.json
-    make allnoconfig; klocalizer -v --repair .config --include kernel/fork.c:[259]; rm -rf koverage_files/; koverage -v -a x86_64 --config .config --check kernel/fork.c:[259] -o coverage.out
-
-The coverage results are in `coverage_results.json`, which indicate that line 259 is included while 261 is excluded by allyesconfig, because the lines are under mutually-exclusive `#ifdef` branches.
-
-Use `--check-patch file.patch` to check coverage of all source lines affected by a given patch.
-
 ## Using `kismet`
 
 This tool will check for unmet dependency bugs in [Kconfig specifications](https://www.kernel.org/doc/html/latest/kbuild/kconfig-language.html#menu-attributes) due to reverse dependencies overriding direct dependencies.
+
+### Checking a single select construct
+
+Found by [Intel's kernel test robot running kismet](https://lore.kernel.org/lkml/cc9905dd-5b66-d01e-491c-64c18198d208@intel.com/)
+
+    git checkout 5a7f27a624d9e33262767b328aa7a4baf7846c14
+    kismet --linux-ksrc=./ --selectees CONFIG_SND_SOC_MAX98357A --selectors CONFIG_SND_SOC_INTEL_SOF_CS42L42_MACH -a=x86_64
+
+The alarm can be found in `kismet_summary_x86_64.csv` and `.config` files that exercise the bug can be found in `kismet-test-cases/`.
+
+### Checking all Kconfig files for an architecture
 
 Run `kismet` on the root of the Linux source tree.
 
@@ -150,6 +141,17 @@ Once finished (it can take about an hour on a commodity desktop), kismet will pr
   3. A list of `.config` files meant to exercise each bug in `kismet-test-cases/`
 
 Technical details can be found in in the [kismet documentation](https://github.com/paulgazz/kmax/blob/master/docs/advanced.md#kismet) and the [publication](https://paulgazzillo.com/papers/esecfse21.pdf) on `kclause` and `kismet`.  The experiment [replication script](https://github.com/paulgazz/kmax/blob/master/scripts/kismet_evaluation/kismet_experiments_replication.sh) can be used to run kismet on all architectures' Kconfig specifications.
+
+## Using `klocalizer --save-dimacs` and `klocalizer --save-smt`
+
+This tool extracts a DIMACS or a SMT formula.
+Therefore, execute the following commands in the root directory of your Linux kernel:
+
+    klocalizer -a x86_64 --save-dimacs <Path>
+    klocalizer -a x86_64 --save-smt <Path>
+
+Note that `<Path>` should be replaced by the absolute path to the file, the formulae should be written to.
+If you intend to use a Docker container, feel free to use the Dockerfile provided in [Advanced Usage](https://github.com/paulgazz/kmax/blob/master/docs/advanced.md).
 
 ## Additional documentation
 
