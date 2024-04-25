@@ -17,37 +17,29 @@
 
 # The kmax tool suite
 
-## Getting started
+## Installation
 
-### Installing the kmax tool suite
+### Dependencies
 
-Install using pipx.
-
+    # kmax dependencies
     sudo apt install -y pipx python3-dev gcc build-essential
-    pipx install kmax
-
-Instructions to install from source can be found in the [advanced documentation](https://github.com/paulgazz/kmax/blob/master/docs/advanced.md).
-
-#### Installing SuperC (recommended)
-
-[SuperC](https://github.com/appleseedlab/superc) allows `klocalizer` to find `#ifdef` constraints.  This also installs `make.cross`, which is necessary for Linux cross-compilation, used when running klocalizer for architectures other than `x86_64`.
-
-    # install superc
-    sudo apt-get install -y wget libz3-java libjson-java sat4j unzip flex bison bc libssl-dev libelf-dev xz-utils lftp
+    # linux dependencies
+    sudo apt install -y flex bison bc libssl-dev libelf-dev git
+    # superc dependencies
+    sudo apt install -y wget libz3-java libjson-java sat4j unzip xz-utils lftp
+    # install superc and make.cross
     wget -O - https://raw.githubusercontent.com/appleseedlab/superc/master/scripts/install.sh | bash
-    
-    # setup environment
+
+Add these environment variables to your shell, e.g., `.bash_profile`:
+
     export COMPILER_INSTALL_PATH=$HOME/0day
     export CLASSPATH=/usr/share/java/org.sat4j.core.jar:/usr/share/java/json-lib.jar:${HOME}/.local/share/superc/z3-4.8.12-x64-glibc-2.31/bin/com.microsoft.z3.jar:${HOME}/.local/share/superc/JavaBDD/javabdd-1.0b2.jar:${HOME}/.local/share/superc/xtc.jar:${HOME}/.local/share/superc/superc.jar:${CLASSPATH}
     export PATH=${HOME}/.local/bin/:${PATH}
 
-Add the environment variables to your `.bash_profile` to make them permanent.
+### Installing the kmax tool suite
 
-### Kicking the tires
+    pipx install kmax
 
-Install Linux kernel compilation dependencies:
-
-    sudo apt install -y flex bison bc libssl-dev libelf-dev
     
 Get the Linux kernel source:
 
@@ -74,7 +66,6 @@ You should see `CC      drivers/usb/storage/alauda.o` at the end of the build.
 
 Let's first get an example patch from the Linux kernel's mainline repository:
 
-    apt install -y git
     cd ~/
     git clone git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
     cd ~/linux/
