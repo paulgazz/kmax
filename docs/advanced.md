@@ -21,6 +21,7 @@
   - [Using merge_config.sh instead of olddefconfig](#using-merge_configsh-instead-of-olddefconfig)
   - [Klocalizer](#klocalizer)
     - [Troubleshooting](#troubleshooting)
+  - [Extracting DIMACS and SMT models from Linux kernel](#extracting-dimacs-and-smt-models-from-linux-kernel)
   - [Formulas Cache Directory Structure](#formulas-cache-directory-structure)
   - [Generating Formulas for BusyBox](#generating-formulas-for-busybox)
     - [Test out `klocalizer` on BusyBox](#test-out-klocalizer-on-busybox)
