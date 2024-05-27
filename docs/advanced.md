@@ -660,6 +660,10 @@ Prepare directories for formulas:
 
     mkdir .kmax/
 
+Generate the Config.in files:
+
+	make gen_build_files
+
 Get the Kconfig constraint formulas:
 
     kextract --module-version 3.19 --extract Config.in > .kmax/kextract
