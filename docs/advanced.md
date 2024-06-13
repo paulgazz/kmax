@@ -863,3 +863,13 @@ Then, from the root of a Linux source tree, run the following:
 - `bi_line` and `contraint_line` allow for converting expressions
   directly to the DIMACS format.  Any variables used must be declared
   first with a `config_line`.
+
+## Adding a new kextract module for a different version of Kconfig
+
+- Copy scripts/kconfig to kextractors (following naming pattern)
+- Copy kextractor.c, kextractor_extension.c, Makefile, and README.md from nearby version
+- Update expr.h and others based on README.md
+- Update kextractor_extension.c to have updated version name (e.g., `3_19` to `3_2`)
+- Add the extension's list of files to setup.py
+- Add the extension's list variable name to ext_modules in setup.py
+- Add a mapping from the version number to the module in kmax/kextractcommon.py
