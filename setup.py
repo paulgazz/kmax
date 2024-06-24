@@ -21,6 +21,9 @@ kextractor_4_12_8 = Extension('kextractor_4_12_8', [ 'kextractors/kextractor-4.1
 
 kextractor_4_18 = Extension('kextractor_4_18', [ 'kextractors/kextractor-4.18/kextractor_extension.c', 'kextractors/kextractor-4.18/kextractor.c', 'kextractors/kextractor-4.18/zconf.tab.c'], include_dirs=['kextractors/kextractor-4.18/'])
 
+kextractor_5_3 = Extension('kextractor_5_3', [ 'kextractors/kextractor-5.3/kextractor_extension.c', 'kextractors/kextractor-5.3/kextractor.c', 'kextractors/kextractor-5.3/confdata.c', 'kextractors/kextractor-5.3/expr.c', 'kextractors/kextractor-5.3/preprocess.c', 'kextractors/kextractor-5.3/lexer.lex.c', 'kextractors/kextractor-5.3/parser.tab.c', 'kextractors/kextractor-5.3/symbol.c'], include_dirs=['kextractors/kextractor-5.3/'])
+
+
 setup(
     name = about['__title__'],
     version = about['__version__'],
@@ -33,7 +36,7 @@ setup(
     keywords = "makefile kconfig kbuild configurations kmax kclause klocalizer",
     url = "https://github.com/paulgazz/kmax",
     packages=['kmax', 'pymake'],
-    ext_modules = [ kextractor_next_20210426, kextractor_next_20200430, kextractor_3_19, kextractor_4_12_8, kextractor_4_18 ],
+    ext_modules = [ kextractor_next_20210426, kextractor_next_20200430, kextractor_3_19, kextractor_4_12_8, kextractor_4_18, kextractor_5_3 ],
     classifiers=[
         "Development Status :: 4 - Beta",
         "Topic :: Utilities",
