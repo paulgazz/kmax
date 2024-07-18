@@ -529,9 +529,10 @@ if __name__ == '__main__':
   # Optimized test
   #
   # do optimized-constraints pass -- the SAT solver pass only on optimized constraints -- without full kclause constraints
-  def dump_optimizedtest_progress():
-    current_time = datetime.datetime.now().strftime("%H:%M:%S")
-    info("%s Optimized SAT pass progress: %s." % (current_time, dumps_progress(checked, total_to_check)), ending="\r")
+  # def dump_optimizedtest_progress():
+  #   current_time = datetime.datetime.now().strftime("%H:%M:%S")
+  #   info("%s Optimized SAT pass progress: %s." % (current_time, dumps_progress(checked, total_to_check)), ending="\r")
+
   # get set of triples to check
   triples = [ (selectee, selector, visib_id) for selectee in unmet_constraints for selector in unmet_constraints[selectee] for visib_id in unmet_constraints[selectee][selector] ]
 
@@ -660,9 +661,9 @@ if __name__ == '__main__':
       
       return is_sat, payload, is_target_udd_only_forced
 
-    def dump_precisetest_progress():
-      current_time = datetime.datetime.now().strftime("%H:%M:%S")
-      info("%s Precise SAT pass progress: %s." % (current_time, dumps_progress(checked, total_to_check)), ending="\r")
+    # def dump_precisetest_progress():
+    #   current_time = datetime.datetime.now().strftime("%H:%M:%S")
+    #   info("%s Precise SAT pass progress: %s." % (current_time, dumps_progress(checked, total_to_check)), ending="\r")
 
     def do_precise(triple):
       selectee, selector, visib_id = triple
