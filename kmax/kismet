@@ -664,63 +664,84 @@ if __name__ == '__main__':
       current_time = datetime.datetime.now().strftime("%H:%M:%S")
       info("%s Precise SAT pass progress: %s." % (current_time, dumps_progress(checked, total_to_check)), ending="\r")
 
-    for selectee in unmet_constraints:
-      for selector in unmet_constraints[selectee]:
-        for visib_id in unmet_constraints[selectee][selector]:
-          # dump progress
-          dump_precisetest_progress()
+    def do_precise(triple):
+      selectee, selector, visib_id = triple
+      # # dump progress
+      # dump_precisetest_progress()
 
-          analysis_result = unmet_constraints[selectee][selector][visib_id]["generic"]["analysis_result"]
-          
-          # if the result from the previous step(s) is ALARM, check if now can prove safe
-          if analysis_result == UnmetDepResult.UNMET_ALARM:
-            
-            generic_constraint = unmet_constraints[selectee][selector][visib_id]["generic"]["constraint"]
+      analysis_result = unmet_constraints[selectee][selector][visib_id]["generic"]["analysis_result"]
+      config_content = None
 
-            try_force_udd_param = selectee if force_target_udd_only else None
-            is_sat, payload, is_target_udd_only_forced = precise_check(optimized_constraints=generic_constraint, try_force_target_udd_only_for_selectee=try_force_udd_param)
-            
-            if not is_sat:
-              unmet_constraints[selectee][selector][visib_id]["generic"]["analysis_result"] = UnmetDepResult.UNMET_SAFE_PRECISE_PASS
+      # if the result from the previous step(s) is ALARM, check if now can prove safe
+      if analysis_result == UnmetDepResult.UNMET_ALARM:
 
-              num_precise_safe += 1
-            else:
-              if force_target_udd_only: unmet_constraints[selectee][selector][visib_id]["generic"]["forced_target_udd_only"] = is_target_udd_only_forced
-              unmet_constraints[selectee][selector][visib_id]["generic"]["analysis_result"] = UnmetDepResult.UNMET_ALARM
-              unmet_constraints[selectee][selector][visib_id]["generic"]["model"] = payload
+        generic_constraint = unmet_constraints[selectee][selector][visib_id]["generic"]["constraint"]
 
-              num_models += 1
-              num_alarms += 1
-            
-            checked += 1
+        try_force_udd_param = selectee if force_target_udd_only else None
+        is_sat, payload, is_target_udd_only_forced = precise_check(optimized_constraints=generic_constraint, try_force_target_udd_only_for_selectee=try_force_udd_param)
 
-            #
-            # Explore whole unmet space
-            #
-            if explore_whole_unmet_space and is_sat:
-              is_generic_sat = is_sat
-              sat_options = unmet_constraints[selectee][selector][visib_id]["sat_options"]
+        if not is_sat:
+          analysis_result = UnmetDepResult.UNMET_SAFE_PRECISE_PASS
+          # num_precise_safe += 1
+        else:
+          if force_target_udd_only: unmet_constraints[selectee][selector][visib_id]["generic"]["forced_target_udd_only"] = is_target_udd_only_forced
+          analysis_result = UnmetDepResult.UNMET_ALARM
+          config_content = Klocalizer.get_config_from_model(payload, arch, set_tristate_m=False, allow_non_visibles=False)
 
-              if not is_generic_sat:
-                for sat_option in sat_options:
-                  sat_option["analysis_result"] = UnmetDepResult.UNMET_SAFE_PRECISE_PASS
-              else:
-                for sat_option in sat_options:
-                  is_sat, payload, is_target_udd_only_forced = precise_check(optimized_constraints=sat_option["constraint"], try_force_target_udd_only_for_selectee=try_force_udd_param)
+          # num_models += 1
+          # num_alarms += 1
 
-                if not is_sat:
-                  sat_option["analysis_result"] = UnmetDepResult.UNMET_SAFE_PRECISE_PASS
-                  num_precise_safe_sat_options += 1
-                else:
-                  if force_target_udd_only: sat_option["forced_target_udd_only"] = is_target_udd_only_forced
-                  sat_option["analysis_result"] = UnmetDepResult.UNMET_ALARM
-                  sat_option["model"] = payload
-                  num_alarms_sat_options += 1
-                  num_models += 1
-            
-            # dump progress
-            dump_precisetest_progress()
+        # checked += 1
+
+        # #
+        # # Explore whole unmet space
+        # #
+        # if explore_whole_unmet_space and is_sat:
+        #   is_generic_sat = is_sat
+        #   sat_options = unmet_constraints[selectee][selector][visib_id]["sat_options"]
+
+        #   if not is_generic_sat:
+        #     for sat_option in sat_options:
+        #       sat_option["analysis_result"] = UnmetDepResult.UNMET_SAFE_PRECISE_PASS
+        #   else:
+        #     for sat_option in sat_options:
+        #       is_sat, payload, is_target_udd_only_forced = precise_check(optimized_constraints=sat_option["constraint"], try_force_target_udd_only_for_selectee=try_force_udd_param)
+
+        #     if not is_sat:
+        #       sat_option["analysis_result"] = UnmetDepResult.UNMET_SAFE_PRECISE_PASS
+        #       # num_precise_safe_sat_options += 1
+        #     else:
+        #       if force_target_udd_only: sat_option["forced_target_udd_only"] = is_target_udd_only_forced
+        #       sat_option["analysis_result"] = UnmetDepResult.UNMET_ALARM
+        #       sat_option["model"] = payload
+        #       # num_alarms_sat_options += 1
+        #       # num_models += 1
+
+        # # dump progress
+        # dump_precisetest_progress()
+      else:
+        pass
+      return selectee, selector, visib_id, analysis_result, config_content
+    
     info("") # complete the progress
+
+
+    try:
+      p = Pool(processes=processes)
+    except OSError:
+      logging.exception("Could not create multiprocessing pool.  Try increasing ulimit or lowering the number of processes.")
+      exit(13)
+    with p:
+      for selectee, selector, visib_id, analysis_result, config_content in tqdm.tqdm(p.imap_unordered(do_precise, triples), total=len(triples)):
+        unmet_constraints[selectee][selector][visib_id]["generic"]["analysis_result"] = analysis_result
+        unmet_constraints[selectee][selector][visib_id]["generic"]["config_content"] = config_content
+        if analysis_result == UnmetDepResult.UNMET_SAFE_PRECISE_PASS:
+          num_precise_safe += 1
+          checked += 1
+        elif analysis_result == UnmetDepResult.UNMET_ALARM:
+          num_models += 1
+          num_alarms += 1
+          checked += 1
 
     # update the counts after the optimized pass
     counts[UnmetDepResult.UNMET_ALARM] = num_alarms
