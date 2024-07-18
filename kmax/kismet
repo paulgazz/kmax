@@ -278,9 +278,9 @@ if __name__ == '__main__':
   argparser.add_argument('--force-target-udd-only',
                         action="store_true",
                         help="""Force no other unmet direct dependency than the target one for each analyzed construct.  If such constraints are not satisfiable, the constraints are relaxed and tried again.""")
-  argparser.add_argument('--explore-whole-unmet-space',
-                        action="store_true",
-                        help="""Explore the whole unmet space by analysing for each solution to optimized unmet direct dependency constraints.""")
+  # argparser.add_argument('--explore-whole-unmet-space',
+  #                       action="store_true",
+  #                       help="""Explore the whole unmet space by analysing for each solution to optimized unmet direct dependency constraints.""")
   argparser.add_argument('--dump-optimized-constraints',
                         action="store_true",
                         help="""Dump optimized constraints for each select construct in smt2 format in the test cases directory.""")
@@ -349,7 +349,7 @@ if __name__ == '__main__':
   optimized_SAT_pass = not args.no_optimized_SAT_check
   precise_SAT_pass = not args.no_precise_SAT_check
   force_target_udd_only = args.force_target_udd_only
-  explore_whole_unmet_space = args.explore_whole_unmet_space
+  # explore_whole_unmet_space = args.explore_whole_unmet_space
   generate_sample = not args.no_test_case_generation
   verify = not args.no_verification
   samples_dir = args.test_cases_dir
@@ -381,9 +381,9 @@ if __name__ == '__main__':
     warning("Enabling sample generation (i.e., ignoring --no-test-case-generation) for verification of alarms.  Use --no-verification as well to turn off test case generation.")
   sample_models = verify or generate_sample
 
-  if not optimized_SAT_pass and explore_whole_unmet_space:
-    warning("Ignoring exploring whole unmet space (i.e., --explore-whole-unmet-space) since optimized SAT pass is disabled (i.e., --no-optimized-SAT-check).")
-    explore_whole_unmet_space = False
+  # if not optimized_SAT_pass and explore_whole_unmet_space:
+  #   warning("Ignoring exploring whole unmet space (i.e., --explore-whole-unmet-space) since optimized SAT pass is disabled (i.e., --no-optimized-SAT-check).")
+  #   explore_whole_unmet_space = False
 
   if arch_name not in Arch.ARCHS:
     argparser.print_help()
@@ -613,9 +613,9 @@ if __name__ == '__main__':
     
     info("Optimized SAT test was done in %.2fsec. %d constructs with alarms were checked. unmet safe due to optimized SAT test: %d. alarms: %d." \
        % (t_spent_optimizedpass, count_optimizedpass_checked, count_optimizedpass_unmet_safe, count_optimizedpass_unmet_alarms_unique_constructs))
-    if explore_whole_unmet_space:
-      info("Since exploring whole unmet space is enabled, %d additional SAT options were created for %d unique selects constructs with alarms." \
-        % (count_optimizedpass_sat_options_created, count_optimizedpass_unmet_alarms_unique_constructs))
+    # if explore_whole_unmet_space:
+    #   info("Since exploring whole unmet space is enabled, %d additional SAT options were created for %d unique selects constructs with alarms." \
+    #     % (count_optimizedpass_sat_options_created, count_optimizedpass_unmet_alarms_unique_constructs))
 
   #
   # Precise test
@@ -764,23 +764,23 @@ if __name__ == '__main__':
     info("Precise SAT test was done in %.2fsec. %d constructs with alarms were checked. unmet safe due to precise SAT test: %d. alarms: %d." \
       % (t_spent_precisepass, count_precisepass_checked_generic, count_precisepass_unmet_safe_generic, count_precisepass_unmet_alarm_generic))
     
-    if explore_whole_unmet_space:
-      info("During precise SAT test, due to exploring whole unmet space, %d additional constraints were checked, leading to %d in total. Among all: unmet safe due to optimized SAT test: %d. alarms: %d." \
-        % (count_precisepass_checked_satoptions, \
-           count_precisepass_checked_generic + count_precisepass_checked_satoptions, \
-           count_precisepass_unmet_safe_generic + count_precisepass_unmet_safe_satoptions, \
-           count_precisepass_unmet_alarm_generic + count_precisepass_unmet_alarms_satoptions))
+    # if explore_whole_unmet_space:
+    #   info("During precise SAT test, due to exploring whole unmet space, %d additional constraints were checked, leading to %d in total. Among all: unmet safe due to optimized SAT test: %d. alarms: %d." \
+    #     % (count_precisepass_checked_satoptions, \
+    #        count_precisepass_checked_generic + count_precisepass_checked_satoptions, \
+    #        count_precisepass_unmet_safe_generic + count_precisepass_unmet_safe_satoptions, \
+    #        count_precisepass_unmet_alarm_generic + count_precisepass_unmet_alarms_satoptions))
     info("During precise SAT test, %d models were generated." % count_precisepass_models)
 
     # end of precise pass
   
-  if precise_SAT_pass and count_precisepass_models == 0:
-    if sample_models:
-      info("Skipping test case generation since there are no models to generate test cases for.")
-      sample_models = False
-    if verify:
-      info("Skipping verification since there are no test cases to verify.")
-      verify = False
+  # if precise_SAT_pass and count_precisepass_models == 0:
+  #   if sample_models:
+  #     info("Skipping test case generation since there are no models to generate test cases for.")
+  #     sample_models = False
+  #   if verify:
+  #     info("Skipping verification since there are no test cases to verify.")
+  #     verify = False
 
   # TODO: allow putting comments in the config files
   def get_cfgfilepath(selectee, selector, visib_id, type_id):
@@ -828,25 +828,25 @@ if __name__ == '__main__':
             dump_testcasegen_progress()
             
             # If exploring whole unmet space is set, dump the config samples for sat options with alarms too
-            if explore_whole_unmet_space:
-              sat_options = unmet_constraints[selectee][selector][visib_id]["sat_options"]
-              for i, sat_option in enumerate(sat_options):
-                sat_option_result = sat_option["analysis_result"]
+            # if explore_whole_unmet_space:
+            #   sat_options = unmet_constraints[selectee][selector][visib_id]["sat_options"]
+            #   for i, sat_option in enumerate(sat_options):
+            #     sat_option_result = sat_option["analysis_result"]
 
-                if sat_option_result == UnmetDepResult.UNMET_ALARM:
-                  z3_model = sat_option["model"]
-                  config_content = Klocalizer.get_config_from_model(z3_model, arch, set_tristate_m=False, allow_non_visibles=False)
-                  cfgfilepath = get_cfgfilepath(selectee, selector, visib_id, i+1)
+            #     if sat_option_result == UnmetDepResult.UNMET_ALARM:
+            #       z3_model = sat_option["model"]
+            #       config_content = Klocalizer.get_config_from_model(z3_model, arch, set_tristate_m=False, allow_non_visibles=False)
+            #       cfgfilepath = get_cfgfilepath(selectee, selector, visib_id, i+1)
 
-                  with open(cfgfilepath, "w") as f:
-                    f.write(config_content)
+            #       with open(cfgfilepath, "w") as f:
+            #         f.write(config_content)
                   
-                  sat_option["testcase_cfgpath"] = cfgfilepath
+            #       sat_option["testcase_cfgpath"] = cfgfilepath
 
-                  config_samples_created += 1
+            #       config_samples_created += 1
 
-                  # dump progress
-                  dump_testcasegen_progress()
+            #       # dump progress
+            #       dump_testcasegen_progress()
     info("") # complete the progress
 
     # Collect stats
@@ -948,20 +948,20 @@ if __name__ == '__main__':
             dump_verification_progress()
 
             # verify sat_options, if available
-            if explore_whole_unmet_space:
-              sat_options = unmet_constraints[selectee][selector][visib_id]["sat_options"]
-              for sat_option in sat_options:
-                if sat_option["analysis_result"] == UnmetDepResult.UNMET_ALARM:
-                  cfgfilepath = sat_option["testcase_cfgpath"]
-                  is_verified = verify_test_case(cfgfilepath, selectee, selector, arch_name)
-                  sat_option["is_verified"] = is_verified
-                  some_verified = some_verified or is_verified
-                  all_verified = all_verified and is_verified
-                  num_verified += is_verified
-                  num_checked += 1
+            # if explore_whole_unmet_space:
+            #   sat_options = unmet_constraints[selectee][selector][visib_id]["sat_options"]
+            #   for sat_option in sat_options:
+            #     if sat_option["analysis_result"] == UnmetDepResult.UNMET_ALARM:
+            #       cfgfilepath = sat_option["testcase_cfgpath"]
+            #       is_verified = verify_test_case(cfgfilepath, selectee, selector, arch_name)
+            #       sat_option["is_verified"] = is_verified
+            #       some_verified = some_verified or is_verified
+            #       all_verified = all_verified and is_verified
+            #       num_verified += is_verified
+            #       num_checked += 1
 
-                  # dump progress
-                  dump_verification_progress()
+            #       # dump progress
+            #       dump_verification_progress()
             
             some_testcase_verifies += some_verified
             all_testcases_verify += all_verified
@@ -1048,8 +1048,8 @@ if __name__ == '__main__':
         f.write("%d select constructs with alarms from the previous stage were checked during optimized SAT pass.\n" % count_optimizedpass_checked)
         f.write("%d select constructs were found udd SAFE through optimized SAT pass.\n" % count_optimizedpass_unmet_safe)
         f.write("%d select constructs were found udd ALARM through optimized SAT pass.\n" % count_optimizedpass_unmet_alarms_unique_constructs)
-        if explore_whole_unmet_space:
-          f.write("%d additional constraints were identified as SAT options for optimized constraints to explore whole unmet space for %d udd alarms.\n" % (count_optimizedpass_sat_options_created, count_optimizedpass_unmet_alarms_unique_constructs))
+        # if explore_whole_unmet_space:
+        #   f.write("%d additional constraints were identified as SAT options for optimized constraints to explore whole unmet space for %d udd alarms.\n" % (count_optimizedpass_sat_options_created, count_optimizedpass_unmet_alarms_unique_constructs))
       
       # precise SAT pass
       if precise_SAT_pass:
@@ -1057,9 +1057,9 @@ if __name__ == '__main__':
         f.write("%d select constructs with alarms from the previous stage were checked during precise SAT pass.\n" % count_precisepass_checked_generic)
         f.write("%d select constructs were found udd SAFE through precise SAT pass.\n" % count_precisepass_unmet_safe_generic)
         f.write("%d select constructs were found udd ALARM through precise SAT pass.\n" % count_precisepass_unmet_alarm_generic)
-        if explore_whole_unmet_space:
-          f.write("%d SAT options for %d alarms were checked due to exploring whole unmet space.\n" % count_precisepass_checked_satoptions)
-          f.write("%d SAT options were found udd SAFE while %d SAT options were found udd ALARM.\n" % (count_precisepass_unmet_safe_satoptions, count_precisepass_unmet_alarms_satoptions))
+        # if explore_whole_unmet_space:
+        #   f.write("%d SAT options for %d alarms were checked due to exploring whole unmet space.\n" % count_precisepass_checked_satoptions)
+        #   f.write("%d SAT options were found udd SAFE while %d SAT options were found udd ALARM.\n" % (count_precisepass_unmet_safe_satoptions, count_precisepass_unmet_alarms_satoptions))
       
       if sample_models:
         f.write("\n== Test case generation ==\n")
