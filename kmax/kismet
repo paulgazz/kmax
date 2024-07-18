@@ -812,8 +812,7 @@ if __name__ == '__main__':
           dump_testcasegen_progress()
           
           if generic_result == UnmetDepResult.UNMET_ALARM:
-            z3_model = unmet_constraints[selectee][selector][visib_id]["generic"]["model"]
-            config_content = Klocalizer.get_config_from_model(z3_model, arch, set_tristate_m=False, allow_non_visibles=False)
+            config_content = unmet_constraints[selectee][selector][visib_id]["generic"]["config_content"]
             cfgfilepath = get_cfgfilepath(selectee, selector, visib_id, 0)
 
             # TODO: include metadata as comment in the config file for later convenience
