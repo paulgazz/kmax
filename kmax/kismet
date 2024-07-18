@@ -532,6 +532,8 @@ if __name__ == '__main__':
   def dump_optimizedtest_progress():
     current_time = datetime.datetime.now().strftime("%H:%M:%S")
     info("%s Optimized SAT pass progress: %s." % (current_time, dumps_progress(checked, total_to_check)), ending="\r")
+  # get set of triples to check
+  triples = [ (selectee, selector, visib_id) for selectee in unmet_constraints for selector in unmet_constraints[selectee] for visib_id in unmet_constraints[selectee][selector] ]
 
   if optimized_SAT_pass:
     total_to_check = counts[UnmetDepResult.UNMET_ALARM]
