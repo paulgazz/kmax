@@ -542,45 +542,63 @@ if __name__ == '__main__':
     count_sat_options_created = 0
     info("Doing optimized SAT pass for %d constructs" % total_to_check)
     t_start_optimizedpass = __get_time_refpoint()
-    
-    for selectee in unmet_constraints:
-      for selector in unmet_constraints[selectee]:
-        for visib_id in unmet_constraints[selectee][selector]:
-          # dump progress
-          dump_optimizedtest_progress()
 
-          analysis_result = unmet_constraints[selectee][selector][visib_id]["generic"]["analysis_result"]
-          
-          # if the result from the previous step(s) is ALARM, check if now can prove safe
-          if analysis_result == UnmetDepResult.UNMET_ALARM:
-            checked += 1
-            constraint = unmet_constraints[selectee][selector][visib_id]["generic"]["constraint"]
-            
-            if not check_sat(constraint):
-              unmet_constraints[selectee][selector][visib_id]["generic"]["analysis_result"] = UnmetDepResult.UNMET_SAFE_OPTIMIZED_PASS
-              optimized_pass_eliminated += 1
-            else:
-              # can't draw a conclusion yet, need precise test
+    def do_optimized(triple):
+      selectee, selector, visib_id = triple
+      # # dump progress
+      # dump_optimizedtest_progress()
 
-              # if explore_whole_unmet_space, multiple different solutions will
-              # be checked per select construct on varying SAT expressions for
-              # optimized constraints. create the constraints here.
-              if explore_whole_unmet_space:
-                all_sat_exprs_to_optimized_constraints = get_all_sat_exprs(constraint)
-                
-                # push each SAT expr to be checked at precise test
-                unmet_constraints[selectee][selector][visib_id]["sat_options"] = []
-                for i, c in enumerate(all_sat_exprs_to_optimized_constraints):
-                  sat_option = {
-                    "constraint" : c,
-                    "analysis_result" : UnmetDepResult.UNMET_ALARM }
-                  unmet_constraints[selectee][selector][visib_id]["sat_options"].append(sat_option)
-                  count_sat_options_created += 1
-            
-            # dump progress
-            dump_optimizedtest_progress()
+      analysis_result = unmet_constraints[selectee][selector][visib_id]["generic"]["analysis_result"]
+      sat_options = []
+
+      # if the result from the previous step(s) is ALARM, check if now can prove safe
+      if analysis_result == UnmetDepResult.UNMET_ALARM:
+        # checked += 1
+        constraint = unmet_constraints[selectee][selector][visib_id]["generic"]["constraint"]
+
+        if not check_sat(constraint):
+          analysis_result = UnmetDepResult.UNMET_SAFE_OPTIMIZED_PASS
+          # optimized_pass_eliminated += 1
+        else:
+          pass
+          # can't draw a conclusion yet, need precise test
+
+          # # if explore_whole_unmet_space, multiple different solutions will
+          # # be checked per select construct on varying SAT expressions for
+          # # optimized constraints. create the constraints here.
+          # if explore_whole_unmet_space:
+          #   all_sat_exprs_to_optimized_constraints = get_all_sat_exprs(constraint)
+
+          #   # push each SAT expr to be checked at precise test
+          #   sat_options = []
+          #   for i, c in enumerate(all_sat_exprs_to_optimized_constraints):
+          #     sat_option = {
+          #       "constraint" : c,
+          #       "analysis_result" : UnmetDepResult.UNMET_ALARM }
+          #     sat_options.append(sat_option)
+          #     # count_sat_options_created += 1
+
+        # # dump progress
+        # dump_optimizedtest_progress()
+      else:
+        pass
+              
+      return selectee, selector, visib_id, analysis_result, sat_options
     info("") # complete progress
 
+    # optimized checks for all triples
+    try:
+      p = Pool(processes=processes)
+    except OSError:
+      logging.exception("Could not create multiprocessing pool.  Try increasing ulimit or lowering the number of processes.")
+      exit(13)
+    with p:
+      for selectee, selector, visib_id, analysis_result, sat_options in tqdm.tqdm(p.imap_unordered(do_optimized, triples), total=len(triples)):
+        unmet_constraints[selectee][selector][visib_id]["generic"]["analysis_result"] = analysis_result
+        unmet_constraints[selectee][selector][visib_id]["sat_options"] = sat_options
+        if analysis_result == UnmetDepResult.UNMET_SAFE_OPTIMIZED_PASS:
+          optimized_pass_eliminated += 1
+    
     # update the counts after the optimized pass
     counts[UnmetDepResult.UNMET_ALARM] -= optimized_pass_eliminated # this doesn't account for SAT options due to explore_whole_unmet_space since alarm is per unique select constructs
     counts[UnmetDepResult.UNMET_SAFE_OPTIMIZED_PASS] = optimized_pass_eliminated
