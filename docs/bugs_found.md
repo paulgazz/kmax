@@ -21,7 +21,9 @@ The [Intel 0-day](https://01.org/lkp) kernel test robot after their team include
 
 Linux kernel mailing list latest kismet reports:
 
-- <https://lore.kernel.org/all/?q=kismet>
+<!-- - <https://lore.kernel.org/all/?q=kismet> -->
+
+- <https://lore.kernel.org/oe-kbuild-all/?q=kismet>
 
 Initial reports in the weeks after integration:
 
