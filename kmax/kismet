@@ -325,6 +325,10 @@ if __name__ == '__main__':
   argparser.add_argument('--allow-config-broken',
                         action="store_true",
                         help="""Allow CONFIG_BROKEN dependencies.  """)
+  argparser.add_argument('--processes', '-p',
+                        type=int,
+                        default=None,
+                        help=f"""Number of concurrent processes to run.  Defaults to os.cpu_count() ({os.cpu_count()})""")
   argparser.add_argument('--verbose',
                         action="store_true",
                         help="""Verbose mode prints additional messages to stderr.""")
@@ -359,6 +363,7 @@ if __name__ == '__main__':
   summary_txt_path = args.summary_txt if args.summary_txt != None else "kismet_summary_%s.txt" % arch_name
   summary_use_testcase_realpath= args.use_fullpath_in_summary
   disable_config_broken = not args.allow_config_broken
+  processes=args.processes
   verbose = args.verbose
 
   if not precise_SAT_pass:
