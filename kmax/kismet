@@ -15,6 +15,8 @@ import logging
 import subprocess
 import csv
 from time import perf_counter
+from multiprocessing import Pool
+import tqdm
 import kmax.about # to enable the --version flag
 
 def __get_time_refpoint():
@@ -238,7 +240,7 @@ def get_unmet_constraints(arch, selectors=None, selectees=None, syntactical_opti
   
   return unmet_constraints_mapping
 
-def main():
+if __name__ == '__main__':
   t_start_main = __get_time_refpoint()
 
   argparser = argparse.ArgumentParser()
@@ -276,9 +278,9 @@ def main():
   argparser.add_argument('--force-target-udd-only',
                         action="store_true",
                         help="""Force no other unmet direct dependency than the target one for each analyzed construct.  If such constraints are not satisfiable, the constraints are relaxed and tried again.""")
-  argparser.add_argument('--explore-whole-unmet-space',
-                        action="store_true",
-                        help="""Explore the whole unmet space by analysing for each solution to optimized unmet direct dependency constraints.""")
+  # argparser.add_argument('--explore-whole-unmet-space',
+  #                       action="store_true",
+  #                       help="""Explore the whole unmet space by analysing for each solution to optimized unmet direct dependency constraints.""")
   argparser.add_argument('--dump-optimized-constraints',
                         action="store_true",
                         help="""Dump optimized constraints for each select construct in smt2 format in the test cases directory.""")
@@ -323,6 +325,10 @@ def main():
   argparser.add_argument('--allow-config-broken',
                         action="store_true",
                         help="""Allow CONFIG_BROKEN dependencies.  """)
+  argparser.add_argument('--processes', '-p',
+                        type=int,
+                        default=None,
+                        help=f"""Number of concurrent processes to run.  Defaults to os.cpu_count() ({os.cpu_count()})""")
   argparser.add_argument('--verbose',
                         action="store_true",
                         help="""Verbose mode prints additional messages to stderr.""")
@@ -343,7 +349,7 @@ def main():
   optimized_SAT_pass = not args.no_optimized_SAT_check
   precise_SAT_pass = not args.no_precise_SAT_check
   force_target_udd_only = args.force_target_udd_only
-  explore_whole_unmet_space = args.explore_whole_unmet_space
+  # explore_whole_unmet_space = args.explore_whole_unmet_space
   generate_sample = not args.no_test_case_generation
   verify = not args.no_verification
   samples_dir = args.test_cases_dir
@@ -357,6 +363,7 @@ def main():
   summary_txt_path = args.summary_txt if args.summary_txt != None else "kismet_summary_%s.txt" % arch_name
   summary_use_testcase_realpath= args.use_fullpath_in_summary
   disable_config_broken = not args.allow_config_broken
+  processes=args.processes
   verbose = args.verbose
 
   if not precise_SAT_pass:
@@ -374,9 +381,9 @@ def main():
     warning("Enabling sample generation (i.e., ignoring --no-test-case-generation) for verification of alarms.  Use --no-verification as well to turn off test case generation.")
   sample_models = verify or generate_sample
 
-  if not optimized_SAT_pass and explore_whole_unmet_space:
-    warning("Ignoring exploring whole unmet space (i.e., --explore-whole-unmet-space) since optimized SAT pass is disabled (i.e., --no-optimized-SAT-check).")
-    explore_whole_unmet_space = False
+  # if not optimized_SAT_pass and explore_whole_unmet_space:
+  #   warning("Ignoring exploring whole unmet space (i.e., --explore-whole-unmet-space) since optimized SAT pass is disabled (i.e., --no-optimized-SAT-check).")
+  #   explore_whole_unmet_space = False
 
   if arch_name not in Arch.ARCHS:
     argparser.print_help()
@@ -522,9 +529,12 @@ def main():
   # Optimized test
   #
   # do optimized-constraints pass -- the SAT solver pass only on optimized constraints -- without full kclause constraints
-  def dump_optimizedtest_progress():
-    current_time = datetime.datetime.now().strftime("%H:%M:%S")
-    info("%s Optimized SAT pass progress: %s." % (current_time, dumps_progress(checked, total_to_check)), ending="\r")
+  # def dump_optimizedtest_progress():
+  #   current_time = datetime.datetime.now().strftime("%H:%M:%S")
+  #   info("%s Optimized SAT pass progress: %s." % (current_time, dumps_progress(checked, total_to_check)), ending="\r")
+
+  # get set of triples to check
+  triples = [ (selectee, selector, visib_id) for selectee in unmet_constraints for selector in unmet_constraints[selectee] for visib_id in unmet_constraints[selectee][selector] ]
 
   if optimized_SAT_pass:
     total_to_check = counts[UnmetDepResult.UNMET_ALARM]
@@ -533,45 +543,63 @@ def main():
     count_sat_options_created = 0
     info("Doing optimized SAT pass for %d constructs" % total_to_check)
     t_start_optimizedpass = __get_time_refpoint()
-    
-    for selectee in unmet_constraints:
-      for selector in unmet_constraints[selectee]:
-        for visib_id in unmet_constraints[selectee][selector]:
-          # dump progress
-          dump_optimizedtest_progress()
 
-          analysis_result = unmet_constraints[selectee][selector][visib_id]["generic"]["analysis_result"]
-          
-          # if the result from the previous step(s) is ALARM, check if now can prove safe
-          if analysis_result == UnmetDepResult.UNMET_ALARM:
-            checked += 1
-            constraint = unmet_constraints[selectee][selector][visib_id]["generic"]["constraint"]
-            
-            if not check_sat(constraint):
-              unmet_constraints[selectee][selector][visib_id]["generic"]["analysis_result"] = UnmetDepResult.UNMET_SAFE_OPTIMIZED_PASS
-              optimized_pass_eliminated += 1
-            else:
-              # can't draw a conclusion yet, need precise test
+    def do_optimized(triple):
+      selectee, selector, visib_id = triple
+      # # dump progress
+      # dump_optimizedtest_progress()
 
-              # if explore_whole_unmet_space, multiple different solutions will
-              # be checked per select construct on varying SAT expressions for
-              # optimized constraints. create the constraints here.
-              if explore_whole_unmet_space:
-                all_sat_exprs_to_optimized_constraints = get_all_sat_exprs(constraint)
-                
-                # push each SAT expr to be checked at precise test
-                unmet_constraints[selectee][selector][visib_id]["sat_options"] = []
-                for i, c in enumerate(all_sat_exprs_to_optimized_constraints):
-                  sat_option = {
-                    "constraint" : c,
-                    "analysis_result" : UnmetDepResult.UNMET_ALARM }
-                  unmet_constraints[selectee][selector][visib_id]["sat_options"].append(sat_option)
-                  count_sat_options_created += 1
-            
-            # dump progress
-            dump_optimizedtest_progress()
+      analysis_result = unmet_constraints[selectee][selector][visib_id]["generic"]["analysis_result"]
+      sat_options = []
+
+      # if the result from the previous step(s) is ALARM, check if now can prove safe
+      if analysis_result == UnmetDepResult.UNMET_ALARM:
+        # checked += 1
+        constraint = unmet_constraints[selectee][selector][visib_id]["generic"]["constraint"]
+
+        if not check_sat(constraint):
+          analysis_result = UnmetDepResult.UNMET_SAFE_OPTIMIZED_PASS
+          # optimized_pass_eliminated += 1
+        else:
+          pass
+          # can't draw a conclusion yet, need precise test
+
+          # # if explore_whole_unmet_space, multiple different solutions will
+          # # be checked per select construct on varying SAT expressions for
+          # # optimized constraints. create the constraints here.
+          # if explore_whole_unmet_space:
+          #   all_sat_exprs_to_optimized_constraints = get_all_sat_exprs(constraint)
+
+          #   # push each SAT expr to be checked at precise test
+          #   sat_options = []
+          #   for i, c in enumerate(all_sat_exprs_to_optimized_constraints):
+          #     sat_option = {
+          #       "constraint" : c,
+          #       "analysis_result" : UnmetDepResult.UNMET_ALARM }
+          #     sat_options.append(sat_option)
+          #     # count_sat_options_created += 1
+
+        # # dump progress
+        # dump_optimizedtest_progress()
+      else:
+        pass
+              
+      return selectee, selector, visib_id, analysis_result, sat_options
     info("") # complete progress
 
+    # optimized checks for all triples
+    try:
+      p = Pool(processes=processes)
+    except OSError:
+      logging.exception("Could not create multiprocessing pool.  Try increasing ulimit or lowering the number of processes.")
+      exit(13)
+    with p:
+      for selectee, selector, visib_id, analysis_result, sat_options in tqdm.tqdm(p.imap_unordered(do_optimized, triples), total=len(triples)):
+        unmet_constraints[selectee][selector][visib_id]["generic"]["analysis_result"] = analysis_result
+        unmet_constraints[selectee][selector][visib_id]["sat_options"] = sat_options
+        if analysis_result == UnmetDepResult.UNMET_SAFE_OPTIMIZED_PASS:
+          optimized_pass_eliminated += 1
+    
     # update the counts after the optimized pass
     counts[UnmetDepResult.UNMET_ALARM] -= optimized_pass_eliminated # this doesn't account for SAT options due to explore_whole_unmet_space since alarm is per unique select constructs
     counts[UnmetDepResult.UNMET_SAFE_OPTIMIZED_PASS] = optimized_pass_eliminated
@@ -585,9 +613,9 @@ def main():
     
     info("Optimized SAT test was done in %.2fsec. %d constructs with alarms were checked. unmet safe due to optimized SAT test: %d. alarms: %d." \
        % (t_spent_optimizedpass, count_optimizedpass_checked, count_optimizedpass_unmet_safe, count_optimizedpass_unmet_alarms_unique_constructs))
-    if explore_whole_unmet_space:
-      info("Since exploring whole unmet space is enabled, %d additional SAT options were created for %d unique selects constructs with alarms." \
-        % (count_optimizedpass_sat_options_created, count_optimizedpass_unmet_alarms_unique_constructs))
+    # if explore_whole_unmet_space:
+    #   info("Since exploring whole unmet space is enabled, %d additional SAT options were created for %d unique selects constructs with alarms." \
+    #     % (count_optimizedpass_sat_options_created, count_optimizedpass_unmet_alarms_unique_constructs))
 
   #
   # Precise test
@@ -633,67 +661,88 @@ def main():
       
       return is_sat, payload, is_target_udd_only_forced
 
-    def dump_precisetest_progress():
-      current_time = datetime.datetime.now().strftime("%H:%M:%S")
-      info("%s Precise SAT pass progress: %s." % (current_time, dumps_progress(checked, total_to_check)), ending="\r")
+    # def dump_precisetest_progress():
+    #   current_time = datetime.datetime.now().strftime("%H:%M:%S")
+    #   info("%s Precise SAT pass progress: %s." % (current_time, dumps_progress(checked, total_to_check)), ending="\r")
 
-    for selectee in unmet_constraints:
-      for selector in unmet_constraints[selectee]:
-        for visib_id in unmet_constraints[selectee][selector]:
-          # dump progress
-          dump_precisetest_progress()
+    def do_precise(triple):
+      selectee, selector, visib_id = triple
+      # # dump progress
+      # dump_precisetest_progress()
 
-          analysis_result = unmet_constraints[selectee][selector][visib_id]["generic"]["analysis_result"]
-          
-          # if the result from the previous step(s) is ALARM, check if now can prove safe
-          if analysis_result == UnmetDepResult.UNMET_ALARM:
-            
-            generic_constraint = unmet_constraints[selectee][selector][visib_id]["generic"]["constraint"]
+      analysis_result = unmet_constraints[selectee][selector][visib_id]["generic"]["analysis_result"]
+      config_content = None
 
-            try_force_udd_param = selectee if force_target_udd_only else None
-            is_sat, payload, is_target_udd_only_forced = precise_check(optimized_constraints=generic_constraint, try_force_target_udd_only_for_selectee=try_force_udd_param)
-            
-            if not is_sat:
-              unmet_constraints[selectee][selector][visib_id]["generic"]["analysis_result"] = UnmetDepResult.UNMET_SAFE_PRECISE_PASS
+      # if the result from the previous step(s) is ALARM, check if now can prove safe
+      if analysis_result == UnmetDepResult.UNMET_ALARM:
 
-              num_precise_safe += 1
-            else:
-              if force_target_udd_only: unmet_constraints[selectee][selector][visib_id]["generic"]["forced_target_udd_only"] = is_target_udd_only_forced
-              unmet_constraints[selectee][selector][visib_id]["generic"]["analysis_result"] = UnmetDepResult.UNMET_ALARM
-              unmet_constraints[selectee][selector][visib_id]["generic"]["model"] = payload
+        generic_constraint = unmet_constraints[selectee][selector][visib_id]["generic"]["constraint"]
 
-              num_models += 1
-              num_alarms += 1
-            
-            checked += 1
+        try_force_udd_param = selectee if force_target_udd_only else None
+        is_sat, payload, is_target_udd_only_forced = precise_check(optimized_constraints=generic_constraint, try_force_target_udd_only_for_selectee=try_force_udd_param)
 
-            #
-            # Explore whole unmet space
-            #
-            if explore_whole_unmet_space and is_sat:
-              is_generic_sat = is_sat
-              sat_options = unmet_constraints[selectee][selector][visib_id]["sat_options"]
+        if not is_sat:
+          analysis_result = UnmetDepResult.UNMET_SAFE_PRECISE_PASS
+          # num_precise_safe += 1
+        else:
+          if force_target_udd_only: unmet_constraints[selectee][selector][visib_id]["generic"]["forced_target_udd_only"] = is_target_udd_only_forced
+          analysis_result = UnmetDepResult.UNMET_ALARM
+          config_content = Klocalizer.get_config_from_model(payload, arch, set_tristate_m=False, allow_non_visibles=False)
 
-              if not is_generic_sat:
-                for sat_option in sat_options:
-                  sat_option["analysis_result"] = UnmetDepResult.UNMET_SAFE_PRECISE_PASS
-              else:
-                for sat_option in sat_options:
-                  is_sat, payload, is_target_udd_only_forced = precise_check(optimized_constraints=sat_option["constraint"], try_force_target_udd_only_for_selectee=try_force_udd_param)
+          # num_models += 1
+          # num_alarms += 1
 
-                if not is_sat:
-                  sat_option["analysis_result"] = UnmetDepResult.UNMET_SAFE_PRECISE_PASS
-                  num_precise_safe_sat_options += 1
-                else:
-                  if force_target_udd_only: sat_option["forced_target_udd_only"] = is_target_udd_only_forced
-                  sat_option["analysis_result"] = UnmetDepResult.UNMET_ALARM
-                  sat_option["model"] = payload
-                  num_alarms_sat_options += 1
-                  num_models += 1
-            
-            # dump progress
-            dump_precisetest_progress()
+        # checked += 1
+
+        # #
+        # # Explore whole unmet space
+        # #
+        # if explore_whole_unmet_space and is_sat:
+        #   is_generic_sat = is_sat
+        #   sat_options = unmet_constraints[selectee][selector][visib_id]["sat_options"]
+
+        #   if not is_generic_sat:
+        #     for sat_option in sat_options:
+        #       sat_option["analysis_result"] = UnmetDepResult.UNMET_SAFE_PRECISE_PASS
+        #   else:
+        #     for sat_option in sat_options:
+        #       is_sat, payload, is_target_udd_only_forced = precise_check(optimized_constraints=sat_option["constraint"], try_force_target_udd_only_for_selectee=try_force_udd_param)
+
+        #     if not is_sat:
+        #       sat_option["analysis_result"] = UnmetDepResult.UNMET_SAFE_PRECISE_PASS
+        #       # num_precise_safe_sat_options += 1
+        #     else:
+        #       if force_target_udd_only: sat_option["forced_target_udd_only"] = is_target_udd_only_forced
+        #       sat_option["analysis_result"] = UnmetDepResult.UNMET_ALARM
+        #       sat_option["model"] = payload
+        #       # num_alarms_sat_options += 1
+        #       # num_models += 1
+
+        # # dump progress
+        # dump_precisetest_progress()
+      else:
+        pass
+      return selectee, selector, visib_id, analysis_result, config_content
+    
     info("") # complete the progress
+
+
+    try:
+      p = Pool(processes=processes)
+    except OSError:
+      logging.exception("Could not create multiprocessing pool.  Try increasing ulimit or lowering the number of processes.")
+      exit(13)
+    with p:
+      for selectee, selector, visib_id, analysis_result, config_content in tqdm.tqdm(p.imap_unordered(do_precise, triples), total=len(triples)):
+        unmet_constraints[selectee][selector][visib_id]["generic"]["analysis_result"] = analysis_result
+        unmet_constraints[selectee][selector][visib_id]["generic"]["config_content"] = config_content
+        if analysis_result == UnmetDepResult.UNMET_SAFE_PRECISE_PASS:
+          num_precise_safe += 1
+          checked += 1
+        elif analysis_result == UnmetDepResult.UNMET_ALARM:
+          num_models += 1
+          num_alarms += 1
+          checked += 1
 
     # update the counts after the optimized pass
     counts[UnmetDepResult.UNMET_ALARM] = num_alarms
@@ -715,23 +764,23 @@ def main():
     info("Precise SAT test was done in %.2fsec. %d constructs with alarms were checked. unmet safe due to precise SAT test: %d. alarms: %d." \
       % (t_spent_precisepass, count_precisepass_checked_generic, count_precisepass_unmet_safe_generic, count_precisepass_unmet_alarm_generic))
     
-    if explore_whole_unmet_space:
-      info("During precise SAT test, due to exploring whole unmet space, %d additional constraints were checked, leading to %d in total. Among all: unmet safe due to optimized SAT test: %d. alarms: %d." \
-        % (count_precisepass_checked_satoptions, \
-           count_precisepass_checked_generic + count_precisepass_checked_satoptions, \
-           count_precisepass_unmet_safe_generic + count_precisepass_unmet_safe_satoptions, \
-           count_precisepass_unmet_alarm_generic + count_precisepass_unmet_alarms_satoptions))
+    # if explore_whole_unmet_space:
+    #   info("During precise SAT test, due to exploring whole unmet space, %d additional constraints were checked, leading to %d in total. Among all: unmet safe due to optimized SAT test: %d. alarms: %d." \
+    #     % (count_precisepass_checked_satoptions, \
+    #        count_precisepass_checked_generic + count_precisepass_checked_satoptions, \
+    #        count_precisepass_unmet_safe_generic + count_precisepass_unmet_safe_satoptions, \
+    #        count_precisepass_unmet_alarm_generic + count_precisepass_unmet_alarms_satoptions))
     info("During precise SAT test, %d models were generated." % count_precisepass_models)
 
     # end of precise pass
   
-  if precise_SAT_pass and count_precisepass_models == 0:
-    if sample_models:
-      info("Skipping test case generation since there are no models to generate test cases for.")
-      sample_models = False
-    if verify:
-      info("Skipping verification since there are no test cases to verify.")
-      verify = False
+  # if precise_SAT_pass and count_precisepass_models == 0:
+  #   if sample_models:
+  #     info("Skipping test case generation since there are no models to generate test cases for.")
+  #     sample_models = False
+  #   if verify:
+  #     info("Skipping verification since there are no test cases to verify.")
+  #     verify = False
 
   # TODO: allow putting comments in the config files
   def get_cfgfilepath(selectee, selector, visib_id, type_id):
@@ -764,8 +813,7 @@ def main():
           dump_testcasegen_progress()
           
           if generic_result == UnmetDepResult.UNMET_ALARM:
-            z3_model = unmet_constraints[selectee][selector][visib_id]["generic"]["model"]
-            config_content = Klocalizer.get_config_from_model(z3_model, arch, set_tristate_m=False, allow_non_visibles=False)
+            config_content = unmet_constraints[selectee][selector][visib_id]["generic"]["config_content"]
             cfgfilepath = get_cfgfilepath(selectee, selector, visib_id, 0)
 
             # TODO: include metadata as comment in the config file for later convenience
@@ -780,25 +828,25 @@ def main():
             dump_testcasegen_progress()
             
             # If exploring whole unmet space is set, dump the config samples for sat options with alarms too
-            if explore_whole_unmet_space:
-              sat_options = unmet_constraints[selectee][selector][visib_id]["sat_options"]
-              for i, sat_option in enumerate(sat_options):
-                sat_option_result = sat_option["analysis_result"]
+            # if explore_whole_unmet_space:
+            #   sat_options = unmet_constraints[selectee][selector][visib_id]["sat_options"]
+            #   for i, sat_option in enumerate(sat_options):
+            #     sat_option_result = sat_option["analysis_result"]
 
-                if sat_option_result == UnmetDepResult.UNMET_ALARM:
-                  z3_model = sat_option["model"]
-                  config_content = Klocalizer.get_config_from_model(z3_model, arch, set_tristate_m=False, allow_non_visibles=False)
-                  cfgfilepath = get_cfgfilepath(selectee, selector, visib_id, i+1)
+            #     if sat_option_result == UnmetDepResult.UNMET_ALARM:
+            #       z3_model = sat_option["model"]
+            #       config_content = Klocalizer.get_config_from_model(z3_model, arch, set_tristate_m=False, allow_non_visibles=False)
+            #       cfgfilepath = get_cfgfilepath(selectee, selector, visib_id, i+1)
 
-                  with open(cfgfilepath, "w") as f:
-                    f.write(config_content)
+            #       with open(cfgfilepath, "w") as f:
+            #         f.write(config_content)
                   
-                  sat_option["testcase_cfgpath"] = cfgfilepath
+            #       sat_option["testcase_cfgpath"] = cfgfilepath
 
-                  config_samples_created += 1
+            #       config_samples_created += 1
 
-                  # dump progress
-                  dump_testcasegen_progress()
+            #       # dump progress
+            #       dump_testcasegen_progress()
     info("") # complete the progress
 
     # Collect stats
@@ -900,20 +948,20 @@ def main():
             dump_verification_progress()
 
             # verify sat_options, if available
-            if explore_whole_unmet_space:
-              sat_options = unmet_constraints[selectee][selector][visib_id]["sat_options"]
-              for sat_option in sat_options:
-                if sat_option["analysis_result"] == UnmetDepResult.UNMET_ALARM:
-                  cfgfilepath = sat_option["testcase_cfgpath"]
-                  is_verified = verify_test_case(cfgfilepath, selectee, selector, arch_name)
-                  sat_option["is_verified"] = is_verified
-                  some_verified = some_verified or is_verified
-                  all_verified = all_verified and is_verified
-                  num_verified += is_verified
-                  num_checked += 1
+            # if explore_whole_unmet_space:
+            #   sat_options = unmet_constraints[selectee][selector][visib_id]["sat_options"]
+            #   for sat_option in sat_options:
+            #     if sat_option["analysis_result"] == UnmetDepResult.UNMET_ALARM:
+            #       cfgfilepath = sat_option["testcase_cfgpath"]
+            #       is_verified = verify_test_case(cfgfilepath, selectee, selector, arch_name)
+            #       sat_option["is_verified"] = is_verified
+            #       some_verified = some_verified or is_verified
+            #       all_verified = all_verified and is_verified
+            #       num_verified += is_verified
+            #       num_checked += 1
 
-                  # dump progress
-                  dump_verification_progress()
+            #       # dump progress
+            #       dump_verification_progress()
             
             some_testcase_verifies += some_verified
             all_testcases_verify += all_verified
@@ -1000,8 +1048,8 @@ def main():
         f.write("%d select constructs with alarms from the previous stage were checked during optimized SAT pass.\n" % count_optimizedpass_checked)
         f.write("%d select constructs were found udd SAFE through optimized SAT pass.\n" % count_optimizedpass_unmet_safe)
         f.write("%d select constructs were found udd ALARM through optimized SAT pass.\n" % count_optimizedpass_unmet_alarms_unique_constructs)
-        if explore_whole_unmet_space:
-          f.write("%d additional constraints were identified as SAT options for optimized constraints to explore whole unmet space for %d udd alarms.\n" % (count_optimizedpass_sat_options_created, count_optimizedpass_unmet_alarms_unique_constructs))
+        # if explore_whole_unmet_space:
+        #   f.write("%d additional constraints were identified as SAT options for optimized constraints to explore whole unmet space for %d udd alarms.\n" % (count_optimizedpass_sat_options_created, count_optimizedpass_unmet_alarms_unique_constructs))
       
       # precise SAT pass
       if precise_SAT_pass:
@@ -1009,9 +1057,9 @@ def main():
         f.write("%d select constructs with alarms from the previous stage were checked during precise SAT pass.\n" % count_precisepass_checked_generic)
         f.write("%d select constructs were found udd SAFE through precise SAT pass.\n" % count_precisepass_unmet_safe_generic)
         f.write("%d select constructs were found udd ALARM through precise SAT pass.\n" % count_precisepass_unmet_alarm_generic)
-        if explore_whole_unmet_space:
-          f.write("%d SAT options for %d alarms were checked due to exploring whole unmet space.\n" % count_precisepass_checked_satoptions)
-          f.write("%d SAT options were found udd SAFE while %d SAT options were found udd ALARM.\n" % (count_precisepass_unmet_safe_satoptions, count_precisepass_unmet_alarms_satoptions))
+        # if explore_whole_unmet_space:
+        #   f.write("%d SAT options for %d alarms were checked due to exploring whole unmet space.\n" % count_precisepass_checked_satoptions)
+        #   f.write("%d SAT options were found udd SAFE while %d SAT options were found udd ALARM.\n" % (count_precisepass_unmet_safe_satoptions, count_precisepass_unmet_alarms_satoptions))
       
       if sample_models:
         f.write("\n== Test case generation ==\n")
@@ -1081,14 +1129,13 @@ def main():
               if row: csv_writer.writerow(row)
     info("Summary csv was written.")
 
-if __name__ == '__main__':
-  try:
-    main()
-  except Arch.CantOpenKconfigFiles as e:
-    kc = e.kextract_complaints
-    message = "Can't open Kconfig files:"
-    for i in kc:
-      message += "\n  %s" % i
-    error(message)
-    exit(1)
+  # try:
+  #   main()
+  # except Arch.CantOpenKconfigFiles as e:
+  #   kc = e.kextract_complaints
+  #   message = "Can't open Kconfig files:"
+  #   for i in kc:
+  #     message += "\n  %s" % i
+  #   error(message)
+  #   exit(1)
 

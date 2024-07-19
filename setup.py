@@ -49,6 +49,7 @@ setup(
         'requests',
         'whatthepatch',
         'packaging',
+        'tqdm',
     ],
     include_package_data=True,
 )
