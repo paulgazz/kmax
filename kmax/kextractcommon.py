@@ -5,6 +5,7 @@ import kextractor_next_20200430
 import kextractor_3_19
 import kextractor_4_12_8
 import kextractor_4_18
+import kextractor_5_3
 
 module_versions = {}
 
@@ -14,6 +15,7 @@ module_versions["next-20200430"] = kextractor_next_20200430
 module_versions["3.19"] = kextractor_3_19
 module_versions["4.12.8"] = kextractor_4_12_8
 module_versions["4.18"] = kextractor_4_18
+module_versions["5.3"] = kextractor_5_3
 
 available_versions = "Available versions: %s" % (", ".join(list(module_versions.keys())))
 
@@ -28,6 +30,8 @@ def pick_version(kernel_version: str):
     return "next-20210426"
   elif version.parse(kernel_version) >= version.parse("5.6.8"):
     return "next-20200430"
+  elif version.parse(kernel_version) >= version.parse("5.3"):
+    return "5.3"
   elif version.parse(kernel_version) >= version.parse("4.18"):
     return "4.18"
   elif version.parse(kernel_version) >= version.parse("4.12.8"):

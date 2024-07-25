@@ -1,0 +1,66 @@
+* Creating the 5.3 kextractor
+
+** Making a new kextractor directory
+
+#+begin_src
+  mkdir ~/kmax/kextrators/kextract-5.3
+#+end_src
+
+** Getting the Kconfig parser
+
+#+begin_src
+  git clone https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+  cd linux
+  git checkout v5.3
+  make defconfig
+  cd scripts/kconfig
+  cp parser.tab.c lexer.lex.c util.c confdata.c expr.c expr.h list.h lkc_proto.h symbol.c menu.c lkc.h parser.tab.h lexer.l parser.y preprocess.c ~/kmax/kextractors/kextractor-5.3/
+#+end_src
+
+** Creating the kextract module
+
+#+begin_src
+  cd ~/kmax/kextractors/kextract-5.3
+  cp ../kextractor-next-20210426/{Makefile,kextractor{,_extension}.c} .
+  sed -i 's/next_20210426/5_3/' kextractor_extension.c
+#+end_src
+
+** Build the new module
+
+In ~setup.py~:
+
+Define the new extension.  For 5.3, menu.c and util.c are #included in parser.tab.c, so there is no need to add them to the extension as compilation units.
+
+#+begin_src
+kextractor_5_3 = Extension('kextractor_5_3', [ 'kextractors/kextractor-5.3/kextractor_extension.c', 'kextractors/kextractor-5.3/kextractor.c', 'kextractors/kextractor-5.3/confdata.c', 'kextractors/kextractor-5.3/expr.c', 'kextractors/kextractor-5.3/preprocess.c', 'kextractors/kextractor-5.3/lexer.lex.c', 'kextractors/kextractor-5.3/parser.tab.c', 'kextractors/kextractor-5.3/symbol.c'], include_dirs=['kextractors/kextractor-5.3/'])
+#+end_src
+
+Add the new extension to the ext_modules list:
+
+#+begin_src 
+  ext_modules = [ kextractor_next_20210426, kextractor_next_20200430, kextractor_3_19, kextractor_4_12_8, kextractor_4_18, kextractor_5_3 ],
+#+end_src
+
+** Add support for kextract module
+
+In ~kmax/kextractcommon.py~:
+
+Import the new module:
+
+#+begin_src
+  import kextractor_5_3
+#+end_src
+
+Add the new module as an option:
+
+#+begin_src
+  module_versions["5.3"] = kextractor_5_3
+#+end_src
+
+Choose the module according to the Linux version:
+
+#+begin_src
+    elif version.parse(kernel_version) >= version.parse("5.3"):
+      return "5.3"
+#+end_src
+
