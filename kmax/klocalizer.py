@@ -18,6 +18,7 @@ from functools import reduce
 from kmax.arch import Arch
 from kmax.common import get_kmax_constraints, unpickle_kmax_file
 from kmax.vcommon import getLogLevel, getLogger, run
+from kmax.kclause import tristate_pattern
 
 builtin_rewrite_mapping = {
   "drivers/gpu/drm/amd/": "drivers/gpu/drm/amd/amdgpu/../",
@@ -454,15 +455,15 @@ class Klocalizer:
           # TODO: support assigning default values from other config options
           pass
     # collect any tristate settings
-    tristate_pattern = regex.compile("tristate_(y|m)_(CONFIG_[A-Za-z0-9_]+)")
     tristate_settings = {}
     for entry in model:
       str_entry = str(entry)
       matches = tristate_pattern.match(str_entry)
       if matches:
         if model[entry]:
-          config_setting = matches.groups()[0]
-          config_name = matches.groups()[1]
+          config_name = matches.groups()[0]
+          config_setting = matches.groups()[1]
+          print(f"{config_name} = {config_setting}")
           tristate_settings[config_name] = config_setting
     # print(tristate_settings)
     for entry in model: # the model has some problem, we can't get the entry
