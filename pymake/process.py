@@ -5,7 +5,7 @@ parsing command lines into argv and making sure that no shell magic is being use
 
 #TODO: ship pyprocessing?
 import multiprocessing
-import subprocess, shlex, re, logging, sys, traceback, os, imp, glob
+import subprocess, shlex, re, logging, sys, traceback, os, glob
 import site
 from collections import deque
 # XXXkhuey Work around http://bugs.python.org/issue1731717
