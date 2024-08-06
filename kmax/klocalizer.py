@@ -453,6 +453,18 @@ class Klocalizer:
           # default value is from another variable, so it won't have a quoted value
           # TODO: support assigning default values from other config options
           pass
+    # collect any tristate settings
+    tristate_pattern = regex.compile("tristate_(y|m)_(CONFIG_[A-Za-z0-9_]+)")
+    tristate_settings = {}
+    for entry in model:
+      str_entry = str(entry)
+      matches = tristate_pattern.match(str_entry)
+      if matches:
+        if model[entry]:
+          config_setting = matches.groups()[0]
+          config_name = matches.groups()[1]
+          tristate_settings[config_name] = config_setting
+    # print(tristate_settings)
     for entry in model: # the model has some problem, we can't get the entry
       str_entry = str(entry)
       matches = token_pattern.match(str_entry)
@@ -508,7 +520,11 @@ class Klocalizer:
             elif kconfig_types[str_entry] == "bool":
               write_to_content( "%s=y\n" % (str_entry) )
             elif kconfig_types[str_entry] == "tristate":
-              write_to_content( "%s=%s\n" % (str_entry, "y" if not set_tristate_m else "m") )
+              # check for a tristate variable to determine whether to set to y or m if it exists
+              if str_entry in tristate_settings.keys():
+                write_to_content( "%s=%s\n" % (str_entry, tristate_settings[str_entry]) )
+              else:
+                write_to_content( "%s=%s\n" % (str_entry, "y" if not set_tristate_m else "m") )
             elif kconfig_types[str_entry] == "string":
               if str_entry in approximate_config_original.keys():
                 write_to_content("%s\n" % (approximate_config_original[str_entry]))
