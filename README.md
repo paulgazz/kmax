@@ -49,9 +49,9 @@ Add these environment variables to your shell, e.g., `.bash_profile`:
 Get Linux kernel source:
 
     cd ~/
-    wget https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.16.tar.xz
-    tar -xvf linux-5.16.tar.xz
-    cd ~/linux-5.16/
+    wget https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.10.tar.xz
+    tar -xvf linux-6.10.tar.xz
+    cd ~/linux-6.10/
 
 Test `krepair` by automatically repairing `allnoconfig` to include `drivers/usb/storage/alauda.o`, which would normally be omitted by `allnoconfig`.
 
