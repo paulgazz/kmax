@@ -31,10 +31,10 @@ def glean_unknown_symbol(sym):
 
 # parse tree processing
 class Converter(ast.NodeVisitor):
-  def __init__(self):
+  def __init__(self, allow_tristate=True):
     ast.NodeVisitor.__init__(self)
     self.z3 = None
-    self.needs_tristate = set()
+    self.allow_tristate = allow_tristate
 
   def result(self):
     return self.z3
@@ -166,13 +166,15 @@ class Converter(ast.NodeVisitor):
     if z3.is_bool(right) and (str(right) == "y" or str(right) == "m") and z3.is_bool(left):
       assert op != "ne" # kextractor should not check for ne to m or y but instead wrap it in a "not" expression
       # print(right)
-      # replace the option with its tristate variant
-      # kclause then needs to add additional constraints the connect the boolean option with its tristate variants
       option_name = str(left)
-      tristate_name = tristate_config_gen(option_name, str(right))
-      node.z3 = z3.Bool(tristate_name)
-      self.needs_tristate.add(option_name)
-      # TODO: record the fact that option_name tests tristate values, and add the biimplication to the whole kclause formula for it, i.e., CONFIG_A <-> (tristate_y_CONFIG_A || tristate_m_CONFIG_A)
+      if self.allow_tristate:
+        # replace the option with its tristate variant
+        # kclause then needs to add additional constraints the connect the boolean option with its tristate variants
+        tristate_name = tristate_config_gen(option_name, str(right))
+        node.z3 = z3.Bool(tristate_name)
+        # TODO: record the fact that option_name tests tristate values, and add the biimplication to the whole kclause formula for it, i.e., CONFIG_A <-> (tristate_y_CONFIG_A || tristate_m_CONFIG_A)
+      else:
+        node.z3 = z3.Bool(option_name)
     else:
       # represent (in)equality between booleans and strings using z3 expressions
       if z3.is_string(left) and z3.is_string(right) or z3.is_bool(left) and z3.is_bool(right):
@@ -243,7 +245,7 @@ def get_identifiers(expr):
   visitor.visit(tree)
   return visitor.result()
 
-def convert_to_z3(expr):
+def convert_to_z3(expr, allow_tristate=True):
   # print(expr)
   try:
     tree = ast.parse(expr)
@@ -259,7 +261,7 @@ def convert_to_z3(expr):
     exit(1)
     return []
   # sys.stderr.write("actual_expr %s\n" % (str(actual_expr)))
-  visitor = Converter()
+  visitor = Converter(allow_tristate=allow_tristate)
   # print(ast.dump(tree))
   visitor.visit(tree)
   z3_clause = visitor.result()
