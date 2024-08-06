@@ -21,7 +21,7 @@ kextractor_4_12_8 = Extension('kextractor_4_12_8', [ 'kextractors/kextractor-4.1
 
 kextractor_4_18 = Extension('kextractor_4_18', [ 'kextractors/kextractor-4.18/kextractor_extension.c', 'kextractors/kextractor-4.18/kextractor.c', 'kextractors/kextractor-4.18/zconf.tab.c'], include_dirs=['kextractors/kextractor-4.18/'])
 
-kextractor_3_2 = Extension('kextractor_3_2', [ 'kextractors/kextractor-3.2/kextractor_extension.c', 'kextractors/kextractor-3.2/kextractor.c', 'kextractors/kextractor-3.2/bconf.tab.c', 'kextractors/kextractor-3.2/zconf.tab.c'], include_dirs=['kextractors/kextractor-3.2/'])
+kextractor_3_2 = Extension('kextractor_3_2', [ 'kextractors/kextractor-3.2/kextractor_extension.c', 'kextractors/kextractor-3.2/kextractor.c', 'kextractors/kextractor-3.2/bconf.lex.c', 'kextractors/kextractor-3.2/bconf.tab.c', 'kextractors/kextractor-3.2/zconf.tab.c'], include_dirs=['kextractors/kextractor-3.2/'])
 
 setup(
     name = about['__title__'],
