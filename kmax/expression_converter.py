@@ -36,13 +36,7 @@ class Converter(ast.NodeVisitor):
     self.needs_tristate = set()
 
   def result(self):
-    # TODO: use these functions to create the formula in visit_Compare as well
-    def tristate_y(option): return f"tristate_y_{str(option)}"
-    def tristate_m(option): return f"tristate_m_{str(option)}"
-    tristate_constraints = [ z3.And(z3.Implies(z3.Bool(option), z3.Xor(z3.Bool(tristate_y(option)), z3.Bool(tristate_m(option)))), z3.Implies(z3.Xor(z3.Bool(tristate_y(option)), z3.Bool(tristate_m(option))), z3.Bool(option))) for option in self.needs_tristate ]
-    final_result = z3.And(self.z3, z3.And(tristate_constraints))
-    # return self.z3
-    return final_result
+    return self.z3
 
   def visit_Expr(self, node):
     self.generic_visit(node)
