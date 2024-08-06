@@ -25,14 +25,21 @@
 
 ### Dependencies
 
+#### System dependencies
+
     # kmax dependencies
     sudo apt install -y pipx python3-dev gcc build-essential
     # linux dependencies
     sudo apt install -y flex bison bc libssl-dev libelf-dev git
     # superc dependencies
     sudo apt install -y wget libz3-java libjson-java sat4j unzip xz-utils lftp
+	
+#### User dependencies
+	
     # install superc and make.cross
     wget -O - https://raw.githubusercontent.com/appleseedlab/superc/master/scripts/install.sh | bash
+
+### Environment
 
 Add these environment variables to your shell, e.g., `.bash_profile`:
 
