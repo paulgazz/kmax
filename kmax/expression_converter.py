@@ -72,6 +72,26 @@ class Converter(ast.NodeVisitor):
   def visit_Not(self, node):
     node.name = "not"
 
+  def visit_BinOp(self, node):
+    self.generic_visit(node)
+    # string values should not normally appear in expressions,
+    # but this can happen when there are undefined configuration
+    # options used in expressions.  instead of throwing an error,
+    # kconfig treats the usage of undefined configuration options
+    # (identifiers) as strings.  such strings are assumed to be false,
+    # since they aren't options that can ever be true.  (see visit_UnaryOp)
+    leftoperand = node.left.z3 if z3.is_bool(node.left.z3) else z3.BoolVal(False)
+    rightoperand = node.right.z3 if z3.is_bool(node.right.z3) else z3.BoolVal(False)
+
+    if node.op.name == "xor":
+      node.z3 = z3.Xor(leftoperand, rightoperand)
+    else:
+      print(node.op)
+      assert(False)
+
+  def visit_BitXor(self, node):
+    node.name = "xor"
+
   def visit_UnaryOp(self, node):
     self.generic_visit(node)
     operand = node.operand.z3

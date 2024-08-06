@@ -247,6 +247,10 @@ if __name__ == '__main__':
   def disjunction(*args):
     return "(%s)" % (" or ".join(map(lambda x: "(%s)" % (x), args)))
 
+  def xor(a, b):
+    # return conjunction(disjunction(a, b), negation(conjunction(a, b)))
+    return "((%s) ^ (%s))" % (a, b)
+    
   def existential_disjunction(*args):
     """Create a string expression disjoining all non-null elements of args."""
     filtered_args = [ x for x in args if x is not None ]
