@@ -136,6 +136,10 @@ The alarm can be found in `kismet_summary_x86_64.csv` and `.config` files that e
 
 Run `kismet` on the root of the Linux source tree.
 
+    cd ~/
+    wget https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.16.tar.xz
+    tar -xvf linux-5.16.tar.xz
+    cd ~/linux-5.16/
     kismet --linux-ksrc="${HOME}/linux-5.16/" -a=x86_64
 
 Once finished (it can take about an hour on a commodity desktop), kismet will produce three outputs:
