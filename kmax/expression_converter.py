@@ -33,9 +33,16 @@ class Converter(ast.NodeVisitor):
   def __init__(self):
     ast.NodeVisitor.__init__(self)
     self.z3 = None
+    self.needs_tristate = set()
 
   def result(self):
-    return self.z3
+    # TODO: use these functions to create the formula in visit_Compare as well
+    def tristate_y(option): return f"tristate_y_{str(option)}"
+    def tristate_m(option): return f"tristate_m_{str(option)}"
+    tristate_constraints = [ z3.And(z3.Implies(z3.Bool(option), z3.Xor(z3.Bool(tristate_y(option)), z3.Bool(tristate_m(option)))), z3.Implies(z3.Xor(z3.Bool(tristate_y(option)), z3.Bool(tristate_m(option))), z3.Bool(option))) for option in self.needs_tristate ]
+    final_result = z3.And(self.z3, z3.And(tristate_constraints))
+    # return self.z3
+    return final_result
 
   def visit_Expr(self, node):
     self.generic_visit(node)
@@ -141,22 +148,33 @@ class Converter(ast.NodeVisitor):
     predicate = str(ast.dump(node))
     node.z3 = z3.Bool("PREDICATE_%s" % (predicate))
 
-    # represent (in)equality between booleans and strings using z3 expressions
-    if z3.is_string(left) and z3.is_string(right) or z3.is_bool(left) and z3.is_bool(right):
-      if op == "eq":
-        node.z3 = z3.simplify(z3.Not(z3.Distinct(left, right)))
-      elif op == "ne":
-        node.z3 = z3.simplify(z3.Distinct(left, right))
-      # elif op == "lt":
-      #   node.z3 = z3.Z3_mk_lt(z3.get_ctx(None), left.ast, right.ast)
-      # elif op == "le":
-      #   node.z3 = z3.simplify(z3.ULE(left, right))
-      # elif op == "gt":
-      #   node.z3 = z3.simplify(z3.UGT(left, right))
-      # elif op == "ge":
-      #   node.z3 = z3.simplify(z3.UGE(left, right))
-      # else:
-      #  assert(False)
+    if z3.is_bool(right) and (str(right) == "y" or str(right) == "m") and z3.is_bool(left):
+      assert op != "ne" # kextractor should not check for ne to m or y but instead wrap it in a "not" expression
+      # print(right)
+      # replace the option with its tristate variant
+      # kclause then needs to add additional constraints the connect the boolean option with its tristate variants
+      option_name = str(left)
+      tristate_name = f"tristate_{str(right)}_{option_name}"
+      node.z3 = z3.Bool(tristate_name)
+      self.needs_tristate.add(option_name)
+      # TODO: record the fact that option_name tests tristate values, and add the biimplication to the whole kclause formula for it, i.e., CONFIG_A <-> (tristate_y_CONFIG_A || tristate_m_CONFIG_A)
+    else:
+      # represent (in)equality between booleans and strings using z3 expressions
+      if z3.is_string(left) and z3.is_string(right) or z3.is_bool(left) and z3.is_bool(right):
+        if op == "eq":
+          node.z3 = z3.simplify(z3.Not(z3.Distinct(left, right)))
+        elif op == "ne":
+          node.z3 = z3.simplify(z3.Distinct(left, right))
+        # elif op == "lt":
+        #   node.z3 = z3.Z3_mk_lt(z3.get_ctx(None), left.ast, right.ast)
+        # elif op == "le":
+        #   node.z3 = z3.simplify(z3.ULE(left, right))
+        # elif op == "gt":
+        #   node.z3 = z3.simplify(z3.UGT(left, right))
+        # elif op == "ge":
+        #   node.z3 = z3.simplify(z3.UGE(left, right))
+        # else:
+        #  assert(False)
 
   def visit_Eq(self, node):
     node.name = "eq"
