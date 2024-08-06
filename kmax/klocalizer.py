@@ -463,7 +463,6 @@ class Klocalizer:
         if model[entry]:
           config_name = matches.groups()[0]
           config_setting = matches.groups()[1]
-          print(f"{config_name} = {config_setting}")
           tristate_settings[config_name] = config_setting
     # print(tristate_settings)
     for entry in model: # the model has some problem, we can't get the entry
