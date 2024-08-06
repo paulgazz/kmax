@@ -549,7 +549,8 @@ class Klocalizer:
             else:
               assert(False)
           else:
-            if kconfig_types is None or str_entry in kconfig_types:
+            # if the solver set the option to false, then set it to 'n' in the output, but only for bool and tristate.  using the # CONFIG_A is not set pattern sets the option to false, which isn't valid for nonbools.
+            if kconfig_types is None or str_entry in kconfig_types and (kconfig_types[str_entry] == "tristate" or kconfig_types[str_entry] == "bool"):
               write_to_content( "# %s is not set\n" % (str_entry) )
             else:
               if str_entry not in Arch.ARCH_CONFIGS:
