@@ -390,10 +390,17 @@ void print_python_expr(struct expr *e, FILE *out, enum expr_type prevtoken)
     print_python_expr(e->left.expr, out, E_NOT);
 		break;
 	case E_EQUAL:
-    if (strcmp(e->right.sym->name, "y") == 0 ||
-        strcmp(e->right.sym->name, "m") == 0) {
+    /* if (strcmp(e->right.sym->name, "y") == 0 || */
+    /*     strcmp(e->right.sym->name, "m") == 0) { */
+    /*   // TODO: actually print out ==m instead */
+    /*   print_python_symbol(out, e->left.sym); */
+    if (strcmp(e->right.sym->name, "y") == 0) {
+      print_python_symbol(out, e->left.sym);
+			fprintf(out, "==y");
+		} else if (strcmp(e->right.sym->name, "m") == 0) {
       // TODO: actually print out ==m instead
       print_python_symbol(out, e->left.sym);
+			fprintf(out, "==m");
     } else if (strcmp(e->right.sym->name, "n") == 0) {
       fprintf(out, " not ");
       print_python_symbol(out, e->left.sym);
@@ -405,11 +412,20 @@ void print_python_expr(struct expr *e, FILE *out, enum expr_type prevtoken)
     }
 		break;
 	case E_UNEQUAL:
-    if (strcmp(e->right.sym->name, "y") == 0 ||
-        strcmp(e->right.sym->name, "m") == 0) {
+    /* if (strcmp(e->right.sym->name, "y") == 0 || */
+    /*     strcmp(e->right.sym->name, "m") == 0) { */
+    /*   // TODO: actually print out ==m instead */
+    /*   fprintf(out, " not "); */
+    /*   print_python_symbol(out, e->left.sym); */
+    if (strcmp(e->right.sym->name, "y") == 0) {
+      fprintf(out, " not ");
+      print_python_symbol(out, e->left.sym);
+			fprintf(out, "==y");
+    } else if (strcmp(e->right.sym->name, "m") == 0) {
       // TODO: actually print out ==m instead
       fprintf(out, " not ");
       print_python_symbol(out, e->left.sym);
+			fprintf(out, "==m");
     } else if (strcmp(e->right.sym->name, "n") == 0) {
       print_python_symbol(out, e->left.sym);
     } else {
