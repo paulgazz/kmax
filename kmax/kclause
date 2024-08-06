@@ -32,6 +32,7 @@ if __name__ == '__main__':
   import kmax.about
   import re
   import itertools
+  from kmax.kclause import *
 
   # this script takes the check_dep --dimacs output and converts it into
   # a dimacs-compatible format
@@ -159,6 +160,7 @@ if __name__ == '__main__':
   tristate_choices = []
   bool_opt_choices = []
   tristate_opt_choices = []
+  bool_types = {}
 
   # nonbool var attributes
   nonbools = set()
@@ -170,6 +172,9 @@ if __name__ == '__main__':
   # vars that can be set by the user via an environment variable (and thus are free variables)
   envs = set()
 
+  # set of config options that need to support tristate values, i.e., are tested against y or m
+  need_tristate_values = set()
+  
   ghost_bools = {}
 
   # whether to always enable nonbools or not regardless of whether they
@@ -247,6 +252,10 @@ if __name__ == '__main__':
   def disjunction(*args):
     return "(%s)" % (" or ".join(map(lambda x: "(%s)" % (x), args)))
 
+  def xor(a, b):
+    # return conjunction(disjunction(a, b), negation(conjunction(a, b)))
+    return "((%s) ^ (%s))" % (a, b)
+    
   def existential_disjunction(*args):
     """Create a string expression disjoining all non-null elements of args."""
     filtered_args = [ x for x in args if x is not None ]
@@ -281,6 +290,7 @@ if __name__ == '__main__':
       defined_vars.add(varname)
       if typename == "bool" or typename == "tristate":
         bools.add(varname)
+        bool_types[varname] = typename
       else:
         nonbools.add(varname)
         nonbool_types[varname] = typename
@@ -411,7 +421,7 @@ if __name__ == '__main__':
       str_expr = str_expr + " and 1"
 
       # to z3 clause
-      z3_clause = expression_converter.convert_to_z3(str_expr)
+      z3_clause = expression_converter.convert_to_z3(str_expr, allow_tristate=False)
 
       # to smt2
       s = z3.Solver()
@@ -676,6 +686,14 @@ if __name__ == '__main__':
       pretty_printer(final_expression, stream=sys.stderr)
     convert_and_add_clause("<CHOICE>", final_expression)
 
+  # find which tristate options get compared to y or m, since only these need additional clauses to support these constraints
+  for expr in itertools.chain(prompt_lines.values(), dep_exprs.values(), rev_dep_exprs.values()):
+    matches = tristate_pattern.match(expr)
+    for regmatch in re.finditer(tristate_pattern, expr):
+      option_name = regmatch[1]
+      option_value = regmatch[2]
+      need_tristate_values.add(option_name)
+    
   # generate clauses for dependencies and defaults
   if not quiet: sys.stderr.write("generating clauses for dependencies")
   configuration_options_to_translate = set(dep_exprs.keys()).union(set(rev_dep_exprs.keys())).union(set(selects.keys())).union(set(def_bool_lines.keys())).union(set(prompt_lines.keys()))
@@ -1100,6 +1118,14 @@ if __name__ == '__main__':
         else:
           sys.stderr.write("%s has no final expression\n" % (var))
 
+      if var in need_tristate_values and var in bool_types.keys() and bool_types[var] == "tristate":
+        config_on_iff_y_xor_m = biimplication(var, xor(tristate_config_gen(var, "y"), tristate_config_gen(var, "m")))
+        # print(config_on_iff_y_xor_m)
+        convert_and_add_clause(var, config_on_iff_y_xor_m)
+        if var in has_selects and rev_dep_expr != None and rev_dep_expr != "(1)":
+          tristate_m_implies_not_selected = implication(tristate_config_gen(var, "m"), negation(rev_dep_expr))
+          convert_and_add_clause(var, tristate_m_implies_not_selected)
+          # print(tristate_m_implies_not_selected)
     elif var in nonbools:
       nonbools_with_dep.add(var)
       if var not in has_prompt:

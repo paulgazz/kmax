@@ -3,6 +3,7 @@ import sys
 import ast
 import z3
 import regex
+from kmax.kclause import tristate_config_gen
 
 # Documentation of ast and the visitors: https://greentreesnakes.readthedocs.io/en/latest/nodes.html
 
@@ -30,9 +31,10 @@ def glean_unknown_symbol(sym):
 
 # parse tree processing
 class Converter(ast.NodeVisitor):
-  def __init__(self):
+  def __init__(self, allow_tristate=True):
     ast.NodeVisitor.__init__(self)
     self.z3 = None
+    self.allow_tristate = allow_tristate
 
   def result(self):
     return self.z3
@@ -69,6 +71,26 @@ class Converter(ast.NodeVisitor):
 
   def visit_Not(self, node):
     node.name = "not"
+
+  def visit_BinOp(self, node):
+    self.generic_visit(node)
+    # string values should not normally appear in expressions,
+    # but this can happen when there are undefined configuration
+    # options used in expressions.  instead of throwing an error,
+    # kconfig treats the usage of undefined configuration options
+    # (identifiers) as strings.  such strings are assumed to be false,
+    # since they aren't options that can ever be true.  (see visit_UnaryOp)
+    leftoperand = node.left.z3 if z3.is_bool(node.left.z3) else z3.BoolVal(False)
+    rightoperand = node.right.z3 if z3.is_bool(node.right.z3) else z3.BoolVal(False)
+
+    if node.op.name == "xor":
+      node.z3 = z3.Xor(leftoperand, rightoperand)
+    else:
+      print(node.op)
+      assert(False)
+
+  def visit_BitXor(self, node):
+    node.name = "xor"
 
   def visit_UnaryOp(self, node):
     self.generic_visit(node)
@@ -141,22 +163,35 @@ class Converter(ast.NodeVisitor):
     predicate = str(ast.dump(node))
     node.z3 = z3.Bool("PREDICATE_%s" % (predicate))
 
-    # represent (in)equality between booleans and strings using z3 expressions
-    if z3.is_string(left) and z3.is_string(right) or z3.is_bool(left) and z3.is_bool(right):
-      if op == "eq":
-        node.z3 = z3.simplify(z3.Not(z3.Distinct(left, right)))
-      elif op == "ne":
-        node.z3 = z3.simplify(z3.Distinct(left, right))
-      # elif op == "lt":
-      #   node.z3 = z3.Z3_mk_lt(z3.get_ctx(None), left.ast, right.ast)
-      # elif op == "le":
-      #   node.z3 = z3.simplify(z3.ULE(left, right))
-      # elif op == "gt":
-      #   node.z3 = z3.simplify(z3.UGT(left, right))
-      # elif op == "ge":
-      #   node.z3 = z3.simplify(z3.UGE(left, right))
-      # else:
-      #  assert(False)
+    if z3.is_bool(right) and (str(right) == "y" or str(right) == "m") and z3.is_bool(left):
+      assert op != "ne" # kextractor should not check for ne to m or y but instead wrap it in a "not" expression
+      # print(right)
+      option_name = str(left)
+      if self.allow_tristate:
+        # replace the option with its tristate variant
+        # kclause then needs to add additional constraints the connect the boolean option with its tristate variants
+        tristate_name = tristate_config_gen(option_name, str(right))
+        node.z3 = z3.Bool(tristate_name)
+        # TODO: record the fact that option_name tests tristate values, and add the biimplication to the whole kclause formula for it, i.e., CONFIG_A <-> (tristate_y_CONFIG_A || tristate_m_CONFIG_A)
+      else:
+        node.z3 = z3.Bool(option_name)
+    else:
+      # represent (in)equality between booleans and strings using z3 expressions
+      if z3.is_string(left) and z3.is_string(right) or z3.is_bool(left) and z3.is_bool(right):
+        if op == "eq":
+          node.z3 = z3.simplify(z3.Not(z3.Distinct(left, right)))
+        elif op == "ne":
+          node.z3 = z3.simplify(z3.Distinct(left, right))
+        # elif op == "lt":
+        #   node.z3 = z3.Z3_mk_lt(z3.get_ctx(None), left.ast, right.ast)
+        # elif op == "le":
+        #   node.z3 = z3.simplify(z3.ULE(left, right))
+        # elif op == "gt":
+        #   node.z3 = z3.simplify(z3.UGT(left, right))
+        # elif op == "ge":
+        #   node.z3 = z3.simplify(z3.UGE(left, right))
+        # else:
+        #  assert(False)
 
   def visit_Eq(self, node):
     node.name = "eq"
@@ -210,7 +245,7 @@ def get_identifiers(expr):
   visitor.visit(tree)
   return visitor.result()
 
-def convert_to_z3(expr):
+def convert_to_z3(expr, allow_tristate=True):
   # print(expr)
   try:
     tree = ast.parse(expr)
@@ -226,7 +261,7 @@ def convert_to_z3(expr):
     exit(1)
     return []
   # sys.stderr.write("actual_expr %s\n" % (str(actual_expr)))
-  visitor = Converter()
+  visitor = Converter(allow_tristate=allow_tristate)
   # print(ast.dump(tree))
   visitor.visit(tree)
   z3_clause = visitor.result()
