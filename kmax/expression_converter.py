@@ -3,6 +3,7 @@ import sys
 import ast
 import z3
 import regex
+from kmax.kclause import tristate_config_gen
 
 # Documentation of ast and the visitors: https://greentreesnakes.readthedocs.io/en/latest/nodes.html
 
@@ -148,7 +149,7 @@ class Converter(ast.NodeVisitor):
       # replace the option with its tristate variant
       # kclause then needs to add additional constraints the connect the boolean option with its tristate variants
       option_name = str(left)
-      tristate_name = f"tristate_{str(right)}_{option_name}"
+      tristate_name = tristate_config_gen(option_name, str(right))
       node.z3 = z3.Bool(tristate_name)
       self.needs_tristate.add(option_name)
       # TODO: record the fact that option_name tests tristate values, and add the biimplication to the whole kclause formula for it, i.e., CONFIG_A <-> (tristate_y_CONFIG_A || tristate_m_CONFIG_A)
