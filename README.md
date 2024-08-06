@@ -25,14 +25,21 @@
 
 ### Dependencies
 
+#### System dependencies
+
     # kmax dependencies
     sudo apt install -y pipx python3-dev gcc build-essential
     # linux dependencies
     sudo apt install -y flex bison bc libssl-dev libelf-dev git
     # superc dependencies
     sudo apt install -y wget libz3-java libjson-java sat4j unzip xz-utils lftp
+	
+#### User dependencies
+	
     # install superc and make.cross
     wget -O - https://raw.githubusercontent.com/appleseedlab/superc/master/scripts/install.sh | bash
+
+### Environment
 
 Add these environment variables to your shell, e.g., `.bash_profile`:
 
@@ -49,9 +56,9 @@ Add these environment variables to your shell, e.g., `.bash_profile`:
 Get Linux kernel source:
 
     cd ~/
-    wget https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.16.tar.xz
-    tar -xvf linux-5.16.tar.xz
-    cd ~/linux-5.16/
+    wget https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.10.tar.xz
+    tar -xvf linux-6.10.tar.xz
+    cd ~/linux-6.10/
 
 Test `krepair` by automatically repairing `allnoconfig` to include `drivers/usb/storage/alauda.o`, which would normally be omitted by `allnoconfig`.
 
@@ -136,6 +143,10 @@ The alarm can be found in `kismet_summary_x86_64.csv` and `.config` files that e
 
 Run `kismet` on the root of the Linux source tree.
 
+    cd ~/
+    wget https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.16.tar.xz
+    tar -xvf linux-5.16.tar.xz
+    cd ~/linux-5.16/
     kismet --linux-ksrc="${HOME}/linux-5.16/" -a=x86_64
 
 Once finished (it can take about an hour on a commodity desktop), kismet will produce three outputs:
