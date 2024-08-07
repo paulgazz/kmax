@@ -30,4 +30,13 @@ include kextractors/kextractor-4.18/symbol.c
 include kextractors/kextractor-4.18/util.c
 include kextractors/kextractor-4.18/zconf.lex.c
 
+include kextractors/kextractor-3.2/bconf.lex.c
+include kextractors/kextractor-3.2/confdata.c
+include kextractors/kextractor-3.2/expr.c
+include kextractors/kextractor-3.2/menu.c
+include kextractors/kextractor-3.2/symbol.c
+include kextractors/kextractor-3.2/util.c
+include kextractors/kextractor-3.2/zconf.hash.c
+include kextractors/kextractor-3.2/zconf.lex.c
+
 recursive-include kmax/resources *
