@@ -263,7 +263,7 @@ if __name__ == '__main__':
   argparser.add_argument('--formulas',
                         type=str,
                         default=None,
-                        help="""Path to the architecture formulas directory which contain kextract file and kclause files.  Defaults to \"LINUX_KSRC/.kmax/kclause/ARCHNAME\" (LINUX_KSRC from --linux-ksrc and ARCHNAME from --arch).""")
+                        help="""Path to the architecture formulas directory which contain kextract file and kclause files.  Defaults to \"LINUX_KSRC/.kismet/kclause/ARCHNAME\" (LINUX_KSRC from --linux-ksrc and ARCHNAME from --arch).""")
   argparser.add_argument('--linux-ksrc',
                         type=str,
                         default="./",
@@ -409,7 +409,7 @@ if __name__ == '__main__':
   #
   # Set default value for formulas if not specified
   if not formulas_arg:
-    formulas_arg = os.path.join(linux_ksrc, ".kmax/")
+    formulas_arg = os.path.join(linux_ksrc, ".kismet/")
 
   # Get the build system id, which names the formulas cache subdirectory
   info("Computing the build system id for the Linux source..")
@@ -423,7 +423,8 @@ if __name__ == '__main__':
     assert arch != None
     return os.path.join(formulas, "kclause", arch)
 
-  arch = Arch(arch_name, linux_ksrc=linux_ksrc, arch_dir=get_arch_formulas_dir(formulas, arch_name), loggerLevel=kismet_log_level)
+  arch = Arch(arch_name, linux_ksrc=linux_ksrc, arch_dir=get_arch_formulas_dir(formulas, arch_name), loggerLevel=kismet_log_level, kclause_args=["--disable-tristate-support"])
+  # don't use the kclause tristate extension, since we are using partial formulas that don't compose properly
   
   info("Kismet will analyze the select constructs of the architecture \"%s\" for unmet direct dependency." % arch.name)
   info("All times reported are measured using Python's time.perf_counter() utility.")
