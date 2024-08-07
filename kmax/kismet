@@ -423,7 +423,8 @@ if __name__ == '__main__':
     assert arch != None
     return os.path.join(formulas, "kclause", arch)
 
-  arch = Arch(arch_name, linux_ksrc=linux_ksrc, arch_dir=get_arch_formulas_dir(formulas, arch_name), loggerLevel=kismet_log_level)
+  arch = Arch(arch_name, linux_ksrc=linux_ksrc, arch_dir=get_arch_formulas_dir(formulas, arch_name), loggerLevel=kismet_log_level, kclause_args=["--disable-tristate-support"])
+  # don't use the kclause tristate extension, since we are using partial formulas that don't compose properly
   
   info("Kismet will analyze the select constructs of the architecture \"%s\" for unmet direct dependency." % arch.name)
   info("All times reported are measured using Python's time.perf_counter() utility.")
