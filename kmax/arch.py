@@ -1016,6 +1016,7 @@ class Arch:
     assert self.__kextract != None
 
     command = ["kclause", "--normal-dependencies-only" ]
+    if self.__kclause_args != None: command = command + self.__kclause_args
     self.__logger.debug("Running kclause tool to generate kclause direct dependency formulas.")
     proc_stdout, _, ret_code = self.__run_command(command, self.__kextract.encode(), capture_stderr=False)
     
@@ -1073,6 +1074,7 @@ class Arch:
     assert self.__kextract != None
 
     command = ["kclause", "--reverse-dependencies-only" ]
+    if self.__kclause_args != None: command = command + self.__kclause_args
     self.__logger.debug("Running kclause tool to generate kclause reverse dependency formulas.")
     proc_stdout, _, ret_code = self.__run_command(command, self.__kextract.encode(), capture_stderr=False)
     
@@ -1130,6 +1132,7 @@ class Arch:
     assert self.__kextract != None
 
     command = ["kclause", "--selects-only" ]
+    if self.__kclause_args != None: command = command + self.__kclause_args
     self.__logger.debug("Running kclause tool to generate kclause selects formulas.")
     proc_stdout, _, ret_code = self.__run_command(command, self.__kextract.encode(), capture_stderr=False)
     

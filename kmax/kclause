@@ -1127,7 +1127,7 @@ if __name__ == '__main__':
         else:
           sys.stderr.write("%s has no final expression\n" % (var))
 
-      if var in need_tristate_values and var in bool_types.keys() and bool_types[var] == "tristate":
+      if not disable_tristate_support and var in need_tristate_values and var in bool_types.keys() and bool_types[var] == "tristate":
         config_on_iff_y_xor_m = biimplication(var, xor(tristate_config_gen(var, "y"), tristate_config_gen(var, "m")))
         # print(config_on_iff_y_xor_m)
         convert_and_add_clause(var, config_on_iff_y_xor_m)
