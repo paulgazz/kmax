@@ -1,2 +1,2 @@
 __title__ = "kmax"
-__version__ = "4.8-rc1"
+__version__ = "4.8-rc2"
