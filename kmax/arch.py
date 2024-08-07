@@ -223,7 +223,7 @@ class Arch:
       ensure_then_dump(rev_dep_path,  self.get_rev_dep,  self.dump_rev_dep)
       ensure_then_dump(selects_path,  self.get_selects,  self.dump_selects)
 
-  def __init__(self, name: str, linux_ksrc=None, arch_dir=None, is_kclause_composite=False, verify_linux_ksrc=True, kextract_version=None, loggerLevel=logging.INFO):
+  def __init__(self, name: str, linux_ksrc=None, arch_dir=None, is_kclause_composite=False, verify_linux_ksrc=True, kextract_version=None, loggerLevel=logging.INFO, kclause_args=None):
     """Create an Arch instance.
 
     Arguments:
@@ -242,9 +242,12 @@ class Arch:
     on this flag. If kclause file doesn't exist, the delayed dump will be composite
     or not depending on the flag.
     loggerLevel -- Logger level.
+    kclause_args -- additional arguments, as a list, to kclause (None by default)
     """
     self.__logger=getLogger(name="Arch(%s)" % name, level=loggerLevel)
     self.name=name
+
+    self.__kclause_args = kclause_args
     
     #
     # Formulas
@@ -952,6 +955,8 @@ class Arch:
     assert self.__kextract != None
 
     command = ["kclause", "--remove-orphaned-nonvisible" ]
+    if self.__kclause_args != None: command = command + self.__kclause_args
+    # TODO: disable tristate handling when requested, i.e., for kismet
     self.__logger.debug("Running kclause tool to generate kclause formulas.")
     proc_stdout, _, ret_code = self.__run_command(command, self.__kextract.encode(), capture_stderr=False)
     
