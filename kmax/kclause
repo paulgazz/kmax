@@ -70,6 +70,9 @@ if __name__ == '__main__':
   argparser.add_argument('--selects-only',
                          action="store_true",
                          help="""Print selects only.""")
+  argparser.add_argument('--disable-tristate-support',
+                         action="store_true",
+                         help="""Don't model tristate options with separate y and m Boolean variables.""")
   argparser.add_argument('--remove-all-nonvisibles',
                          action="store_true",
                          help="""whether to leave only those config vars that can be selected by the user.  this is defined as config vars that have a kconfig prompt.""")
@@ -120,6 +123,9 @@ if __name__ == '__main__':
   normal_dep_only = args.normal_dependencies_only
   reverse_dep_only = args.reverse_dependencies_only
   selects_only = args.selects_only
+  disable_tristate_support = args.disable_tristate_support
+
+  allow_tristate = not disable_tristate_support
 
   if unselectable or selectable:
     # don't do output, which won't make much sense for --(un)selectable
@@ -201,7 +207,7 @@ if __name__ == '__main__':
       pass
 
   def convert_and_add_clause(varname, expr):
-    add_clause(varname, expression_converter.convert_to_z3(expr))
+    add_clause(varname, expression_converter.convert_to_z3(expr, allow_tristate=not disable_tristate_support))
 
   def pretty_printer(expr, stream=sys.stdout):
     depth = 0
@@ -412,9 +418,12 @@ if __name__ == '__main__':
   if normal_dep_only or reverse_dep_only or selects_only:
     if not quiet: sys.stderr.write("[STEP 2/3] converting the constraints to smtlib2 format..\n")
 
+    if not disable_tristate_support:
+      sys.stderr.write("note that tristate support is not enabled for --normal-dependencies-only, --reverse-dependencies-only, or --selects-only, since supporting tristate requires additional global constraints\n")
+
     # Undeclared symbols will be "FOO" instead of CONFIG_FOO
     def is_sym_declared(sym_name):
-      return not z3.is_false( expression_converter.convert_to_z3(sym_name + " and 1") )
+      return not z3.is_false( expression_converter.convert_to_z3(sym_name + " and 1", allow_tristate=False) )
 
     def convert_str_expr_to_smtlib2(str_expr):
       # Always and with 1 to eliminate "SYM" cases
@@ -1099,7 +1108,7 @@ if __name__ == '__main__':
         if debug_expressions: sys.stderr.write("unconditional visible %s\n" % (visible_expr))
         if debug_expressions: sys.stderr.write("conditional nonvisible %s\n" % (cond_nonvisible_expr))
         if debug_expressions: sys.stderr.write("unconditional nonvisible %s\n" % (nonvisible_expr))
-        if debug_expressions: sys.stderr.write("unconditional nonvisible z3 %s\n" % (expression_converter.convert_to_z3(nonvisible_expr) if nonvisible_expr is not None else None))
+        if debug_expressions: sys.stderr.write("unconditional nonvisible z3 %s\n" % (expression_converter.convert_to_z3(nonvisible_expr, allow_tristate=not disable_tristate_support) if nonvisible_expr is not None else None))
 
         if cond_visible_expr != None and cond_nonvisible_expr != None:
           final_expr = disjunction(cond_visible_expr, cond_nonvisible_expr)
@@ -1112,7 +1121,7 @@ if __name__ == '__main__':
 
         if final_expr != None:
           if debug_expressions: sys.stderr.write("%s final expression is %s\n" % (var, final_expr))
-          if debug_expressions: sys.stderr.write("%s final expression z3 is %s\n" % (var, expression_converter.convert_to_z3(final_expr) if final_expr is not None else None))
+          if debug_expressions: sys.stderr.write("%s final expression z3 is %s\n" % (var, expression_converter.convert_to_z3(final_expr, allow_tristate=not disable_tristate_support) if final_expr is not None else None))
           defined_vars.add(var)
           convert_and_add_clause(var, final_expr)
         else:
