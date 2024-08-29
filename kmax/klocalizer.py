@@ -23,7 +23,7 @@ from kmax.kclause import tristate_pattern
 builtin_rewrite_mapping = {
   "drivers/gpu/drm/amd/": "drivers/gpu/drm/amd/amdgpu/../",
   "drivers/gpu/drm/amd/amdgpu/": "drivers/gpu/drm/amd/amdgpu/",  # this path is more specific, so the parent directory will not be rewritten for amdgpu
-  "virt/kvm/": "arch/x86/kvm/../../../virt/kvm", # note that virt/kvm also applies to arm
+  "virt/kvm/": "arch/x86/kvm/../../../virt/kvm/", # note that virt/kvm also applies to arm
 }
 
 builtin_build_targets = {
