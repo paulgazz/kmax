@@ -646,7 +646,21 @@ class SyntaxAnalysis:
             if in_comment:
                 analyzed_tokens[line_num].append({token: "comment"})
             elif in_preprocessor:
-                analyzed_tokens[line_num].append({token: "preprocessor"})
+                # handle case where no space between directive and parenthesis
+                found_directive = False  # track if directive found
+                for directive in ['if', 'ifdef', 'ifndef', 'elif', 'else', 'endif']:
+                    if token.startswith(directive + '('):
+                        directive_token = directive
+                        remaining_token = token[len(directive):]  # capture remaining part by slicing at length of directive
+                        analyzed_tokens[line_num].append({directive_token: "preprocessor"})  # add directive
+                        if remaining_token:
+                            analyzed_tokens[line_num].append({remaining_token: "preprocessor"}) # add remaining token
+                            found_directive = True
+                        break
+
+                # if no directive found: just add token as whole
+                if not found_directive:
+                    analyzed_tokens[line_num].append({token: "preprocessor"})
             else:
                 analyzed_tokens[line_num].append({token: "c"})
 
