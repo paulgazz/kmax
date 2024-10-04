@@ -103,15 +103,17 @@ def summarize_patch(patch: str, str_change_type=False) -> list:
     if added_lines: diff_summary["added_lines"] = added_lines
     if removed_lines: diff_summary["removed_lines"] = removed_lines
 
+    # set file type
     if old_path and new_path:
       # allow file type change for MOVED_MODIFIED
       if change_type == FileChangeType.MOVED_MODIFIED:
         diff_summary["file_type"] = SourceFileType.get_file_type(new_path)
       else:  # for MOVED_ONLY and other cases
         assert SourceFileType.get_file_type(old_path) == SourceFileType.get_file_type(new_path)
+        diff_summary["file_type"] = SourceFileType.get_file_type(new_path)
 
-    # set file type
-    if old_path:
+    # if only old_path/new_path provided, set to their file type
+    elif old_path:
       diff_summary["file_type"] = SourceFileType.get_file_type(old_path)
     elif new_path:
       diff_summary["file_type"] = SourceFileType.get_file_type(new_path)
