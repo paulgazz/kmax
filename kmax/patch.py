@@ -30,7 +30,7 @@ def is_interesting_diff(diff) -> bool:
   if change_type != FileChangeType.CREATED        and \
      change_type != FileChangeType.MODIFIED_ONLY  and \
      change_type != FileChangeType.MOVED_MODIFIED:
-    # otherwise, it is REMOVED or MOVED_ONLY; for which we don't create configs
+    # otherwise, it is REMOVED, PERMISSION_CHANGED, or MOVED_ONLY; for which we don't create configs
     return False
 
   return is_maybe_kernel(diff['new_path'])

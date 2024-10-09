@@ -111,6 +111,7 @@ class FileChangeType(enum.Enum):
     MOVED_ONLY = 3 # file was moved but the content didn't change
     MOVED_MODIFIED = 4 # file was moved and the content was modified
     MODIFIED_ONLY = 5 # content was modified but the file wasn't moved
+    PERMISSION_CHANGED = 6 # file permissions changed
 
     @classmethod
     def getType(cls, diff):
@@ -134,4 +135,6 @@ class FileChangeType(enum.Enum):
             # both before and after instead of none_file name. See
             # e8bf1f522aee3b3e1e7658e8f224dca1d88c3338 for the Linux kernel.
             return FileChangeType.REMOVED
+        elif "new file mode" or "new mode" in diff.text:
+            return FileChangeType.PERMISSION_CHANGED
         else: assert False # all cases are covered above
