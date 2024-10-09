@@ -106,32 +106,32 @@ class SourceFileType(enum.Enum):
       return SourceFileType.OTHER
 
 class FileChangeType(enum.Enum):
-	CREATED = 1
-	REMOVED = 2
-	MOVED_ONLY = 3 # file was moved but the content didn't change
-	MOVED_MODIFIED = 4 # file was moved and the content was modified
-	MODIFIED_ONLY = 5 # content was modified but the file wasn't moved
+    CREATED = 1
+    REMOVED = 2
+    MOVED_ONLY = 3 # file was moved but the content didn't change
+    MOVED_MODIFIED = 4 # file was moved and the content was modified
+    MODIFIED_ONLY = 5 # content was modified but the file wasn't moved
 
-	@classmethod
-	def getType(cls, diff):
-		none_file="/dev/null"
-		assert not (diff.header.old_path == none_file and diff.header.new_path == none_file)
-		
-		if diff.header.old_path == none_file:
-			return FileChangeType.CREATED
-		elif diff.header.new_path == none_file:
-			return FileChangeType.REMOVED
-		elif diff.header.old_path != diff.header.new_path:
-			# filename changed
-			if diff.changes:
-				return FileChangeType.MOVED_MODIFIED
-			else:
-				return FileChangeType.MOVED_ONLY
-		elif diff.header.old_path == diff.header.new_path and diff.changes:
-			return FileChangeType.MODIFIED_ONLY
-		elif "deleted file" in diff.text:
-			# When deleted a file, some patches might have the same file path for
-			# both before and after instead of none_file name. See
-			# e8bf1f522aee3b3e1e7658e8f224dca1d88c3338 for the Linux kernel.
-			return FileChangeType.REMOVED
-		else: assert False # all cases are covered above
+    @classmethod
+    def getType(cls, diff):
+        none_file="/dev/null"
+        assert not (diff.header.old_path == none_file and diff.header.new_path == none_file)
+
+        if diff.header.old_path == none_file:
+            return FileChangeType.CREATED
+        elif diff.header.new_path == none_file:
+            return FileChangeType.REMOVED
+        elif diff.header.old_path != diff.header.new_path:
+            # filename changed
+            if diff.changes:
+                return FileChangeType.MOVED_MODIFIED
+            else:
+                return FileChangeType.MOVED_ONLY
+        elif diff.header.old_path == diff.header.new_path and diff.changes:
+            return FileChangeType.MODIFIED_ONLY
+        elif "deleted file" in diff.text:
+            # When deleted a file, some patches might have the same file path for
+            # both before and after instead of none_file name. See
+            # e8bf1f522aee3b3e1e7658e8f224dca1d88c3338 for the Linux kernel.
+            return FileChangeType.REMOVED
+        else: assert False # all cases are covered above
