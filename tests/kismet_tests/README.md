@@ -28,7 +28,16 @@ kismet -a x86_64
 
 ### Replicate kismet paper
 
-<scripts/kismet_evaluation/kismet_experiments_replication.sh>
+Run and compare against the [original paper's](https://doi.org/10.1145/3468264.3468578) [experimental data](https://doi.org/10.5281/zenodo.4885001) for Linux 5.4.4:
+
+	# running the experiment, assuming kismet is already installed.
+	wget https://raw.githubusercontent.com/paulgazz/kmax/master/scripts/kismet_evaluation/kismet_experiments_replication.sh
+	bash kismet_experiments_replication.sh
+	# getting and comparing to the original results
+	wget https://zenodo.org/records/4563310/files/kismet-raw-results-main.zip
+	unzip kismet-raw-results-main.zip
+	for i in kismet-raw-results-main/raw_kismet/verbose_summaries/kismet_summary_*.txt; do name=$(basename $i); echo diff $i ~/kismet-experiments/$name; done | bash | less
+
 
 ### Do v4.16
 
