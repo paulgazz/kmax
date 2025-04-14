@@ -328,7 +328,7 @@ The results may one of three values for each line for both headers and source fi
 
 Run klocalizer for a given compilation unit, e.g.,
 
-    klocalizer drivers/usb/storage/alauda.o
+    klocalizer --include drivers/usb/storage/alauda.o
 
 This will search each architecture for constraint satisfiability,
 stopping once one is found (or no architecture's constraints are
@@ -362,7 +362,7 @@ While `allyesconfig` strives to enable all options, some have conflicting depend
 
 Let us take a look at the unit's Kbuild dependencies:
 
-    klocalizer --view fs/squashfs/decompressor_multi.o
+    klocalizer --view-kbuild --include fs/squashfs/decompressor_multi.o
 
 The output in part is
 
@@ -382,7 +382,7 @@ The unit is not included in `allyesconfig` because it on both `CONFIG_SQUASHFS` 
 
 `klocalizer` can find a configuration that includes the unit:
 
-    klocalizer fs/squashfs/decompressor_multi.o
+    klocalizer --include fs/squashfs/decompressor_multi.o
     egrep "(CONFIG_SQUASHFS|CONFIG_SQUASHFS_DECOMP_SINGLE|CONFIG_SQUASHFS_DECOMP_MULTI)( |=)" .config
 
 `grep` shows us what `klocalizer` set:
@@ -415,7 +415,7 @@ The output contains
 `klocalizer` can look for a configuration containing the compilation unit that closely matches a given configuration without it by successively removing conflicting constraints until the configuration is valid:
 
     make defconfig
-    klocalizer --approximate .config drivers/infiniband/core/cgroup.o
+    klocalizer --approximate .config --include drivers/infiniband/core/cgroup.o
 
 Now when building the configuration, the compilation unit is included:
 
@@ -432,17 +432,17 @@ The output contains:
 Sometimes a compilation unit is only available for certain architectures.   Compiling `drivers/block/ps3disk.o` won't compile on an `x86` machine.
 
     make allyesconfig
-    klocalizer drivers/block/ps3disk.o
+    klocalizer --include drivers/block/ps3disk.o
 
 Its output contains
 
     make[3]: *** No rule to make target 'drivers/block/ps3disk.o'.  Stop.
 
-`klocalizer --view drivers/block/ps3disk.o` shows us that it depends on `CONFIG_PS3_DISK`.  It turns out that this configuration option in turn depends on, among others options, the powerpc architecture.
+`klocalizer --view-kbuilde --include drivers/block/ps3disk.o` shows us that it depends on `CONFIG_PS3_DISK`.  It turns out that this configuration option in turn depends on, among others options, the powerpc architecture.
 
 `klocalizer` can try the constraints from each architecture:
 
-    klocalizer drivers/block/ps3disk.o
+    klocalizer --include drivers/block/ps3disk.o
 
 It tells us that `powerpc` is a satisfying architecture.  We can use `make.cross` to cross-compile for `powerpc`.
 
@@ -456,7 +456,7 @@ Its output contains
 We can combine several `klocalizer` features to build an `allnoconfig` kernel that adds in the `ps3disk.o` compilation unit and sets all `tristate` options to modules.
     
     make.cross ARCH=powerpc allnoconfig
-    klocalizer -a powerpc --match .config --modules --define CONFIG_MODULES drivers/block/ps3disk.o
+    klocalizer -a powerpc --match .config --modules --define CONFIG_MODULES --include drivers/block/ps3disk.o
     make.cross ARCH=powerpc olddefconfig
     make.cross ARCH=powerpc drivers/block/ps3disk.o
 
@@ -479,15 +479,15 @@ unit.  The following are examples of how to customize this process.
 
     Use `-a` to only search a specific architecture.
 
-        klocalizer -a x86_64 drivers/usb/storage/alauda.o
+        klocalizer -a x86_64 --include drivers/usb/storage/alauda.o
 
     Specify multiple `-a` arguments to search the given architectures in given order.
 
-        klocalizer -a x86_64 -a sparc drivers/watchdog/cpwd.o
+        klocalizer -a x86_64 -a sparc --include drivers/watchdog/cpwd.o
 
     Specify `-a` and `-all` to search all architectures, trying the ones given in `-a` first.
 
-        klocalizer -a x86_64 -a arm --all drivers/watchdog/cpwd.o
+        klocalizer -a x86_64 -a arm --all --include drivers/watchdog/cpwd.o
 
 - Generating an arbitrary configuration for an architecture
 
@@ -495,7 +495,7 @@ unit.  The following are examples of how to customize this process.
     generate an arbitrary configuration for that architecture.  Passing
     multiple architectures is not supported.
 
-        klocalizer -a x86_64 drivers/watchdog/cpwd.o
+        klocalizer -a x86_64 --include drivers/watchdog/cpwd.o
 
 - Finding all architectures in which the compilation can be configured
 
@@ -506,17 +506,17 @@ unit.  The following are examples of how to customize this process.
     Multiple `--define` and `--undefine` arguments can be used to force
     configurations on or off when searching for constraints.
 
-        klocalizer --define CONFIG_USB --define CONFIG_FS --undefine CONFIG_SOUND drivers/usb/storage/alauda.o
+        klocalizer --define CONFIG_USB --define CONFIG_FS --undefine CONFIG_SOUND --include drivers/usb/storage/alauda.o
 
     Note that this can prevent finding a valid configuration.
 
-        klocalizer -a x86_64 --undefine CONFIG_USB drivers/usb/storage/alauda.o  # no configuration possible because alauda depends on USB
+        klocalizer -a x86_64 --undefine CONFIG_USB --include drivers/usb/storage/alauda.o  # no configuration possible because alauda depends on USB
 
 - Investigating unsatisfied constraints
 
     Use `--show-unsat-core` to see what constraints are causing the issue:
 
-        klocalizer --show-unsat-core -a x86_64 --undefine CONFIG_USB drivers/usb/storage/alauda.o  # no configuration possible because alauda depends on USB
+        klocalizer --show-unsat-core -a x86_64 --undefine CONFIG_USB --include drivers/usb/storage/alauda.o  # no configuration possible because alauda depends on USB
 
 - Closely match a given configuration
 
@@ -527,7 +527,7 @@ e.g., `allnoconfig`, with the `--approximate` flag.
 
     make allnoconfig
     mv .config allnoconfig
-    klocalizer --approximate allnoconfig drivers/usb/storage/alauda.o
+    klocalizer --approximate allnoconfig --include drivers/usb/storage/alauda.o
 
   klocalizer with specific file
 
@@ -536,14 +536,14 @@ e.g., `allnoconfig`, with the `--approximate` flag.
     View the Kbuild constraints for a compilation unit and each of
     its subdirectories with
 
-        klocalizer --view-kbuild drivers/usb/storage/alauda.o
+        klocalizer --view-kbuild --include drivers/usb/storage/alauda.o
 
 - Building as modules instead of built-in
 
     Use the `--modules` flag to set any tristate options to `m` instead of
     `y`.  Be sure to enable the `CONFIG_MODULES` option as well.
 
-        klocalizer --modules --define CONFIG_MODULES drivers/usb/storage/alauda.o
+        klocalizer --modules --define CONFIG_MODULES --include drivers/usb/storage/alauda.o
         make olddefconfig
         make drivers/block/ps3disk.o
 
@@ -551,7 +551,7 @@ e.g., `allnoconfig`, with the `--approximate` flag.
 
     Override the default formulas with the following:
 
-        klocalizer --kmax-formula kmax --kclause-formulas kclause drivers/watchdog/cpwd.o
+        klocalizer --kmax-formula kmax --kclause-formulas kclause --include drivers/watchdog/cpwd.o
 
 - Generating multiple configurations
 
@@ -575,7 +575,7 @@ e.g., `allnoconfig`, with the `--approximate` flag.
 
     2. While most compilation units can be built individually with make, some cannot.  In these cases, build the parent directory instead, e.g.,
     
-            klocalizer drivers/char/ipmi/ipmi_devintf.o  # finds it buildable in x86_64
+            klocalizer --include drivers/char/ipmi/ipmi_devintf.o  # finds it buildable in x86_64
             make.cross ARCH=x86_64 olddefconfig
             make.cross ARCH=x86_64 drivers/char/ipmi/
             
@@ -587,7 +587,7 @@ e.g., `allnoconfig`, with the `--approximate` flag.
         
     4. The configuration causes the unit to be built, but it has a compile-time error.
     
-            klocalizer drivers/block/amiflop.o  # finds it buildable in 
+            klocalizer --include drivers/block/amiflop.o  # finds it buildable in 
             make.cross ARCH=m68k olddefconfig
             make.cross ARCH=m68k drivers/block/amiflop.o  # Makefile sees it, but causes compiler error.
         
@@ -595,11 +595,11 @@ e.g., `allnoconfig`, with the `--approximate` flag.
 
 - If the unit's configuration constraints depend on `CONFIG_BROKEN`, then `klocalizer`, by default, which detect it and stop searching, because the compilation unit may not be (easily) compilable.
     
-        klocalizer drivers/watchdog/pnx833x_wdt.o  # stops after finding a dependency on `CONFIG_BROKEN`
+        klocalizer --include drivers/watchdog/pnx833x_wdt.o  # stops after finding a dependency on `CONFIG_BROKEN`
 
     To get a configuration anyway, use `--allow-config-broken`
 
-        klocalizer --allow-config-broken drivers/watchdog/pnx833x_wdt.o  # finds dependency on mips
+        klocalizer --allow-config-broken --include drivers/watchdog/pnx833x_wdt.o  # finds dependency on mips
         make.cross ARCH=mips olddefconfig
         make.cross ARCH=mips drivers/watchdog/pnx833x_wdt.o  # won't be included in the build, due to CONFIG_BROKEN
 
@@ -703,7 +703,7 @@ Here is how to use `klocalizer` to create a config that includes `coreutils/fsyn
     make clean
     make allnoconfig
     mv .config allnoconfig
-    klocalizer --approximate allnoconfig coreutils/fsync.o  # produces .config file that builds fsync.o
+    klocalizer --approximate allnoconfig --include coreutils/fsync.o  # produces .config file that builds fsync.o
     yes "" | make oldconfig  # to accept default values for other options
     make
 
