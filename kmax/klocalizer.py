@@ -19,6 +19,7 @@ from kmax.arch import Arch
 from kmax.common import get_kmax_constraints, unpickle_kmax_file
 from kmax.vcommon import getLogLevel, getLogger, run
 from kmax.kclause import tristate_pattern
+from kmax.kclause import tristate_config_gen
 
 builtin_rewrite_mapping = {
   "drivers/gpu/drm/amd/": "drivers/gpu/drm/amd/amdgpu/../",
@@ -341,7 +342,7 @@ class Klocalizer:
     config_file -- Path to a Kconfig config file.
     """
     assert os.path.isfile(config_file)
-    on_pattern = regex.compile("^(CONFIG_[A-Za-z0-9_]+)=[ym]")
+    on_pattern = regex.compile("^(CONFIG_[A-Za-z0-9_]+)=([ym])")
     off_pattern = regex.compile("^# (CONFIG_[A-Za-z0-9_]+) is not set")
     
     # todo: don't allow invisible defaults to be turned off (get them from kclause), reduces size of constraints
@@ -358,7 +359,11 @@ class Klocalizer:
         else:
           on = on_pattern.match(line)
           if on:
-            constraint = z3.Bool(on.group(1))
+            # TODO: use the boolean approximation of tristate if this is disabled by kclause.  currently the tristate modeling is kept on by klocalizer for kclause.  alternatively use biimplication between options, e.g., CONFIG_A <-> CONFIG_A=y, to support both kclause with and without tristate modeling simultaneously, though this will increase the number of clauses.
+            # var_name = on.group(1)
+            var_name = tristate_config_gen(on.group(1), on.group(2))
+            # sys.stderr.write(f"{var_name}\n")
+            constraint = z3.Bool(var_name)
             constraints.append(constraint)
       
       return constraints
