@@ -61,6 +61,9 @@ def klocalizerCLI():
                              "  When a path to a patch file in unified diff format (\".patch\" or \".diff\" extension) is given, "
                              "klocalizer computes and uses a set of (unit, line) pairs for patch coverage.  The target lines are also written to \"INPUT.kloc_targets\", "
                              "where INPUT is the path to the diff file.  It is assumed that the patch is applied to the Linux source.")
+  argparser.add_argument('--include-file',
+                        type=str,
+                        help="Path to a file containing a list of compilation units and lines to include, in the same format as --include. One entry per line.")
   argparser.add_argument('--include-mutex',
                         action="append",
                         default=[],
@@ -72,6 +75,9 @@ def klocalizerCLI():
                              "  klocalizer does not fail if some of --include-mutex constraints are not met."
                              "  A coverage report will be generated (see --coverage-report)."
                              "  Input format is the same with --include.")
+  argparser.add_argument('--include-mutex-file',
+                        type=str,
+                        help="Path to a file containing a list of compilation units and lines for mutual exclusion, in the same format as --include-mutex. One entry per line.")
   argparser.add_argument('--coverage-report',
                          type=str,
                          default="coverage_report.json",
@@ -292,6 +298,8 @@ def klocalizerCLI():
   include_arg = args.include
   include_mutex_arg = args.include_mutex
   exclude_arg = args.exclude
+  include_file = args.include_file
+  include_mutex_file = args.include_mutex_file
   no_builtin_kbuild_path_rewrites = args.no_builtin_kbuild_path_rewrites
   user_kbuild_path_rewrites = args.user_kbuild_path_rewrites
   constraints_file = args.constraints_file
@@ -484,6 +492,7 @@ def klocalizerCLI():
       # Parse the lines
       if lines_str: #< Still has lines to parse after removing list brackets
         for el in lines_str.split(','):
+          el = el.strip()
           if not el or not set(el).issubset([str(n) for n in range(10)] + ['-']):
             arg_error(compilation_unit_arg, "incorrect lines list format")
           if el.count('-') > 1:
@@ -523,6 +532,31 @@ def klocalizerCLI():
       new_lines = sorted(list(set(existing_lines + lines)))
       uniq_compilation_units_lines[unit] = new_lines
     return sorted(list(uniq_compilation_units_lines.items()))
+
+  # Read and merge include files if provided
+  if include_file:
+    if not os.path.isfile(include_file):
+      logger.error("Cannot find include file: %s\n" % include_file)
+      exit(6)
+    try:
+      with open(include_file, 'r') as f:
+        file_includes = [line.strip() for line in f.readlines() if line.strip()]
+      include_arg.extend(file_includes)
+    except Exception as e:
+      logger.error("Error reading include file %s: %s\n" % (include_file, str(e)))
+      exit(6)
+
+  if include_mutex_file:
+    if not os.path.isfile(include_mutex_file):
+      logger.error("Cannot find include mutex file: %s\n" % include_mutex_file)
+      exit(6)
+    try:
+      with open(include_mutex_file, 'r') as f:
+        file_includes = [line.strip() for line in f.readlines() if line.strip()]
+      include_mutex_arg.extend(file_includes)
+    except Exception as e:
+      logger.error("Error reading include mutex file %s: %s\n" % (include_mutex_file, str(e)))
+      exit(6)
 
   # Parse units/lines.
   include_list = parse_units_args(include_arg)
