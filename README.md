@@ -4,6 +4,7 @@
 - [The kmax tool suite](#the-kmax-tool-suite)
   - [Installation](#installation)
     - [Dependencies](#dependencies)
+    - [Environment](#environment)
     - [Installing the kmax tool suite](#installing-the-kmax-tool-suite)
     - [Quick test](#quick-test)
   - [Using `krepair` on patches](#using-krepair-on-patches)

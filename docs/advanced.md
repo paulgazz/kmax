@@ -34,6 +34,7 @@
     - [Example](#example)
     - [Other uses](#other-uses)
     - [kextract output format](#kextract-output-format)
+  - [Adding a new kextract module for a different version of Kconfig](#adding-a-new-kextract-module-for-a-different-version-of-kconfig)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -868,8 +869,20 @@ Then, from the root of a Linux source tree, run the following:
 
 - Copy scripts/kconfig to kextractors (following naming pattern)
 - Copy kextractor.c, kextractor_extension.c, Makefile, and README.md from nearby version
-- Update expr.h and others based on README.md
+- Update expr.h and others based on README.md (see below)
 - Update kextractor_extension.c to have updated version name (e.g., `3_19` to `3_2`)
 - Add the extension's list of files to setup.py
 - Add the extension's list variable name to ext_modules in setup.py
 - Add a mapping from the version number to the module in kmax/kextractcommon.py
+
+Original README.md:
+
+> The Kconfig parser in this directory has been copied from the
+> linux-4.12.8/scripts/kconfig directory.  `zconf.hash.c_shipped` has
+> been copied to `zconf.hash.c`.  The following minor changes have been
+> made:
+
+> In `expr.h`, `struct symbol` is given two more fields:
+
+>    bool searched;
+>    bool depends;
