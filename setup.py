@@ -11,6 +11,8 @@ def read(fname):
 about = {}
 exec(read(os.path.join("kmax", "about.py")), about)
 
+kextractor_next_20251023 = Extension('kextractor_next_20251023', [ 'kextractors/kextractor-next-20251023/kextractor_extension.c', 'kextractors/kextractor-next-20251023/kextractor.c', 'kextractors/kextractor-next-20251023/confdata.c', 'kextractors/kextractor-next-20251023/expr.c', 'kextractors/kextractor-next-20251023/preprocess.c', 'kextractors/kextractor-next-20251023/lexer.lex.c', 'kextractors/kextractor-next-20251023/menu.c', 'kextractors/kextractor-next-20251023/parser.tab.c', 'kextractors/kextractor-next-20251023/symbol.c', 'kextractors/kextractor-next-20251023/util.c'], include_dirs=['kextractors/kextractor-next-20251023/', 'kextractors/kextractor-next-20251023/include/'])
+
 kextractor_next_20210426 = Extension('kextractor_next_20210426', [ 'kextractors/kextractor-next-20210426/kextractor_extension.c', 'kextractors/kextractor-next-20210426/kextractor.c', 'kextractors/kextractor-next-20210426/confdata.c', 'kextractors/kextractor-next-20210426/expr.c', 'kextractors/kextractor-next-20210426/preprocess.c', 'kextractors/kextractor-next-20210426/lexer.lex.c', 'kextractors/kextractor-next-20210426/menu.c', 'kextractors/kextractor-next-20210426/parser.tab.c', 'kextractors/kextractor-next-20210426/symbol.c', 'kextractors/kextractor-next-20210426/util.c'], include_dirs=['kextractors/kextractor-next-20210426/'])
 
 kextractor_next_20200430 = Extension('kextractor_next_20200430', [ 'kextractors/kextractor-next-20200430/kextractor_extension.c', 'kextractors/kextractor-next-20200430/kextractor.c', 'kextractors/kextractor-next-20200430/confdata.c', 'kextractors/kextractor-next-20200430/expr.c', 'kextractors/kextractor-next-20200430/preprocess.c', 'kextractors/kextractor-next-20200430/lexer.lex.c', 'kextractors/kextractor-next-20200430/parser.tab.c', 'kextractors/kextractor-next-20200430/symbol.c', 'kextractors/kextractor-next-20200430/util.c'], include_dirs=['kextractors/kextractor-next-20200430/'])
@@ -35,7 +37,7 @@ setup(
     keywords = "makefile kconfig kbuild configurations kmax kclause klocalizer",
     url = "https://github.com/paulgazz/kmax",
     packages=['kmax', 'pymake'],
-    ext_modules = [ kextractor_next_20210426, kextractor_next_20200430, kextractor_3_19, kextractor_4_12_8, kextractor_4_18, kextractor_3_2, ],
+    ext_modules = [ kextractor_next_20251023, kextractor_next_20210426, kextractor_next_20200430, kextractor_3_19, kextractor_4_12_8, kextractor_4_18, kextractor_3_2, ],
     classifiers=[
         "Development Status :: 4 - Beta",
         "Topic :: Utilities",

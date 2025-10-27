@@ -1,5 +1,6 @@
 import sys
 from packaging import version
+import kextractor_next_20251023
 import kextractor_next_20210426
 import kextractor_next_20200430
 import kextractor_3_19
@@ -9,7 +10,8 @@ import kextractor_3_2
 
 module_versions = {}
 
-latest_module = "next-20210426"
+latest_module = "next-20251023"
+module_versions["next-20251023"] = kextractor_next_20251023
 module_versions["next-20210426"] = kextractor_next_20210426
 module_versions["next-20200430"] = kextractor_next_20200430
 module_versions["3.19"] = kextractor_3_19
@@ -26,6 +28,8 @@ def pick_version(kernel_version: str):
   # if version.parse(kernel_version) >= version.parse("5.17.8"):
   #   return "5.17.8"
   # el
+  if version.parse(kernel_version) >= version.parse("6.17"):
+    return "next-20251023"
   if version.parse(kernel_version) >= version.parse("5.12"):
     return "next-20210426"
   elif version.parse(kernel_version) >= version.parse("5.6.8"):
