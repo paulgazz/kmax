@@ -75,7 +75,16 @@ if __name__ == '__main__':
   if not os.path.isdir(archdir):
     sys.stderr.write("Architecture directory not available \"%s\", so not attempting kextractlinux.\n" % (archdir))
     exit(2)
-  args.extend([ "-e", "ARCH=%s" % (arch), "-e", "SRCARCH=%s" % (srcarch), "-e", "KERNELVERSION=kcu", "-e", "srctree=./", "-e", "CC=cc", "-e", "LD=ld", "-e", "RUSTC=rustc" ])
+  args.extend([ 
+    "-e", "ARCH=%s" % (arch), 
+    "-e", "SRCARCH=%s" % (srcarch), 
+    "-e", "KERNELVERSION=kcu", 
+    "-e", "srctree=./", 
+    "-e", "LLVM=1",
+    "-e", "CC=clang -fintegrated-as", 
+    "-e", "LD=ld.lld",
+    "-e", "RUSTC=rustc" 
+  ])
   # set arch-specific environment variables
   args.extend(arch_specific(arch))
   # set the kconfig filename
