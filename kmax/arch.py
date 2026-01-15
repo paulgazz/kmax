@@ -957,7 +957,6 @@ class Arch:
 
     command = ["kclause", "--remove-orphaned-nonvisible" ]
     if self.__kclause_args != None: command = command + self.__kclause_args
-    # TODO: disable tristate handling when requested, i.e., for kismet
     self.__logger.debug("Running kclause tool to generate kclause formulas.")
     proc_stdout, _, ret_code = self.__run_command(command, self.__kextract.encode(), capture_stderr=False)
     
