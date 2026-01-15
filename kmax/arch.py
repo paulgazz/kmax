@@ -789,6 +789,7 @@ class Arch:
       kextract_version=kextract_module_versions.pop() # pop the next version to try
       command = [ "kextractlinux", self.name, kextract_file, "--module-version", kextract_version]
       self.__logger.debug("Running kextract tool to generate kextract (module version: %s)." % kextract_version)
+      self.__logger.debug(f"{" ".join(command)}")
       _, ke_stderr_bytes, ret_code = self.__run_command(command, cwd=self.__linux_ksrc)
       if ret_code == 0:
         break
