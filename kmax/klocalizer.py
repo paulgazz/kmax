@@ -466,6 +466,9 @@ class Klocalizer:
     tristate_settings = {}
     for entry in model:
       str_entry = str(entry)
+      # sys.stderr.write(f"{str(entry)} {str(model[entry])}\n")
+      # sys.stderr(f"{str(entry)}\n")
+      # print(f"{str(entry)}\n")
       matches = tristate_pattern.match(str_entry)
       if matches:
         if model[entry]:
@@ -642,6 +645,7 @@ class Klocalizer:
       solver.add(self.__constraints)
 
       is_sat = solver.check(assumptions) == z3.sat
+      # breakpoint()
       if is_sat:
         self.__logger.info("Already satisfiable when constraining with given config.  No approximatation needed.\n")
       else:
