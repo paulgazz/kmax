@@ -360,8 +360,11 @@ class Klocalizer:
           on = on_pattern.match(line)
           if on:
             # TODO: use the boolean approximation of tristate if this is disabled by kclause.  currently the tristate modeling is kept on by klocalizer for kclause.  alternatively use biimplication between options, e.g., CONFIG_A <-> CONFIG_A=y, to support both kclause with and without tristate modeling simultaneously, though this will increase the number of clauses.
-            # var_name = on.group(1)
-            var_name = tristate_config_gen(on.group(1), on.group(2))
+            if False: # tristate_support:  # TODO: thread these options throughout kclause and klocalizer for tristate support
+              var_name = tristate_config_gen(on.group(1), on.group(2))
+            else: # has tristate support
+              # TODO: tristate is disabled, because this is not properly integrated with how kclause models tristate options.  We likely need to add both the CONFIG_A and CONFIG_A=y boolean predicates to the constraints, because kclause is using both models in parallel as an optimization to reduce the number of clauses.
+              var_name = on.group(1)
             # sys.stderr.write(f"{var_name}\n")
             constraint = z3.Bool(var_name)
             constraints.append(constraint)
