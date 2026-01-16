@@ -75,9 +75,28 @@ if __name__ == '__main__':
   if not os.path.isdir(archdir):
     sys.stderr.write("Architecture directory not available \"%s\", so not attempting kextractlinux.\n" % (archdir))
     exit(2)
-  args.extend([ "-e", "ARCH=%s" % (arch), "-e", "SRCARCH=%s" % (srcarch), "-e", "KERNELVERSION=kcu", "-e", "srctree=./", "-e", "CC=cc", "-e", "LD=ld", "-e", "RUSTC=rustc" ])
+  args.extend([
+    "-e", "ARCH=%s" % (arch), 
+    "-e", "SRCARCH=%s" % (srcarch),
+    "-e", "KERNELVERSION=kcu",
+    "-e", "srctree=./",
+    "-e", "RUSTC=rustc"
+  ])
+  # let the user specify CC and LD, e.g., for clang support
+  cc_env = os.environ.get("CC", "cc")
+  ld_env = os.environ.get("LD", "ld")
+  args.extend([
+    "-e", f"CC={cc_env}",
+    "-e", f"LD={ld_env}",
+  ])
+  # optionally use the LLVM environment variable to support clang/llvm kernel builds
+  llvm = os.environ.get("LLVM")
+  if llvm != None:
+    args.extend([ "-e", f"LLVM={llvm}" ])
+    # example: LLVM=1 CC="clang -fintegrated-a" LD=ld.lld kextractlinux x86_64 kextract.out --module-version next-20251023
   # set arch-specific environment variables
   args.extend(arch_specific(arch))
   # set the kconfig filename
   args.extend([ kconfigfilename ])
+  sys.stderr.write(f'{" ".join(args)}\n')
   kmax.kextractcommon.kextract(module_version, args)

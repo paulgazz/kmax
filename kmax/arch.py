@@ -789,6 +789,7 @@ class Arch:
       kextract_version=kextract_module_versions.pop() # pop the next version to try
       command = [ "kextractlinux", self.name, kextract_file, "--module-version", kextract_version]
       self.__logger.debug("Running kextract tool to generate kextract (module version: %s)." % kextract_version)
+      self.__logger.debug(f"{" ".join(command)}")
       _, ke_stderr_bytes, ret_code = self.__run_command(command, cwd=self.__linux_ksrc)
       if ret_code == 0:
         break
@@ -956,7 +957,6 @@ class Arch:
 
     command = ["kclause", "--remove-orphaned-nonvisible" ]
     if self.__kclause_args != None: command = command + self.__kclause_args
-    # TODO: disable tristate handling when requested, i.e., for kismet
     self.__logger.debug("Running kclause tool to generate kclause formulas.")
     proc_stdout, _, ret_code = self.__run_command(command, self.__kextract.encode(), capture_stderr=False)
     
