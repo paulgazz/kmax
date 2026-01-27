@@ -42,6 +42,7 @@ KOVERAGE_EXITCODE_CHECK_PATCH_FILE_NOT_FOUND=12
 KOVERAGE_EXITCODE_CHECK_COVREQ_FILE_NOT_FOUND=13
 KOVERAGE_EXITCODE_SCRATCHDIR_EXISTS=14
 KOVERAGE_EXITCODE_INVALID_TIMEOUT_ARG=15
+KOVERAGE_EXITCODE_CHECK_FILE_NOT_FOUND=16
 
 import json
 import sys
@@ -832,6 +833,21 @@ def parse_check_covreq_args(args):
         covreqs = combine_covreq(covreqs, new_covreqs)
     return covreqs
 
+def parse_check_file_args(args):
+    covreqs = {}
+    for check_file in args:
+        if not os.path.isfile(check_file):
+            logger.error("Cannot find the --check-file argument file at \"%s\"\n" % check_file)
+            exit(KOVERAGE_EXITCODE_CHECK_FILE_NOT_FOUND)
+        with open(check_file, 'r') as f:
+            for line in f:
+                stripped = line.strip()
+                if not stripped:
+                    continue
+                new_covreqs = parse_lines_list_into_covreq(stripped)
+                covreqs = combine_covreq(covreqs, new_covreqs)
+    return covreqs
+
 def main():
     sys.stderr.write("koverage, %s %s\n" % (kmax.about.__title__, kmax.about.__version__))
 
@@ -899,6 +915,12 @@ def main():
              """  This is an adhoc json format for koverage as follows:"""
              """  { "sourcefile_loc" : { "srcfilepath" : [lines], },"""
              """    "headerfile_loc" : { "hdrfilepath" : [lines], } }""")
+    argparser.add_argument('--check-file',
+        action="append",
+        default=[],
+        help="""Path to a text file that lists one --check-style entry per line."""
+             """  Each line must be a file:lines spec like kernel/fork.c:[1,3-5]."""
+             """  Empty lines are ignored; any other malformed line errors.""")
     argparser.add_argument("--no-builtin-build-targets",
         action="store_true",
         help="""Do not use builtin build targets.  Not recommended.""")
@@ -948,6 +970,7 @@ def main():
     check_arg = args.check
     check_patch_arg = args.check_patch
     check_covreq_arg = args.check_covreq
+    check_file_arg = args.check_file
     no_builtin_build_targets = args.no_builtin_build_targets
     build_targets_file = args.build_targets
     no_builtin_kbuild_path_rewrites = args.no_builtin_kbuild_path_rewrites
@@ -1012,14 +1035,16 @@ def main():
     os.makedirs(os.path.join(scratch_dir, "per_srcfile/"), exist_ok=True)
 
     # Read --check[-patch,-covreq] input.
-    if not check_arg and not check_patch_arg and not check_covreq_arg:
-        logger.error("At least one --check[-patch,-covreq] argument must be specified.\n")
+    if not check_arg and not check_patch_arg and not check_covreq_arg and not check_file_arg:
+        logger.error("At least one --check[-file,-patch,-covreq] argument must be specified.\n")
         exit(KOVERAGE_EXITCODE_CHECK_ARG_NEEDED)
     covreq_check = parse_check_args(check_arg)
     covreq_check_patch = parse_check_patch_args(check_patch_arg)
     covreq_check_covreq = parse_check_covreq_args(check_covreq_arg)
+    covreq_check_file = parse_check_file_args(check_file_arg)
     covreq = combine_covreq(covreq_check, covreq_check_patch)
     covreq = combine_covreq(covreq, covreq_check_covreq)
+    covreq = combine_covreq(covreq, covreq_check_file)
 
     # Check parsed and combined coverage requirements arguments.
     argcheck_parsedcovreqarguments(covreq, linux_ksrc)
