@@ -79,9 +79,12 @@ def klocalizerCLI():
                         type=str,
                         help="Path to a file containing a list of compilation units and lines for mutual exclusion, in the same format as --include-mutex. One entry per line.")
   argparser.add_argument('--config-mutex',
-                        action="append",
-                        default=[],
-                        help="An alternative to -D/-U that allows for mutually-exclusive configuration option constraints. Generates as many configuration files as needed to cover all constraints. Use CONFIG_FOO to force on and !CONFIG_BAR to force off. Example: --config-mutex CONFIG_KVM --config-mutex !CONFIG_KCSAN. klocalizer does not fail if some constraints are not met. A coverage report will be generated (see --coverage-report).")
+                         action="append",
+                         default=[],
+                         help="An alternative to -D/-U that allows for mutually-exclusive configuration option constraints. Generates as many configuration files as needed to cover all constraints. Use CONFIG_FOO to force on and !CONFIG_BAR to force off. Example: --config-mutex CONFIG_KVM --config-mutex !CONFIG_KCSAN. klocalizer does not fail if some constraints are not met. A coverage report will be generated (see --coverage-report).")
+  argparser.add_argument('--config-mutex-file',
+                         type=str,
+                         help="Path to a file containing a list of configuration options for mutual exclusion, in the same format as --config-mutex. One entry per line.")
   argparser.add_argument('--coverage-report',
                          type=str,
                          default="coverage_report.json",
@@ -305,6 +308,7 @@ def klocalizerCLI():
   include_file = args.include_file
   include_mutex_file = args.include_mutex_file
   config_mutex_arg = args.config_mutex
+  config_mutex_file = args.config_mutex_file
   no_builtin_kbuild_path_rewrites = args.no_builtin_kbuild_path_rewrites
   user_kbuild_path_rewrites = args.user_kbuild_path_rewrites
   constraints_file = args.constraints_file
@@ -561,6 +565,18 @@ def klocalizerCLI():
       include_mutex_arg.extend(file_includes)
     except Exception as e:
       logger.error("Error reading include mutex file %s: %s\n" % (include_mutex_file, str(e)))
+      exit(6)
+
+  if config_mutex_file:
+    if not os.path.isfile(config_mutex_file):
+      logger.error("Cannot find config mutex file: %s\n" % config_mutex_file)
+      exit(6)
+    try:
+      with open(config_mutex_file, 'r') as f:
+        file_configs = [line.strip() for line in f.readlines() if line.strip()]
+      config_mutex_arg.extend(file_configs)
+    except Exception as e:
+      logger.error("Error reading config mutex file %s: %s\n" % (config_mutex_file, str(e)))
       exit(6)
 
   # Parse units/lines.
