@@ -82,10 +82,10 @@ def klocalizerCLI():
   argparser.add_argument('--config-mutex',
                          action="append",
                          default=[],
-                         help="An alternative to -D/-U that allows for mutually-exclusive configuration option constraints. Generates as many configuration files as needed to cover all constraints. Use CONFIG_FOO to force on and !CONFIG_BAR to force off. Example: --config-mutex CONFIG_KVM --config-mutex !CONFIG_KCSAN. klocalizer does not fail if some constraints are not met. A coverage report will be generated (see --coverage-report).")
+                         help="An alternative to -D/-U that allows for mutually-exclusive configuration option constraints. Generates as many configuration files as needed to cover all constraints. Use CONFIG_FOO to force on and !CONFIG_BAR to force off. Example: --config-mutex CONFIG_KVM --config-mutex !CONFIG_KCSAN. Cannot be combined with --include, --include-file, --exclude, -D, -U, --sample, or --sample-prefix. klocalizer does not fail if some constraints are not met. A coverage report will be generated (see --coverage-report).")
   argparser.add_argument('--config-mutex-file',
                          type=str,
-                         help="Path to a file containing a list of configuration options for mutual exclusion, in the same format as --config-mutex. One entry per line.")
+                         help="Path to a file containing a list of configuration options for mutual exclusion, in the same format and with the same option incompatibilities as --config-mutex. One entry per line.")
   argparser.add_argument('--constraints-mutex-file',
                          type=str,
                          help="Path to a file containing Boolean configuration expressions for mutual exclusion. One expression per line. Expressions may contain CONFIG_* identifiers, parentheses, and the 'and', 'or', and 'not' keywords, for example: (CONFIG_A or CONFIG_B) and not CONFIG_C. C/Kconfig operators such as '&&', '||', '!', and 'defined(...)' are not accepted. Blank lines and lines starting with # are ignored.")
@@ -353,6 +353,27 @@ def klocalizerCLI():
   kmax.common.quiet = quiet
   kmax.common.verbose = verbose
   logger = BasicLogger(quiet=quiet, verbose=verbose)
+
+  config_mutex_enabled = len(config_mutex_arg) > 0 or config_mutex_file is not None
+  if config_mutex_enabled:
+    incompatible_options = []
+    if include_arg:
+      incompatible_options.append("--include")
+    if include_file is not None:
+      incompatible_options.append("--include-file")
+    if exclude_arg:
+      incompatible_options.append("--exclude")
+    if define:
+      incompatible_options.append("-D/--define")
+    if undefine:
+      incompatible_options.append("-U/--undefine")
+    if sample is not None:
+      incompatible_options.append("--sample")
+    if sample_prefix is not None:
+      incompatible_options.append("--sample-prefix")
+    if incompatible_options:
+      logger.error("--config-mutex/--config-mutex-file cannot be used with: %s.\n" % ", ".join(incompatible_options))
+      exit(12)
 
   def warn_or_err(warn_msg, err_msg, exit_code):
     """Takes action on warnings.  Behavior is different based on whether
@@ -723,7 +744,6 @@ def klocalizerCLI():
 
   mutual_exclusion_str = "--include-mutex"
   mutex_enabled = len(include_mutex_arg) > 0
-  config_mutex_enabled = len(config_mutex_arg) > 0
   constraints_mutex_enabled = constraints_mutex_file is not None
   if mutex_enabled and config_mutex_enabled:
     logger.error("%s is incompatible with --config-mutex.\n" % mutual_exclusion_str)
@@ -1196,7 +1216,7 @@ def klocalizerCLI():
           
       return constraints
 
-  def normalize_config_mutex_args(args_list, define_list, undefine_list):
+  def normalize_config_mutex_args(args_list):
     token_pattern = regex.compile("^!?CONFIG_[A-Za-z0-9_]+$")
     requirements = OrderedDict()
 
@@ -1218,10 +1238,6 @@ def klocalizerCLI():
 
     for literal in args_list:
       add_literal(literal)
-    for literal in define_list:
-      add_literal(literal)
-    for literal in undefine_list:
-      add_literal("!" + literal)
 
     return list(requirements.items())
 
@@ -1258,7 +1274,7 @@ def klocalizerCLI():
 
   config_mutex_requirements = []
   if config_mutex_enabled:
-    config_mutex_requirements = normalize_config_mutex_args(config_mutex_arg, define, undefine)
+    config_mutex_requirements = normalize_config_mutex_args(config_mutex_arg)
     if not config_mutex_requirements:
       logger.error("--config-mutex requires at least one configuration option.\n")
       exit(12)
