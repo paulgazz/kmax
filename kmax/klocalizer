@@ -2,6 +2,7 @@
 
 import kmax.kextractcommon
 from kmax.klocalizer import *
+from kmax import expression_converter
 import logging
 from kmax.superc import SuperC, SyntaxAnalysis
 from kmax.vcommon import get_build_system_id
@@ -85,6 +86,9 @@ def klocalizerCLI():
   argparser.add_argument('--config-mutex-file',
                          type=str,
                          help="Path to a file containing a list of configuration options for mutual exclusion, in the same format as --config-mutex. One entry per line.")
+  argparser.add_argument('--constraints-mutex-file',
+                         type=str,
+                         help="Path to a file containing Boolean configuration expressions for mutual exclusion. One expression per line. Expressions may contain CONFIG_* identifiers, parentheses, and the 'and', 'or', and 'not' keywords, for example: (CONFIG_A or CONFIG_B) and not CONFIG_C. C/Kconfig operators such as '&&', '||', '!', and 'defined(...)' are not accepted. Blank lines and lines starting with # are ignored.")
   argparser.add_argument('--coverage-report',
                          type=str,
                          default="coverage_report.json",
@@ -309,6 +313,7 @@ def klocalizerCLI():
   include_mutex_file = args.include_mutex_file
   config_mutex_arg = args.config_mutex
   config_mutex_file = args.config_mutex_file
+  constraints_mutex_file = args.constraints_mutex_file
   no_builtin_kbuild_path_rewrites = args.no_builtin_kbuild_path_rewrites
   user_kbuild_path_rewrites = args.user_kbuild_path_rewrites
   constraints_file = args.constraints_file
@@ -579,6 +584,22 @@ def klocalizerCLI():
       logger.error("Error reading config mutex file %s: %s\n" % (config_mutex_file, str(e)))
       exit(6)
 
+  constraints_mutex_exprs = []
+  if constraints_mutex_file:
+    if not os.path.isfile(constraints_mutex_file):
+      logger.error("Cannot find constraints mutex file: %s\n" % constraints_mutex_file)
+      exit(6)
+    try:
+      with open(constraints_mutex_file, 'r') as f:
+        for line in f.readlines():
+          stripped = line.strip()
+          if not stripped or stripped.startswith('#'):
+            continue
+          constraints_mutex_exprs.append(stripped)
+    except Exception as e:
+      logger.error("Error reading constraints mutex file %s: %s\n" % (constraints_mutex_file, str(e)))
+      exit(6)
+
   # Parse units/lines.
   include_list = parse_units_args(include_arg)
   include_mutex_list = parse_units_args(include_mutex_arg)
@@ -703,8 +724,15 @@ def klocalizerCLI():
   mutual_exclusion_str = "--include-mutex"
   mutex_enabled = len(include_mutex_arg) > 0
   config_mutex_enabled = len(config_mutex_arg) > 0
+  constraints_mutex_enabled = constraints_mutex_file is not None
   if mutex_enabled and config_mutex_enabled:
     logger.error("%s is incompatible with --config-mutex.\n" % mutual_exclusion_str)
+    exit(12)
+  if mutex_enabled and constraints_mutex_enabled:
+    logger.error("%s is incompatible with --constraints-mutex-file.\n" % mutual_exclusion_str)
+    exit(12)
+  if config_mutex_enabled and constraints_mutex_enabled:
+    logger.error("--config-mutex is incompatible with --constraints-mutex-file.\n")
     exit(12)
   if mutex_enabled:
     if allarchs:
@@ -743,6 +771,25 @@ def klocalizerCLI():
       exit(12)
     if save_dimacs:
       logger.error("--config-mutex is incompatible with --save-dimacs.\n")
+      exit(12)
+  if constraints_mutex_enabled:
+    if allarchs:
+      logger.error("--constraints-mutex-file is incompatible with --all.\n")
+      exit(12)
+    if reportallarchs:
+      logger.error("--constraints-mutex-file is incompatible with --report-all.\n")
+      exit(12)
+    if show_unsat_core:
+      logger.error("--constraints-mutex-file is incompatible with --show-unsat-core.\n")
+      exit(12)
+    if view_kbuild:
+      logger.error("--constraints-mutex-file is incompatible with --view-kbuild.\n")
+      exit(12)
+    if save_smt:
+      logger.error("--constraints-mutex-file is incompatible with --save-smt.\n")
+      exit(12)
+    if save_dimacs:
+      logger.error("--constraints-mutex-file is incompatible with --save-dimacs.\n")
       exit(12)
     
   if save_dimacs:
@@ -1214,6 +1261,25 @@ def klocalizerCLI():
     config_mutex_requirements = normalize_config_mutex_args(config_mutex_arg, define, undefine)
     if not config_mutex_requirements:
       logger.error("--config-mutex requires at least one configuration option.\n")
+      exit(12)
+
+  constraints_mutex_requirements = []
+  if constraints_mutex_enabled:
+    uniq_exprs = OrderedDict()
+    for expr in constraints_mutex_exprs:
+      if expr not in uniq_exprs:
+        uniq_exprs[expr] = None
+
+    for expr in uniq_exprs.keys():
+      try:
+        constraints_mutex_requirements.append((expr, expression_converter.convert_to_z3(expr, allow_tristate=False)))
+      except Exception:
+        argparser.print_help()
+        logger.error("Malformed constraint in --constraints-mutex-file: \"%s\"\n" % expr)
+        exit(12)
+
+    if not constraints_mutex_requirements:
+      logger.error("--constraints-mutex-file requires at least one non-empty, non-comment expression.\n")
       exit(12)
 
   # Check if there are line constraints, which will require a SuperC instance.
@@ -1785,10 +1851,140 @@ def klocalizerCLI():
     exit(0)
 
   #
+  # Algo 1.6: constraints mutex enabled
+  #
+  if constraints_mutex_enabled:
+    requirements = constraints_mutex_requirements[:]
+    z3_models = [] # (arch, z3_model, [expr]) tuples
+
+    arch_idx = 0
+    printed_arch_info = False
+    got_first_improvement = False
+    while arch_idx < len(archs) and requirements:
+      arch = archs[arch_idx]
+
+      if not printed_arch_info:
+        logger.info("Trying \"%s\"\n" % (arch.name))
+        printed_arch_info = True
+
+      compiled_arch_constraints = None
+      accumulated_constraints = []
+      is_improved = False
+      current_coverage = []
+      new_requirements = []
+
+      if not got_first_improvement:
+        logger.info("Searching for a constraints model that cover all or part of the constraints mutex constraints\n")
+      else:
+        logger.info("Searching for a constraints model that cover all or part of the remaining constraints mutex constraints\n")
+
+      for expr, expr_constraint in requirements:
+        constraints_with_expr = accumulated_constraints + [expr_constraint]
+
+        try:
+          if compiled_arch_constraints is None:
+            compiled_arch_constraints = klocalizer.compile_constraints(arch)
+
+          full_constraints = compiled_arch_constraints + constraints_with_expr
+          model_sampler = Klocalizer.Z3ModelSampler(full_constraints, random_seed=random_seed, logger=logger)
+          is_sat, _ = model_sampler.sample_model()
+
+          if is_sat:
+            accumulated_constraints = constraints_with_expr[:]
+            is_improved = True
+            current_coverage.append(expr)
+          else:
+            new_requirements.append((expr, expr_constraint))
+        except Arch.FormulaFileNotFound as e:
+          logger.warning("Cannot find %s formulas file, %s, so moving on.\n" % (e.formula_type, e.filepath))
+          new_requirements.append((expr, expr_constraint))
+        except Arch.FormulaGenerationError as e:
+          logger.warning("Cannot generate %s formulas, so moving on.\n" % (e.formula_type))
+          new_requirements.append((expr, expr_constraint))
+
+      requirements = new_requirements
+
+      if is_improved:
+        got_first_improvement = True
+        logger.info("A coverage improving constraints set found: sampling a model.\n")
+        assert compiled_arch_constraints
+        assert accumulated_constraints
+        full_constraints = compiled_arch_constraints + accumulated_constraints
+        apprx_constraints = approximate_constraints.get(arch.name, approximate_constraints.get("default", None))
+        model_sampler = Klocalizer.Z3ModelSampler(full_constraints, approximate_constraints=apprx_constraints, random_seed=random_seed, logger=logger)
+        is_sat, z3_model = model_sampler.sample_model()
+        assert is_sat
+        assert current_coverage
+        z3_models.append((arch, z3_model, current_coverage))
+        logger.debug("Sampled a model\n")
+      else:
+        arch_idx += 1
+        printed_arch_info = False
+
+    logger.debug("Localization search is done. Numbers of models created: %s\n" % len(z3_models))
+
+    coverage_report = OrderedDict()
+    coverage_report["constraints_mutex"] = OrderedDict()
+    for expr, _ in constraints_mutex_requirements:
+      coverage_report["constraints_mutex"][expr] = []
+
+    num_models = len(z3_models)
+    if num_models == 0:
+      logger.error("No satisfying configuration found.\n")
+      exit(11)
+
+    logger.info("Sampling and writing %s configuration files from models.\n" % num_models)
+    for i, (arch, model, coverage) in enumerate(z3_models):
+      config_id = "%s-%s" % (i, arch.name)
+      config_basename = "%s.config" % config_id
+      config_file_path = os.path.join(output_dir, config_basename)
+      pathlib.Path(os.path.dirname(config_file_path)).mkdir(parents=True, exist_ok=True)
+
+      logger.info("[%s/%s] Sampling and writing the configuration file to %s\n" % (i+1, num_models, config_file_path))
+      if arch.name in approximate_configs:
+        approximate_config = approximate_configs[arch.name]
+      elif "default" in approximate_configs:
+        approximate_config = approximate_configs["default"]
+      else:
+        approximate_config = None
+      if no_nonbool_preservation:
+        approximate_config = None
+      config_content = Klocalizer.get_config_from_model(model, arch, set_tristate_m=modules_arg, allow_non_visibles=allow_non_visibles, approximate_config=approximate_config)
+      with open(config_file_path, 'w') as f:
+        f.write(config_content)
+
+      for expr, _ in constraints_mutex_requirements:
+        if expr in coverage:
+          coverage_report["constraints_mutex"][expr].append(config_basename)
+
+    num_target_exprs = len(constraints_mutex_requirements)
+    num_exprs_covered = 0
+    for expr in coverage_report["constraints_mutex"]:
+      if coverage_report["constraints_mutex"][expr]:
+        num_exprs_covered += 1
+
+    if num_target_exprs == num_exprs_covered:
+      logger.info("Coverage summary: all constraints mutex constraints were satisfied.\n")
+    elif num_exprs_covered == 0:
+      logger.info("Coverage summary: none of the constraints mutex constraints were satisfied.\n")
+    else:
+      logger.info("Coverage summary: some of the constraints mutex constraints were satisfied: %s/%s expressions were covered.\n" % (num_exprs_covered, num_target_exprs))
+      logger.warning("Despite the high accuracy, klocalizer cannot guarantee claimed coverage due to under approximations.\n")
+
+    logger.info("Writing the coverage report to %s\n" % coverage_report_file)
+    logger.info("Note coverage report is attempted coverage.  Actual coverage may be reduced due to limitations of klocalizer's constraint collection.\n")
+    with open(coverage_report_file, 'w') as f:
+      json.dump(coverage_report, f, indent=2)
+
+    exit(0)
+
+  #
   # Sampling algo 2: single config, no mutual exclusion
   #
   assert not mutex_enabled
   assert not include_mutex_list
+  assert not config_mutex_enabled
+  assert not constraints_mutex_enabled
   for arch in archs:
     logger.info("Trying \"%s\"\n" % (arch.name))
     if arch.name in approximate_configs:
