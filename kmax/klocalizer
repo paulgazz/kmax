@@ -88,7 +88,7 @@ def klocalizerCLI():
                          help="Path to a file containing a list of configuration options for mutual exclusion, in the same format and with the same option incompatibilities as --config-mutex. One entry per line.")
   argparser.add_argument('--constraints-mutex-file',
                          type=str,
-                         help="Path to a file containing Boolean configuration expressions for mutual exclusion. One expression per line. Expressions may contain CONFIG_* identifiers, parentheses, and the 'and', 'or', and 'not' keywords, for example: (CONFIG_A or CONFIG_B) and not CONFIG_C. C/Kconfig operators such as '&&', '||', '!', and 'defined(...)' are not accepted. Blank lines and lines starting with # are ignored.")
+                         help="Path to a file containing Boolean configuration expressions for mutual exclusion. One expression per line. Expressions may contain CONFIG_* identifiers, parentheses, and the 'and', 'or', and 'not' keywords, for example: (CONFIG_A or CONFIG_B) and not CONFIG_C. C/Kconfig operators such as '&&', '||', '!', and 'defined(...)' are not accepted. Cannot be combined with --include, --include-file, --exclude, --sample, or --sample-prefix. Blank lines and lines starting with # are ignored.")
   argparser.add_argument('--coverage-report',
                          type=str,
                          default="coverage_report.json",
@@ -373,6 +373,22 @@ def klocalizerCLI():
       incompatible_options.append("--sample-prefix")
     if incompatible_options:
       logger.error("--config-mutex/--config-mutex-file cannot be used with: %s.\n" % ", ".join(incompatible_options))
+      exit(12)
+
+  if constraints_mutex_file is not None:
+    incompatible_options = []
+    if include_arg:
+      incompatible_options.append("--include")
+    if include_file is not None:
+      incompatible_options.append("--include-file")
+    if exclude_arg:
+      incompatible_options.append("--exclude")
+    if sample is not None:
+      incompatible_options.append("--sample")
+    if sample_prefix is not None:
+      incompatible_options.append("--sample-prefix")
+    if incompatible_options:
+      logger.error("--constraints-mutex-file cannot be used with: %s.\n" % ", ".join(incompatible_options))
       exit(12)
 
   def warn_or_err(warn_msg, err_msg, exit_code):
