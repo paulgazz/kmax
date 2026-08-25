@@ -513,6 +513,43 @@ unit.  The following are examples of how to customize this process.
 
         klocalizer -a x86_64 --undefine CONFIG_USB --include drivers/usb/storage/alauda.o  # no configuration possible because alauda depends on USB
 
+- Generating configurations for mutually exclusive configuration requirements
+
+    `--config-mutex` accepts one configuration literal per use. A `CONFIG_*`
+    literal requires the option to be enabled, while a literal beginning with
+    `!` requires it to be disabled. Quote disabled literals to prevent the shell
+    from interpreting `!`. `klocalizer` generates as many configurations as
+    needed to cover the requirements.
+
+        klocalizer -a x86_64 --config-mutex CONFIG_KVM --config-mutex '!CONFIG_KVM'
+
+    `--config-mutex-file` accepts the same literals from a file, with one
+    requirement per line. For example, given `config-mutex.txt` containing:
+
+        CONFIG_KASAN
+        !CONFIG_KASAN
+
+    run:
+
+        klocalizer -a x86_64 --config-mutex-file config-mutex.txt
+
+    `--constraints-mutex-file` accepts one Boolean configuration expression per
+    line. Expressions may use `CONFIG_*` identifiers, parentheses, and the
+    lowercase operators `and`, `or`, and `not`. Blank lines and lines beginning
+    with `#` are ignored. For example, given `constraints-mutex.txt` containing:
+
+        CONFIG_KVM and not CONFIG_KASAN
+        not CONFIG_KVM and CONFIG_KASAN
+
+    run:
+
+        klocalizer -a x86_64 --constraints-mutex-file constraints-mutex.txt
+
+    Each command writes the generated configurations to the output directory and
+    records which requirements were covered in `coverage_report.json`. This flag
+    is useful when necessary expressions are extracted and ready to be passed to
+    the SMT solver, bypassing slower SuperC presence condition checks.
+
 - Investigating unsatisfied constraints
 
     Use `--show-unsat-core` to see what constraints are causing the issue:
