@@ -170,7 +170,7 @@ def check_config(
     cross_compiler: str, arch: str, linux_dir: str, 
     coverage_requirements: dict, build_targets: dict, rewrite_mapping: dict, config_file: str,
     scratch_dir: str, timeout_olddefconfig : int, timeout_make_dir : int,
-    timeout_make_unit : int
+    timeout_make_unit : int, jobs : int = 1
     ) -> dict:
     """
     coverage_requirements is a dictionary describing the files to check
@@ -213,7 +213,7 @@ def check_config(
 
     # Prepare the core make command.
     make_env_settings = "KCFLAGS=\"-fdirectives-only -save-temps=obj\" KCONFIG_CONFIG=%s ARCH=%s" % (config_file, arch)
-    make_flags = "-j1 -i"
+    make_flags = "-j%d -i" % jobs
     core_make_command = "%s %s %s" % (make_env_settings, cross_compiler, make_flags)
 
     # Run olddefconfig on the config file (if this fails, we won't continue)
@@ -258,17 +258,62 @@ def check_config(
         assert path[-len('.c'):] in ['.c', '.i', '.o']
         return "%s.i" % path[:-len('.c')]
 
-    # TODO: all source files can be built at once by passing all build
-    # targets to make at once.  This would decrease the level of debugging
-    # information we have (e.g., who owns make's return code?) but make
-    # things faster/cleaner.
+    # Deduplicate build targets: multiple source files may share the same
+    # build target (e.g., files in the same directory with a directory-level
+    # build target).  Build each unique target only once.
+    target_to_sources = {}
+    for source_file in coverage_requirements["sourcefile_loc"]:
+        rewritten_source_file = rewrite_directories(source_file, rewrite_mapping)
+        rewritten_build_target = get_build_target(rewritten_source_file, build_targets)
+        build_target = withpreprocext(rewritten_build_target) if rewritten_build_target[-len('.c'):] in ['.c', '.i', '.o'] else rewritten_build_target
+        target_to_sources.setdefault(build_target, []).append(source_file)
+        logger.debug("Build target for \"%s\" is \"%s\"\n" % (source_file, build_target))
+
+    unique_targets = list(target_to_sources.keys())
+
+    # Compute aggregate timeout based on individual target types.
+    make_timeout = 0
+    for target in unique_targets:
+        is_file_target = target.endswith(".i") or target.endswith(".o")
+        target_timeout = timeout_make_unit if is_file_target else timeout_make_dir
+        if target_timeout is None:
+            # A None timeout (from --timeout-make-unit=0 or --timeout-make-dir=0)
+            # means no timeout for that target type; disable aggregate timeout.
+            make_timeout = None
+            break
+        make_timeout += target_timeout
+
+    # Build all targets in a single make invocation.
+    all_targets_str = " ".join(unique_targets)
+    make_cmd = "%s %s" % (core_make_command, all_targets_str)
+    logger.info("Running make to preprocess %d unique target(s): \"%s\"\n" % (len(unique_targets), make_cmd))
+    make_timedout = False
+    try:
+        make_stdout, make_stderr, make_retcode, make_time_elapsed = run(make_cmd, timeout=make_timeout, shell=True, cwd=linux_dir)
+        logger.info("Finished running make, retcode=%s time_elapsed=%.2fsec\n" % (make_retcode, make_time_elapsed))
+    except TimeoutExpired:
+        make_timedout = True
+        logger.warning("Running make timed out (timeout=%.2fsec).\n" % make_timeout)
+        make_stdout = b""
+        make_stderr = b""
+        make_time_elapsed = make_timeout
+
+    # Write combined make output to scratch dir.
+    with open(os.path.join(scratch_dir, "make_batch.stdout"), 'w') as f:
+        f.write(make_stdout.decode('utf-8'))
+    with open(os.path.join(scratch_dir, "make_batch.stderr"), 'w') as f:
+        f.write(make_stderr.decode('utf-8'))
+    with open(os.path.join(scratch_dir, "make_batch.time_elapsed"), 'w') as f:
+        f.write("%.2fsec" % make_time_elapsed)
+    if make_timedout:
+        with open(os.path.join(scratch_dir, "make_batch.timeout"), 'w') as f:
+            f.write("build timed out after %.2f seconds" % make_timeout)
 
     # Map each source file to {file:[validation_lines_included]} thanks to
     # the preprocessing of the source file.
     all_included_lines = {}
 
-    # Iterate over each source file, attempt building, and record inclusion
-    # results.
+    # Collect results per source file by checking which .i files were created.
     for source_file in coverage_requirements["sourcefile_loc"]:
         logger.info("Checking \"%s\"\n" % source_file)
 
@@ -276,59 +321,23 @@ def check_config(
         srcfile_scratch_dir = os.path.join(scratch_dir, "per_srcfile/", source_file)
         os.makedirs(srcfile_scratch_dir, exist_ok=True)
 
-        # Retrieve the build target for the source file.
-        # TODO: multiple can share the same target: a small optimization
-        # is to reuse results for those.
-        rewritten_source_file = rewrite_directories(source_file, rewrite_mapping)
-        rewritten_build_target = get_build_target(rewritten_source_file, build_targets)
-        build_target = withpreprocext(rewritten_build_target) if rewritten_build_target[-len('.c'):] in ['.c', '.i', '.o'] else rewritten_build_target
-        logger.debug("Build target for \"%s\" is \"%s\"\n" % (source_file, build_target))
-
-        # Use different timeout values based on whether the build target is
-        # a file or a directory.  Building directories take longer, thus,
-        # user can possibly define larger timeout values.
-        is_build_target_file = build_target.endswith(".i") or build_target.endswith(".o")
-        if is_build_target_file:
-            make_timeout = timeout_make_unit
-        else:
-            make_timeout = timeout_make_dir
-
-        # Run make to get the preprocessed file.
-        make_cmd = "%s %s" % (core_make_command, build_target)
-        logger.debug("Running make to preprocess file \"%s\", command: \"%s\"\n" % (source_file, make_cmd))
-        make_timedout = False
-        try:
-            make_stdout, make_stderr, make_retcode, make_time_elapsed = run(make_cmd, timeout=make_timeout, shell=True, cwd = linux_dir)
-            logger.debug("Finished running make, retcode=%s time_elapsed=%.2fsec\n" % (make_retcode, make_time_elapsed))
-
-            # Check if preprocessed file can be found.
-            preproc_filepath = withpreprocext(os.path.join(linux_dir, source_file))
-            logger.debug("Looking for preprocessed file: \"%s\"\n" % preproc_filepath)
-            preprocessed_file_exists = os.path.isfile(preproc_filepath)
-            logger.debug("Can find preprocessed file: %s\n" % preprocessed_file_exists)
-            preprocessed_file_created[source_file] = preprocessed_file_exists
-
-            # Copy preprocessed file (for later debugging purposes).
-            if preprocessed_file_exists:
-                preproc_dst = os.path.join(srcfile_scratch_dir, "preprocessed.i")
-                assert copyfile(preproc_filepath, preproc_dst)
-            # Write make info
-            def w(fbname, content):
-                with open(os.path.join(srcfile_scratch_dir, fbname), 'w') as f:
-                    f.write(content)
-            w("make.stdout", make_stdout.decode('utf-8'))
-            w("make.stderr", make_stderr.decode('utf-8'))
-            w("make.time_elapsed", "%.2fsec" % make_time_elapsed)
-            w("make.retcode", "%s" % make_retcode)
-
-        except TimeoutExpired:
-            make_timedout = True
+        if make_timedout:
             preprocessed_file_created[source_file] = False
-            logger.debug("Running make timed out for \"%s\", (timeout=%.2fsec).\n" % (source_file, make_timeout))
-            # Save timeout information.
-            make_timeout_fpath = os.path.join(srcfile_scratch_dir, "make.timeout")
-            with open(make_timeout_fpath, 'w') as f:
-                f.write("build timed out after %.2f seconds" % make_timeout)
+            with open(os.path.join(srcfile_scratch_dir, "make.timeout"), 'w') as f:
+                f.write("batch build timed out after %.2f seconds" % make_timeout)
+            continue
+
+        # Check if preprocessed file can be found.
+        preproc_filepath = withpreprocext(os.path.join(linux_dir, source_file))
+        logger.debug("Looking for preprocessed file: \"%s\"\n" % preproc_filepath)
+        preprocessed_file_exists = os.path.isfile(preproc_filepath)
+        logger.debug("Can find preprocessed file: %s\n" % preprocessed_file_exists)
+        preprocessed_file_created[source_file] = preprocessed_file_exists
+
+        # Copy preprocessed file (for later debugging purposes).
+        if preprocessed_file_exists:
+            preproc_dst = os.path.join(srcfile_scratch_dir, "preprocessed.i")
+            assert copyfile(preproc_filepath, preproc_dst)
 
         # Without preprocessed file, we cannot determine whether lines are included.
         if preprocessed_file_created[source_file]:
@@ -340,9 +349,6 @@ def check_config(
                 json.dump(inclusion_by_current_srcfile, f, sort_keys=True, indent=2)
             # Update the set of all found, which will later be merged.
             all_included_lines[source_file] = inclusion_by_current_srcfile
-        else:
-            # Preprocessing failed, thus, no line inclusion results to record.
-            pass
     
     # Write preprocessed_file_created for debugging purposes.
     with open(os.path.join(scratch_dir, "preprocessed_file_created.json"), 'w') as f:
@@ -930,6 +936,11 @@ def main():
              """ in json format."""
              """ Defaults to "koverage_output.json".""",
         default="koverage_output.json")
+    argparser.add_argument('--jobs', '-j',
+        type=int,
+        default=0,
+        help="""Number of parallel make jobs for preprocessing source files."""
+             """  0 (default) uses the number of available CPUs.""")
     argparser.add_argument('-v',
         '--verbose',
         action="store_true",
@@ -957,6 +968,7 @@ def main():
     force_overwrite = args.force_overwrite_scratch_dir
     output_file = args.output
     verbose = args.verbose
+    jobs = args.jobs if args.jobs > 0 else os.cpu_count()
 
     logger.verbose = verbose
 
@@ -1072,7 +1084,7 @@ def main():
     logger.info("Starting coverage checks.\n")
     coverage_results_vcovreq_lines = check_config(cross_compiler, arch,
         linux_ksrc, validation_covreq, build_targets, rewrite_mapping, config_file, scratch_dir,
-        timeout_olddefconfig, timeout_make_dir, timeout_make_unit)
+        timeout_olddefconfig, timeout_make_dir, timeout_make_unit, jobs)
     logger.info("Finished coverage checks.\n")
     logger.debug("Coverage results in terms of validation coverage requirements: \"%s\"\n" % coverage_results_vcovreq_lines)
     # Map line numbers in coverage results back to the lines in the
