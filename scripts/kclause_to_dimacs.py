@@ -1,34 +1,35 @@
 import pickle
 import z3
+import sys
 
 def get_kclause_constraints(kclause_file):
-  with open(kclause_file, 'r') as fp:
-    # kclause, defined_vars, used_vars = pickle.load(fp)
-    kclause = pickle.load(fp)
+  try:
+    with open(kclause_file, 'r') as fp:
+      kclause = pickle.load(fp)
+  except UnicodeDecodeError as ex:
+    sys.stderr.write("detected binary pickle file\n")
+    with open(kclause_file, 'rb') as fp:
+      kclause = pickle.load(fp)
 
-    kclause_constraints = {}
-    for var in list(kclause.keys()):
-      kclause_constraints[var] = [ z3.parse_smt2_string(clause) for clause in kclause[var] ]
+  kclause_constraints = {}
+  for var in list(kclause.keys()):
+    kclause_constraints[var] = [ z3.parse_smt2_string(clause) for clause in kclause[var] ]
 
-    constraints = []
-    for var in list(kclause_constraints.keys()):
-      for z3_clause in kclause_constraints[var]:
-        constraints.extend(z3_clause)
+  constraints = []
+  for var in list(kclause_constraints.keys()):
+    for z3_clause in kclause_constraints[var]:
+      constraints.extend(z3_clause)
 
-    return constraints
+  return constraints
 
-constraints = get_kclause_constraints(".kmax/kclause/x86_64/kclause")
-
-solver = z3.Solver()
-
-use_tseitin = True
-
-if use_tseitin:
-  g = z3.Goal()
-  g.add(constraints)
-  t = z3.Tactic('tseitin-cnf')
-  solver.add(g)
+if len(sys.argv) > 1:
+  kclause_file = sys.argv[1]
 else:
-  solver.add(constraints)
+  kclause_file = ".kmax/kclause/x86_64/kclause"
+  
+constraints = get_kclause_constraints(kclause_file)
 
-print((solver.dimacs()))
+goal = z3.Goal()
+goal.add(constraints)
+goal = z3.Then("simplify", "elim-and", "tseitin-cnf")(goal)[0] # use Then(...) instead of Tactic(...)
+print(goal.dimacs())
