@@ -14,7 +14,7 @@ def write_content_to_file(filepath: str, content: str):
         f.write(content)
 
 def get_build_system_id(linux_ksrc: str) -> str:
-    """Given path to the top Linux source directory, compute a 12 chars
+    r"""Given path to the top Linux source directory, compute a 12 chars
     build system identifier.
 
     Following command is run in linux_ksrc:
@@ -28,7 +28,7 @@ def get_build_system_id(linux_ksrc: str) -> str:
     assert which("head")
 
     # Compute build system id
-    cmd = "find . -type f -regex '.*\(Makefile\|Kconfig\|Kbuild\).*' -exec md5sum {} \; | sort | md5sum | head -c 12"
+    cmd = r"find . -type f -regex '.*\(Makefile\|Kconfig\|Kbuild\).*' -exec md5sum {} \; | sort | md5sum | head -c 12"
     out, _, ret, _ = run(cmd, cwd=linux_ksrc, shell=True)
     assert ret == 0
     id = out.decode('utf-8').lower()
