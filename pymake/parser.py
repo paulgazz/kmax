@@ -41,7 +41,7 @@ _log = logging.getLogger('pymake.parser')
 class SyntaxError(util.MakeError):
     pass
 
-_skipws = re.compile('\S')
+_skipws = re.compile(r'\S')
 class Data(object):
     """
     A single virtual "line", which can be multiple source lines joined with
@@ -233,7 +233,7 @@ def itercommandchars(d, offset, tokenlist, it):
 
     yield s[offset:d.lend].replace('\n\t', '\n'), None, None, None
 
-_redefines = re.compile('\s*define|\s*endef')
+_redefines = re.compile(r'\s*define|\s*endef')
 def iterdefinelines(it, startloc):
     """
     Process the insides of a define. Most characters are included literally. Escaped newlines are treated
@@ -375,7 +375,7 @@ def parsefile(pathname):
 # colon followed by anything except a slash (Windows path detection)
 _depfilesplitter = re.compile(r':(?![\\/])')
 # simple variable references
-_vars = re.compile('\$\((\w+)\)')
+_vars = re.compile(r'\$\((\w+)\)')
 
 def parsedepfile(pathname):
     """

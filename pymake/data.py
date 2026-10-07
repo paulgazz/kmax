@@ -563,7 +563,7 @@ class Pattern(object):
     would otherwise quote '%' charcters can be quoted with more backslashes. Backslashes that
     quote '%' characters or other backslashes are removed from the pattern before it is compared t
     file names or has a stem substituted into it. Backslashes that are not in danger of quoting '%'
-    characters go unmolested. For example, the pattern the\%weird\\%pattern\\ has `the%weird\' preceding
+    characters go unmolested. For example, the pattern the\\%weird\\%pattern\\ has `the%weird\' preceding
     the operative '%' character, and 'pattern\\' following it. The final two backslashes are left alone
     because they cannot affect any '%' character.
 
@@ -1414,7 +1414,7 @@ class _NativeWrapper(_CommandWrapper):
         _CommandWrapper.__init__(self, cline, ignoreErrors, loc, context,
                                  **kwargs)
         if pycommandpath:
-            self.pycommandpath = re.split('[%s\s]+' % os.pathsep,
+            self.pycommandpath = re.split(r'[%s\s]+' % os.pathsep,
                                           pycommandpath)
         else:
             self.pycommandpath = None
@@ -1757,7 +1757,7 @@ class Makefile(object):
         if value is None:
             self._vpath = []
         else:
-            self._vpath = [e for e in re.split('[%s\s]+' % os.pathsep,
+            self._vpath = [e for e in re.split(r'[%s\s]+' % os.pathsep,
                                           value.resolvestr(self, self.variables, ['VPATH'])) if e != '']
 
         targets = list(self._targets.values())

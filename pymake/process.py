@@ -45,7 +45,7 @@ _unquoted_tokens = tokens2re({
 _doubly_quoted_tokens = tokens2re({
   'quote': '"',
   'backslashedquote': r'\\"',
-  'special': '\$',
+  'special': r'\$',
   'backslashed': r'\\[^\\"]',
 })
 
