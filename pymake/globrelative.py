@@ -9,7 +9,7 @@ Filename globbing like the python glob module with minor differences:
 import os, re, fnmatch
 from . import util
 
-_globcheck = re.compile('[[*?]')
+_globcheck = re.compile(r'[\[*?]')
 
 def hasglob(p):
     return _globcheck.search(p) is not None
