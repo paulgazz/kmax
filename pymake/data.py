@@ -1720,7 +1720,7 @@ class Makefile(object):
     def hastarget(self, target):
         return target in self._targets
 
-    _globcheck = re.compile('[[*?]')
+    _globcheck = re.compile(r'[\[*?]')
     def gettarget(self, target):
         assert isinstance(target, str_type)
 
