@@ -605,7 +605,9 @@ class SyntaxAnalysis:
         """
         analyzed_tokens = {}
 
-        in_quotes = False
+        in_quotes = False  # inside a "string" literal
+        in_char = False  # inside a 'c' character literal
+        escaped = False  # previous token was a backslash inside a literal
         in_single_line_comment = False
         in_preprocessor = False
         prev_line_num = 0
@@ -621,13 +623,17 @@ class SyntaxAnalysis:
             else:
                 if not continued_preprocessor:
                     in_preprocessor = False
+                    # literals cannot span lines without a line continuation
+                    in_quotes = False
+                    in_char = False
+                escaped = False
                 if in_single_line_comment:
                     in_comment = False
                     in_single_line_comment = False
                 analyzed_tokens[line_num] = []
 
             # preprocessor check
-            if (not in_comment) and (not in_quotes) and token[0] == '#':
+            if (not in_comment) and (not in_quotes) and (not in_char) and token[0] == '#':
                 # sys.stderr.write(f"JFKLDS\n")
                 in_preprocessor = True
             # else:
@@ -638,10 +644,18 @@ class SyntaxAnalysis:
             # 1. if we start quotes while already in a comment or preprocessor, then it's still a comment.
             # 2. if we start a comment or preprocessor while already in quotes, then it's still quotes.
 
-            # invert the quote status whenever we reach a new quote
-            # this breaks because it doesn't account for escaped quotes
-            if (not in_preprocessor) and (not in_comment) and ("\"" in token):
-                in_quotes = not in_quotes
+            # invert the quote status whenever we reach a new, unescaped quote.
+            # quotes and backslashes are tokenized on their own, possibly
+            # preceded by a '/' or '*', e.g., '/' is tokenized as ' and /'
+            if (not in_preprocessor) and (not in_comment):
+                if escaped:
+                    escaped = False
+                elif (in_quotes or in_char) and token.endswith('\\'):
+                    escaped = True
+                elif (not in_char) and token.endswith('"'):
+                    in_quotes = not in_quotes
+                elif (not in_quotes) and token.endswith('\''):
+                    in_char = not in_char
 
             if (not in_quotes) and (not in_comment) and ("//" in token):
                 in_single_line_comment = True
