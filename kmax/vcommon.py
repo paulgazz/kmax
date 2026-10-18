@@ -47,14 +47,22 @@ def run(args, stdin=None, capture_stdout=True, capture_stderr=True, cwd=None, ti
   cwd -- Current working directory for the process.
   timeout -- timeout in seconds. If expires, raises an subprocess.TimeoutExpired exception.
   """
+  import signal
   import subprocess
   import time
   stdout_param = subprocess.PIPE if capture_stdout else None
   stderr_param = subprocess.PIPE if capture_stderr else None
   time_start = time.time()
-  popen = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=stdout_param, stderr=stderr_param, cwd=cwd, shell=shell)
+  # Run in a new session so that a timeout kills the whole process group,
+  # not only the shell when shell=True.
+  popen = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=stdout_param, stderr=stderr_param, cwd=cwd, shell=shell, start_new_session=True)
   if stdin != None: popen.stdin.write(stdin)
-  captured_stdout, captured_stderr = popen.communicate(timeout=timeout)
+  try:
+    captured_stdout, captured_stderr = popen.communicate(timeout=timeout)
+  except subprocess.TimeoutExpired:
+    os.killpg(popen.pid, signal.SIGKILL)
+    popen.communicate()
+    raise
   time_elapsed = time.time() - time_start
   popen.stdin.close()
   
